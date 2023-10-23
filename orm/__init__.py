@@ -1,4 +1,4 @@
-from base.orm import Base, engine
+from services.db import Base, engine
 from orm.shout import Shout
 
 

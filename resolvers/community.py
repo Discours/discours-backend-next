@@ -1,5 +1,5 @@
-from base.orm import local_session
-from base.resolvers import query
+from services.db import local_session
+from services.schema import query
 from orm.author import Author
 from orm.community import Community, CommunityAuthor
 from orm.shout import ShoutCommunity

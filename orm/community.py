@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 
-from base.orm import Base, local_session
+from services.db import Base, local_session
 from orm.author import Author
 
 

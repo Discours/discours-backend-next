@@ -4,8 +4,8 @@ from sqlalchemy.orm import aliased
 from services.presence import notify_reaction
 from services.auth import login_required
 from base.exceptions import OperationNotAllowed
-from base.orm import local_session
-from base.resolvers import mutation, query
+from services.db import local_session
+from services.schema import mutation, query
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.author import Author

@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
-from base.orm import Base
+from services.db import Base
 
 
 class TopicFollower(Base):

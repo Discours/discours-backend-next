@@ -4,8 +4,8 @@ from sqlalchemy import and_, func, distinct, select, literal
 from sqlalchemy.orm import aliased
 
 from services.auth import login_required
-from base.orm import local_session
-from base.resolvers import mutation, query
+from services.db import local_session
+from services.schema import mutation, query
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from orm.author import AuthorFollower, Author, AuthorRating

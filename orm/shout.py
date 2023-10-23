@@ -11,7 +11,7 @@ from sqlalchemy import (
     JSON,
 )
 from sqlalchemy.orm import column_property, relationship
-from base.orm import Base, local_session
+from services.db import Base, local_session
 from orm.community import Community
 from orm.reaction import Reaction
 from orm.topic import Topic
