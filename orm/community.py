@@ -1,39 +1,45 @@
 from datetime import datetime
-
 from sqlalchemy import Column, String, ForeignKey, DateTime
-from services.db import Base, local_session
+from sqlalchemy.orm import relationship
+
+from base.orm import Base, local_session
+from orm.author import Author
 
 
-class CommunityFollower(Base):
-    __tablename__ = "community_followers"
+class CommunityRole:
+    __tablename__ = "community_role"
+
+    name = Column(String, nullable=False)
+
+
+class CommunityAuthor(Base):
+    __tablename__ = "community_author"
 
     id = None  # type: ignore
-    follower = Column(ForeignKey("user.id"), primary_key=True)
+    follower = Column(ForeignKey("author.id"), primary_key=True)
     community = Column(ForeignKey("community.id"), primary_key=True)
-    joinedAt = Column(
-        DateTime, nullable=False, default=datetime.now, comment="Created at"
-    )
-    # role = Column(ForeignKey(Role.id), nullable=False, comment="Role for member")
+    joinedAt = Column(DateTime, nullable=False, default=datetime.now)
+    role = Column(ForeignKey("community_role.id"), nullable=False)
 
 
 class Community(Base):
     __tablename__ = "community"
 
-    name = Column(String, nullable=False, comment="Name")
-    slug = Column(String, nullable=False, unique=True, comment="Slug")
+    name = Column(String, nullable=False)
+    slug = Column(String, nullable=False, unique=True)
     desc = Column(String, nullable=False, default="")
     pic = Column(String, nullable=False, default="")
-    createdAt = Column(
-        DateTime, nullable=False, default=datetime.now, comment="Created at"
-    )
+    createdAt = Column(DateTime, nullable=False, default=datetime.now)
+
+    authors = relationship(lambda: Author, secondary=CommunityAuthor.__tablename__, nullable=True)
 
     @staticmethod
     def init_table():
         with local_session() as session:
-            d = session.query(Community).filter(Community.slug == "discours").first()
+            d = (session.query(Community).filter(Community.slug == "discours").first())
             if not d:
                 d = Community.create(name="Дискурс", slug="discours")
                 session.add(d)
                 session.commit()
             Community.default_community = d
-            print("[orm] default community id: %s" % d.id)
+            print('[orm] default community id: %s' % d.id)

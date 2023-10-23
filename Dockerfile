@@ -1,10 +1,22 @@
+# Use an official Python runtime as a parent image
 FROM python:slim
+
+# Set the working directory in the container to /app
 WORKDIR /app
 
-EXPOSE 8080
-# ADD nginx.conf.sigil ./
-COPY requirements.txt .
-RUN apt-get update && apt-get install -y build-essential git
-ENV GIT_SSH_COMMAND "ssh -v"
-RUN pip install -r requirements.txt
-COPY . .
+# Add metadata to the image to describe that the container is listening on port 80
+EXPOSE 80
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in pyproject.toml
+RUN apt-get update && apt-get install -y gcc curl && \
+    curl -sSL https://install.python-poetry.org | python - && \
+    echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc && \
+    . ~/.bashrc && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-dev
+
+# Run server.py when the container launches
+CMD ["python", "server.py"]

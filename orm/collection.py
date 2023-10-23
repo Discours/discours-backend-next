@@ -1,8 +1,6 @@
 from datetime import datetime
-
 from sqlalchemy import Column, DateTime, ForeignKey, String
-
-from services.db import Base
+from base.orm import Base
 
 
 class ShoutCollection(Base):
@@ -21,5 +19,5 @@ class Collection(Base):
     body = Column(String, nullable=True, comment="Body")
     pic = Column(String, nullable=True, comment="Picture")
     createdAt = Column(DateTime, default=datetime.now, comment="Created At")
-    createdBy = Column(ForeignKey("user.id"), comment="Created By")
+    createdBy = Column(ForeignKey("author.id"), comment="Created By")
     publishedAt = Column(DateTime, default=datetime.now, comment="Published At")

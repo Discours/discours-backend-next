@@ -1,12 +1,12 @@
 import json
-from services.redis import redis
+from services.rediscache import redis
 
 
-async def notify_reaction(reaction):
+async def notify_reaction(reaction, action: str = "create"):
     channel_name = "reaction"
     data = {
         "payload": reaction, 
-        "action": "create"
+        "action": action
     }
     try:
         await redis.publish(channel_name, json.dumps(data))
@@ -14,11 +14,11 @@ async def notify_reaction(reaction):
         print(f"Failed to publish to channel {channel_name}: {e}")
 
 
-async def notify_shout(shout):
+async def notify_shout(shout, action: str = "create"):
     channel_name = "shout"
     data = {
         "payload": shout,
-        "action": "create"
+        "action": action
     }
     try:
         await redis.publish(channel_name, json.dumps(data))
@@ -26,7 +26,7 @@ async def notify_shout(shout):
         print(f"Failed to publish to channel {channel_name}: {e}")
 
 
-async def notify_follower(follower: dict, author_id: int):
+async def notify_follower(follower: dict, author_id: int, action: str = "follow"):
     fields = follower.keys()
     for k in fields:
         if k not in ["id", "name", "slug", "userpic"]:
@@ -34,7 +34,7 @@ async def notify_follower(follower: dict, author_id: int):
     channel_name = f"follower:{author_id}"
     data = {
         "payload": follower,
-        "action": "follow",
+        "action": action
     }
     try:
         await redis.publish(channel_name, json.dumps(data))

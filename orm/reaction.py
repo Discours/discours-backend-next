@@ -1,9 +1,7 @@
 from datetime import datetime
 from enum import Enum as Enumeration
-
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
-
-from services.db import Base
+from base.orm import Base
 
 
 class ReactionKind(Enumeration):
@@ -26,25 +24,15 @@ class ReactionKind(Enumeration):
 
 class Reaction(Base):
     __tablename__ = "reaction"
+
     body = Column(String, nullable=True, comment="Reaction Body")
-    createdAt = Column(
-        DateTime, nullable=False, default=datetime.now, comment="Created at"
-    )
-    createdBy = Column(
-        ForeignKey("user.id"), nullable=False, index=True, comment="Sender"
-    )
+    createdAt = Column(DateTime, nullable=False, default=datetime.now)
+    createdBy = Column(ForeignKey("author.id"), nullable=False, index=True)
     updatedAt = Column(DateTime, nullable=True, comment="Updated at")
-    updatedBy = Column(
-        ForeignKey("user.id"), nullable=True, index=True, comment="Last Editor"
-    )
+    updatedBy = Column(ForeignKey("author.id"), nullable=True, index=True)
     deletedAt = Column(DateTime, nullable=True, comment="Deleted at")
-    deletedBy = Column(
-        ForeignKey("user.id"), nullable=True, index=True, comment="Deleted by"
-    )
+    deletedBy = Column(ForeignKey("author.id"), nullable=True, index=True)
     shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
-    replyTo = Column(
-        ForeignKey("reaction.id"), nullable=True, comment="Reply to reaction ID"
-    )
-    range = Column(String, nullable=True, comment="Range in format <start index>:<end>")
-    kind = Column(Enum(ReactionKind), nullable=False, comment="Reaction kind")
-    oid = Column(String, nullable=True, comment="Old ID")
+    replyTo = Column(ForeignKey("reaction.id"), nullable=True)
+    range = Column(String, nullable=True, comment="<start index>:<end>")
+    kind = Column(Enum(ReactionKind), nullable=False)

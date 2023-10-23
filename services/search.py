@@ -1,6 +1,6 @@
 import asyncio
 import json
-from services.redis import redis
+from services.rediscache import redis
 from orm.shout import Shout
 from resolvers.load import load_shouts_by
 

@@ -1,0 +1,40 @@
+[0.2.11]
+- redis interface updated
+- viewed interface updated
+- presence interface updated
+- notify on create, update, delete for reaction and shout
+- notify on follow / unfollow author
+- use pyproject
+- devmode fixed
+
+[0.2.10]
+- community resolvers connected
+
+[0.2.9]
+- starlette is back, aiohttp removed
+- aioredis replaced with aredis
+
+[0.2.8]
+- refactored
+
+
+[0.2.7]
+- loadFollowedReactions now with login_required
+- notifier service api draft
+- added shout visibility kind in schema
+- community isolated from author in orm
+
+
+[0.2.6]
+- redis connection pool
+- auth context fixes
+- communities orm, resolvers, schema
+
+
+[0.2.5]
+- restructured
+- all users have their profiles as authors in core
+- gittask, inbox and auth logics removed
+- settings moved to base and now smaller
+- new outside auth schema
+- removed gittask, auth, inbox, migration

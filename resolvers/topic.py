@@ -1,12 +1,22 @@
 from sqlalchemy import and_, select, distinct, func
 from sqlalchemy.orm import aliased
 
-from auth.authenticate import login_required
+from services.auth import login_required
 from services.db import local_session
-from services.schema import mutation, query
+from resolvers import mutation, query
 from orm.shout import ShoutTopic, ShoutAuthor
 from orm.topic import Topic, TopicFollower
-from orm import User
+from orm.author import Author
+
+
+async def followed_topics(follower_id):
+    q = select(Author)
+    q = add_topic_stat_columns(q)
+    q = q.join(TopicFollower, TopicFollower.author == Author.id).where(
+        TopicFollower.follower == follower_id
+    )
+    # Pass the query to the get_authors_from_query function and return the results
+    return get_topics_from_query(q)
 
 
 def add_topic_stat_columns(q):
@@ -54,10 +64,10 @@ def get_topics_from_query(q):
     return topics
 
 
-def followed_by_user(user_id):
+def topics_followed_by(author_id):
     q = select(Topic)
     q = add_topic_stat_columns(q)
-    q = q.join(TopicFollower).where(TopicFollower.follower == user_id)
+    q = q.join(TopicFollower).where(TopicFollower.follower == author_id)
 
     return get_topics_from_query(q)
 
@@ -79,10 +89,10 @@ async def topics_by_community(_, info, community):
 
 
 @query.field("topicsByAuthor")
-async def topics_by_author(_, _info, author):
+async def topics_by_author(_, _info, author_id):
     q = select(Topic)
     q = add_topic_stat_columns(q)
-    q = q.join(User).where(User.slug == author)
+    q = q.join(Author).where(Author.id == author_id)
 
     return get_topics_from_query(q)
 
@@ -108,7 +118,6 @@ async def create_topic(_, _info, inp):
     return {"topic": new_topic}
 
 
-@mutation.field("updateTopic")
 @login_required
 async def update_topic(_, _info, inp):
     slug = inp["slug"]
@@ -123,16 +132,16 @@ async def update_topic(_, _info, inp):
             return {"topic": topic}
 
 
-def topic_follow(user_id, slug):
+def topic_follow(follower_id, slug):
     try:
         with local_session() as session:
             topic = session.query(Topic).where(Topic.slug == slug).one()
 
-            following = TopicFollower.create(topic=topic.id, follower=user_id)
+            following = TopicFollower.create(topic=topic.id, follower=follower_id)
             session.add(following)
             session.commit()
             return True
-    except:
+    except Exception:
         return False
 
 
@@ -149,12 +158,11 @@ def topic_unfollow(user_id, slug):
                 session.delete(sub)
                 session.commit()
                 return True
-    except:
+    except Exception:
         pass
     return False
 
 
-@query.field("topicsRandom")
 async def topics_random(_, info, amount=12):
     q = select(Topic)
     q = q.join(ShoutTopic)
