@@ -48,7 +48,7 @@ class ShoutAuthor(Base):
     caption = Column(String, nullable=True, default="")
 
 
-class ShoutCommunity:
+class ShoutCommunity(Base):
     __tablename__ = "shout_community"
 
     id = None  # type: ignore
