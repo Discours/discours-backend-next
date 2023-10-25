@@ -4,6 +4,7 @@ from resolvers.author import (
     load_authors_by,
     update_profile,
     get_authors_all,
+    rate_author
 )
 
 from resolvers.reaction import (
@@ -32,6 +33,7 @@ __all__ = [
     "load_authors_by",
     "update_profile",
     "get_authors_all",
+    "rate_author",
     # reader
     "load_shout",
     "load_shouts_by",
