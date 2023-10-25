@@ -26,6 +26,7 @@ class SearchService:
                     "limit": limit,
                     "offset": offset,
                 }
+                # FIXME: use elastic request here
                 payload = await load_shouts_by(None, None, options)
                 await redis.execute("SET", text, json.dumps(payload))
                 return payload

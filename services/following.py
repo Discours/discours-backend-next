@@ -12,7 +12,7 @@ class Following:
     queue = asyncio.Queue()
 
     def __init__(self, kind, uid):
-        self.kind = kind  # author topic shout chat
+        self.kind = kind  # author topic shout community
         self.uid = uid
 
 

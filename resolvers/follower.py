@@ -6,7 +6,7 @@ from resolvers.community import community_follow, community_unfollow
 from services.following import FollowingManager, FollowingResult
 from services.db import local_session
 from orm.author import Author
-from services.presence import notify_follower
+from services.notify import notify_follower
 
 
 @login_required
@@ -52,7 +52,7 @@ async def unfollow(_, info, what, slug):
                 with local_session() as session:
                     author = session.query(Author.id).where(Author.slug == slug).one()
                     follower = session.query(Author).where(Author.id == follower_id).one()
-                    notify_follower(follower.dict(), author.id)
+                    notify_follower(follower.dict(), author.id, "unfollow")
         elif what == "TOPIC":
             if topic_unfollow(follower_id, slug):
                 result = FollowingResult("DELETED", 'topic', slug)

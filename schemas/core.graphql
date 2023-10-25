@@ -165,7 +165,7 @@ type AuthorStat {
 
 type Author {
   id: Int!
-  user: Int!
+  user: String!
   slug: String!
   name: String
   pic: String

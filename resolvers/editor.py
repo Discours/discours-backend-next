@@ -9,7 +9,7 @@ from services.schema import mutation, query
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from reaction import reactions_follow, reactions_unfollow
-from services.presence import notify_shout
+from services.notify import notify_shout
 
 
 @query.field("loadDrafts")

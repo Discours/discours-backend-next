@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, asc, desc, select, text, func, case
 from sqlalchemy.orm import aliased
-from services.presence import notify_reaction
+from services.notify import notify_reaction
 from services.auth import login_required
 from base.exceptions import OperationNotAllowed
 from services.db import local_session
