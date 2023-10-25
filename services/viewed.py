@@ -1,7 +1,7 @@
 import asyncio
 import time
 from datetime import timedelta, timezone, datetime
-from os import environ, path
+from os import environ
 
 from gql import Client, gql
 from gql.transport.httpx import HTTPXAsyncTransport

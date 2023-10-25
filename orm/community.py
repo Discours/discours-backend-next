@@ -6,12 +6,6 @@ from services.db import Base, local_session
 from orm.author import Author
 
 
-class CommunityRole:
-    __tablename__ = "community_role"
-
-    name = Column(String, nullable=False)
-
-
 class CommunityAuthor(Base):
     __tablename__ = "community_author"
 
@@ -19,7 +13,7 @@ class CommunityAuthor(Base):
     follower = Column(ForeignKey("author.id"), primary_key=True)
     community = Column(ForeignKey("community.id"), primary_key=True)
     joinedAt = Column(DateTime, nullable=False, default=datetime.now)
-    role = Column(ForeignKey("community_role.id"), nullable=False)
+    role = Column(String, nullable=False)
 
 
 class Community(Base):

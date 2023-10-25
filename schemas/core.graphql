@@ -168,9 +168,7 @@ type Author {
   user: Int!
   slug: String!
   name: String
-  communities: [Community]
-  userpic: String
-  caption: String
+  pic: String
   bio: String
   about: String
   links: [String]
