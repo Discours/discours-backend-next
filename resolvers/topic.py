@@ -136,10 +136,7 @@ def topic_follow(follower_id, slug):
     try:
         with local_session() as session:
             topic = session.query(Topic).where(Topic.slug == slug).one()
-
-            following = TopicFollower.create(topic=topic.id, follower=follower_id)
-            session.add(following)
-            session.commit()
+            _following = TopicFollower.create(topic=topic.id, follower=follower_id)
             return True
     except Exception:
         return False

@@ -1,10 +1,11 @@
+import time
 from typing import List
-from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, func, distinct, select, literal
 from sqlalchemy.orm import aliased
 
 from services.auth import login_required
 from services.db import local_session
+from services.unread import get_total_unread_counter
 from services.schema import mutation, query
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
@@ -41,7 +42,7 @@ def add_author_stat_columns(q):
     # )
 
     q = q.add_columns(literal(0).label("commented_stat"))
-    # q = q.outerjoin(Reaction, and_(Reaction.createdBy == Author.id, Reaction.body.is_not(None))).add_columns(
+    # q = q.outerjoin(Reaction, and_(Reaction.created_by == Author.id, Reaction.body.is_not(None))).add_columns(
     #     func.count(distinct(Reaction.id)).label('commented_stat')
     # )
 
@@ -81,7 +82,7 @@ def get_authors_from_query(q):
 
 async def author_followings(author_id: int):
     return {
-        # "unread": await get_total_unread_counter(author_id),  # unread inbox messages counter
+        "unread": await get_total_unread_counter(author_id),  # unread inbox messages counter
         "topics": [
             t.slug for t in await followed_topics(author_id)
         ],  # followed topics slugs
@@ -168,14 +169,15 @@ async def load_authors_by(_, _info, by, limit, offset):
             .join(Topic)
             .where(Topic.slug == by["topic"])
         )
-    if by.get("lastSeen"):  # in days
-        days_before = datetime.now(tz=timezone.utc) - timedelta(days=by["lastSeen"])
-        q = q.filter(Author.lastSeen > days_before)
-    elif by.get("createdAt"):  # in days
-        days_before = datetime.now(tz=timezone.utc) - timedelta(days=by["createdAt"])
-        q = q.filter(Author.createdAt > days_before)
+        
+    if by.get("last_seen"):  # in unixtime
+        before = int(time.time()) - by["last_seen"]
+        q = q.filter(Author.last_seen > before)
+    elif by.get("created_at"):  # in unixtime
+        before = int(time.time()) - by["created_at"]
+        q = q.filter(Author.created_at > before)
 
-    q = q.order_by(by.get("order", Author.createdAt)).limit(limit).offset(offset)
+    q = q.order_by(by.get("order", Author.created_at)).limit(limit).offset(offset)
 
     return get_authors_from_query(q)
 
@@ -226,7 +228,8 @@ async def rate_author(_, info, rated_user_id, value):
             session.query(AuthorRating)
             .filter(
                 and_(
-                    AuthorRating.rater == author_id, AuthorRating.user == rated_user_id
+                    AuthorRating.rater == author_id,
+                    AuthorRating.user == rated_user_id
                 )
             )
             .first()

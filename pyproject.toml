@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "discoursio-core"
-version = "0.2.12"
+version = "0.2.13"
 description = "core module for discours.io"
 authors = ["discoursio devteam"]
 license = "MIT"

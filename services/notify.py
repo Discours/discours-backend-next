@@ -29,7 +29,7 @@ async def notify_shout(shout, action: str = "create"):
 async def notify_follower(follower: dict, author_id: int, action: str = "follow"):
     fields = follower.keys()
     for k in fields:
-        if k not in ["id", "name", "slug", "userpic"]:
+        if k not in ["id", "name", "slug", "pic"]:
             del follower[k]
     channel_name = f"follower:{author_id}"
     data = {

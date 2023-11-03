@@ -1,3 +1,14 @@
+[0.2.13]
+- services: db context manager
+- services: ViewedStorage fixes
+- services: views are not stored in core db anymore
+- schema: snake case in model fields names
+- schema: no DateTime scalar
+- resolvers: get_my_feed comments filter reactions body.is_not("") 
+- resolvers: get_my_feed query fix
+- resolvers: LoadReactionsBy.days -> LoadReactionsBy.time_ago
+- resolvers: LoadShoutsBy.days -> LoadShoutsBy.time_ago
+
 [0.2.12]
 - Author.userpic -> Author.pic
 - CommunityAuthor.role is string now

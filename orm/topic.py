@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+import time
+from sqlalchemy import Boolean, Column, Integer, ForeignKey, String
 from services.db import Base
 
 
@@ -9,7 +9,7 @@ class TopicFollower(Base):
     id = None  # type: ignore
     follower = Column(ForeignKey("author.id"), primary_key=True, index=True)
     topic = Column(ForeignKey("topic.id"), primary_key=True, index=True)
-    createdAt = Column(DateTime, nullable=False, default=datetime.now)
+    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     auto = Column(Boolean, nullable=False, default=False)
 
 

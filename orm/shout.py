@@ -1,10 +1,9 @@
-from datetime import datetime
+import time
 from enum import Enum as Enumeration
 from sqlalchemy import (
     Enum,
     Boolean,
     Column,
-    DateTime,
     ForeignKey,
     Integer,
     String,
@@ -33,10 +32,8 @@ class ShoutReactionsFollower(Base):
     follower = Column(ForeignKey("author.id"), primary_key=True, index=True)
     shout = Column(ForeignKey("shout.id"), primary_key=True, index=True)
     auto = Column(Boolean, nullable=False, default=False)
-    createdAt = Column(
-        DateTime, nullable=False, default=datetime.now, comment="Created at"
-    )
-    deletedAt = Column(DateTime, nullable=True)
+    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
+    deleted_at = Column(Integer, nullable=True)
 
 
 class ShoutAuthor(Base):
@@ -65,13 +62,13 @@ class ShoutVisibility(Enumeration):
 class Shout(Base):
     __tablename__ = "shout"
 
-    createdAt = Column(DateTime, nullable=False, default=datetime.now)
-    updatedAt = Column(DateTime, nullable=True)
-    publishedAt = Column(DateTime, nullable=True)
-    deletedAt = Column(DateTime, nullable=True)
+    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
+    updated_at = Column(Integer, nullable=True)
+    published_at = Column(Integer, nullable=True)
+    deleted_at = Column(Integer, nullable=True)
 
-    createdBy = Column(ForeignKey("author.id"), comment="Created By")
-    deletedBy = Column(ForeignKey("author.id"), nullable=True)
+    created_by = Column(ForeignKey("author.id"), comment="Created By")
+    deleted_by = Column(ForeignKey("author.id"), nullable=True)
 
     body = Column(String, nullable=False, comment="Body")
     slug = Column(String, unique=True)
@@ -85,21 +82,17 @@ class Shout(Base):
 
     authors = relationship(lambda: Author, secondary=ShoutAuthor.__tablename__)
     topics = relationship(lambda: Topic, secondary=ShoutTopic.__tablename__)
-    communities = relationship(
-        lambda: Community, secondary=ShoutCommunity.__tablename__
-    )
+    communities = relationship(lambda: Community, secondary=ShoutCommunity.__tablename__)
     reactions = relationship(lambda: Reaction)
 
-    viewsOld = Column(Integer, default=0)
-    viewsAckee = Column(Integer, default=0)
-    views = column_property(viewsOld + viewsAckee)
+    views_old = Column(Integer, default=0)
+    views_ackee = Column(Integer, default=0)
+    views = column_property(views_old + views_ackee)
 
     visibility = Column(Enum(ShoutVisibility), default=ShoutVisibility.AUTHORS)
 
-    # TODO: these field should be used or modified
     lang = Column(String, nullable=False, default="ru", comment="Language")
-    mainTopic = Column(ForeignKey("topic.slug"), nullable=True)
-    versionOf = Column(ForeignKey("shout.id"), nullable=True)
+    version_of = Column(ForeignKey("shout.id"), nullable=True)
     oid = Column(String, nullable=True)
 
     @staticmethod
@@ -114,5 +107,3 @@ class Shout(Base):
                     "lang": "ru",
                 }
                 s = Shout.create(**entry)
-                session.add(s)
-                session.commit()

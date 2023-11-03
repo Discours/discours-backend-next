@@ -1,9 +1,3 @@
-# Скалярные типы данных
-scalar DateTime
-
-
-# Перечисления
-
 enum ShoutVisibility {
   AUTHORS
   COMMUNITY
@@ -42,9 +36,144 @@ enum FollowingEntity {
   REACTIONS
 }
 
+# Типы
+
+
+type AuthorFollowings {
+  unread: Int
+  topics: [String]
+  authors: [String]
+  reactions: [Int]
+  communities: [String]
+}
+
+type AuthorStat {
+  followings: Int
+  followers: Int
+  rating: Int
+  commented: Int
+  shouts: Int
+}
+
+type Author {
+  id: Int!
+  user: String! # user.id
+  slug: String! # user.nickname
+  name: String # user.preferred_username
+  pic: String
+  bio: String
+  about: String
+  links: [String]
+  created_at: Int
+  last_seen: Int
+  updated_at: Int
+  deleted_at: Int
+  # ratings
+  stat: AuthorStat # synthetic
+}
+
+type ReactionUpdating {
+  error: String
+  status: ReactionStatus
+  reaction: Reaction
+}
+
+type Rating {
+  rater: String!
+  value: Int!
+}
+
+type Reaction {
+  id: Int!
+  shout: Shout!
+  created_at: Int!
+  created_by: Author!
+  updated_at: Int
+  deleted_at: Int
+  deleted_by: Author
+  range: String
+  kind: ReactionKind!
+  body: String
+  reply_to: Int
+  stat: Stat
+  old_id: String
+  old_thread: String
+}
+
+type Shout {
+  id: Int!
+  slug: String!
+  body: String!
+  lead: String
+  description: String
+  created_at: Int!
+  topics: [Topic]
+  authors: [Author]
+  communities: [Community]
+  # mainTopic: String
+  title: String
+  subtitle: String
+  lang: String
+  community: String
+  cover: String
+  layout: String
+  version_of: String
+  visibility: ShoutVisibility
+  updated_at: Int
+  updated_by: Author
+  deleted_at: Int
+  deleted_by: Author
+  published_at: Int
+  media: String
+  stat: Stat
+}
+
+type Stat {
+  viewed: Int
+  reacted: Int
+  rating: Int
+  commented: Int
+  ranking: Int
+}
+
+type Community {
+  id: Int!
+  slug: String!
+  name: String!
+  desc: String
+  pic: String!
+  created_at: Int!
+  created_by: Author!
+}
+
+type Collection {
+  id: Int!
+  slug: String!
+  title: String!
+  desc: String
+  amount: Int
+  published_at: Int
+  created_at: Int!
+  created_by: Author!
+}
+
+type TopicStat {
+  shouts: Int!
+  followers: Int!
+  authors: Int!
+}
+
+type Topic {
+  id: Int!
+  slug: String!
+  title: String
+  body: String
+  pic: String
+  stat: TopicStat
+  oid: String
+}
 
 # Входные типы
-
 
 input ShoutInput {
   slug: String
@@ -57,7 +186,6 @@ input ShoutInput {
   authors: [String]
   topics: [TopicInput]
   community: Int
-  mainTopic: TopicInput
   subtitle: String
   cover: String
 }
@@ -65,7 +193,7 @@ input ShoutInput {
 input ProfileInput {
   slug: String
   name: String
-  userpic: String
+  pic: String
   links: [String]
   bio: String
   about: String
@@ -84,12 +212,12 @@ input ReactionInput {
   shout: Int!
   range: String
   body: String
-  replyTo: Int
+  reply_to: Int
 }
 
 input AuthorsBy {
-  lastSeen: DateTime
-  createdAt: DateTime
+  last_seen: Int
+  created_at: Int
   slug: String
   name: String
   topic: String
@@ -138,43 +266,12 @@ input ReactionBy {
   search: String
   comment: Boolean
   topic: String
-  createdBy: String
+  created_by: String
   days: Int
   sort: String
 }
 
-
-# Типы
-
-
-type AuthorFollowings {
-  unread: Int
-  topics: [String]
-  authors: [String]
-  reactions: [Int]
-  communities: [String]
-}
-
-type AuthorStat {
-  followings: Int
-  followers: Int
-  rating: Int
-  commented: Int
-  shouts: Int
-}
-
-type Author {
-  id: Int!
-  user: String!
-  slug: String!
-  name: String
-  pic: String
-  bio: String
-  about: String
-  links: [String]
-  stat: AuthorStat
-  lastSeen: DateTime
-}
+# output type
 
 type Result {
   error: String
@@ -190,108 +287,6 @@ type Result {
   community: Community
   communities: [Community]
 }
-
-type ReactionUpdating {
-  error: String
-  status: ReactionStatus
-  reaction: Reaction
-}
-
-type Rating {
-  rater: String!
-  value: Int!
-}
-
-type Reaction {
-  id: Int!
-  shout: Shout!
-  createdAt: DateTime!
-  createdBy: Author!
-  updatedAt: DateTime
-  deletedAt: DateTime
-  deletedBy: Author
-  range: String
-  kind: ReactionKind!
-  body: String
-  replyTo: Int
-  stat: Stat
-  old_id: String
-  old_thread: String
-}
-
-type Shout {
-  id: Int!
-  slug: String!
-  body: String!
-  lead: String
-  description: String
-  createdAt: DateTime!
-  topics: [Topic]
-  authors: [Author]
-  communities: [Community]
-  mainTopic: String
-  title: String
-  subtitle: String
-  lang: String
-  community: String
-  cover: String
-  layout: String
-  versionOf: String
-  visibility: ShoutVisibility
-  updatedAt: DateTime
-  updatedBy: Author
-  deletedAt: DateTime
-  deletedBy: Author
-  publishedAt: DateTime
-  media: String
-  stat: Stat
-}
-
-type Stat {
-  viewed: Int
-  reacted: Int
-  rating: Int
-  commented: Int
-  ranking: Int
-}
-
-type Community {
-  id: Int!
-  slug: String!
-  name: String!
-  desc: String
-  pic: String!
-  createdAt: DateTime!
-  createdBy: Author!
-}
-
-type Collection {
-  id: Int!
-  slug: String!
-  title: String!
-  desc: String
-  amount: Int
-  publishedAt: DateTime
-  createdAt: DateTime!
-  createdBy: Author!
-}
-
-type TopicStat {
-  shouts: Int!
-  followers: Int!
-  authors: Int!
-}
-
-type Topic {
-  id: Int!
-  slug: String!
-  title: String
-  body: String
-  pic: String
-  stat: TopicStat
-  oid: String
-}
-
 
 # Мутации
 

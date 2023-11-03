@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, String
+import time
+from sqlalchemy import Column, Integer, ForeignKey, String
 from services.db import Base
 
 
@@ -18,6 +18,6 @@ class Collection(Base):
     title = Column(String, nullable=False, comment="Title")
     body = Column(String, nullable=True, comment="Body")
     pic = Column(String, nullable=True, comment="Picture")
-    createdAt = Column(DateTime, default=datetime.now, comment="Created At")
-    createdBy = Column(ForeignKey("author.id"), comment="Created By")
-    publishedAt = Column(DateTime, default=datetime.now, comment="Published At")
+    created_at = Column(Integer, default=lambda: int(time.time()))
+    created_by = Column(ForeignKey("author.id"), comment="Created By")
+    published_at = Column(Integer, default=lambda: int(time.time()))

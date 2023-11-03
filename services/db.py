@@ -1,23 +1,35 @@
+from contextlib import contextmanager
+import logging
 from typing import TypeVar, Any, Dict, Generic, Callable
-
 from sqlalchemy import create_engine, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.schema import Table
-
 from settings import DB_URL
 
-engine = create_engine(
-    DB_URL, echo=False, pool_size=10, max_overflow=20
-)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
+Session = sessionmaker(bind=engine, expire_on_commit=False)
 
 T = TypeVar("T")
 
 REGISTRY: Dict[str, type] = {}
 
 
+@contextmanager
 def local_session():
-    return Session(bind=engine, expire_on_commit=False)
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        print(f"[services.db] Error session: {e}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 class Base(declarative_base()):
@@ -36,21 +48,36 @@ class Base(declarative_base()):
 
     @classmethod
     def create(cls: Generic[T], **kwargs) -> Generic[T]:
-        instance = cls(**kwargs)
-        return instance.save()
+        try:
+            instance = cls(**kwargs)
+            return instance.save()
+        except Exception as e:
+            print(f"[services.db] Error create: {e}")
+            return None
 
     def save(self) -> Generic[T]:
         with local_session() as session:
-            session.add(self)
-            session.commit()
+            try:
+                session.add(self)
+            except Exception as e:
+                print(f"[services.db] Error save: {e}")
         return self
 
     def update(self, input):
         column_names = self.__table__.columns.keys()
-        for (name, value) in input.items():
+        for name, value in input.items():
             if name in column_names:
                 setattr(self, name, value)
+        with local_session() as session:
+            try:
+                session.commit()
+            except Exception as e:
+                print(f"[services.db] Error update: {e}")
 
     def dict(self) -> Dict[str, Any]:
         column_names = self.__table__.columns.keys()
-        return {c: getattr(self, c) for c in column_names}
+        try:
+            return {c: getattr(self, c) for c in column_names}
+        except Exception as e:
+            print(f"[services.db] Error dict: {e}")
+            return {}

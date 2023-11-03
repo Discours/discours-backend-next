@@ -1,7 +1,7 @@
-from datetime import datetime
 from enum import Enum as Enumeration
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Column, Integer, Enum, ForeignKey, String
 from services.db import Base
+import time
 
 
 class ReactionKind(Enumeration):
@@ -26,13 +26,12 @@ class Reaction(Base):
     __tablename__ = "reaction"
 
     body = Column(String, nullable=True, comment="Reaction Body")
-    createdAt = Column(DateTime, nullable=False, default=datetime.now)
-    createdBy = Column(ForeignKey("author.id"), nullable=False, index=True)
-    updatedAt = Column(DateTime, nullable=True, comment="Updated at")
-    updatedBy = Column(ForeignKey("author.id"), nullable=True, index=True)
-    deletedAt = Column(DateTime, nullable=True, comment="Deleted at")
-    deletedBy = Column(ForeignKey("author.id"), nullable=True, index=True)
+    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
+    created_by = Column(ForeignKey("author.id"), nullable=False, index=True)
+    updated_at = Column(Integer, nullable=True, comment="Updated at")
+    deleted_at = Column(Integer, nullable=True, comment="Deleted at")
+    deleted_by = Column(ForeignKey("author.id"), nullable=True, index=True)
     shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
-    replyTo = Column(ForeignKey("reaction.id"), nullable=True)
-    range = Column(String, nullable=True, comment="<start index>:<end>")
+    reply_to = Column(ForeignKey("reaction.id"), nullable=True)
+    quote = Column(String, nullable=True, comment="a quoted fragment")
     kind = Column(Enum(ReactionKind), nullable=False)

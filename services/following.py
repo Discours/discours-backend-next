@@ -40,7 +40,7 @@ class FollowingManager:
         try:
             async with FollowingManager.lock:
                 for entity in FollowingManager[kind]:
-                    if payload.shout['createdBy'] == entity.uid:
+                    if payload.shout['created_by'] == entity.uid:
                         entity.queue.put_nowait(payload)
         except Exception as e:
             print(Exception(e))

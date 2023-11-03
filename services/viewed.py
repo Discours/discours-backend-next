@@ -57,6 +57,7 @@ class ViewedStorage:
     lock = asyncio.Lock()
     by_shouts = {}
     by_topics = {}
+    by_reactions = {}
     views = None
     pages = None
     domains = None
@@ -75,16 +76,16 @@ class ViewedStorage:
                     {"Authorization": "Bearer %s" % str(token)}, schema=schema_str
                 )
                 print(
-                    "[stat] * authorized permanentely by ackee.discours.io: %s" % token
+                    "[services.viewed] * authorized permanentely by ackee.discours.io: %s" % token
                 )
             else:
-                print("[stat] * please set ACKEE_TOKEN")
+                print("[services.viewed] * please set ACKEE_TOKEN")
                 self.disabled = True
 
     @staticmethod
     async def update_pages():
         """query all the pages from ackee sorted by views count"""
-        print("[stat] ⎧ updating ackee pages data ---")
+        print("[services.viewed] ⎧ updating ackee pages data ---")
         start = time.time()
         self = ViewedStorage
         try:
@@ -100,12 +101,12 @@ class ViewedStorage:
                     await ViewedStorage.increment(slug, shouts[slug])
             except Exception:
                 pass
-            print("[stat] ⎪ %d pages collected " % len(shouts.keys()))
+            print("[services.viewed] ⎪ %d pages collected " % len(shouts.keys()))
         except Exception as e:
             raise e
 
         end = time.time()
-        print("[stat] ⎪ update_pages took %fs " % (end - start))
+        print("[services.viewed] ⎪ update_pages took %fs " % (end - start))
 
     @staticmethod
     async def get_facts():
@@ -113,26 +114,19 @@ class ViewedStorage:
         async with self.lock:
             return self.client.execute_async(load_facts)
 
-    # unused yet
     @staticmethod
     async def get_shout(shout_slug):
         """getting shout views metric by slug"""
         self = ViewedStorage
         async with self.lock:
-            shout_views = self.by_shouts.get(shout_slug)
-            if not shout_views:
-                shout_views = 0
-                with local_session() as session:
-                    try:
-                        shout = (
-                            session.query(Shout).where(Shout.slug == shout_slug).one()
-                        )
-                        self.by_shouts[shout_slug] = shout.views
-                        self.update_topics(session, shout_slug)
-                    except Exception as e:
-                        raise e
+            return self.by_shouts.get(shout_slug, 0)
 
-            return shout_views
+    @staticmethod
+    async def get_reaction(shout_slug, reaction_id):
+        """getting reaction views metric by slug"""
+        self = ViewedStorage
+        async with self.lock:
+            return self.by_reactions.get(shout_slug, {}).get(reaction_id, 0)
 
     @staticmethod
     async def get_topic(topic_slug):
@@ -145,51 +139,36 @@ class ViewedStorage:
         return topic_views
 
     @staticmethod
-    def update_topics(session, shout_slug):
+    def update_topics( shout_slug):
         """updates topics counters by shout slug"""
         self = ViewedStorage
-        for [shout_topic, topic] in (
-            session.query(ShoutTopic, Topic)
-            .join(Topic)
-            .join(Shout)
-            .where(Shout.slug == shout_slug)
-            .all()
-        ):
-            if not self.by_topics.get(topic.slug):
-                self.by_topics[topic.slug] = {}
-            self.by_topics[topic.slug][shout_slug] = self.by_shouts[shout_slug]
+        with local_session() as session:    
+            for [shout_topic, topic] in (
+                session.query(ShoutTopic, Topic)
+                .join(Topic)
+                .join(Shout)
+                .where(Shout.slug == shout_slug)
+                .all()
+            ):
+                if not self.by_topics.get(topic.slug):
+                    self.by_topics[topic.slug] = {}
+                self.by_topics[topic.slug][shout_slug] = self.by_shouts[shout_slug]
 
     @staticmethod
     async def increment(shout_slug, amount=1, viewer="ackee"):
         """the only way to change views counter"""
         self = ViewedStorage
         async with self.lock:
-            # TODO optimize, currenty we execute 1 DB transaction per shout
-            with local_session() as session:
-                shout = session.query(Shout).where(Shout.slug == shout_slug).one()
-                if viewer == "old-discours":
-                    # this is needed for old db migration
-                    if shout.viewsOld == amount:
-                        print(f"[stat] ⎪ viewsOld amount: {amount}")
-                    else:
-                        print(
-                            f"[stat] ⎪ viewsOld amount changed: {shout.viewsOld} --> {amount}"
-                        )
-                        shout.viewsOld = amount
-                else:
-                    if shout.viewsAckee == amount:
-                        print(f"[stat] ⎪ viewsAckee amount: {amount}")
-                    else:
-                        print(
-                            f"[stat] ⎪ viewsAckee amount changed: {shout.viewsAckee} --> {amount}"
-                        )
-                        shout.viewsAckee = amount
+            self.by_shouts[shout_slug] = self.by_shouts.get(shout_slug, 0) + amount
+            self.update_topics(shout_slug)
 
-                session.commit()
-
-                # this part is currently unused
-                self.by_shouts[shout_slug] = self.by_shouts.get(shout_slug, 0) + amount
-                self.update_topics(session, shout_slug)
+    @staticmethod
+    async def increment_reaction(shout_slug, reaction_id, amount=1, viewer="ackee"):
+        """the only way to change views counter"""
+        self = ViewedStorage
+        async with self.lock:
+            self.by_reactions[shout_slug][reaction_id] = self.by_reactions[shout_slug].get(reaction_id, 0) + amount
+            self.update_topics(shout_slug)
 
     @staticmethod
     async def worker():
@@ -201,23 +180,23 @@ class ViewedStorage:
 
         while True:
             try:
-                print("[stat] - updating views...")
+                print("[services.viewed] - updating views...")
                 await self.update_pages()
                 failed = 0
             except Exception:
                 failed += 1
-                print("[stat] - update failed #%d, wait 10 seconds" % failed)
+                print("[services.viewed] - update failed #%d, wait 10 seconds" % failed)
                 if failed > 3:
-                    print("[stat] - not trying to update anymore")
+                    print("[services.viewed] - not trying to update anymore")
                     break
             if failed == 0:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
                 print(
-                    "[stat] ⎩ next update: %s"
+                    "[services.viewed] ⎩ next update: %s"
                     % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
                 )
                 await asyncio.sleep(self.period)
             else:
                 await asyncio.sleep(10)
-                print("[stat] - trying to update data again")
+                print("[services.viewed] - trying to update data again")
