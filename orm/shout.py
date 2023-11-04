@@ -85,10 +85,6 @@ class Shout(Base):
     communities = relationship(lambda: Community, secondary=ShoutCommunity.__tablename__)
     reactions = relationship(lambda: Reaction)
 
-    views_old = Column(Integer, default=0)
-    views_ackee = Column(Integer, default=0)
-    views = column_property(views_old + views_ackee)
-
     visibility = Column(Enum(ShoutVisibility), default=ShoutVisibility.AUTHORS)
 
     lang = Column(String, nullable=False, default="ru", comment="Language")
