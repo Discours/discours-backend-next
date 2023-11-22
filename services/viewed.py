@@ -7,7 +7,7 @@ from gql import Client, gql
 from gql.transport.httpx import HTTPXAsyncTransport
 
 from services.db import local_session
-from orm import Topic
+from orm.topic import Topic
 from orm.shout import ShoutTopic, Shout
 
 load_facts = gql(
@@ -72,12 +72,8 @@ class ViewedStorage:
         self = ViewedStorage
         async with self.lock:
             if token:
-                self.client = create_client(
-                    {"Authorization": "Bearer %s" % str(token)}, schema=schema_str
-                )
-                print(
-                    "[services.viewed] * authorized permanentely by ackee.discours.io: %s" % token
-                )
+                self.client = create_client({"Authorization": "Bearer %s" % str(token)}, schema=schema_str)
+                print("[services.viewed] * authorized permanentely by ackee.discours.io: %s" % token)
             else:
                 print("[services.viewed] * please set ACKEE_TOKEN")
                 self.disabled = True
@@ -139,16 +135,12 @@ class ViewedStorage:
         return topic_views
 
     @staticmethod
-    def update_topics( shout_slug):
+    def update_topics(shout_slug):
         """updates topics counters by shout slug"""
         self = ViewedStorage
-        with local_session() as session:    
+        with local_session() as session:
             for [shout_topic, topic] in (
-                session.query(ShoutTopic, Topic)
-                .join(Topic)
-                .join(Shout)
-                .where(Shout.slug == shout_slug)
-                .all()
+                session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all()
             ):
                 if not self.by_topics.get(topic.slug):
                     self.by_topics[topic.slug] = {}
@@ -192,10 +184,7 @@ class ViewedStorage:
             if failed == 0:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
-                print(
-                    "[services.viewed] ⎩ next update: %s"
-                    % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
-                )
+                print("[services.viewed] ⎩ next update: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0]))
                 await asyncio.sleep(self.period)
             else:
                 await asyncio.sleep(10)

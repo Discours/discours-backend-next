@@ -6,7 +6,7 @@ from services.db import local_session
 from services.schema import mutation, query
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from orm.topic import Topic
-from reaction import reactions_follow, reactions_unfollow
+from resolvers.reaction import reactions_follow, reactions_unfollow
 from services.notify import notify_shout
 
 

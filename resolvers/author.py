@@ -10,9 +10,9 @@ from services.schema import mutation, query
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from orm.author import AuthorFollower, Author, AuthorRating
-from community import followed_communities
-from topic import followed_topics
-from reaction import reacted_shouts_updates as followed_reactions
+from resolvers.community import followed_communities
+from resolvers.topic import followed_topics
+from resolvers.reaction import reacted_shouts_updates as followed_reactions
 
 
 def add_author_stat_columns(q):
