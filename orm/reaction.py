@@ -1,7 +1,9 @@
-from enum import Enum as Enumeration
-from sqlalchemy import Column, Integer, Enum, ForeignKey, String
-from services.db import Base
 import time
+from enum import Enum as Enumeration
+
+from sqlalchemy import Column, Enum, ForeignKey, Integer, String
+
+from services.db import Base
 
 
 class ReactionKind(Enumeration):
@@ -33,5 +35,7 @@ class Reaction(Base):
     deleted_by = Column(ForeignKey("author.id"), nullable=True, index=True)
     shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
     reply_to = Column(ForeignKey("reaction.id"), nullable=True)
-    quote = Column(String, nullable=True, comment="a quoted fragment")
+    range = Column(String, nullable=True, comment="<start index>:<end>")
     kind = Column(Enum(ReactionKind), nullable=False)
+
+    oid = Column(String)

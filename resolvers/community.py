@@ -14,9 +14,7 @@ def add_community_stat_columns(q):
     q = q.outerjoin(shout_community_aliased).add_columns(
         func.count(distinct(shout_community_aliased.shout)).label("shouts_stat")
     )
-    q = q.outerjoin(
-        community_followers, community_followers.author == Author.id
-    ).add_columns(
+    q = q.outerjoin(community_followers, community_followers.author == Author.id).add_columns(
         func.count(distinct(community_followers.follower)).label("followers_stat")
     )
 
@@ -75,7 +73,7 @@ def community_follow(follower_id, slug):
     try:
         with local_session() as session:
             community = session.query(Community).where(Community.slug == slug).one()
-            cf = CommunityAuthor.create(author=follower_id, community=community.id)
+            cf = CommunityAuthor(author=follower_id, community=community.id)
             session.add(cf)
             session.commit()
         return True

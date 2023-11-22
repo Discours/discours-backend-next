@@ -1,5 +1,4 @@
 import time
-from aiohttp.web_exceptions import HTTPException
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy.sql.expression import desc, asc, select, func, case, and_, nulls_last
 
@@ -9,7 +8,7 @@ from orm.topic import TopicFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.author import AuthorFollower
-from servies.viewed import ViewedStorage
+from services.viewed import ViewedStorage
 
 
 def add_stat_columns(q):
@@ -113,7 +112,7 @@ async def load_shout(_, _info, slug=None, shout_id=None):
                         author.caption = author_caption.caption
             return shout
         except Exception:
-            raise HTTPException(status_code=404, detail="Slug was not found: %s" % slug)
+            return None
 
 
 async def load_shouts_by(_, info, options):

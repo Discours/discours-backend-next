@@ -1,5 +1,7 @@
 import time
-from sqlalchemy import Column, Integer, ForeignKey, String
+
+from sqlalchemy import Column, ForeignKey, Integer, String
+
 from services.db import Base
 
 
@@ -20,4 +22,4 @@ class Collection(Base):
     pic = Column(String, nullable=True, comment="Picture")
     created_at = Column(Integer, default=lambda: int(time.time()))
     created_by = Column(ForeignKey("author.id"), comment="Created By")
-    published_at = Column(Integer, default=lambda: int(time.time()))
+    publishedAt = Column(Integer, default=lambda: int(time.time()))

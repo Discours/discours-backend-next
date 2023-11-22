@@ -1,5 +1,7 @@
 import time
-from sqlalchemy import Boolean, Column, Integer, ForeignKey, String
+
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+
 from services.db import Base
 
 

@@ -1,7 +1,9 @@
 import time
+
 from sqlalchemy import JSON as JSONType
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from services.db import Base
 
 

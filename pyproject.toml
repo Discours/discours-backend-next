@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "discoursio-core"
-version = "0.2.13"
+version = "0.2.14"
 description = "core module for discours.io"
 authors = ["discoursio devteam"]
 license = "MIT"
@@ -11,7 +11,7 @@ python = "^3.12"
 SQLAlchemy = "^2.0.22"
 httpx = "^0.25.0"
 redis = {extras = ["hiredis"], version = "^5.0.1"}
-uvicorn = "^0.23.2"
+uvicorn = "^0.24"
 sentry-sdk = "^1.32.0"
 gql = {git = "https://github.com/graphql-python/gql.git", rev = "master"}
 starlette = {git = "https://github.com/encode/starlette.git", rev = "master"}

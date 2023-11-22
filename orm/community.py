@@ -1,9 +1,10 @@
 import time
-from sqlalchemy import Column, String, ForeignKey, Integer
+
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from services.db import Base, local_session
 from orm.author import Author
+from services.db import Base, local_session
 
 
 class CommunityAuthor(Base):
@@ -29,10 +30,12 @@ class Community(Base):
 
     @staticmethod
     def init_table():
-        with local_session() as session:
+        with local_session("orm.community") as session:
             d = session.query(Community).filter(Community.slug == "discours").first()
             if not d:
-                d = Community.create(name="Дискурс", slug="discours")
-                print("[orm] created community %s" % d.slug)
+                d = Community(name="Дискурс", slug="discours")
+                session.add(d)
+                session.commit()
+                print("[orm.community] created community %s" % d.slug)
             Community.default_community = d
-            print("[orm] default community is %s" % d.slug)
+            print("[orm.community] default community is %s" % d.slug)

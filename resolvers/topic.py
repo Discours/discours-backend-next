@@ -3,7 +3,7 @@ from sqlalchemy.orm import aliased
 
 from services.auth import login_required
 from services.db import local_session
-from resolvers import mutation, query
+from services.schema import mutation, query
 from orm.shout import ShoutTopic, ShoutAuthor
 from orm.topic import Topic, TopicFollower
 from orm.author import Author
@@ -12,9 +12,7 @@ from orm.author import Author
 async def followed_topics(follower_id):
     q = select(Author)
     q = add_topic_stat_columns(q)
-    q = q.join(TopicFollower, TopicFollower.author == Author.id).where(
-        TopicFollower.follower == follower_id
-    )
+    q = q.join(TopicFollower, TopicFollower.author == Author.id).where(TopicFollower.follower == follower_id)
     # Pass the query to the get_authors_from_query function and return the results
     return get_topics_from_query(q)
 
@@ -27,15 +25,9 @@ def add_topic_stat_columns(q):
         q.outerjoin(ShoutTopic, Topic.id == ShoutTopic.topic)
         .add_columns(func.count(distinct(ShoutTopic.shout)).label("shouts_stat"))
         .outerjoin(aliased_shout_author, ShoutTopic.shout == aliased_shout_author.shout)
-        .add_columns(
-            func.count(distinct(aliased_shout_author.user)).label("authors_stat")
-        )
+        .add_columns(func.count(distinct(aliased_shout_author.user)).label("authors_stat"))
         .outerjoin(aliased_topic_follower)
-        .add_columns(
-            func.count(distinct(aliased_topic_follower.follower)).label(
-                "followers_stat"
-            )
-        )
+        .add_columns(func.count(distinct(aliased_topic_follower.follower)).label("followers_stat"))
     )
 
     q = q.group_by(Topic.id)
@@ -111,7 +103,7 @@ async def get_topic(_, _info, slug):
 async def create_topic(_, _info, inp):
     with local_session() as session:
         # TODO: check user permissions to create topic for exact community
-        new_topic = Topic.create(**inp)
+        new_topic = Topic(**inp)
         session.add(new_topic)
         session.commit()
 
@@ -126,7 +118,8 @@ async def update_topic(_, _info, inp):
         if not topic:
             return {"error": "topic not found"}
         else:
-            topic.update(**inp)
+            Topic.update(topic, inp)
+            session.add(topic)
             session.commit()
 
             return {"topic": topic}
@@ -136,7 +129,7 @@ def topic_follow(follower_id, slug):
     try:
         with local_session() as session:
             topic = session.query(Topic).where(Topic.slug == slug).one()
-            _following = TopicFollower.create(topic=topic.id, follower=follower_id)
+            _following = TopicFollower(topic=topic.id, follower=follower_id)
             return True
     except Exception:
         return False

@@ -1,20 +1,14 @@
 import time
 from enum import Enum as Enumeration
-from sqlalchemy import (
-    Enum,
-    Boolean,
-    Column,
-    ForeignKey,
-    Integer,
-    String,
-    JSON,
-)
-from sqlalchemy.orm import column_property, relationship
-from services.db import Base, local_session
+
+from sqlalchemy import JSON, Boolean, Column, Enum, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
+from orm.author import Author
 from orm.community import Community
 from orm.reaction import Reaction
 from orm.topic import Topic
-from orm.author import Author
+from services.db import Base
 
 
 class ShoutTopic(Base):
@@ -66,8 +60,7 @@ class Shout(Base):
     updated_at = Column(Integer, nullable=True)
     published_at = Column(Integer, nullable=True)
     deleted_at = Column(Integer, nullable=True)
-
-    created_by = Column(ForeignKey("author.id"), comment="Created By")
+    
     deleted_by = Column(ForeignKey("author.id"), nullable=True)
 
     body = Column(String, nullable=False, comment="Body")
@@ -80,9 +73,9 @@ class Shout(Base):
     layout = Column(String, nullable=True)
     media = Column(JSON, nullable=True)
 
-    authors = relationship(lambda: Author, secondary=ShoutAuthor.__tablename__)
-    topics = relationship(lambda: Topic, secondary=ShoutTopic.__tablename__)
-    communities = relationship(lambda: Community, secondary=ShoutCommunity.__tablename__)
+    authors = relationship(lambda: Author, secondary="shout_author")
+    topics = relationship(lambda: Topic, secondary="shout_topic")
+    communities = relationship(lambda: Community, secondary="shout_community")
     reactions = relationship(lambda: Reaction)
 
     visibility = Column(Enum(ShoutVisibility), default=ShoutVisibility.AUTHORS)
@@ -91,15 +84,3 @@ class Shout(Base):
     version_of = Column(ForeignKey("shout.id"), nullable=True)
     oid = Column(String, nullable=True)
 
-    @staticmethod
-    def init_table():
-        with local_session() as session:
-            s = session.query(Shout).first()
-            if not s:
-                entry = {
-                    "slug": "genesis-block",
-                    "body": "",
-                    "title": "Ничего",
-                    "lang": "ru",
-                }
-                s = Shout.create(**entry)

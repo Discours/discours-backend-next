@@ -9,6 +9,7 @@ from orm.topic import Topic
 from reaction import reactions_follow, reactions_unfollow
 from services.notify import notify_shout
 
+
 @query.field("loadDrafts")
 async def get_drafts(_, info):
     author = info.context["request"].author
@@ -27,17 +28,16 @@ async def get_drafts(_, info):
             shouts.append(shout)
     return shouts
 
+
 @mutation.field("createShout")
 @login_required
 async def create_shout(_, info, inp):
     author_id = info.context["author_id"]
     with local_session() as session:
-        topics = (
-            session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
-        )
+        topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
         # Replace datetime with Unix timestamp
         current_time = int(time.time())
-        new_shout = Shout.create(
+        new_shout = Shout(
             **{
                 "title": inp.get("title"),
                 "subtitle": inp.get("subtitle"),
@@ -54,21 +54,22 @@ async def create_shout(_, info, inp):
             }
         )
         for topic in topics:
-            t = ShoutTopic.create(topic=topic.id, shout=new_shout.id)
+            t = ShoutTopic(topic=topic.id, shout=new_shout.id)
             session.add(t)
         # NOTE: shout made by one first author
-        sa = ShoutAuthor.create(shout=new_shout.id, author=author_id)
+        sa = ShoutAuthor(shout=new_shout.id, author=author_id)
         session.add(sa)
         session.add(new_shout)
         reactions_follow(author_id, new_shout.id, True)
         session.commit()
-        # TODO: GitTask(inp, user.username, user.email, "new shout %s" % new_shout.slug)
+
         if new_shout.slug is None:
             new_shout.slug = f"draft-{new_shout.id}"
             session.commit()
         else:
-            notify_shout(new_shout.dict(), "create")
+            await notify_shout(new_shout.dict(), "create")
     return {"shout": new_shout}
+
 
 @mutation.field("updateShout")
 @login_required
@@ -93,42 +94,30 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             topics_input = shout_input["topics"]
             del shout_input["topics"]
             new_topics_to_link = []
-            new_topics = [
-                topic_input for topic_input in topics_input if topic_input["id"] < 0
-            ]
+            new_topics = [topic_input for topic_input in topics_input if topic_input["id"] < 0]
             for new_topic in new_topics:
                 del new_topic["id"]
-                created_new_topic = Topic.create(**new_topic)
+                created_new_topic = Topic(**new_topic)
                 session.add(created_new_topic)
                 new_topics_to_link.append(created_new_topic)
             if len(new_topics) > 0:
                 session.commit()
             for new_topic_to_link in new_topics_to_link:
-                created_unlinked_topic = ShoutTopic.create(
-                    shout=shout.id, topic=new_topic_to_link.id
-                )
+                created_unlinked_topic = ShoutTopic(shout=shout.id, topic=new_topic_to_link.id)
                 session.add(created_unlinked_topic)
-            existing_topics_input = [
-                topic_input
-                for topic_input in topics_input
-                if topic_input.get("id", 0) > 0
-            ]
+            existing_topics_input = [topic_input for topic_input in topics_input if topic_input.get("id", 0) > 0]
             existing_topic_to_link_ids = [
                 existing_topic_input["id"]
                 for existing_topic_input in existing_topics_input
-                if existing_topic_input["id"]
-                not in [topic.id for topic in shout.topics]
+                if existing_topic_input["id"] not in [topic.id for topic in shout.topics]
             ]
             for existing_topic_to_link_id in existing_topic_to_link_ids:
-                created_unlinked_topic = ShoutTopic.create(
-                    shout=shout.id, topic=existing_topic_to_link_id
-                )
+                created_unlinked_topic = ShoutTopic(shout=shout.id, topic=existing_topic_to_link_id)
                 session.add(created_unlinked_topic)
             topic_to_unlink_ids = [
                 topic.id
                 for topic in shout.topics
-                if topic.id
-                not in [topic_input["id"] for topic_input in existing_topics_input]
+                if topic.id not in [topic_input["id"] for topic_input in existing_topics_input]
             ]
             shout_topics_to_remove = session.query(ShoutTopic).filter(
                 and_(
@@ -144,20 +133,23 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             # Replace datetime with Unix timestamp
             current_time = int(time.time())
             shout_input["updated_at"] = current_time  # Set updated_at as Unix timestamp
-            shout.update(shout_input)
+            Shout.update(shout, shout_input)
+            session.add(shout)
             updated = True
         # TODO: use visibility setting
-        if publish and shout.visibility == "authors":
-            shout.visibility = "community"
+        if publish and shout.visibility == ShoutVisibility.AUTHORS:
+            shout.visibility = ShoutVisibility.COMMUNITY
             shout.published_at = current_time  # Set published_at as Unix timestamp
+            session.add(shout)
             updated = True
             # notify on publish
-            notify_shout(shout.dict())
+            await notify_shout(shout.dict(), "public")
         if updated:
             session.commit()
-    # GitTask(inp, user.username, user.email, "update shout %s" % slug)
-    notify_shout(shout.dict(), "update")
+            if not publish:
+                await notify_shout(shout.dict(), "update")
     return {"shout": shout}
+
 
 @mutation.field("deleteShout")
 @login_required
@@ -175,5 +167,5 @@ async def delete_shout(_, info, shout_id):
         current_time = int(time.time())
         shout.deleted_at = current_time  # Set deleted_at as Unix timestamp
         session.commit()
-        notify_shout(shout.dict(), "delete")
+        await notify_shout(shout.dict(), "delete")
     return {}

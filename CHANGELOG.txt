@@ -1,10 +1,18 @@
+[0.2.14]
+- schema: some fixes from migrator
+- services: db access simpler, no contextmanager
+- services: removed Base.create() method
+- services: rediscache updated
+- resolvers: many minor fixes
+- resolvers: get_reacted_shouts_updates as followedReactions query
+
 [0.2.13]
 - services: db context manager
 - services: ViewedStorage fixes
 - services: views are not stored in core db anymore
 - schema: snake case in model fields names
 - schema: no DateTime scalar
-- resolvers: get_my_feed comments filter reactions body.is_not("") 
+- resolvers: get_my_feed comments filter reactions body.is_not("")
 - resolvers: get_my_feed query fix
 - resolvers: LoadReactionsBy.days -> LoadReactionsBy.time_ago
 - resolvers: LoadShoutsBy.days -> LoadShoutsBy.time_ago

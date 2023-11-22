@@ -25,17 +25,33 @@ apt install redis nginx
 Then run nginx, redis and API server
 ```
 redis-server
+poetry env use 3.12
 poetry install
-python3 server.py dev
+poetry run python server.py dev
 ```
+## Services
 
-# How to do an authorized request
+### Auth
 
 Put the header 'Authorization' with token from signIn query or registerUser mutation.
 
-# How to debug Ackee
+### Viewed
 
-Set ACKEE_TOKEN var
+Set ACKEE_TOKEN var to collect stats
 
-# test
+### Seacrh
 
+ElasticSearch
+
+### Notifications
+
+Connected using Redis PubSub channels
+
+### Inbox
+
+To get unread counter raw redis query to Inbox's data is used
+
+
+### Following Manager
+
+Internal service with async access to storage

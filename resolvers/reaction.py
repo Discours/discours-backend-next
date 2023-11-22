@@ -1,9 +1,10 @@
 import time
+from typing import List
+
 from sqlalchemy import and_, asc, desc, select, text, func, case
 from sqlalchemy.orm import aliased
 from services.notify import notify_reaction
 from services.auth import login_required
-from base.exceptions import OperationNotAllowed
 from services.db import local_session
 from services.schema import mutation, query
 from orm.reaction import Reaction, ReactionKind
@@ -14,13 +15,9 @@ from orm.author import Author
 def add_reaction_stat_columns(q):
     aliased_reaction = aliased(Reaction)
 
-    q = q.outerjoin(
-        aliased_reaction, Reaction.id == aliased_reaction.reply_to
-    ).add_columns(
+    q = q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.body.is_not(None), 1), else_=0)).label(
-            "commented_stat"
-        ),
+        func.sum(case((aliased_reaction.body.is_not(None), 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE, 1),
@@ -56,9 +53,7 @@ def reactions_follow(author_id, shout_id: int, auto=False):
             )
 
             if not following:
-                following = ShoutReactionsFollower.create(
-                    follower=author_id, shout=shout.id, auto=auto
-                )
+                following = ShoutReactionsFollower(follower=author_id, shout=shout.id, auto=auto)
                 session.add(following)
                 session.commit()
                 return True
@@ -109,11 +104,9 @@ def check_to_publish(session, author_id, reaction):
         ReactionKind.LIKE,
         ReactionKind.PROOF,
     ]:
-        if is_published_author(author_id):
+        if is_published_author(session, author_id):
             # now count how many approvers are voted already
-            approvers_reactions = (
-                session.query(Reaction).where(Reaction.shout == reaction.shout).all()
-            )
+            approvers_reactions = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
             approvers = [
                 author_id,
             ]
@@ -134,9 +127,7 @@ def check_to_hide(session, reaction):
         ReactionKind.DISPROOF,
     ]:
         # if is_published_author(author_id):
-        approvers_reactions = (
-            session.query(Reaction).where(Reaction.shout == reaction.shout).all()
-        )
+        approvers_reactions = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
         rejects = 0
         for r in approvers_reactions:
             if r.kind in [
@@ -188,12 +179,10 @@ async def create_reaction(_, info, reaction):
             )
 
             if existing_reaction is not None:
-                raise OperationNotAllowed("You can't vote twice")
+                return {"error": "You can't vote twice"}
 
             opposite_reaction_kind = (
-                ReactionKind.DISLIKE
-                if reaction["kind"] == ReactionKind.LIKE.name
-                else ReactionKind.LIKE
+                ReactionKind.DISLIKE if reaction["kind"] == ReactionKind.LIKE.name else ReactionKind.LIKE
             )
             opposite_reaction = (
                 session.query(Reaction)
@@ -211,17 +200,11 @@ async def create_reaction(_, info, reaction):
             if opposite_reaction is not None:
                 session.delete(opposite_reaction)
 
-        r = Reaction.create(**reaction)
+        r = Reaction(**reaction)
 
         # Proposal accepting logix
-        if (
-            r.reply_to is not None
-            and r.kind == ReactionKind.ACCEPT
-            and author_id in shout.dict()["authors"]
-        ):
-            replied_reaction = (
-                session.query(Reaction).where(Reaction.id == r.reply_to).first()
-            )
+        if r.reply_to is not None and r.kind == ReactionKind.ACCEPT and author_id in shout.dict()["authors"]:
+            replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
             if replied_reaction and replied_reaction.kind == ReactionKind.PROPOSE:
                 if replied_reaction.range:
                     old_body = shout.body
@@ -230,7 +213,6 @@ async def create_reaction(_, info, reaction):
                     end = int(end)
                     new_body = old_body[:start] + replied_reaction.body + old_body[end:]
                     shout.body = new_body
-                    # TODO: update git version control
 
         session.add(r)
         session.commit()
@@ -253,37 +235,39 @@ async def create_reaction(_, info, reaction):
 
         rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
-        # notification call
-        notify_reaction(rdict)
+        # notifications call
+        await notify_reaction(rdict, "create")
 
         return {"reaction": rdict}
 
 
 @mutation.field("updateReaction")
 @login_required
-async def update_reaction(_, info, rid, reaction={}):
+async def update_reaction(_, info, rid, reaction):
     author_id = info.context["author_id"]
     with local_session() as session:
         q = select(Reaction).filter(Reaction.id == rid)
         q = add_reaction_stat_columns(q)
         q = q.group_by(Reaction.id)
 
-        [r, reacted_stat, commented_stat, rating_stat] = (
-            session.execute(q).unique().one()
-        )
+        [r, reacted_stat, commented_stat, rating_stat] = session.execute(q).unique().one()
 
         if not r:
             return {"error": "invalid reaction id"}
         if r.created_by != author_id:
             return {"error": "access denied"}
-
-        r.body = reaction["body"]
+        body = reaction.get("body")
+        if body:
+            r.body = body
         r.updated_at = int(time.time())
         if r.kind != reaction["kind"]:
             # NOTE: change mind detection can be here
             pass
+
+        # FIXME: range is not stable after body editing
         if reaction.get("range"):
             r.range = reaction.get("range")
+
         session.commit()
         r.stat = {
             "commented": commented_stat,
@@ -291,7 +275,7 @@ async def update_reaction(_, info, rid, reaction={}):
             "rating": rating_stat,
         }
 
-        notify_reaction(r.dict(), "update")
+        await notify_reaction(r.dict(), "update")
 
         return {"reaction": r}
 
@@ -313,7 +297,7 @@ async def delete_reaction(_, info, rid):
             r.deleted_at = int(time.time())
         session.commit()
 
-        notify_reaction(r.dict(), "delete")
+        await notify_reaction(r.dict(), "delete")
 
         return {"reaction": r}
 
@@ -391,25 +375,31 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         reaction.kind = reaction.kind.name
         reactions.append(reaction)
 
-    # ?
+    # sort if by stat is present
     if by.get("stat"):
-        reactions.sort(lambda r: r.stat.get(by["stat"]) or r.created_at)
+        reactions = sorted(reactions, key=lambda r: r.stat.get(by["stat"]) or r.created_at)
 
     return reactions
 
 
+def reacted_shouts_updates(follower_id):
+    shouts = []
+    with local_session() as session:
+        author = session.query(Author).where(Author.id == follower_id).first()
+        if author:
+            shouts = (
+                session.query(Reaction.shout)
+                .join(Shout)
+                .filter(Reaction.created_by == author.id)
+                .filter(Reaction.created_at > author.last_seen)
+                .all()
+            )
+    return shouts
+
+
 @login_required
 @query.field("followedReactions")
-async def followed_reactions(_, info):
+async def get_reacted_shouts(_, info) -> List[Shout]:
     author_id = info.context["author_id"]
-    # FIXME: method should return array of shouts
-    with local_session() as session:
-        author = session.query(Author).where(Author.id == author_id).first()
-        reactions = (
-            session.query(Reaction.shout)
-            .where(Reaction.created_by == author.id)
-            .filter(Reaction.created_at > author.last_seen)
-            .all()
-        )
-
-        return reactions
+    shouts = reacted_shouts_updates(author_id)
+    return shouts

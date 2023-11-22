@@ -96,8 +96,8 @@ type Reaction {
   body: String
   reply_to: Int
   stat: Stat
-  old_id: String
-  old_thread: String
+  oid: String
+  # old_thread: String
 }
 
 type Shout {
@@ -212,7 +212,7 @@ input ReactionInput {
   shout: Int!
   range: String
   body: String
-  reply_to: Int
+  replyTo: Int
 }
 
 input AuthorsBy {
@@ -266,7 +266,7 @@ input ReactionBy {
   search: String
   comment: Boolean
   topic: String
-  created_by: String
+  created_by: Int
   days: Int
   sort: String
 }
