@@ -1,14 +1,14 @@
-from ariadne import ScalarType, QueryType, MutationType
+from ariadne import QueryType, MutationType  # , ScalarType
 
 
-datetime_scalar = ScalarType("DateTime")
+# datetime_scalar = ScalarType("DateTime")
 query = QueryType()
 mutation = MutationType()
 
 
-@datetime_scalar.serializer
-def serialize_datetime(value):
-    return value.isoformat()
+# @datetime_scalar.serializer
+# def serialize_datetime(value):
+#    return value.isoformat()
 
 
 # NOTE: was used by studio
@@ -21,4 +21,4 @@ def serialize_datetime(value):
 #    return {"sdl": full_sdl}
 
 
-resolvers = [query, mutation, datetime_scalar]
+resolvers = [query, mutation]  # , datetime_scalar]
