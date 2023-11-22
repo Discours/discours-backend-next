@@ -291,44 +291,47 @@ type Result {
 # Мутации
 
 type Mutation {
-  createShout(inp: ShoutInput!): Result!
-  updateShout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): Result!
-  deleteShout(shout_id: Int!): Result!
-  rateAuthor(slug: String!, value: Int!): Result!
-  updateOnlineStatus: Result!
-  updateProfile(profile: ProfileInput!): Result!
-  createTopic(input: TopicInput!): Result!
-  updateTopic(input: TopicInput!): Result!
-  destroyTopic(slug: String!): Result!
-  createReaction(reaction: ReactionInput!): Result!
-  updateReaction(id: Int!, reaction: ReactionInput!): Result!
-  deleteReaction(id: Int!): Result!
-  follow(what: FollowingEntity!, slug: String!): Result!
-  unfollow(what: FollowingEntity!, slug: String!): Result!
+    createShout(inp: ShoutInput!): Result!
+    updateShout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): Result!
+    deleteShout(shout_id: Int!): Result!
+    rateAuthor(slug: String!, value: Int!): Result!
+    updateOnlineStatus: Result!
+    updateProfile(profile: ProfileInput!): Result!
+    createTopic(input: TopicInput!): Result!
+    updateTopic(input: TopicInput!): Result!
+    destroyTopic(slug: String!): Result!
+    createReaction(reaction: ReactionInput!): Result!
+    updateReaction(id: Int!, reaction: ReactionInput!): Result!
+    deleteReaction(id: Int!): Result!
+    follow(what: FollowingEntity!, slug: String!): Result!
+    unfollow(what: FollowingEntity!, slug: String!): Result!
 }
 
 
 # Запросы
 
 type Query {
-  loadShout(slug: String, shout_id: Int): Shout
-  loadShouts(options: LoadShoutsOptions): [Shout]
-  loadFeed(options: LoadShoutsOptions): [Shout]
-  loadDrafts: [Shout]
+    loadShout(slug: String, shout_id: Int): Shout
+    loadShouts(options: LoadShoutsOptions): [Shout]
+    loadFeed(options: LoadShoutsOptions): [Shout]
+    loadDrafts: [Shout]
 
-  loadReactionsBy(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
-  followedReactions(follower_id: Int!): [Shout]
+    loadReactionsBy(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
+    followedReactions(follower_id: Int!): [Shout]
 
-  authorFollowers(slug: String!): [Author]
-  authorFollowedAuthors(slug: String!): [Author]
-  authorFollowedTopics(slug: String!): [Topic]
-  loadAuthorsBy(by: AuthorsBy, limit: Int, offset: Int): [Author]
-  authorsAll: [Author]
-  getAuthor(slug: String!): Author
+    authorsAll: [Author]
+    authorFollowers(slug: String!): [Author]
+    authorFollowedAuthors(slug: String!): [Author]
+    authorFollowedTopics(slug: String!): [Topic]
+    loadAuthorsBy(by: AuthorsBy, limit: Int, offset: Int): [Author]
+    getAuthor(slug: String!): Author
 
-  getTopic(slug: String!): Topic
-  topicsAll: [Topic]
-  topicsRandom(amount: Int): [Topic]
-  topicsByCommunity(community: String!): [Topic]
-  topicsByAuthor(author_id: Int!): [Topic]
+    topicsAll: [Topic]
+    getTopic(slug: String!): Topic
+    topicsRandom(amount: Int): [Topic]
+    topicsByCommunity(community: String!): [Topic]
+    topicsByAuthor(author_id: Int!): [Topic]
+
+    communitiesAll: [Community]
+    getCommunity: Community
 }
