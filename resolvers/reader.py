@@ -114,7 +114,7 @@ async def load_shout(_, _info, slug=None, shout_id=None):
             return None
 
 
-@query.field("loadShoutsBy")
+@query.field("loadShouts")
 async def load_shouts_by(_, info, options):
     """
     :param _:
