@@ -1,11 +1,6 @@
 from resolvers.editor import create_shout, delete_shout, update_shout
 
-from resolvers.author import (
-    load_authors_by,
-    update_profile,
-    get_authors_all,
-    rate_author
-)
+from resolvers.author import load_authors_by, update_profile, get_authors_all, rate_author
 
 from resolvers.reaction import (
     create_reaction,
@@ -25,7 +20,7 @@ from resolvers.topic import (
 )
 
 from resolvers.follower import follow, unfollow
-from resolvers.reader import load_shout, load_shouts_by
+from resolvers.reader import load_shout, load_shouts_by, search
 from resolvers.community import get_community, get_communities_all
 
 __all__ = [
@@ -62,4 +57,6 @@ __all__ = [
     # community
     "get_community",
     "get_communities_all",
+    # search
+    "search",
 ]

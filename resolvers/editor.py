@@ -1,6 +1,8 @@
 import time  # For Unix timestamps
 from sqlalchemy import and_, select
 from sqlalchemy.orm import joinedload
+
+from orm.author import Author
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
@@ -11,19 +13,21 @@ from services.notify import notify_shout
 
 
 @query.field("loadDrafts")
+@login_required
 async def get_drafts(_, info):
-    author = info.context["request"].author
-    q = (
-        select(Shout)
-        .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
-        )
-        .where(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
-    )
-    q = q.group_by(Shout.id)
-    shouts = []
+    user_id = info.context["user_id"]
     with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
+        q = (
+            select(Shout)
+            .options(
+                joinedload(Shout.authors),
+                joinedload(Shout.topics),
+            )
+            .where(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
+        )
+        q = q.group_by(Shout.id)
+        shouts = []
         for [shout] in session.execute(q).unique():
             shouts.append(shout)
     return shouts
@@ -32,10 +36,13 @@ async def get_drafts(_, info):
 @mutation.field("createShout")
 @login_required
 async def create_shout(_, info, inp):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
         topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
-        # Replace datetime with Unix timestamp
+        authors = inp.get("authors", [])
+        if author.id not in authors:
+            authors.insert(0, author.id)
         current_time = int(time.time())
         new_shout = Shout(
             **{
@@ -45,11 +52,10 @@ async def create_shout(_, info, inp):
                 "description": inp.get("description"),
                 "body": inp.get("body", ""),
                 "layout": inp.get("layout"),
-                "authors": inp.get("authors", []),
+                "authors": authors,
                 "slug": inp.get("slug"),
                 "topics": inp.get("topics"),
                 "visibility": ShoutVisibility.AUTHORS,
-                "created_id": author_id,
                 "created_at": current_time,  # Set created_at as Unix timestamp
             }
         )
@@ -57,10 +63,10 @@ async def create_shout(_, info, inp):
             t = ShoutTopic(topic=topic.id, shout=new_shout.id)
             session.add(t)
         # NOTE: shout made by one first author
-        sa = ShoutAuthor(shout=new_shout.id, author=author_id)
+        sa = ShoutAuthor(shout=new_shout.id, author=author.id)
         session.add(sa)
         session.add(new_shout)
-        reactions_follow(author_id, new_shout.id, True)
+        reactions_follow(author.id, new_shout.id, True)
         session.commit()
 
         if new_shout.slug is None:
@@ -74,8 +80,9 @@ async def create_shout(_, info, inp):
 @mutation.field("updateShout")
 @login_required
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
         shout = (
             session.query(Shout)
             .options(
@@ -87,7 +94,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         )
         if not shout:
             return {"error": "shout not found"}
-        if shout.created_by != author_id:
+        if shout.created_by != author.id:
             return {"error": "access denied"}
         updated = False
         if shout_input is not None:
@@ -154,12 +161,13 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
 @mutation.field("deleteShout")
 @login_required
 async def delete_shout(_, info, shout_id):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
+        author = session.query(Author).filter(Author.id == user_id).first()
         shout = session.query(Shout).filter(Shout.id == shout_id).first()
         if not shout:
             return {"error": "invalid shout id"}
-        if author_id != shout.created_by:
+        if author.id not in shout.authors:
             return {"error": "access denied"}
         for author_id in shout.authors:
             reactions_unfollow(author_id, shout_id)

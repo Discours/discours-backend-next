@@ -159,18 +159,18 @@ def set_hidden(session, shout_id):
 @mutation.field("createReaction")
 @login_required
 async def create_reaction(_, info, reaction):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
-        reaction["created_by"] = author_id
         shout = session.query(Shout).where(Shout.id == reaction["shout"]).one()
-
+        author = session.query(Author).where(Author.user == user_id).first()
+        reaction["created_by"] = author.id
         if reaction["kind"] in [ReactionKind.DISLIKE.name, ReactionKind.LIKE.name]:
             existing_reaction = (
                 session.query(Reaction)
                 .where(
                     and_(
                         Reaction.shout == reaction["shout"],
-                        Reaction.created_by == author_id,
+                        Reaction.created_by == author.id,
                         Reaction.kind == reaction["kind"],
                         Reaction.reply_to == reaction.get("reply_to"),
                     )
@@ -189,7 +189,7 @@ async def create_reaction(_, info, reaction):
                 .where(
                     and_(
                         Reaction.shout == reaction["shout"],
-                        Reaction.created_by == author_id,
+                        Reaction.created_by == author.id,
                         Reaction.kind == opposite_reaction_kind,
                         Reaction.reply_to == reaction.get("reply_to"),
                     )
@@ -203,7 +203,7 @@ async def create_reaction(_, info, reaction):
         r = Reaction(**reaction)
 
         # Proposal accepting logix
-        if r.reply_to is not None and r.kind == ReactionKind.ACCEPT and author_id in shout.dict()["authors"]:
+        if r.reply_to is not None and r.kind == ReactionKind.ACCEPT and author.id in shout.dict()["authors"]:
             replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
             if replied_reaction and replied_reaction.kind == ReactionKind.PROPOSE:
                 if replied_reaction.range:
@@ -218,18 +218,17 @@ async def create_reaction(_, info, reaction):
         session.commit()
         rdict = r.dict()
         rdict["shout"] = shout.dict()
-        author = session.query(Author).where(Author.id == author_id).first()
         rdict["created_by"] = author.dict()
 
         # self-regulation mechanics
 
         if check_to_hide(session, r):
             set_hidden(session, r.shout)
-        elif check_to_publish(session, author_id, r):
+        elif check_to_publish(session, author.id, r):
             set_published(session, r.shout)
 
         try:
-            reactions_follow(author_id, reaction["shout"], True)
+            reactions_follow(author.id, reaction["shout"], True)
         except Exception as e:
             print(f"[resolvers.reactions] error on reactions auto following: {e}")
 
@@ -244,7 +243,7 @@ async def create_reaction(_, info, reaction):
 @mutation.field("updateReaction")
 @login_required
 async def update_reaction(_, info, rid, reaction):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
         q = select(Reaction).filter(Reaction.id == rid)
         q = add_reaction_stat_columns(q)
@@ -254,41 +253,46 @@ async def update_reaction(_, info, rid, reaction):
 
         if not r:
             return {"error": "invalid reaction id"}
-        if r.created_by != author_id:
-            return {"error": "access denied"}
-        body = reaction.get("body")
-        if body:
-            r.body = body
-        r.updated_at = int(time.time())
-        if r.kind != reaction["kind"]:
-            # NOTE: change mind detection can be here
-            pass
+        author = session.query(Author).filter(Author.user == user_id).first()
+        if author:
+            if r.created_by != author.id:
+                return {"error": "access denied"}
+            body = reaction.get("body")
+            if body:
+                r.body = body
+            r.updated_at = int(time.time())
+            if r.kind != reaction["kind"]:
+                # NOTE: change mind detection can be here
+                pass
 
-        # FIXME: range is not stable after body editing
-        if reaction.get("range"):
-            r.range = reaction.get("range")
+            # FIXME: range is not stable after body editing
+            if reaction.get("range"):
+                r.range = reaction.get("range")
 
-        session.commit()
-        r.stat = {
-            "commented": commented_stat,
-            "reacted": reacted_stat,
-            "rating": rating_stat,
-        }
+            session.commit()
+            r.stat = {
+                "commented": commented_stat,
+                "reacted": reacted_stat,
+                "rating": rating_stat,
+            }
 
-        await notify_reaction(r.dict(), "update")
+            await notify_reaction(r.dict(), "update")
 
-        return {"reaction": r}
+            return {"reaction": r}
+        else:
+            return {"error": "user"}
 
 
 @mutation.field("deleteReaction")
 @login_required
 async def delete_reaction(_, info, rid):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
         r = session.query(Reaction).filter(Reaction.id == rid).first()
         if not r:
             return {"error": "invalid reaction id"}
-        if r.created_by != author_id:
+        author = session.query(Author).filter(Author.user == user_id).first()
+        if not author or r.created_by != author.id:
             return {"error": "access denied"}
 
         if r.kind in [ReactionKind.LIKE, ReactionKind.DISLIKE]:
@@ -400,6 +404,11 @@ def reacted_shouts_updates(follower_id):
 @login_required
 @query.field("followedReactions")
 async def get_reacted_shouts(_, info) -> List[Shout]:
-    author_id = info.context["author_id"]
-    shouts = reacted_shouts_updates(author_id)
-    return shouts
+    user_id = info.context["user_id"]
+    with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
+        if author:
+            shouts = reacted_shouts_updates(author.id)
+            return shouts
+        else:
+            return []

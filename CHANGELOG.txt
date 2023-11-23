@@ -1,3 +1,11 @@
+[0.2.15]
+- schema: Shout.created_by removed
+- schema: Shout.mainTopic removed
+- services: cached elasticsearch connector
+- services: auth is using user_id from authorizer
+- resolvers: notify_* usage fixes
+- resolvers: login_required usage fixes
+
 [0.2.14]
 - schema: some fixes from migrator
 - schema: .days -> .time_ago
@@ -5,7 +13,6 @@
 - services: db access simpler, no contextmanager
 - services: removed Base.create() method
 - services: rediscache updated
-- resolvers: many minor fixes
 - resolvers: get_reacted_shouts_updates as followedReactions query
 
 [0.2.13]

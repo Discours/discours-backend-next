@@ -334,4 +334,6 @@ type Query {
 
     communitiesAll: [Community]
     getCommunity: Community
+
+    search(text: String!, limit: Int, offset: Int): [Shout]
 }

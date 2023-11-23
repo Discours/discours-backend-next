@@ -4,10 +4,12 @@ from sqlalchemy.sql.expression import desc, asc, select, func, case, and_, nulls
 
 from services.auth import login_required
 from services.db import local_session
+from services.schema import query
 from orm.topic import TopicFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
-from orm.author import AuthorFollower
+from orm.author import AuthorFollower, Author
+from services.search import SearchService
 from services.viewed import ViewedStorage
 
 
@@ -69,6 +71,7 @@ def apply_filters(q, filters, author_id=None):
     return q
 
 
+@query.field("loadShout")
 async def load_shout(_, _info, slug=None, shout_id=None):
     with local_session() as session:
         q = select(Shout).options(
@@ -111,6 +114,7 @@ async def load_shout(_, _info, slug=None, shout_id=None):
             return None
 
 
+@query.field("loadShoutsBy")
 async def load_shouts_by(_, info, options):
     """
     :param _:
@@ -145,8 +149,13 @@ async def load_shouts_by(_, info, options):
 
     q = add_stat_columns(q)
 
-    author_id = info.context["author_id"]
-    q = apply_filters(q, options.get("filters", {}), author_id)
+    user_id = info.context["user_id"]
+    filters = options.get("filters")
+    if filters:
+        with local_session() as session:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            if author:
+                q = apply_filters(q, filters, author.id)
 
     order_by = options.get("order_by", Shout.published_at)
 
@@ -180,11 +189,13 @@ async def load_shouts_by(_, info, options):
 
 
 @login_required
+@query.field("loadFeed")
 async def get_my_feed(_, info, options):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
-        author_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == author_id)
-        author_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == author_id)
+        author = session.query(Author).filter(Author.user == user_id).first()
+        author_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == author.id)
+        author_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == author.id)
 
         subquery = (
             select(Shout.id)
@@ -209,7 +220,7 @@ async def get_my_feed(_, info, options):
         )
 
         q = add_stat_columns(q)
-        q = apply_filters(q, options.get("filters", {}), author_id)
+        q = apply_filters(q, options.get("filters", {}), author.id)
 
         order_by = options.get("order_by", Shout.published_at)
 
@@ -235,3 +246,11 @@ async def get_my_feed(_, info, options):
             }
             shouts.append(shout)
     return shouts
+
+
+@query.field("search")
+async def search(_, info, text, limit=50, offset=0):
+    if text and len(text) > 2:
+        return SearchService.search(text, limit, offset)
+    else:
+        return []

@@ -11,7 +11,7 @@ async def check_auth(req):
     query_type = "query"
     operation = "GetUserId"
 
-    headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
+    headers = {"Authorization": token, "Content-Type": "application/json"}
 
     gql = {
         "query": query_type + " " + operation + " { " + query_name + " { user { id } } " + " }",
@@ -26,9 +26,7 @@ async def check_auth(req):
             return False, None
         r = response.json()
         try:
-            user_id = (
-                r.get("data", {}).get(query_name, {}).get("user", {}).get("id", None)
-            )
+            user_id = r.get("data", {}).get(query_name, {}).get("user", {}).get("id", None)
             is_authenticated = user_id is not None
             return is_authenticated, user_id
         except Exception as e:
@@ -47,7 +45,7 @@ def login_required(f):
             raise Exception("You are not logged in")
         else:
             # Добавляем author_id в контекст
-            context["author_id"] = user_id
+            context["user_id"] = user_id
 
         # Если пользователь аутентифицирован, выполняем резолвер
         return await f(*args, **kwargs)
@@ -63,7 +61,7 @@ def auth_request(f):
         if not is_authenticated:
             raise HTTPError("please, login first")
         else:
-            req["author_id"] = user_id
+            req["user_id"] = user_id
         return await f(*args, **kwargs)
 
     return decorated_function

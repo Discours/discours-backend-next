@@ -90,9 +90,9 @@ async def author_followings(author_id: int):
 @mutation.field("updateProfile")
 @login_required
 async def update_profile(_, info, profile):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
     with local_session() as session:
-        author = session.query(Author).where(Author.id == author_id).first()
+        author = session.query(Author).where(Author.user == user_id).first()
         Author.update(author, profile)
         session.add(author)
         session.commit()
@@ -206,12 +206,13 @@ async def followed_authors(follower_id):
 @mutation.field("rateAuthor")
 @login_required
 async def rate_author(_, info, rated_user_id, value):
-    author_id = info.context["author_id"]
+    user_id = info.context["user_id"]
 
     with local_session() as session:
+        rater = session.query(Author).filter(Author.user == user_id).first()
         rating = (
             session.query(AuthorRating)
-            .filter(and_(AuthorRating.rater == author_id, AuthorRating.user == rated_user_id))
+            .filter(and_(AuthorRating.rater == rater.id, AuthorRating.user == rated_user_id))
             .first()
         )
         if rating:
@@ -221,7 +222,7 @@ async def rate_author(_, info, rated_user_id, value):
             return {}
         else:
             try:
-                rating = AuthorRating(rater=author_id, user=rated_user_id, value=value)
+                rating = AuthorRating(rater=rater.id, user=rated_user_id, value=value)
                 session.add(rating)
                 session.commit()
             except Exception as err:

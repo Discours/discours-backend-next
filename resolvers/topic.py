@@ -135,13 +135,13 @@ def topic_follow(follower_id, slug):
         return False
 
 
-def topic_unfollow(user_id, slug):
+def topic_unfollow(follower_id, slug):
     try:
         with local_session() as session:
             sub = (
                 session.query(TopicFollower)
                 .join(Topic)
-                .filter(and_(TopicFollower.follower == user_id, Topic.slug == slug))
+                .filter(and_(TopicFollower.follower == follower_id, Topic.slug == slug))
                 .first()
             )
             if sub:
@@ -153,6 +153,7 @@ def topic_unfollow(user_id, slug):
     return False
 
 
+@query.field("topicsRandom")
 async def topics_random(_, info, amount=12):
     q = select(Topic)
     q = q.join(ShoutTopic)
