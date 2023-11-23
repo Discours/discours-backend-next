@@ -15,9 +15,7 @@ def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(
-            case((aliased_reaction.kind == ReactionKind.COMMENT, 1), else_=0)
-        ).label("commented_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT, 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 # do not count comments' reactions
@@ -54,8 +52,8 @@ def apply_filters(q, filters, author_id=None):
     if v == "community":
         q = q.filter(Shout.visibility.in_(["public", "community"]))
 
-    if filters.get("layout"):
-        q = q.filter(Shout.layout == filters.get("layout"))
+    if filters.get("layouts"):
+        q = q.filter(Shout.layout.in_(filters.get("layouts")))
     if filters.get("author"):
         q = q.filter(Shout.authors.any(slug=filters.get("author")))
     if filters.get("topic"):
@@ -104,9 +102,7 @@ async def load_shout(_, _info, slug=None, shout_id=None):
                 "rating": rating_stat,
             }
 
-            for author_caption in (
-                session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug)
-            ):
+            for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
                 for author in shout.authors:
                     if author.id == author_caption.author:
                         author.caption = author_caption.caption
@@ -154,18 +150,11 @@ async def load_shouts_by(_, info, options):
 
     order_by = options.get("order_by", Shout.published_at)
 
-    query_order_by = (
-        desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
-    )
+    query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
     offset = options.get("offset", 0)
     limit = options.get("limit", 10)
 
-    q = (
-        q.group_by(Shout.id)
-        .order_by(nulls_last(query_order_by))
-        .limit(limit)
-        .offset(offset)
-    )
+    q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
 
     shouts = []
     shouts_map = {}
@@ -201,10 +190,7 @@ async def get_my_feed(_, info, options):
             select(Shout.id)
             .where(Shout.id == ShoutAuthor.shout)
             .where(Shout.id == ShoutTopic.shout)
-            .where(
-                (ShoutAuthor.author.in_(author_followed_authors))
-                | (ShoutTopic.topic.in_(author_followed_topics))
-            )
+            .where((ShoutAuthor.author.in_(author_followed_authors)) | (ShoutTopic.topic.in_(author_followed_topics)))
         )
 
         q = (
@@ -227,18 +213,11 @@ async def get_my_feed(_, info, options):
 
         order_by = options.get("order_by", Shout.published_at)
 
-        query_order_by = (
-            desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
-        )
+        query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
         offset = options.get("offset", 0)
         limit = options.get("limit", 10)
 
-        q = (
-            q.group_by(Shout.id)
-            .order_by(nulls_last(query_order_by))
-            .limit(limit)
-            .offset(offset)
-        )
+        q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
 
         shouts = []
         for [

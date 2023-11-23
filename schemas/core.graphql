@@ -212,7 +212,7 @@ input ReactionInput {
   shout: Int!
   range: String
   body: String
-  replyTo: Int
+  reply_to: Int
 }
 
 input AuthorsBy {
@@ -222,7 +222,7 @@ input AuthorsBy {
   name: String
   topic: String
   order: String
-  days: Int
+  time_ago: Int
   stat: String
 }
 
@@ -234,9 +234,9 @@ input ShoutsFilterBy {
   topics: [String]
   author: String
   authors: [String]
-  layout: String
+  layouts: [String]
   visibility: String
-  days: Int
+  time_ago: Int
   stat: String
 }
 
@@ -245,9 +245,9 @@ input LoadShoutsFilters {
   body: String
   topic: String
   author: String
-  layout: String
+  layouts: [String]
   visibility: String
-  days: Int
+  time_ago: Int
   reacted: Boolean
 }
 
@@ -267,7 +267,7 @@ input ReactionBy {
   comment: Boolean
   topic: String
   created_by: Int
-  days: Int
+  time_ago: Int
   sort: String
 }
 
