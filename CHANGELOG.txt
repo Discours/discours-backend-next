@@ -4,6 +4,7 @@
 - services: cached elasticsearch connector
 - services: auth is using user_id from authorizer
 - resolvers: notify_* usage fixes
+- resolvers: getAuthor now accepts slug, user_id or author_id
 - resolvers: login_required usage fixes
 
 [0.2.14]

@@ -12,7 +12,7 @@ class SearchService:
     @staticmethod
     async def init(session):
         async with SearchService.lock:
-            print("[search] did nothing")
+            print("[services.search] did nothing")
             SearchService.cache = {}
 
     @staticmethod

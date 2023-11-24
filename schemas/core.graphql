@@ -318,7 +318,7 @@ type Query {
     loadDrafts: [Shout]
 
     search(text: String!, limit: Int, offset: Int): [Shout]
-    
+
     loadReactionsBy(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
     followedReactions(follower_id: Int!): [Shout]
 
@@ -327,7 +327,7 @@ type Query {
     authorFollowedAuthors(slug: String!): [Author]
     authorFollowedTopics(slug: String!): [Topic]
     loadAuthorsBy(by: AuthorsBy, limit: Int, offset: Int): [Author]
-    getAuthor(slug: String!): Author
+    getAuthor(slug: String, user: String, author: Int): Author
 
     topicsAll: [Topic]
     getTopic(slug: String!): Topic
