@@ -314,8 +314,11 @@ type Query {
     loadShout(slug: String, shout_id: Int): Shout
     loadShouts(options: LoadShoutsOptions): [Shout]
     loadFeed(options: LoadShoutsOptions): [Shout]
+    loadMySubscriptions: Result
     loadDrafts: [Shout]
 
+    search(text: String!, limit: Int, offset: Int): [Shout]
+    
     loadReactionsBy(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
     followedReactions(follower_id: Int!): [Shout]
 
@@ -334,6 +337,4 @@ type Query {
 
     communitiesAll: [Community]
     getCommunity: Community
-
-    search(text: String!, limit: Int, offset: Int): [Shout]
 }

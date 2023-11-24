@@ -20,7 +20,7 @@ from resolvers.topic import (
 )
 
 from resolvers.follower import follow, unfollow
-from resolvers.reader import load_shout, load_shouts_by, search
+from resolvers.reader import load_shout, load_shouts_by, search, load_my_subscriptions
 from resolvers.community import get_community, get_communities_all
 
 __all__ = [
@@ -33,6 +33,8 @@ __all__ = [
     "load_shout",
     "load_shouts_by",
     "rate_author",
+    "load_my_subscriptions",
+    "search",
     # follower
     "follow",
     "unfollow",
@@ -57,6 +59,4 @@ __all__ = [
     # community
     "get_community",
     "get_communities_all",
-    # search
-    "search",
 ]

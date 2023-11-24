@@ -254,3 +254,30 @@ async def search(_, info, text, limit=50, offset=0):
         return SearchService.search(text, limit, offset)
     else:
         return []
+
+
+@query.field("loadMySubscriptions")
+@login_required
+async def load_my_subscriptions(_, info):
+    user_id = info.context["user_id"]
+    with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
+
+        authors_query = (
+            select(User)
+            .join(AuthorFollower, AuthorFollower.author == User.id)
+            .where(AuthorFollower.follower == author.id)
+        )
+
+        topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
+
+        topics = []
+        authors = []
+
+        for [author] in session.execute(authors_query):
+            authors.append(author)
+
+        for [topic] in session.execute(topics_query):
+            topics.append(topic)
+
+        return {"topics": topics, "authors": authors}
