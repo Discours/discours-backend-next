@@ -21,7 +21,7 @@ def add_stat_columns(q):
         func.sum(
             case(
                 # do not count comments' reactions
-                (aliased_reaction.body.is_not(""), 0),
+                (aliased_reaction.body.is_not(''), 0),
                 (aliased_reaction.kind == ReactionKind.AGREE, 1),
                 (aliased_reaction.kind == ReactionKind.DISAGREE, -1),
                 (aliased_reaction.kind == ReactionKind.PROOF, 1),

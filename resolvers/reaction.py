@@ -17,7 +17,7 @@ def add_reaction_stat_columns(q):
 
     q = q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.body.is_not(None), 1), else_=0)).label("commented_stat"),
+        func.sum(case((aliased_reaction.body.is_not(''), 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE, 1),
@@ -91,7 +91,7 @@ def is_published_author(session, author_id):
     return (
         session.query(Shout)
         .where(Shout.authors.contains(author_id))
-        .filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        .filter(and_(Shout.published_at.is_not(''), Shout.deleted_at.is_(None)))
         .count()
         > 0
     )

@@ -39,7 +39,7 @@ def add_author_stat_columns(q):
     # )
 
     q = q.add_columns(literal(0).label("commented_stat"))
-    # q = q.outerjoin(Reaction, and_(Reaction.created_by == Author.id, Reaction.body.is_not(None))).add_columns(
+    # q = q.outerjoin(Reaction, and_(Reaction.created_by == Author.id, Reaction.body.is_not(''))).add_columns(
     #     func.count(distinct(Reaction.id)).label('commented_stat')
     # )
 

@@ -25,7 +25,7 @@
 - services: views are not stored in core db anymore
 - schema: snake case in model fields names
 - schema: no DateTime scalar
-- resolvers: get_my_feed comments filter reactions body.is_not("")
+- resolvers: get_my_feed comments filter reactions body.is_not('')
 - resolvers: get_my_feed query fix
 - resolvers: LoadReactionsBy.days -> LoadReactionsBy.time_ago
 - resolvers: LoadShoutsBy.days -> LoadShoutsBy.time_ago
