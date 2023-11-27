@@ -148,3 +148,4 @@ migration/content/**/*.md
 dev-server.pid
 backups/
 poetry.lock
+.venv

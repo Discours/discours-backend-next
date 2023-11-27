@@ -23,11 +23,13 @@ apt install redis nginx
 ```
 
 Then run nginx, redis and API server
-```
-redis-server
-poetry env use 3.12
-poetry install
-poetry run python server.py dev
+
+```shell
+mkdir .venv
+python3.12 -m venv .venv
+poetry env use .venv/bin/python3.12
+poetry update
+poetry run python server.py
 ```
 ## Services
 
