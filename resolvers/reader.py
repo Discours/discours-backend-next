@@ -96,20 +96,20 @@ async def load_shout(_, _info, slug=None, shout_id=None):
                 commented_stat,
                 rating_stat,
                 _last_comment,
-            ] = session.execute(q).first()
+            ] = session.execute(q).first() or []
+            if shout:
+                shout.stat = {
+                    "viewed": viewed_stat,
+                    "reacted": reacted_stat,
+                    "commented": commented_stat,
+                    "rating": rating_stat,
+                }
 
-            shout.stat = {
-                "viewed": viewed_stat,
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-                "rating": rating_stat,
-            }
-
-            for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
-                for author in shout.authors:
-                    if author.id == author_caption.author:
-                        author.caption = author_caption.caption
-            return shout
+                for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
+                    for author in shout.authors:
+                        if author.id == author_caption.author:
+                            author.caption = author_caption.caption
+                return shout
         except Exception:
             return None
 
@@ -149,13 +149,11 @@ async def load_shouts_by(_, info, options):
 
     q = add_stat_columns(q)
 
-    user_id = info.context["user_id"]
     filters = options.get("filters")
     if filters:
         with local_session() as session:
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if author:
-                q = apply_filters(q, filters, author.id)
+            # TODO: some filtering logix?
+            pass
 
     order_by = options.get("order_by", Shout.published_at)
 
