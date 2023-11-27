@@ -20,7 +20,7 @@ class ReactionKind(Enumeration):
     REJECT = 8  # -1
 
     # public feed
-    QUOTE = 9  # +0 bookmark
+    QUOTE = 9  # +0 TODO: use to bookmark in collection
     COMMENT = 0  # +0
     LIKE = 11  # +1
     DISLIKE = 12  # -1

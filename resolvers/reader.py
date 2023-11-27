@@ -5,10 +5,11 @@ from sqlalchemy.sql.expression import desc, asc, select, func, case, and_, nulls
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
-from orm.topic import TopicFollower
+from orm.author import AuthorFollower, Author
+from orm.topic import TopicFollower, Topic
+from orm.community import CommunityAuthor as CommunityFollower, Community
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
-from orm.author import AuthorFollower, Author
 from services.search import SearchService
 from services.viewed import ViewedStorage
 
@@ -192,58 +193,60 @@ async def get_my_feed(_, info, options):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
-        author_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == author.id)
-        author_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == author.id)
+        if author:
+            author_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == author.id)
+            author_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == author.id)
 
-        subquery = (
-            select(Shout.id)
-            .where(Shout.id == ShoutAuthor.shout)
-            .where(Shout.id == ShoutTopic.shout)
-            .where((ShoutAuthor.author.in_(author_followed_authors)) | (ShoutTopic.topic.in_(author_followed_topics)))
-        )
-
-        q = (
-            select(Shout)
-            .options(
-                joinedload(Shout.authors),
-                joinedload(Shout.topics),
+            subquery = (
+                select(Shout.id)
+                .where(Shout.id == ShoutAuthor.shout)
+                .where(Shout.id == ShoutTopic.shout)
+                .where((ShoutAuthor.author.in_(author_followed_authors)) | (ShoutTopic.topic.in_(author_followed_topics)))
             )
-            .where(
-                and_(
-                    Shout.published_at.is_not(None),
-                    Shout.deleted_at.is_(None),
-                    Shout.id.in_(subquery),
+
+            q = (
+                select(Shout)
+                .options(
+                    joinedload(Shout.authors),
+                    joinedload(Shout.topics),
+                )
+                .where(
+                    and_(
+                        Shout.published_at.is_not(None),
+                        Shout.deleted_at.is_(None),
+                        Shout.id.in_(subquery),
+                    )
                 )
             )
-        )
 
-        q = add_stat_columns(q)
-        q = apply_filters(q, options.get("filters", {}), author.id)
+            q = add_stat_columns(q)
+            q = apply_filters(q, options.get("filters", {}), author.id)
 
-        order_by = options.get("order_by", Shout.published_at)
+            order_by = options.get("order_by", Shout.published_at)
 
-        query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
-        offset = options.get("offset", 0)
-        limit = options.get("limit", 10)
+            query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
+            offset = options.get("offset", 0)
+            limit = options.get("limit", 10)
 
-        q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
+            q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
 
-        shouts = []
-        for [
-            shout,
-            reacted_stat,
-            commented_stat,
-            rating_stat,
-            _last_comment,
-        ] in session.execute(q).unique():
-            shout.stat = {
-                "viewed": ViewedStorage.get_shout(shout.slug),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-                "rating": rating_stat,
-            }
-            shouts.append(shout)
-    return shouts
+            shouts = []
+            for [
+                shout,
+                reacted_stat,
+                commented_stat,
+                rating_stat,
+                _last_comment,
+            ] in session.execute(q).unique():
+                shout.stat = {
+                    "viewed": ViewedStorage.get_shout(shout.slug),
+                    "reacted": reacted_stat,
+                    "commented": commented_stat,
+                    "rating": rating_stat,
+                }
+                shouts.append(shout)
+            return shouts
+    return []
 
 
 @query.field("search")
@@ -260,22 +263,22 @@ async def load_my_subscriptions(_, info):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
+        if author:
+            authors_query = (
+                select(Author)
+                .join(AuthorFollower, AuthorFollower.author == Author.id)
+                .where(AuthorFollower.follower == author.id)
+            )
 
-        authors_query = (
-            select(User)
-            .join(AuthorFollower, AuthorFollower.author == User.id)
-            .where(AuthorFollower.follower == author.id)
-        )
+            topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
 
-        topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
+            topics = []
+            authors = []
 
-        topics = []
-        authors = []
+            for [author] in session.execute(authors_query):
+                authors.append(author)
 
-        for [author] in session.execute(authors_query):
-            authors.append(author)
+            for [topic] in session.execute(topics_query):
+                topics.append(topic)
 
-        for [topic] in session.execute(topics_query):
-            topics.append(topic)
-
-        return {"topics": topics, "authors": authors}
+            return {"topics": topics, "authors": authors}
