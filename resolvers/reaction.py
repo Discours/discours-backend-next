@@ -163,81 +163,82 @@ async def create_reaction(_, info, reaction):
     with local_session() as session:
         shout = session.query(Shout).where(Shout.id == reaction["shout"]).one()
         author = session.query(Author).where(Author.user == user_id).first()
-        reaction["created_by"] = author.id
-        if reaction["kind"] in [ReactionKind.DISLIKE.name, ReactionKind.LIKE.name]:
-            existing_reaction = (
-                session.query(Reaction)
-                .where(
-                    and_(
-                        Reaction.shout == reaction["shout"],
-                        Reaction.created_by == author.id,
-                        Reaction.kind == reaction["kind"],
-                        Reaction.reply_to == reaction.get("reply_to"),
+        if shout and author:
+            reaction["created_by"] = author.id
+            if reaction["kind"] in [ReactionKind.DISLIKE.name, ReactionKind.LIKE.name]:
+                existing_reaction = (
+                    session.query(Reaction)
+                    .where(
+                        and_(
+                            Reaction.shout == reaction["shout"],
+                            Reaction.created_by == author.id,
+                            Reaction.kind == reaction["kind"],
+                            Reaction.reply_to == reaction.get("reply_to"),
+                        )
                     )
+                    .first()
                 )
-                .first()
-            )
 
-            if existing_reaction is not None:
-                return {"error": "You can't vote twice"}
+                if existing_reaction is not None:
+                    return {"error": "You can't vote twice"}
 
-            opposite_reaction_kind = (
-                ReactionKind.DISLIKE if reaction["kind"] == ReactionKind.LIKE.name else ReactionKind.LIKE
-            )
-            opposite_reaction = (
-                session.query(Reaction)
-                .where(
-                    and_(
-                        Reaction.shout == reaction["shout"],
-                        Reaction.created_by == author.id,
-                        Reaction.kind == opposite_reaction_kind,
-                        Reaction.reply_to == reaction.get("reply_to"),
+                opposite_reaction_kind = (
+                    ReactionKind.DISLIKE if reaction["kind"] == ReactionKind.LIKE.name else ReactionKind.LIKE
+                )
+                opposite_reaction = (
+                    session.query(Reaction)
+                    .where(
+                        and_(
+                            Reaction.shout == reaction["shout"],
+                            Reaction.created_by == author.id,
+                            Reaction.kind == opposite_reaction_kind,
+                            Reaction.reply_to == reaction.get("reply_to"),
+                        )
                     )
+                    .first()
                 )
-                .first()
-            )
 
-            if opposite_reaction is not None:
-                session.delete(opposite_reaction)
+                if opposite_reaction is not None:
+                    session.delete(opposite_reaction)
 
-        r = Reaction(**reaction)
+            r = Reaction(**reaction)
 
-        # Proposal accepting logix
-        if r.reply_to is not None and r.kind == ReactionKind.ACCEPT and author.id in shout.dict()["authors"]:
-            replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
-            if replied_reaction and replied_reaction.kind == ReactionKind.PROPOSE:
-                if replied_reaction.range:
-                    old_body = shout.body
-                    start, end = replied_reaction.range.split(":")
-                    start = int(start)
-                    end = int(end)
-                    new_body = old_body[:start] + replied_reaction.body + old_body[end:]
-                    shout.body = new_body
+            # Proposal accepting logix
+            if r.reply_to is not None and r.kind == ReactionKind.ACCEPT and author.id in shout.dict()["authors"]:
+                replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
+                if replied_reaction and replied_reaction.kind == ReactionKind.PROPOSE:
+                    if replied_reaction.range:
+                        old_body = shout.body
+                        start, end = replied_reaction.range.split(":")
+                        start = int(start)
+                        end = int(end)
+                        new_body = old_body[:start] + replied_reaction.body + old_body[end:]
+                        shout.body = new_body
 
-        session.add(r)
-        session.commit()
-        rdict = r.dict()
-        rdict["shout"] = shout.dict()
-        rdict["created_by"] = author.dict()
+            session.add(r)
+            session.commit()
+            rdict = r.dict()
+            rdict["shout"] = shout.dict()
+            rdict["created_by"] = author.dict()
 
-        # self-regulation mechanics
+            # self-regulation mechanics
 
-        if check_to_hide(session, r):
-            set_hidden(session, r.shout)
-        elif check_to_publish(session, author.id, r):
-            set_published(session, r.shout)
+            if check_to_hide(session, r):
+                set_hidden(session, r.shout)
+            elif check_to_publish(session, author.id, r):
+                set_published(session, r.shout)
 
-        try:
-            reactions_follow(author.id, reaction["shout"], True)
-        except Exception as e:
-            print(f"[resolvers.reactions] error on reactions auto following: {e}")
+            try:
+                reactions_follow(author.id, reaction["shout"], True)
+            except Exception as e:
+                print(f"[resolvers.reactions] error on reactions auto following: {e}")
 
-        rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
+            rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
-        # notifications call
-        await notify_reaction(rdict, "create")
+            # notifications call
+            await notify_reaction(rdict, "create")
 
-        return {"reaction": rdict}
+            return {"reaction": rdict}
 
 
 @mutation.field("updateReaction")

@@ -138,14 +138,14 @@ async def get_authors_all(_, _info):
 
 
 @query.field("getAuthor")
-async def get_author(_, _info, slug="", user=None, author=None):
-    if slug or user or author:
+async def get_author(_, _info, slug="", user=None, author_id=None):
+    if slug or user or author_id:
         if slug:
             q = select(Author).where(Author.slug == slug)
         elif user:
             q = select(Author).where(Author.user == user)
-        elif author:
-            q = select(Author).where(Author.id == author)
+        elif author_id:
+            q = select(Author).where(Author.id == author_id)
         q = add_author_stat_columns(q)
 
         authors = get_authors_from_query(q)

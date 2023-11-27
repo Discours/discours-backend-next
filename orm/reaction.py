@@ -7,21 +7,23 @@ from services.db import Base
 
 
 class ReactionKind(Enumeration):
+    # TYPE = <reaction index> # rating diff
+
+    # editor mode
     AGREE = 1  # +1
     DISAGREE = 2  # -1
-    PROOF = 3  # +1
-    DISPROOF = 4  # -1
-    ASK = 5  # +0
-    PROPOSE = 6  # +0
-    QUOTE = 7  # +0 bookmark
-    COMMENT = 8  # +0
-    ACCEPT = 9  # +1
-    REJECT = 0  # -1
+    ASK = 3  # +0
+    PROPOSE = 4  # +0
+    PROOF = 5  # +1
+    DISPROOF = 6  # -1
+    ACCEPT = 7  # +1
+    REJECT = 8  # -1
+
+    # public feed
+    QUOTE = 9  # +0 bookmark
+    COMMENT = 0  # +0
     LIKE = 11  # +1
     DISLIKE = 12  # -1
-    REMARK = 13  # 0
-    FOOTNOTE = 14  # 0
-    # TYPE = <reaction index> # rating diff
 
 
 class Reaction(Base):
@@ -35,7 +37,7 @@ class Reaction(Base):
     deleted_by = Column(ForeignKey("author.id"), nullable=True, index=True)
     shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
     reply_to = Column(ForeignKey("reaction.id"), nullable=True)
-    range = Column(String, nullable=True, comment="<start index>:<end>")
+    quote = Column(String, nullable=True, comment="Original quoted text")
     kind = Column(Enum(ReactionKind), nullable=False)
 
     oid = Column(String)

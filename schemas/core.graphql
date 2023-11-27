@@ -210,7 +210,7 @@ input TopicInput {
 input ReactionInput {
   kind: ReactionKind!
   shout: Int!
-  range: String
+  quote: String
   body: String
   reply_to: Int
 }
