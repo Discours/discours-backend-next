@@ -241,9 +241,9 @@ async def rate_author(_, info, rated_slug, value):
     return {}
 
 
-async def create_author(data):
+async def create_author(user_id: str, slug: str):
     with local_session() as session:
         # TODO: check Authorization header
-        new_author = Author(**data)
+        new_author = Author(user=user_id, slug=slug)
         session.add(new_author)
         session.commit()
