@@ -6,6 +6,7 @@ from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint, Request
 from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from resolvers.author import create_author
 from services.rediscache import redis
@@ -46,17 +47,16 @@ class WebhookEndpoint(HTTPEndpoint):
             if data:
                 auth = request.headers.get("Authorization")
                 if auth:
-                    # TODO: check Authorization header
-                    # Extract user_id and slug
-                    user_id = data["user"]["id"]
-                    email_slug = data["user"]["email"].replace(".", "-").split("@").pop()
-                    slug = data["user"]["preferred_username"] or email_slug
-                    await create_author(user_id, slug)
+                    if auth == os.environ.get("WEBHOOK_SECRET"):
+                        # Extract user_id and slug
+                        user_id = data["user"]["id"]
+                        email_slug = data["user"]["email"].replace(".", "-").split("@").pop()
+                        slug = data["user"]["preferred_username"] or email_slug
+                        await create_author(user_id, slug)
             return JSONResponse({"status": "success"})
         except Exception as e:
             return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
-app = Starlette(debug=True, on_startup=[start_up], on_shutdown=[shutdown])
-app.mount("/", GraphQL(schema, debug=True))
-app.mount("/new-author", WebhookEndpoint)
+routes = [Route("/", GraphQL(schema, debug=True)), Route("/new-author", WebhookEndpoint)]
+app = Starlette(routes=routes, debug=True, on_startup=[start_up], on_shutdown=[shutdown])

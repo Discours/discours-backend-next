@@ -35,7 +35,7 @@ poetry run python server.py
 
 ### Auth
 
-Put the header 'Authorization' with token from signIn query or registerUser mutation.
+Put the header 'Authorization' with token from signIn query or registerUser mutation. Setup `WEBHOOK_SECRET` env var
 
 ### Viewed
 
