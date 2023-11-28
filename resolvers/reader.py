@@ -70,8 +70,8 @@ def apply_filters(q, filters, author_id=None):
     return q
 
 
-@query.field("loadShout")
-async def load_shout(_, _info, slug=None, shout_id=None):
+@query.field("get_shout")
+async def get_shout(_, _info, slug=None, shout_id=None):
     with local_session() as session:
         q = select(Shout).options(
             joinedload(Shout.authors),
@@ -95,7 +95,9 @@ async def load_shout(_, _info, slug=None, shout_id=None):
                 commented_stat,
                 rating_stat,
                 _last_comment,
-            ] = session.execute(q).first() or []
+            ] = (
+                session.execute(q).first() or []
+            )
             if shout:
                 shout.stat = {
                     "viewed": viewed_stat,
@@ -113,7 +115,7 @@ async def load_shout(_, _info, slug=None, shout_id=None):
             return None
 
 
-@query.field("loadShouts")
+@query.field("load_shouts_by")
 async def load_shouts_by(_, info, options):
     """
     :param _:
@@ -186,8 +188,8 @@ async def load_shouts_by(_, info, options):
 
 
 @login_required
-@query.field("loadFeed")
-async def get_my_feed(_, info, options):
+@query.field("load_shouts_feed")
+async def load_shouts_feed(_, info, options):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
@@ -199,7 +201,9 @@ async def get_my_feed(_, info, options):
                 select(Shout.id)
                 .where(Shout.id == ShoutAuthor.shout)
                 .where(Shout.id == ShoutTopic.shout)
-                .where((ShoutAuthor.author.in_(author_followed_authors)) | (ShoutTopic.topic.in_(author_followed_topics)))
+                .where(
+                    (ShoutAuthor.author.in_(author_followed_authors)) | (ShoutTopic.topic.in_(author_followed_topics))
+                )
             )
 
             q = (
@@ -247,36 +251,9 @@ async def get_my_feed(_, info, options):
     return []
 
 
-@query.field("search")
-async def search(_, info, text, limit=50, offset=0):
+@query.field("load_shouts_search")
+async def load_shouts_search(_, info, text, limit=50, offset=0):
     if text and len(text) > 2:
         return SearchService.search(text, limit, offset)
     else:
         return []
-
-
-@query.field("loadMySubscriptions")
-@login_required
-async def load_my_subscriptions(_, info):
-    user_id = info.context["user_id"]
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
-            authors_query = (
-                select(Author)
-                .join(AuthorFollower, AuthorFollower.author == Author.id)
-                .where(AuthorFollower.follower == author.id)
-            )
-
-            topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
-
-            topics = []
-            authors = []
-
-            for [author] in session.execute(authors_query):
-                authors.append(author)
-
-            for [topic] in session.execute(topics_query):
-                topics.append(topic)
-
-            return {"topics": topics, "authors": authors}

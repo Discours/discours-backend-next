@@ -29,7 +29,7 @@ class ReactionKind(Enumeration):
 class Reaction(Base):
     __tablename__ = "reaction"
 
-    body = Column(String, default='', comment="Reaction Body")
+    body = Column(String, default="", comment="Reaction Body")
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     created_by = Column(ForeignKey("author.id"), nullable=False, index=True)
     updated_at = Column(Integer, nullable=True, comment="Updated at")

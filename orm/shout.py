@@ -60,7 +60,7 @@ class Shout(Base):
     updated_at = Column(Integer, nullable=True)
     published_at = Column(Integer, nullable=True)
     deleted_at = Column(Integer, nullable=True)
-    
+
     deleted_by = Column(ForeignKey("author.id"), nullable=True)
 
     body = Column(String, nullable=False, comment="Body")
@@ -83,4 +83,3 @@ class Shout(Base):
     lang = Column(String, nullable=False, default="ru", comment="Language")
     version_of = Column(ForeignKey("shout.id"), nullable=True)
     oid = Column(String, nullable=True)
-

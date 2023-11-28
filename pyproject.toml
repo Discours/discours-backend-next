@@ -18,6 +18,9 @@ gql = {git = "https://github.com/graphql-python/gql.git", rev = "master"}
 starlette = {git = "https://github.com/encode/starlette.git", rev = "master"}
 ariadne = {git = "https://github.com/tonyrewin/ariadne.git", rev = "master"}
 
+[tool.poetry.group.dev.dependencies]
+setuptools = "^69.0.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

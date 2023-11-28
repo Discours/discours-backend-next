@@ -64,32 +64,37 @@ def topics_followed_by(author_id):
     return get_topics_from_query(q)
 
 
-@query.field("topicsAll")
-async def topics_all(_, _info):
+@query.field("get_topics_all")
+async def get_topics_all(_, _info):
     q = select(Topic)
     q = add_topic_stat_columns(q)
 
     return get_topics_from_query(q)
 
 
-@query.field("topicsByCommunity")
-async def topics_by_community(_, info, community):
-    q = select(Topic).where(Topic.community == community)
+@query.field("get_topics_by_community")
+async def get_topics_by_community(_, _info, community_id: int):
+    q = select(Topic).where(Topic.community == community_id)
     q = add_topic_stat_columns(q)
 
     return get_topics_from_query(q)
 
 
-@query.field("topicsByAuthor")
-async def topics_by_author(_, _info, author_id):
+@query.field("get_topics_by_author")
+async def get_topics_by_author(_, _info, author_id=None, slug="", user=""):
     q = select(Topic)
     q = add_topic_stat_columns(q)
-    q = q.join(Author).where(Author.id == author_id)
+    if author_id:
+        q = q.join(Author).where(Author.id == author_id)
+    elif slug:
+        q = q.join(Author).where(Author.slug == slug)
+    elif user:
+        q = q.join(Author).where(Author.user == user)
 
     return get_topics_from_query(q)
 
 
-@query.field("getTopic")
+@query.field("get_topic")
 async def get_topic(_, _info, slug):
     q = select(Topic).where(Topic.slug == slug)
     q = add_topic_stat_columns(q)
@@ -98,7 +103,7 @@ async def get_topic(_, _info, slug):
     return topics[0]
 
 
-@mutation.field("createTopic")
+@mutation.field("create_topic")
 @login_required
 async def create_topic(_, _info, inp):
     with local_session() as session:
@@ -110,6 +115,7 @@ async def create_topic(_, _info, inp):
     return {"topic": new_topic}
 
 
+@mutation.field("update_topic")
 @login_required
 async def update_topic(_, _info, inp):
     slug = inp["slug"]
@@ -123,6 +129,27 @@ async def update_topic(_, _info, inp):
             session.commit()
 
             return {"topic": topic}
+
+
+@mutation.field("delete_topic")
+@login_required
+async def delete_topic(_, info, slug: str):
+    user_id = info.context["user_id"]
+    with local_session() as session:
+        t: Topic = session.query(Topic).filter(Topic.slug == slug).first()
+        if not t:
+            return {"error": "invalid topic slug"}
+        author = session.query(Author).filter(Author.user == user_id).first()
+        if author:
+            if t.created_by != author.id:
+                return {"error": "access denied"}
+
+            session.delete(t)
+            session.commit()
+
+            return {}
+        else:
+            return {"error": "access denied"}
 
 
 def topic_follow(follower_id, slug):
@@ -153,8 +180,8 @@ def topic_unfollow(follower_id, slug):
     return False
 
 
-@query.field("topicsRandom")
-async def topics_random(_, info, amount=12):
+@query.field("get_topics_random")
+async def get_topics_random(_, info, amount=12):
     q = select(Topic)
     q = q.join(ShoutTopic)
     q = q.group_by(Topic.id)

@@ -51,13 +51,16 @@ def get_communities_from_query(q):
     return ccc
 
 
+SINGLE_COMMUNITY = True
+
+
 def followed_communities(follower_id):
-    amount = select(Community).count()
-    if amount < 2:
-        # no need to run long query most of the cases
-        return [
-            select(Community).first(),
-        ]
+    if SINGLE_COMMUNITY:
+        with local_session() as session:
+            c = session.query(Community).first()
+            return [
+                c,
+            ]
     else:
         q = select(Community)
         q = add_community_stat_columns(q)
@@ -97,7 +100,7 @@ def community_unfollow(follower_id, slug):
     return False
 
 
-@query.field("communitiesAll")
+@query.field("get_communities_all")
 async def get_communities_all(_, _info):
     q = select(Author)
     q = add_community_stat_columns(q)
@@ -105,7 +108,7 @@ async def get_communities_all(_, _info):
     return get_communities_from_query(q)
 
 
-@query.field("getCommunity")
+@query.field("get_community")
 async def get_community(_, _info, slug):
     q = select(Community).where(Community.slug == slug)
     q = add_community_stat_columns(q)

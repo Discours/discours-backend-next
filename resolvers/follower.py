@@ -1,3 +1,7 @@
+from sqlalchemy import select
+
+from orm.community import Community, CommunityAuthor as CommunityFollower
+from orm.topic import Topic, TopicFollower
 from services.auth import login_required
 from resolvers.author import author_follow, author_unfollow
 from resolvers.reaction import reactions_follow, reactions_unfollow
@@ -5,9 +9,9 @@ from resolvers.topic import topic_follow, topic_unfollow
 from resolvers.community import community_follow, community_unfollow
 from services.following import FollowingManager, FollowingResult
 from services.db import local_session
-from orm.author import Author
+from orm.author import Author, AuthorFollower
 from services.notify import notify_follower
-from services.schema import mutation
+from services.schema import mutation, query
 
 
 @login_required
@@ -77,3 +81,36 @@ async def unfollow(_, info, what, slug):
         return {"error": str(e)}
 
     return {}
+
+
+@query.field("get_my_followed")
+@login_required
+async def get_my_followed(_, info):
+    user_id = info.context["user_id"]
+    with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
+        if author:
+            authors_query = (
+                select(Author)
+                .join(AuthorFollower, AuthorFollower.author == Author.id)
+                .where(AuthorFollower.follower == author.id)
+            )
+
+            topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
+            communities_query = (
+                select(Community)
+                .join(CommunityFollower, CommunityFollower.author == Author.id)
+                .where(CommunityFollower.follower == author.id)
+            )
+            topics = []
+            authors = []
+            communities = []
+            for [author] in session.execute(authors_query):
+                authors.append(author)
+
+            for [topic] in session.execute(topics_query):
+                topics.append(topic)
+
+            for [c] in session.execute(communities_query):
+                communities.append(c)
+            return {"topics": topics, "authors": authors, "communities": communities}

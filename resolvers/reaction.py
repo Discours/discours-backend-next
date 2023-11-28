@@ -17,7 +17,7 @@ def add_reaction_stat_columns(q):
 
     q = q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.body.is_not(''), 1), else_=0)).label("commented_stat"),
+        func.sum(case((aliased_reaction.body.is_not(""), 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE, 1),
@@ -91,7 +91,7 @@ def is_published_author(session, author_id):
     return (
         session.query(Shout)
         .where(Shout.authors.contains(author_id))
-        .filter(and_(Shout.published_at.is_not(''), Shout.deleted_at.is_(None)))
+        .filter(and_(Shout.published_at.is_not(""), Shout.deleted_at.is_(None)))
         .count()
         > 0
     )
@@ -156,7 +156,7 @@ def set_hidden(session, shout_id):
     session.commit()
 
 
-@mutation.field("createReaction")
+@mutation.field("create_reaction")
 @login_required
 async def create_reaction(_, info, reaction):
     user_id = info.context["user_id"]
@@ -241,7 +241,7 @@ async def create_reaction(_, info, reaction):
             return {"reaction": rdict}
 
 
-@mutation.field("updateReaction")
+@mutation.field("update_reaction")
 @login_required
 async def update_reaction(_, info, rid, reaction):
     user_id = info.context["user_id"]
@@ -284,7 +284,7 @@ async def update_reaction(_, info, rid, reaction):
             return {"error": "user"}
 
 
-@mutation.field("deleteReaction")
+@mutation.field("delete_reaction")
 @login_required
 async def delete_reaction(_, info, rid):
     user_id = info.context["user_id"]
@@ -293,21 +293,24 @@ async def delete_reaction(_, info, rid):
         if not r:
             return {"error": "invalid reaction id"}
         author = session.query(Author).filter(Author.user == user_id).first()
-        if not author or r.created_by != author.id:
+        if author:
+            if r.created_by != author.id:
+                return {"error": "access denied"}
+
+            if r.kind in [ReactionKind.LIKE, ReactionKind.DISLIKE]:
+                session.delete(r)
+            else:
+                r.deleted_at = int(time.time())
+            session.commit()
+
+            await notify_reaction(r.dict(), "delete")
+
+            return {"reaction": r}
+        else:
             return {"error": "access denied"}
 
-        if r.kind in [ReactionKind.LIKE, ReactionKind.DISLIKE]:
-            session.delete(r)
-        else:
-            r.deleted_at = int(time.time())
-        session.commit()
 
-        await notify_reaction(r.dict(), "delete")
-
-        return {"reaction": r}
-
-
-@query.field("loadReactionsBy")
+@query.field("load_reactions_by")
 async def load_reactions_by(_, info, by, limit=50, offset=0):
     """
     :param info: graphql meta
@@ -387,29 +390,31 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     return reactions
 
 
-def reacted_shouts_updates(follower_id):
-    shouts = []
+def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
+    shouts: List[Shout] = []
     with local_session() as session:
         author = session.query(Author).where(Author.id == follower_id).first()
         if author:
             shouts = (
-                session.query(Reaction.shout)
-                .join(Shout)
+                session.query(Shout)
+                .join(Reaction)
                 .filter(Reaction.created_by == author.id)
                 .filter(Reaction.created_at > author.last_seen)
-                .all()
+                .limit(limit)
+                .offset(offset)
             )
     return shouts
 
 
+# @query.field("followedReactions")
 @login_required
-@query.field("followedReactions")
-async def get_reacted_shouts(_, info) -> List[Shout]:
+@query.field("load_shouts_followed")
+async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            shouts = reacted_shouts_updates(author.id)
+            shouts = reacted_shouts_updates(author.id, limit, offset)
             return shouts
         else:
             return []

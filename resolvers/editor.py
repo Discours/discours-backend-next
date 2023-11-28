@@ -12,9 +12,9 @@ from resolvers.reaction import reactions_follow, reactions_unfollow
 from services.notify import notify_shout
 
 
-@query.field("loadDrafts")
+@query.field("get_shouts_drafts")
 @login_required
-async def get_drafts(_, info):
+async def get_shouts_drafts(_, info):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
@@ -34,7 +34,7 @@ async def get_drafts(_, info):
             return shouts
 
 
-@mutation.field("createShout")
+@mutation.field("create_shout")
 @login_required
 async def create_shout(_, info, inp):
     user_id = info.context["user_id"]
@@ -79,7 +79,7 @@ async def create_shout(_, info, inp):
         return {"shout": new_shout}
 
 
-@mutation.field("updateShout")
+@mutation.field("update_shout")
 @login_required
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     user_id = info.context["user_id"]
@@ -161,7 +161,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         return {"shout": shout}
 
 
-@mutation.field("deleteShout")
+@mutation.field("delete_shout")
 @login_required
 async def delete_shout(_, info, shout_id):
     user_id = info.context["user_id"]

@@ -7,6 +7,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.unread import get_total_unread_counter
 from services.schema import mutation, query
+from orm.community import Community
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from orm.author import AuthorFollower, Author, AuthorRating
@@ -79,15 +80,15 @@ def get_authors_from_query(q):
 
 async def author_followings(author_id: int):
     return {
-        "unread": await get_total_unread_counter(author_id),  # unread inbox messages counter
-        "topics": [t.slug for t in await followed_topics(author_id)],  # followed topics slugs
-        "authors": [a.slug for a in await followed_authors(author_id)],  # followed authors slugs
-        "reactions": [s.slug for s in await followed_reactions(author_id)],  # fresh reacted shouts slugs
-        "communities": [c.slug for c in await followed_communities(author_id)],  # communities
+        "unread": await get_total_unread_counter(author_id),
+        "topics": [t.slug for t in await followed_topics(author_id)],
+        "authors": [a.slug for a in await followed_authors(author_id)],
+        "reactions": [s.slug for s in followed_reactions(author_id)],
+        "communities": [c.slug for c in [followed_communities(author_id)] if isinstance(c, Community)],
     }
 
 
-@mutation.field("updateProfile")
+@mutation.field("update_profile")
 @login_required
 async def update_profile(_, info, profile):
     user_id = info.context["user_id"]
@@ -128,7 +129,7 @@ def author_unfollow(follower_id, slug):
     return False
 
 
-@query.field("authorsAll")
+@query.field("get_authors_all")
 async def get_authors_all(_, _info):
     q = select(Author)
     q = add_author_stat_columns(q)
@@ -137,7 +138,7 @@ async def get_authors_all(_, _info):
     return get_authors_from_query(q)
 
 
-@query.field("getAuthor")
+@query.field("get_author")
 async def get_author(_, _info, slug="", user=None, author_id=None):
     if slug or user or author_id:
         if slug:
@@ -152,7 +153,7 @@ async def get_author(_, _info, slug="", user=None, author_id=None):
         return authors[0]
 
 
-@query.field("loadAuthorsBy")
+@query.field("load_authors_by")
 async def load_authors_by(_, _info, by, limit, offset):
     q = select(Author)
     q = add_author_stat_columns(q)
@@ -175,7 +176,8 @@ async def load_authors_by(_, _info, by, limit, offset):
     return get_authors_from_query(q)
 
 
-async def get_followed_authors(_, _info, slug) -> List[Author]:
+@query.field("get_author_followed")
+async def get_author_followed(_, _info, slug="", user=None, author_id=None) -> List[Author]:
     # First, we need to get the author_id for the given slug
     with local_session() as session:
         author_id_query = select(Author.id).where(Author.slug == slug)
@@ -187,7 +189,8 @@ async def get_followed_authors(_, _info, slug) -> List[Author]:
     return await followed_authors(author_id)
 
 
-async def author_followers(_, _info, slug) -> List[Author]:
+@query.field("get_author_followers")
+async def get_author_followers(_, _info, slug) -> List[Author]:
     q = select(Author)
     q = add_author_stat_columns(q)
 
@@ -209,28 +212,29 @@ async def followed_authors(follower_id):
     return get_authors_from_query(q)
 
 
-@mutation.field("rateAuthor")
+@mutation.field("rate_author")
 @login_required
-async def rate_author(_, info, rated_user_id, value):
+async def rate_author(_, info, rated_slug, value):
     user_id = info.context["user_id"]
 
     with local_session() as session:
-        rater = session.query(Author).filter(Author.user == user_id).first()
-        rating = (
-            session.query(AuthorRating)
-            .filter(and_(AuthorRating.rater == rater.id, AuthorRating.user == rated_user_id))
-            .first()
-        )
-        if rating:
-            rating.value = value
-            session.add(rating)
-            session.commit()
-            return {}
-        else:
-            try:
-                rating = AuthorRating(rater=rater.id, user=rated_user_id, value=value)
+        rater = session.query(Author).filter(Author.slug == rated_slug).first()
+        if rater:
+            rating = (
+                session.query(AuthorRating)
+                .filter(and_(AuthorRating.rater == rater.id, AuthorRating.user == rated_user_id))
+                .first()
+            )
+            if rating:
+                rating.value = value
                 session.add(rating)
                 session.commit()
-            except Exception as err:
-                return {"error": err}
+                return {}
+            else:
+                try:
+                    rating = AuthorRating(rater=rater.id, user=rated_user_id, value=value)
+                    session.add(rating)
+                    session.commit()
+                except Exception as err:
+                    return {"error": err}
     return {}

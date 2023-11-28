@@ -1,5 +1,7 @@
 [0.2.16]
 - schema: Reaction.range -> Reaction.quote
+- resolvers: queries and mutations revision and renaming
+- resolvers: delete_topic(slug) implemented
 
 [0.2.15]
 - schema: Shout.created_by removed

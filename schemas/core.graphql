@@ -291,50 +291,68 @@ type Result {
 # Мутации
 
 type Mutation {
-    createShout(inp: ShoutInput!): Result!
-    updateShout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): Result!
-    deleteShout(shout_id: Int!): Result!
-    rateAuthor(slug: String!, value: Int!): Result!
-    updateOnlineStatus: Result!
-    updateProfile(profile: ProfileInput!): Result!
-    createTopic(input: TopicInput!): Result!
-    updateTopic(input: TopicInput!): Result!
-    destroyTopic(slug: String!): Result!
-    createReaction(reaction: ReactionInput!): Result!
-    updateReaction(id: Int!, reaction: ReactionInput!): Result!
-    deleteReaction(id: Int!): Result!
+    # author
+    rate_author(rated_slug: String!, value: Int!): Result!
+    update_profile(profile: ProfileInput!): Result!
+
+    # editor
+    create_shout(inp: ShoutInput!): Result!
+    update_shout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): Result!
+    delete_shout(shout_id: Int!): Result!
+
+    # follower
     follow(what: FollowingEntity!, slug: String!): Result!
     unfollow(what: FollowingEntity!, slug: String!): Result!
+
+    # FIXME!
+    updateOnlineStatus: Result!
+
+    # topic
+    create_topic(input: TopicInput!): Result!
+    update_topic(input: TopicInput!): Result!
+    delete_topic(slug: String!): Result!
+
+    # reaction
+    create_reaction(reaction: ReactionInput!): Result!
+    update_reaction(id: Int!, reaction: ReactionInput!): Result!
+    delete_reaction(id: Int!): Result!
 }
 
 
 # Запросы
 
 type Query {
-    loadShout(slug: String, shout_id: Int): Shout
-    loadShouts(options: LoadShoutsOptions): [Shout]
-    loadFeed(options: LoadShoutsOptions): [Shout]
-    loadMySubscriptions: Result
-    loadDrafts: [Shout]
+    # author
+    get_author(slug: String, user: String, author_id: Int): Author
+    get_authors_all: [Author]
+    get_author_followers(slug: String, user: String, author_id: Int): [Author]
+    get_author_followed(slug: String, user: String, author_id: Int): [Author]
+    load_authors_by(by: AuthorsBy, limit: Int, offset: Int): [Author]
 
-    search(text: String!, limit: Int, offset: Int): [Shout]
+    # community
+    get_community: Community
+    get_communities_all: [Community]
 
-    loadReactionsBy(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
-    followedReactions(follower_id: Int!): [Shout]
+    # editor
+    get_shouts_drafts: [Shout]
 
-    authorsAll: [Author]
-    authorFollowers(slug: String!): [Author]
-    authorFollowedAuthors(slug: String!): [Author]
-    authorFollowedTopics(slug: String!): [Topic]
-    loadAuthorsBy(by: AuthorsBy, limit: Int, offset: Int): [Author]
-    getAuthor(slug: String, user: String, author: Int): Author
+    # follower
+    get_my_followed: Result  # { authors topics communities }
 
-    topicsAll: [Topic]
-    getTopic(slug: String!): Topic
-    topicsRandom(amount: Int): [Topic]
-    topicsByCommunity(community: String!): [Topic]
-    topicsByAuthor(author_id: Int!): [Topic]
+    # reaction
+    load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
 
-    communitiesAll: [Community]
-    getCommunity: Community
+    # reader
+    get_shout(slug: String, shout_id: Int): Shout
+    load_shouts_followed(follower_id: Int!, limit: Int, offset: Int): [Shout]
+    load_shouts_by(options: LoadShoutsOptions): [Shout]
+    load_shouts_search(text: String!, limit: Int, offset: Int): [Shout]
+    load_shouts_feed(options: LoadShoutsOptions): [Shout]
+
+    # topic
+    get_topic(slug: String!): Topic
+    get_topics_all: [Topic]
+    get_topics_random(amount: Int): [Topic]
+    get_topics_by_author(slug: String, user: String, author_id: Int): [Topic]
+    get_topics_by_community(slug: String, community_id: Int): [Topic]
 }
