@@ -44,10 +44,14 @@ class WebhookEndpoint(HTTPEndpoint):
         try:
             data = await request.json()
             if data:
-                # Extract user_id and slug
-                user_id = data["user"]["id"]
-                slug = data["user"]["preferred_username"] or data["user"]["email"].replace(".", "-").split("@").pop()
-                await create_author(user_id, slug)
+                auth = request.headers.get("Authorization")
+                if auth:
+                    # TODO: check Authorization header
+                    # Extract user_id and slug
+                    user_id = data["user"]["id"]
+                    email_slug = data["user"]["email"].replace(".", "-").split("@").pop()
+                    slug = data["user"]["preferred_username"] or email_slug
+                    await create_author(user_id, slug)
             return JSONResponse({"status": "success"})
         except Exception as e:
             return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
