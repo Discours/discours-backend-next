@@ -4,6 +4,10 @@ from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
+from starlette.endpoints import HTTPEndpoint
+from starlette.responses import JSONResponse
+
+from resolvers.author import create_author
 from services.rediscache import redis
 from services.schema import resolvers
 from settings import DEV_SERVER_PID_FILE_NAME, SENTRY_DSN, MODE
@@ -35,5 +39,17 @@ async def shutdown():
     await redis.disconnect()
 
 
+class WebhookEndpoint(HTTPEndpoint):
+    async def post(self, request):
+        try:
+            data = await request.json()
+            if data:
+                await create_author(data)
+            return JSONResponse({"status": "success"})
+        except Exception as e:
+            return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
 app = Starlette(debug=True, on_startup=[start_up], on_shutdown=[shutdown])
 app.mount("/", GraphQL(schema, debug=True))
+app.mount("/new-author", WebhookEndpoint)

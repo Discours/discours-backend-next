@@ -218,11 +218,12 @@ async def rate_author(_, info, rated_slug, value):
     user_id = info.context["user_id"]
 
     with local_session() as session:
-        rater = session.query(Author).filter(Author.slug == rated_slug).first()
-        if rater:
+        rated_author = session.query(Author).filter(Author.slug == rated_slug).first()
+        rater = session.query(Author).filter(Author.slug == user_id).first()
+        if rater and rated_author:
             rating = (
                 session.query(AuthorRating)
-                .filter(and_(AuthorRating.rater == rater.id, AuthorRating.user == rated_user_id))
+                .filter(and_(AuthorRating.rater == rater.id, AuthorRating.author == rated_author.id))
                 .first()
             )
             if rating:
@@ -232,9 +233,17 @@ async def rate_author(_, info, rated_slug, value):
                 return {}
             else:
                 try:
-                    rating = AuthorRating(rater=rater.id, user=rated_user_id, value=value)
+                    rating = AuthorRating(rater=rater.id, author=rated_author.id, value=value)
                     session.add(rating)
                     session.commit()
                 except Exception as err:
                     return {"error": err}
     return {}
+
+
+async def create_author(data):
+    with local_session() as session:
+        # TODO: check Authorization header
+        new_author = Author(**data)
+        session.add(new_author)
+        session.commit()
