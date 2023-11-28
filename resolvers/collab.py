@@ -57,13 +57,14 @@ async def reject_invite(_, info, invite_id: int):
 
 @mutation.field("create_invite")
 @login_required
-async def create_invite(_, info, slug: str = "", author_id: int = None, user: str = ""):
+async def create_invite(_, info, slug: str = "", author_id: int = None):
     user_id = info.context["user_id"]
 
     # Check if the inviter is the owner of the shout
     with local_session() as session:
         shout = session.query(Shout).filter(Shout.slug == slug).first()
-        if shout and shout.authors and user_id in [author.id for author in shout.authors]:
+        inviter = session.query(Author).filter(Author.user == user_id).first()
+        if inviter and shout and shout.authors and inviter.id == shout.authors[0]:
             # Check if the author is a valid author
             author = session.query(Author).filter(Author.id == author_id).first()
             if author:
@@ -71,7 +72,7 @@ async def create_invite(_, info, slug: str = "", author_id: int = None, user: st
                 existing_invite = (
                     session.query(Invite)
                     .filter(
-                        Invite.inviter_id == user_id,
+                        Invite.inviter_id == inviter.id,
                         Invite.author_id == author_id,
                         Invite.shout_id == shout.id,
                         Invite.status == InviteStatus.PENDING,
@@ -97,14 +98,14 @@ async def create_invite(_, info, slug: str = "", author_id: int = None, user: st
 
 @mutation.field("remove_author")
 @login_required
-async def remove_author(_, info, slug: str = "", author_id: int = None, user: str = ""):
+async def remove_author(_, info, slug: str = "", author_id: int = None):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
             shout = session.query(Shout).filter(Shout.slug == slug).first()
             # NOTE: owner should be first in a list
-            if shout and author.id == shout.authors.index(0):
+            if shout and author.id == shout.authors[0]:
                 shout.authors = [author for author in shout.authors if author.id != author_id]
                 session.commit()
                 return {}
