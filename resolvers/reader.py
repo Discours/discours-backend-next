@@ -9,7 +9,7 @@ from orm.author import AuthorFollower, Author
 from orm.topic import TopicFollower, Topic
 from orm.community import CommunityAuthor as CommunityFollower, Community
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutAuthor, ShoutTopic
+from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from services.search import SearchService
 from services.viewed import ViewedStorage
 
@@ -122,13 +122,11 @@ async def load_shouts_by(_, info, options):
     :param info:GraphQLInfo
     :param options: {
         filters: {
-            layout: 'audio',
+            layouts: ['audio', 'video', ..],
             visibility: "public",
             author: 'discours',
             topic: 'culture',
-            title: 'something',
-            body: 'something else',
-            days: 30
+            time_ago: 1234567 // unixtime
         }
         offset: 0
         limit: 50
@@ -152,12 +150,27 @@ async def load_shouts_by(_, info, options):
 
     filters = options.get("filters")
     if filters:
-        # with local_session() as session:
-        # TODO: some filtering logix?
-        pass
+        layouts = filters.get("layouts")
+        if layouts:
+            q = q.filter(Shout.layout.in_(layouts))
+        by_author = filters.get("author")
+        if by_author:
+            q = q.filter(Shout.authors.contains(by_author))
+        by_topic = filters.get("topic")
+        if by_topic:
+            q = q.filter(Shout.topics.contains(by_topic))
+        by_visibility = {
+            "authors": ShoutVisibility.AUTHORS,
+            "community": ShoutVisibility.COMMUNITY,
+            "public": ShoutVisibility.PUBLIC,
+        }[filters.get("visibility")]
+        if by_visibility:
+            q = q.filter(Shout.visibility > by_visibility)
+        by_time_ago = filters.get("time_ago")
+        if by_time_ago:
+            q = q.filter(Shout.created_at < by_time_ago)
 
     order_by = options.get("order_by", Shout.published_at)
-
     query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
     offset = options.get("offset", 0)
     limit = options.get("limit", 10)

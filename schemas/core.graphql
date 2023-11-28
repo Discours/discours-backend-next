@@ -257,14 +257,11 @@ input ShoutsFilterBy {
 }
 
 input LoadShoutsFilters {
-  title: String
-  body: String
   topic: String
   author: String
   layouts: [String]
   visibility: String
   time_ago: Int
-  reacted: Boolean
 }
 
 input LoadShoutsOptions {
