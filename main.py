@@ -4,7 +4,7 @@ from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
-from starlette.endpoints import HTTPEndpoint
+from starlette.endpoints import HTTPEndpoint, Request
 from starlette.responses import JSONResponse
 
 from resolvers.author import create_author
@@ -40,7 +40,7 @@ async def shutdown():
 
 
 class WebhookEndpoint(HTTPEndpoint):
-    async def post(self, request):
+    async def post(self, request: Request) -> JSONResponse:
         try:
             data = await request.json()
             if data:
