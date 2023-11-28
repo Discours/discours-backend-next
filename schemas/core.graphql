@@ -313,6 +313,13 @@ type Mutation {
     create_reaction(reaction: ReactionInput!): Result!
     update_reaction(id: Int!, reaction: ReactionInput!): Result!
     delete_reaction(id: Int!): Result!
+
+    # collab
+    create_invite(slug: String, authorId: Int, user: String): Result!
+    remove_author(slug: String, authorId: Int, user: String): Result!
+    remove_invite(invite_id: Int!): Result!
+    accept_invite(invite_id: Int!): Result!
+    reject_invite(invite_id: Int!): Result!
 }
 
 
@@ -342,7 +349,7 @@ type Query {
 
     # reader
     get_shout(slug: String, shout_id: Int): Shout
-    load_shouts_followed(follower_id: Int!, limit: Int, offset: Int): [Shout]
+    load_shouts_followed(follower_id: Int!, limit: Int, offset: Int): [Shout]  # userReactedShouts
     load_shouts_by(options: LoadShoutsOptions): [Shout]
     load_shouts_search(text: String!, limit: Int, offset: Int): [Shout]
     load_shouts_feed(options: LoadShoutsOptions): [Shout]

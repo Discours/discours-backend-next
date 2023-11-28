@@ -1,4 +1,6 @@
 [0.2.16]
+- resolvers: collab inviting logics
+- orm: invite entity
 - schema: Reaction.range -> Reaction.quote
 - resolvers: queries and mutations revision and renaming
 - resolvers: delete_topic(slug) implemented
