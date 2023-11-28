@@ -21,8 +21,6 @@ def add_stat_columns(q):
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT, 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
-                # do not count comments' reactions
-                (aliased_reaction.body.is_not(''), 0),
                 (aliased_reaction.kind == ReactionKind.AGREE, 1),
                 (aliased_reaction.kind == ReactionKind.DISAGREE, -1),
                 (aliased_reaction.kind == ReactionKind.PROOF, 1),
@@ -152,9 +150,9 @@ async def load_shouts_by(_, info, options):
 
     filters = options.get("filters")
     if filters:
-        with local_session() as session:
-            # TODO: some filtering logix?
-            pass
+        # with local_session() as session:
+        # TODO: some filtering logix?
+        pass
 
     order_by = options.get("order_by", Shout.published_at)
 
