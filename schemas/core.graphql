@@ -332,8 +332,8 @@ type Mutation {
     delete_reaction(id: Int!): Result!
 
     # collab
-    create_invite(slug: String, authorId: Int, user: String): Result!
-    remove_author(slug: String, authorId: Int, user: String): Result!
+    create_invite(slug: String, author_id: Int, user: String): Result!
+    remove_author(slug: String, author_id: Int, user: String): Result!
     remove_invite(invite_id: Int!): Result!
     accept_invite(invite_id: Int!): Result!
     reject_invite(invite_id: Int!): Result!
