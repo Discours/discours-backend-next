@@ -17,7 +17,7 @@ async def accept_invite(_, info, invite_id: int):
         if author:
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
-            if invite and invite.invitee_id == author.id and invite.status == InviteStatus.PENDING:
+            if invite and invite.author_id == author.id and invite.status == InviteStatus.PENDING:
                 # Add the user to the shout authors
                 shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
                 if shout:
@@ -44,7 +44,7 @@ async def reject_invite(_, info, invite_id: int):
         if author:
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
-            if invite and invite.invitee_id == author.id and invite.status == InviteStatus.PENDING:
+            if invite and invite.author_id == author.id and invite.status == InviteStatus.PENDING:
                 # Delete the invite
                 session.delete(invite)
                 session.commit()
@@ -64,15 +64,15 @@ async def create_invite(_, info, slug: str = "", author_id: int = None, user: st
     with local_session() as session:
         shout = session.query(Shout).filter(Shout.slug == slug).first()
         if shout and shout.authors and user_id in [author.id for author in shout.authors]:
-            # Check if the invitee is a valid author
-            invitee = session.query(Author).filter(Author.id == author_id).first()
-            if invitee:
+            # Check if the author is a valid author
+            author = session.query(Author).filter(Author.id == author_id).first()
+            if author:
                 # Check if an invite already exists
                 existing_invite = (
                     session.query(Invite)
                     .filter(
                         Invite.inviter_id == user_id,
-                        Invite.invitee_id == author_id,
+                        Invite.author_id == author_id,
                         Invite.shout_id == shout.id,
                         Invite.status == InviteStatus.PENDING,
                     )
@@ -83,14 +83,14 @@ async def create_invite(_, info, slug: str = "", author_id: int = None, user: st
 
                 # Create a new invite
                 new_invite = Invite(
-                    inviter_id=user_id, invitee_id=author_id, shout_id=shout.id, status=InviteStatus.PENDING
+                    inviter_id=user_id, author_id=author_id, shout_id=shout.id, status=InviteStatus.PENDING
                 )
                 session.add(new_invite)
                 session.commit()
 
                 return {"error": None, "invite": new_invite}
             else:
-                return {"error": "Invalid invitee"}
+                return {"error": "Invalid author"}
         else:
             return {"error": "Access denied"}
 

@@ -36,6 +36,14 @@ enum FollowingEntity {
   REACTIONS
 }
 
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+
 # Типы
 
 
@@ -173,6 +181,14 @@ type Topic {
   oid: String
 }
 
+type Invite {
+  id: Int!
+  inviter_id: Int!
+  author_id: Int!
+  shout_id: Int!
+  status: InviteStatus
+}
+
 # Входные типы
 
 input ShoutInput {
@@ -287,6 +303,7 @@ type Result {
   community: Community
   communities: [Community]
 }
+
 
 # Мутации
 

@@ -16,10 +16,10 @@ class Invite(Base):
     __tablename__ = "invite"
 
     inviter_id = Column(ForeignKey("author.id"), nullable=False, index=True)
-    invitee_id = Column(ForeignKey("author.id"), nullable=False, index=True)
+    author_id = Column(ForeignKey("author.id"), nullable=False, index=True)
     shout_id = Column(ForeignKey("shout.id"), nullable=False, index=True)
     status = Column(Enum(InviteStatus), default=InviteStatus.PENDING)
 
     inviter = relationship(Author, foreign_keys=[inviter_id])
-    invitee = relationship(Author, foreign_keys=[invitee_id])
+    author = relationship(Author, foreign_keys=[author_id])
     shout = relationship(Shout)
