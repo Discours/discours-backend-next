@@ -304,9 +304,6 @@ type Mutation {
     follow(what: FollowingEntity!, slug: String!): Result!
     unfollow(what: FollowingEntity!, slug: String!): Result!
 
-    # FIXME!
-    updateOnlineStatus: Result!
-
     # topic
     create_topic(input: TopicInput!): Result!
     update_topic(input: TopicInput!): Result!
@@ -338,6 +335,7 @@ type Query {
 
     # follower
     get_my_followed: Result  # { authors topics communities }
+    get_shout_followers(slug: String, shout_id: Int): [Author]
 
     # reaction
     load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]

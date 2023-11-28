@@ -1,6 +1,10 @@
+from typing import List
+
 from sqlalchemy import select
 
 from orm.community import Community, CommunityAuthor as CommunityFollower
+from orm.reaction import Reaction
+from orm.shout import Shout
 from orm.topic import Topic, TopicFollower
 from services.auth import login_required
 from resolvers.author import author_follow, author_unfollow
@@ -114,3 +118,20 @@ async def get_my_followed(_, info):
             for [c] in session.execute(communities_query):
                 communities.append(c)
             return {"topics": topics, "authors": authors, "communities": communities}
+
+
+@query.field("get_shout_followers")
+def get_shout_followers(_, _info, slug: str = "", shout_id: int = None) -> List[Author]:
+    followers = []
+    with local_session() as session:
+        shout = None
+        if slug:
+            shout = session.query(Shout).filter(Shout.slug == slug).first()
+        elif shout_id:
+            shout = session.query(Shout).filter(Shout.id == shout_id).first()
+        if shout:
+            reactions = session.query(Reaction).filter(Reaction.shout == shout.id).all()
+            for r in reactions:
+                followers.append(r.created_by)
+
+            return followers
