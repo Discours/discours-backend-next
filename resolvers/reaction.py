@@ -17,7 +17,7 @@ def add_reaction_stat_columns(q):
 
     q = q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.body != "", 1), else_=0)).label("commented_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT, 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE, 1),
@@ -91,7 +91,7 @@ def is_published_author(session, author_id):
     return (
         session.query(Shout)
         .where(Shout.authors.contains(author_id))
-        .filter(and_(Shout.published_at !="", Shout.deleted_at.is_(None)))
+        .filter(and_(Shout.published_at != "", Shout.deleted_at.is_(None)))
         .count()
         > 0
     )
@@ -216,7 +216,7 @@ async def create_reaction(_, info, reaction):
                                 end = int(end)
                                 new_body = old_body[:start] + replied_reaction.body + old_body[end:]
                                 shout_dict = shout.dict()
-                                shout_dict['body'] = new_body
+                                shout_dict["body"] = new_body
                                 Shout.update(shout, shout_dict)
 
             session.add(r)
@@ -339,7 +339,7 @@ def apply_reaction_filters(by, q):
     # NOTE: not using ElasticSearch here
     by_search = by.get("search", "")
     if len(by_search) > 2:
-        q = q.filter(Reaction.body.ilike(f'%{by_search}%'))
+        q = q.filter(Reaction.body.ilike(f"%{by_search}%"))
 
     if by.get("after"):
         after = int(by["after"])
@@ -440,7 +440,7 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            author_id: int = author.dict()['id']
+            author_id: int = author.dict()["id"]
             shouts = reacted_shouts_updates(author_id, limit, offset)
             return shouts
         else:

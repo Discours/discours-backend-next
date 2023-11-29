@@ -146,8 +146,8 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             if publish:
                 if shout.visibility is ShoutVisibility.AUTHORS:
                     shout_dict = shout.dict()
-                    shout_dict['visibility'] = ShoutVisibility.COMMUNITY
-                    shout_dict['published_at'] = current_time  # Set published_at as Unix timestamp
+                    shout_dict["visibility"] = ShoutVisibility.COMMUNITY
+                    shout_dict["published_at"] = current_time  # Set published_at as Unix timestamp
                     Shout.update(shout, shout_dict)
                     session.add(shout)
                     await notify_shout(shout.dict(), "public")
@@ -175,7 +175,7 @@ async def delete_shout(_, info, shout_id):
             # Replace datetime with Unix timestamp
             current_time = int(time.time())
             shout_dict = shout.dict()
-            shout_dict['deleted_at'] = current_time  # Set deleted_at as Unix timestamp
+            shout_dict["deleted_at"] = current_time  # Set deleted_at as Unix timestamp
             Shout.update(shout, shout_dict)
             session.add(shout)
             session.commit()

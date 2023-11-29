@@ -51,9 +51,11 @@ def apply_filters(q, filters, author_id=None):
     by_visibility = filters.get("visibility")
     if by_visibility:
         visibility = {
-            'public': [ShoutVisibility.PUBLIC,],
-            'community': [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY],
-            'authors': [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY, ShoutVisibility.AUTHORS]
+            "public": [
+                ShoutVisibility.PUBLIC,
+            ],
+            "community": [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY],
+            "authors": [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY, ShoutVisibility.AUTHORS],
         }
         q = q.filter(Shout.visibility.in_(visibility.get(by_visibility) or []))
     by_layouts = filters.get("layouts")
@@ -114,7 +116,11 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                         if author.id == author_caption.author:
                             author.caption = author_caption.caption
                 return shout
-        except Exception:
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            print(e)
             return None
 
 
