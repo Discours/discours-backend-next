@@ -242,20 +242,6 @@ input AuthorsBy {
   stat: String
 }
 
-input ShoutsFilterBy {
-  slug: String
-  title: String
-  body: String
-  topic: String
-  topics: [String]
-  author: String
-  authors: [String]
-  layouts: [String]
-  published: Boolean
-  after: Int
-  stat: String
-}
-
 input LoadShoutsFilters {
   topic: String
   author: String
