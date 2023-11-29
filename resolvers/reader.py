@@ -209,7 +209,7 @@ async def load_shouts_feed(_, info, options):
                 )
                 .where(
                     and_(
-                        Shout.published_at.is_not(None),
+                        Shout.published_at != None,
                         Shout.deleted_at.is_(None),
                         Shout.id.in_(subquery),
                     )
