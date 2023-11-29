@@ -50,11 +50,11 @@ def apply_filters(q, filters, author_id=None):
     by_visibility = filters.get("visibility")
     if by_visibility:
         visibility = {
-            'public': ShoutVisibility.PUBLIC,
-            'community': ShoutVisibility.COMMUNITY,
-            'authors': ShoutVisibility.AUTHORS
+            'public': [ShoutVisibility.PUBLIC,],
+            'community': [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY],
+            'authors': [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY, ShoutVisibility.AUTHORS]
         }
-        q = q.filter(Shout.visibility == visibility.get(by_visibility))
+        q = q.filter(Shout.visibility.in_(visibility.get(by_visibility) or []))
 
     if filters.get("layouts"):
         q = q.filter(Shout.layout.in_(filters.get("layouts")))
