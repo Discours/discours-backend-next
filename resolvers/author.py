@@ -1,8 +1,9 @@
 import time
 from typing import List
-from sqlalchemy import and_, func, distinct, select, literal
+from sqlalchemy import and_, func, distinct, select, literal, case
 from sqlalchemy.orm import aliased
 
+from orm.reaction import Reaction, ReactionKind
 from services.auth import login_required
 from services.db import local_session
 from services.unread import get_total_unread_counter
@@ -20,29 +21,39 @@ def add_author_stat_columns(q):
     followers_table = aliased(AuthorFollower)
     followings_table = aliased(AuthorFollower)
     shout_author_aliased = aliased(ShoutAuthor)
-    # author_rating_aliased = aliased(AuthorRating)
+    reaction_aliased = aliased(Reaction)
 
     q = q.outerjoin(shout_author_aliased).add_columns(
-        func.count(distinct(shout_author_aliased.shout)).label("shouts_stat")
+        func.count(distinct(shout_author_aliased.shout))
+        .label("shouts_stat")
     )
     q = q.outerjoin(followers_table, followers_table.author == Author.id).add_columns(
-        func.count(distinct(followers_table.follower)).label("followers_stat")
+        func.count(distinct(followers_table.follower))
+        .label("followers_stat")
     )
 
     q = q.outerjoin(followings_table, followings_table.follower == Author.id).add_columns(
-        func.count(distinct(followings_table.author)).label("followings_stat")
+        func.count(distinct(followings_table.author))
+        .label("followings_stat")
     )
 
-    q = q.add_columns(literal(0).label("rating_stat"))
-    # FIXME
-    # q = q.outerjoin(author_rating_aliased, author_rating_aliased.user == Author.id).add_columns(
-    #     func.sum(author_rating_aliased.value).label('rating_stat')
-    # )
+    q = (
+        q.outerjoin(reaction_aliased, reaction_aliased.shout == shout_author_aliased.shout)
+        .add_columns(
+            func.coalesce(func.sum(case([
+                (reaction_aliased.kind == ReactionKind.LIKE, 1),
+                (reaction_aliased.kind == ReactionKind.DISLIKE, -1),
+            ], else_=0)), 0)
+            .label("rating_stat")
+        )
+    )
 
-    q = q.add_columns(literal(0).label("commented_stat"))
-    # q = q.outerjoin(Reaction, and_(Reaction.created_by == Author.id, Reaction.body.is_not(''))).add_columns(
-    #     func.count(distinct(Reaction.id)).label('commented_stat')
-    # )
+    q = q.add_columns(
+        func.count(case([(reaction_aliased.kind == ReactionKind.COMMENT, 1)], else_=0)).label("commented_stat")
+    )
+
+    # Filter based on shouts where the user is the author
+    q = q.filter(shout_author_aliased.author == Author.id)
 
     q = q.group_by(Author.id)
 
