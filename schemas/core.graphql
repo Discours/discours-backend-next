@@ -262,6 +262,7 @@ input LoadShoutsFilters {
   layouts: [String]
   visibility: String
   after: Int
+  reacted: Boolean
 }
 
 input LoadShoutsOptions {

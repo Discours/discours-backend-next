@@ -55,19 +55,18 @@ def apply_filters(q, filters, author_id=None):
             'authors': [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY, ShoutVisibility.AUTHORS]
         }
         q = q.filter(Shout.visibility.in_(visibility.get(by_visibility) or []))
-
-    if filters.get("layouts"):
-        q = q.filter(Shout.layout.in_(filters.get("layouts")))
-    if filters.get("author"):
-        q = q.filter(Shout.authors.any(slug=filters.get("author")))
-    if filters.get("topic"):
-        q = q.filter(Shout.topics.any(slug=filters.get("topic")))
-    if filters.get("title"):
-        q = q.filter(Shout.title.ilike(f'%{filters.get("title")}%'))
-    if filters.get("body"):
-        q = q.filter(Shout.body.ilike(f'%{filters.get("body")}%s'))
-    if filters.get("after"):
-        ts = int(filters.get("after"))
+    by_layouts = filters.get("layouts")
+    if by_layouts:
+        q = q.filter(Shout.layout.in_(by_layouts))
+    by_author = filters.get("author")
+    if by_author:
+        q = q.filter(Shout.authors.any(slug=by_author))
+    by_topic = filters.get("topic")
+    if by_topic:
+        q = q.filter(Shout.topics.any(slug=by_topic))
+    by_after = filters.get("after")
+    if by_after:
+        ts = int(by_after)
         q = q.filter(Shout.created_at > ts)
 
     return q
@@ -150,28 +149,7 @@ async def load_shouts_by(_, info, options):
     )
 
     q = add_stat_columns(q)
-
-    filters = options.get("filters")
-    if filters:
-        layouts = filters.get("layouts")
-        if layouts:
-            q = q.filter(Shout.layout.in_(layouts))
-        by_author = filters.get("author")
-        if by_author:
-            q = q.filter(Shout.authors.contains(by_author))
-        by_topic = filters.get("topic")
-        if by_topic:
-            q = q.filter(Shout.topics.contains(by_topic))
-        by_visibility = {
-            "authors": ShoutVisibility.AUTHORS,
-            "community": ShoutVisibility.COMMUNITY,
-            "public": ShoutVisibility.PUBLIC,
-        }[filters.get("visibility")]
-        if by_visibility:
-            q = q.filter(Shout.visibility > by_visibility)
-        after = filters.get("after")
-        if after:
-            q = q.filter(Shout.created_at > after)
+    q = apply_filters(q, options.get("filters", {}))
 
     order_by = options.get("order_by", Shout.published_at)
     query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
