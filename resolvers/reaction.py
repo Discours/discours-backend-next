@@ -317,6 +317,39 @@ async def delete_reaction(_, info, rid):
             return {"error": "access denied"}
 
 
+def apply_reaction_filters(by, q):
+    if by.get("shout"):
+        q = q.filter(Shout.slug == by["shout"])
+
+    elif by.get("shouts"):
+        q = q.filter(Shout.slug.in_(by["shouts"]))
+
+    if by.get("created_by"):
+        q = q.filter(Author.id == by["created_by"])
+
+    if by.get("topic"):
+        # TODO: check
+        q = q.filter(Shout.topics.contains(by["topic"]))
+
+    if by.get("comment"):
+        q = q.filter(func.length(Reaction.body) > 0)
+
+    # NOTE: not using ElasticSearch here
+    by_search = by.get("search", "")
+    if len(by_search) > 2:
+        q = q.filter(Reaction.body.ilike(f'%{by_search}%'))
+
+    if by.get("after"):
+        after = int(by["after"])
+        q = q.filter(Reaction.created_at > after)
+
+    order_way = asc if by.get("sort", "").startswith("-") else desc
+    order_field = by.get("sort", "").replace("-", "") or "created_at"
+    q = q.group_by(Reaction.id, Author.id, Shout.id).order_by(order_way(order_field))
+
+    return q
+
+
 @query.field("load_reactions_by")
 async def load_reactions_by(_, info, by, limit=50, offset=0):
     """
@@ -342,36 +375,11 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         .join(Shout, Reaction.shout == Shout.id)
     )
 
-    if by.get("shout"):
-        q = q.filter(Shout.slug == by["shout"])
-    elif by.get("shouts"):
-        q = q.filter(Shout.slug.in_(by["shouts"]))
-
-    if by.get("created_by"):
-        q = q.filter(Author.id == by.get("created_by"))
-
-    if by.get("topic"):
-        # TODO: check
-        q = q.filter(Shout.topics.contains(by["topic"]))
-
-    if by.get("comment"):
-        q = q.filter(func.length(Reaction.body) > 0)
-
-    if len(by.get("search", "")) > 2:
-        q = q.filter(Reaction.body.ilike(f'%{by["body"]}%'))
-
-    if by.get("after"):
-        after = int(time.time()) - int(by.get("after", 0))
-        q = q.filter(Reaction.created_at > after)
-
-    order_way = asc if by.get("sort", "").startswith("-") else desc
-    order_field = by.get("sort", "").replace("-", "") or "created_at"
-    q = q.group_by(Reaction.id, Author.id, Shout.id).order_by(order_way(order_field))
     q = add_reaction_stat_columns(q)
+    q = apply_reaction_filters(by, q)
     q = q.where(Reaction.deleted_at.is_(None))
     q = q.limit(limit).offset(offset)
     reactions = []
-    session = info.context["session"]
     for [
         reaction,
         author,
@@ -379,7 +387,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         reacted_stat,
         commented_stat,
         rating_stat,
-    ] in session.execute(q):
+    ] in local_session().execute(q):
         reaction.created_by = author
         reaction.shout = shout
         reaction.stat = {
