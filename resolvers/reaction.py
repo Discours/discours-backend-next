@@ -33,7 +33,7 @@ def add_reaction_stat_columns(q):
         ).label("rating_stat"),
     )
 
-    return q
+    return q, aliased_reaction
 
 
 def reactions_follow(author_id, shout_id, auto=False):
@@ -345,14 +345,6 @@ def apply_reaction_filters(by, q):
         after = int(by["after"])
         q = q.filter(Reaction.created_at > after)
 
-    # group by
-    q = q.group_by(Reaction.id, Author.id, Shout.id, Reaction.created_at)
-
-    # order by
-    order_way = asc if by.get("sort", "").startswith("-") else desc
-    order_field = by.get("sort", "").replace("-", "") or "created_at"
-    q = q.order_by(order_way(order_field))
-
     return q
 
 
@@ -381,8 +373,18 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         .join(Shout, Reaction.shout == Shout.id)
     )
 
-    q = add_reaction_stat_columns(q)
+    q, aliased_reaction = add_reaction_stat_columns(q)
+
     q = apply_reaction_filters(by, q)
+
+    # group by
+    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.created_at)
+
+    # order by
+    order_way = asc if by.get("sort", "").startswith("-") else desc
+    order_field = by.get("sort", "").replace("-", "") or "created_at"
+    q = q.order_by(order_way(order_field))
+
     q = q.where(Reaction.deleted_at.is_(None))
     q = q.limit(limit).offset(offset)
     reactions = []
