@@ -47,11 +47,14 @@ def apply_filters(q, filters, author_id=None):
     if filters.get("reacted") and author_id:
         q.join(Reaction, Reaction.created_by == author_id)
 
-    v = filters.get("visibility")
-    if v == "public":
-        q = q.filter(Shout.visibility == filters.get("visibility"))
-    if v == "community":
-        q = q.filter(Shout.visibility.in_(["public", "community"]))
+    by_visibility = filters.get("visibility")
+    if by_visibility:
+        visibility = {
+            'public': ShoutVisibility.PUBLIC,
+            'community': ShoutVisibility.COMMUNITY,
+            'authors': ShoutVisibility.AUTHORS
+        }
+        q = q.filter(Shout.visibility == visibility.get(by_visibility))
 
     if filters.get("layouts"):
         q = q.filter(Shout.layout.in_(filters.get("layouts")))
