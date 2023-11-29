@@ -3,6 +3,9 @@ from importlib import import_module
 from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
+from sentry_sdk.integrations.ariadne import AriadneIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint, Request
 from starlette.responses import JSONResponse
@@ -30,7 +33,12 @@ async def start_up():
     try:
         import sentry_sdk
 
-        sentry_sdk.init(SENTRY_DSN)
+        sentry_sdk.init(
+            SENTRY_DSN,
+            enable_tracing=True,
+            integrations=[AriadneIntegration(), SqlalchemyIntegration(), RedisIntegration()],
+        )
+
     except Exception as e:
         print("[sentry] init error")
         print(e)
