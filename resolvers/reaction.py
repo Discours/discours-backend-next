@@ -403,9 +403,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reaction.stat = {
                 "rating": rating_stat,
                 "commented": commented_stat,
-                "reacted": reacted_stat,
+                "reacted": reacted_stat
             }
-            reaction.kind = reaction.kind.name
             reactions.append(reaction)
 
         # sort if by stat is present

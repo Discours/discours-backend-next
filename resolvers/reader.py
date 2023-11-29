@@ -86,16 +86,15 @@ async def get_shout(_, _info, slug=None, shout_id=None):
         q = q.filter(Shout.deleted_at.is_(None)).group_by(Shout.id)
 
         try:
-            [
-                shout,
-                viewed_stat,
-                reacted_stat,
-                commented_stat,
-                rating_stat,
-            ] = (
-                session.execute(q).first() or []
-            )
-            if shout:
+            author_stats = session.execute(q).first()
+            if author_stats:
+                [
+                    shout,
+                    viewed_stat,
+                    reacted_stat,
+                    commented_stat,
+                    rating_stat,
+                ] = author_stats
                 shout.stat = {
                     "viewed": viewed_stat,
                     "reacted": reacted_stat,
