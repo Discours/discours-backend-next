@@ -380,27 +380,29 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.where(Reaction.deleted_at.is_(None))
     q = q.limit(limit).offset(offset)
     reactions = []
-    for [
-        reaction,
-        author,
-        shout,
-        reacted_stat,
-        commented_stat,
-        rating_stat,
-    ] in local_session().execute(q):
-        reaction.created_by = author
-        reaction.shout = shout
-        reaction.stat = {
-            "rating": rating_stat,
-            "commented": commented_stat,
-            "reacted": reacted_stat,
-        }
-        reaction.kind = reaction.kind.name
-        reactions.append(reaction)
+    with local_session() as session:
+        result_rows = session.execute(q)
+        for [
+            reaction,
+            author,
+            shout,
+            reacted_stat,
+            commented_stat,
+            rating_stat,
+        ] in result_rows:
+            reaction.created_by = author
+            reaction.shout = shout
+            reaction.stat = {
+                "rating": rating_stat,
+                "commented": commented_stat,
+                "reacted": reacted_stat,
+            }
+            reaction.kind = reaction.kind.name
+            reactions.append(reaction)
 
-    # sort if by stat is present
-    if by.get("stat"):
-        reactions = sorted(reactions, key=lambda r: r.stat.get(by["stat"]) or r.created_at)
+        # sort if by stat is present
+        if by.get("stat"):
+            reactions = sorted(reactions, key=lambda r: r.stat.get(by["stat"]) or r.created_at)
 
     return reactions
 
