@@ -251,7 +251,7 @@ input ShoutsFilterBy {
   author: String
   authors: [String]
   layouts: [String]
-  visibility: ShoutVisibility
+  published: Boolean
   after: Int
   stat: String
 }
@@ -260,7 +260,7 @@ input LoadShoutsFilters {
   topic: String
   author: String
   layouts: [String]
-  visibility: ShoutVisibility
+  published: Boolean
   after: Int
   reacted: Boolean
 }
