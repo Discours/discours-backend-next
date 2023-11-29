@@ -318,6 +318,8 @@ async def delete_reaction(_, info, rid):
 
 
 def apply_reaction_filters(by, q):
+    # filter
+    #
     if by.get("shout"):
         q = q.filter(Shout.slug == by["shout"])
 
@@ -343,9 +345,13 @@ def apply_reaction_filters(by, q):
         after = int(by["after"])
         q = q.filter(Reaction.created_at > after)
 
+    # group by
+    q = q.group_by(Reaction.id, Author.id, Shout.id, Reaction.created_at)
+
+    # order by
     order_way = asc if by.get("sort", "").startswith("-") else desc
     order_field = by.get("sort", "").replace("-", "") or "created_at"
-    q = q.group_by(Reaction.id, Author.id, Shout.id).order_by(order_way(order_field))
+    q = q.order_by(order_way(order_field))
 
     return q
 
