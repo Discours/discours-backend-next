@@ -140,6 +140,7 @@ async def get_authors_all(_, _info):
 
 @query.field("get_author")
 async def get_author(_, _info, slug="", user=None, author_id=None):
+    q = None
     if slug or user or author_id:
         if slug:
             q = select(Author).where(Author.slug == slug)

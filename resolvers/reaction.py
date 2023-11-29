@@ -36,7 +36,7 @@ def add_reaction_stat_columns(q):
     return q
 
 
-def reactions_follow(author_id, shout_id: int, auto=False):
+def reactions_follow(author_id, shout_id, auto=False):
     try:
         with local_session() as session:
             shout = session.query(Shout).where(Shout.id == shout_id).one()
@@ -202,18 +202,22 @@ async def create_reaction(_, info, reaction):
                     session.delete(opposite_reaction)
 
             r = Reaction(**reaction)
-
+            rdict = r.dict()
             # Proposal accepting logix
-            if r.reply_to is not None and r.kind == ReactionKind.ACCEPT and author.id in shout.dict()["authors"]:
-                replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
-                if replied_reaction and replied_reaction.kind == ReactionKind.PROPOSE:
-                    if replied_reaction.range:
-                        old_body = shout.body
-                        start, end = replied_reaction.range.split(":")
-                        start = int(start)
-                        end = int(end)
-                        new_body = old_body[:start] + replied_reaction.body + old_body[end:]
-                        shout.body = new_body
+            if rdict.get("reply_to"):
+                if r.kind is ReactionKind.ACCEPT and author.id in shout.authors:
+                    replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
+                    if replied_reaction:
+                        if replied_reaction.kind is ReactionKind.PROPOSE:
+                            if replied_reaction.range:
+                                old_body = shout.body
+                                start, end = replied_reaction.range.split(":")
+                                start = int(start)
+                                end = int(end)
+                                new_body = old_body[:start] + replied_reaction.body + old_body[end:]
+                                shout_dict = shout.dict()
+                                shout_dict['body'] = new_body
+                                Shout.update(shout, shout_dict)
 
             session.add(r)
             session.commit()
@@ -294,13 +298,16 @@ async def delete_reaction(_, info, rid):
             return {"error": "invalid reaction id"}
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            if r.created_by != author.id:
+            if r.created_by is author.id:
                 return {"error": "access denied"}
 
             if r.kind in [ReactionKind.LIKE, ReactionKind.DISLIKE]:
                 session.delete(r)
             else:
-                r.deleted_at = int(time.time())
+                rdict = r.dict()
+                rdict["deleted_at"] = int(time.time())
+                Reaction.update(r, rdict)
+                session.add(r)
             session.commit()
 
             await notify_reaction(r.dict(), "delete")
@@ -358,7 +365,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         q = q.filter(Reaction.created_at > after)
 
     order_way = asc if by.get("sort", "").startswith("-") else desc
-    order_field = by.get("sort", "").replace("-", "") or Reaction.created_at
+    order_field = by.get("sort", "").replace("-", "") or "created_at"
     q = q.group_by(Reaction.id, Author.id, Shout.id).order_by(order_way(order_field))
     q = add_reaction_stat_columns(q)
     q = q.where(Reaction.deleted_at.is_(None))
@@ -398,10 +405,11 @@ def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
             shouts = (
                 session.query(Shout)
                 .join(Reaction)
-                .filter(Reaction.created_by == author.id)
+                .filter(Reaction.created_by == follower_id)
                 .filter(Reaction.created_at > author.last_seen)
                 .limit(limit)
                 .offset(offset)
+                .all()
             )
     return shouts
 
@@ -414,7 +422,8 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            shouts = reacted_shouts_updates(author.id, limit, offset)
+            author_id: int = author.dict()['id']
+            shouts = reacted_shouts_updates(author_id, limit, offset)
             return shouts
         else:
             return []

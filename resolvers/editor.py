@@ -40,6 +40,7 @@ async def create_shout(_, info, inp):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
+        shout_dict = None
         if author:
             topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
             authors = inp.get("authors", [])
@@ -55,7 +56,7 @@ async def create_shout(_, info, inp):
                     "body": inp.get("body", ""),
                     "layout": inp.get("layout"),
                     "authors": authors,
-                    "slug": inp.get("slug"),
+                    "slug": inp.get("slug") or f"draft-{time.time()}",
                     "topics": inp.get("topics"),
                     "visibility": ShoutVisibility.AUTHORS,
                     "created_at": current_time,  # Set created_at as Unix timestamp
@@ -67,16 +68,13 @@ async def create_shout(_, info, inp):
             # NOTE: shout made by one first author
             sa = ShoutAuthor(shout=new_shout.id, author=author.id)
             session.add(sa)
+            shout_dict = new_shout.dict()
             session.add(new_shout)
             reactions_follow(author.id, new_shout.id, True)
             session.commit()
 
-            if new_shout.slug is None:
-                new_shout.slug = f"draft-{new_shout.id}"
-                session.commit()
-            else:
-                await notify_shout(new_shout.dict(), "create")
-        return {"shout": new_shout}
+            await notify_shout(shout_dict, "create")
+        return {"shout": shout_dict}
 
 
 @mutation.field("update_shout")
@@ -85,6 +83,8 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
+        shout_dict = None
+        current_time = int(time.time())
         if author:
             shout = (
                 session.query(Shout)
@@ -99,7 +99,6 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 return {"error": "shout not found"}
             if shout.created_by != author.id:
                 return {"error": "access denied"}
-            updated = False
             if shout_input is not None:
                 topics_input = shout_input["topics"]
                 del shout_input["topics"]
@@ -141,24 +140,22 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 if shout_input["mainTopic"] == "":
                     del shout_input["mainTopic"]
                 # Replace datetime with Unix timestamp
-                current_time = int(time.time())
                 shout_input["updated_at"] = current_time  # Set updated_at as Unix timestamp
                 Shout.update(shout, shout_input)
                 session.add(shout)
-                updated = True
-            # TODO: use visibility setting
-            if publish and shout.visibility == ShoutVisibility.AUTHORS:
-                shout.visibility = ShoutVisibility.COMMUNITY
-                shout.published_at = current_time  # Set published_at as Unix timestamp
-                session.add(shout)
-                updated = True
-                # notify on publish
-                await notify_shout(shout.dict(), "public")
-            if updated:
-                session.commit()
-                if not publish:
-                    await notify_shout(shout.dict(), "update")
-        return {"shout": shout}
+            if publish:
+                if shout.visibility is ShoutVisibility.AUTHORS:
+                    shout_dict = shout.dict()
+                    shout_dict['visibility'] = ShoutVisibility.COMMUNITY
+                    shout_dict['published_at'] = current_time  # Set published_at as Unix timestamp
+                    Shout.update(shout, shout_dict)
+                    session.add(shout)
+                    await notify_shout(shout.dict(), "public")
+            shout_dict = shout.dict()
+            session.commit()
+            if not publish:
+                await notify_shout(shout_dict, "update")
+        return {"shout": shout_dict}
 
 
 @mutation.field("delete_shout")
@@ -170,13 +167,17 @@ async def delete_shout(_, info, shout_id):
         shout = session.query(Shout).filter(Shout.id == shout_id).first()
         if not shout:
             return {"error": "invalid shout id"}
-        if author.id not in shout.authors:
-            return {"error": "access denied"}
-        for author_id in shout.authors:
-            reactions_unfollow(author_id, shout_id)
-        # Replace datetime with Unix timestamp
-        current_time = int(time.time())
-        shout.deleted_at = current_time  # Set deleted_at as Unix timestamp
-        session.commit()
-        await notify_shout(shout.dict(), "delete")
+        if author:
+            if author.id not in shout.authors:
+                return {"error": "access denied"}
+            for author_id in shout.authors:
+                reactions_unfollow(author_id, shout_id)
+            # Replace datetime with Unix timestamp
+            current_time = int(time.time())
+            shout_dict = shout.dict()
+            shout_dict['deleted_at'] = current_time  # Set deleted_at as Unix timestamp
+            Shout.update(shout, shout_dict)
+            session.add(shout)
+            session.commit()
+            await notify_shout(shout_dict, "delete")
     return {}
