@@ -1,11 +1,13 @@
 [0.2.16]
 - resolvers: collab inviting logics
-- orm: invite entity
-- schema: Reaction.range -> Reaction.quote
 - resolvers: queries and mutations revision and renaming
 - resolvers: delete_topic(slug) implemented
 - resolvers: added get_shout_followers
 - resolvers: load_shouts_by filters implemented
+- orm: invite entity
+- schema: Reaction.range -> Reaction.quote
+- filters: time_ago -> after
+- httpx -> aiohttp
 
 [0.2.15]
 - schema: Shout.created_by removed

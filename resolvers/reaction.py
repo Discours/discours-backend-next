@@ -321,7 +321,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         :topic - to filter by topic
         :search - to search by reactions' body
         :comment - true if body.length > 0
-        :time_ago - amount of time ago
+        :after - amount of time ago
         :sort - a fieldname to sort desc by default
     }
     :param limit: int amount of shouts
@@ -353,8 +353,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     if len(by.get("search", "")) > 2:
         q = q.filter(Reaction.body.ilike(f'%{by["body"]}%'))
 
-    if by.get("time_ago"):
-        after = int(time.time()) - int(by.get("time_ago", 0))
+    if by.get("after"):
+        after = int(time.time()) - int(by.get("after", 0))
         q = q.filter(Reaction.created_at > after)
 
     order_way = asc if by.get("sort", "").startswith("-") else desc

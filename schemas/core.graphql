@@ -238,7 +238,7 @@ input AuthorsBy {
   name: String
   topic: String
   order: String
-  time_ago: Int
+  after: Int
   stat: String
 }
 
@@ -252,7 +252,7 @@ input ShoutsFilterBy {
   authors: [String]
   layouts: [String]
   visibility: String
-  time_ago: Int
+  after: Int
   stat: String
 }
 
@@ -261,7 +261,7 @@ input LoadShoutsFilters {
   author: String
   layouts: [String]
   visibility: String
-  time_ago: Int
+  after: Int
 }
 
 input LoadShoutsOptions {
@@ -280,7 +280,7 @@ input ReactionBy {
   comment: Boolean
   topic: String
   created_by: Int
-  time_ago: Int
+  after: Int
   sort: String
 }
 

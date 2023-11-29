@@ -1,5 +1,6 @@
 from functools import wraps
-from httpx import AsyncClient, HTTPError
+import aiohttp
+from aiohttp.web import HTTPUnauthorized
 from settings import AUTH_URL
 
 
@@ -19,19 +20,19 @@ async def check_auth(req):
         "variables": None,
     }
 
-    async with AsyncClient(timeout=30.0) as client:
-        response = await client.post(AUTH_URL, headers=headers, json=gql)
-        print(f"[services.auth] response: {response.status_code} {response.text}")
-        if response.status_code != 200:
-            return False, None
-        r = response.json()
-        try:
-            user_id = r.get("data", {}).get(query_name, {}).get("user", {}).get("id", None)
-            is_authenticated = user_id is not None
-            return is_authenticated, user_id
-        except Exception as e:
-            print(f"{e}: {r}")
-            return False, None
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30.0)) as session:
+        async with session.post(AUTH_URL, headers=headers, json=gql) as response:
+            print(f"[services.auth] response: {response.status} {await response.text()}")
+            if response.status != 200:
+                return False, None
+            r = await response.json()
+            try:
+                user_id = r.get("data", {}).get(query_name, {}).get("user", {}).get("id", None)
+                is_authenticated = user_id is not None
+                return is_authenticated, user_id
+            except Exception as e:
+                print(f"{e}: {r}")
+                return False, None
 
 
 def login_required(f):
@@ -44,10 +45,10 @@ def login_required(f):
         if not is_authenticated:
             raise Exception("You are not logged in")
         else:
-            # Добавляем author_id в контекст
+            # Add user_id to the context
             context["user_id"] = user_id
 
-        # Если пользователь аутентифицирован, выполняем резолвер
+        # If the user is authenticated, execute the resolver
         return await f(*args, **kwargs)
 
     return decorated_function
@@ -59,7 +60,7 @@ def auth_request(f):
         req = args[0]
         is_authenticated, user_id = await check_auth(req)
         if not is_authenticated:
-            raise HTTPError("please, login first")
+            raise HTTPUnauthorized(text="Please, login first")
         else:
             req["user_id"] = user_id
         return await f(*args, **kwargs)

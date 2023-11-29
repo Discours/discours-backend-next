@@ -63,9 +63,9 @@ def apply_filters(q, filters, author_id=None):
         q = q.filter(Shout.title.ilike(f'%{filters.get("title")}%'))
     if filters.get("body"):
         q = q.filter(Shout.body.ilike(f'%{filters.get("body")}%s'))
-    if filters.get("time_ago"):
-        before = int(time.time()) - int(filters.get("time_ago"))
-        q = q.filter(Shout.created_at > before)
+    if filters.get("after"):
+        ts = int(filters.get("after"))
+        q = q.filter(Shout.created_at > ts)
 
     return q
 
@@ -126,7 +126,7 @@ async def load_shouts_by(_, info, options):
             visibility: "public",
             author: 'discours',
             topic: 'culture',
-            time_ago: 1234567 // unixtime
+            after: 1234567 // unixtime
         }
         offset: 0
         limit: 50
@@ -166,9 +166,9 @@ async def load_shouts_by(_, info, options):
         }[filters.get("visibility")]
         if by_visibility:
             q = q.filter(Shout.visibility > by_visibility)
-        by_time_ago = filters.get("time_ago")
-        if by_time_ago:
-            q = q.filter(Shout.created_at < by_time_ago)
+        after = filters.get("after")
+        if after:
+            q = q.filter(Shout.created_at > after)
 
     order_by = options.get("order_by", Shout.published_at)
     query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
