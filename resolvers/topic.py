@@ -35,22 +35,15 @@ def add_topic_stat_columns(q):
     return q
 
 
-def add_stat(topic, stat_columns):
-    [shouts_stat, authors_stat, followers_stat] = stat_columns
-    topic.stat = {
-        "shouts": shouts_stat,
-        "authors": authors_stat,
-        "followers": followers_stat,
-    }
-
-    return topic
-
-
 def get_topics_from_query(q):
     topics = []
     with local_session() as session:
-        for [topic, *stat_columns] in session.execute(q):
-            topic = add_stat(topic, stat_columns)
+        for [topic, shouts_stat, authors_stat, followers_stat] in session.execute(q):
+            topic.stat = {
+                "shouts": shouts_stat,
+                "authors": authors_stat,
+                "followers": followers_stat,
+            }
             topics.append(topic)
 
     return topics
