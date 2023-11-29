@@ -12,7 +12,7 @@ SQLAlchemy = "^2.0.22"
 psycopg2-binary = "^2.9.9"
 redis = {extras = ["hiredis"], version = "^5.0.1"}
 uvicorn = "^0.24"
-sentry-sdk = "^1.32.0"
+sentry-sdk = "^1.38.0"
 starlette = "^0.32.0.post1"
 gql = "^3.4.1"
 ariadne = "^0.21"
@@ -29,6 +29,7 @@ build-backend = "poetry.core.masonry.api"
 pytest = "^7.4.2"
 black = { version = "^23.9.1", python = ">=3.12" }
 ruff = { version = "^0.1.0", python = ">=3.12" }
+setuptools = "^69.0.2"
 
 [tool.black]
 line-length = 120

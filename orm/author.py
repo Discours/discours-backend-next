@@ -13,7 +13,7 @@ class AuthorRating(Base):
     id = None  # type: ignore
     rater = Column(ForeignKey("author.id"), primary_key=True, index=True)
     author = Column(ForeignKey("author.id"), primary_key=True, index=True)
-    value = Column(Integer)
+    plus = Column(Boolean)
 
 
 class AuthorFollower(Base):

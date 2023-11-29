@@ -227,14 +227,14 @@ async def rate_author(_, info, rated_slug, value):
                 .filter(and_(AuthorRating.rater == rater.id, AuthorRating.author == rated_author.id))
                 .first()
             )
-            if rating:
-                rating.value = value
+            if value > 0:
+                rating.plus = True
                 session.add(rating)
                 session.commit()
                 return {}
             else:
                 try:
-                    rating = AuthorRating(rater=rater.id, author=rated_author.id, value=value)
+                    rating = AuthorRating(rater=rater.id, author=rated_author.id, plus=value > 0)
                     session.add(rating)
                     session.commit()
                 except Exception as err:
