@@ -44,6 +44,7 @@ def add_stat_columns(q):
 
 
 def apply_filters(q, filters, author_id=None):
+    # LoadShoutsFilters handling
     if filters.get("reacted") and author_id:
         q.join(Reaction, Reaction.created_by == author_id)
 
@@ -125,6 +126,7 @@ async def load_shouts_by(_, info, options):
     :param options: {
         filters: {
             layouts: ['audio', 'video', ..],
+            reacted: True,
             visibility: "public",
             author: 'discours',
             topic: 'culture',
@@ -167,7 +169,6 @@ async def load_shouts_by(_, info, options):
             reacted_stat,
             commented_stat,
             rating_stat,
-            _last_comment,
         ] in session.execute(q).unique():
             shouts.append(shout)
             shout.stat = {
