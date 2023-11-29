@@ -99,7 +99,6 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                 reacted_stat,
                 commented_stat,
                 rating_stat,
-                _last_comment,
             ] = (
                 session.execute(q).first() or []
             )
