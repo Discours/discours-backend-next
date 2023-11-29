@@ -6,6 +6,7 @@ from ariadne.asgi import GraphQL
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint, Request
 from starlette.responses import JSONResponse
@@ -36,7 +37,7 @@ async def start_up():
         sentry_sdk.init(
             SENTRY_DSN,
             enable_tracing=True,
-            integrations=[AriadneIntegration(), SqlalchemyIntegration(), RedisIntegration()],
+            integrations=[StarletteIntegration(), AriadneIntegration(), SqlalchemyIntegration(), RedisIntegration()],
         )
 
     except Exception as e:

@@ -265,7 +265,7 @@ async def load_shouts_feed(_, info, options):
 
 
 @query.field("load_shouts_search")
-async def load_shouts_search(_, info, text, limit=50, offset=0):
+async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
         return SearchService.search(text, limit, offset)
     else:
