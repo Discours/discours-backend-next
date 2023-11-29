@@ -54,8 +54,13 @@ def apply_filters(q, filters, author_id=None):
             "public": [
                 ShoutVisibility.PUBLIC,
             ],
+            ShoutVisibility.PUBLIC: [
+                ShoutVisibility.PUBLIC,
+            ],
             "community": [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY],
+            ShoutVisibility.COMMUNITY: [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY],
             "authors": [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY, ShoutVisibility.AUTHORS],
+            ShoutVisibility.AUTHORS: [ShoutVisibility.PUBLIC, ShoutVisibility.COMMUNITY, ShoutVisibility.AUTHORS],
         }
         q = q.filter(Shout.visibility.in_(visibility.get(by_visibility) or []))
     by_layouts = filters.get("layouts")
@@ -132,7 +137,7 @@ async def load_shouts_by(_, info, options):
         filters: {
             layouts: ['audio', 'video', ..],
             reacted: True,
-            visibility: "public",
+            visibility: ShoutVisibility.Public,
             author: 'discours',
             topic: 'culture',
             after: 1234567 // unixtime
