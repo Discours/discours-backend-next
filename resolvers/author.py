@@ -43,11 +43,11 @@ def add_author_stat_columns(q):
             func.coalesce(func.sum(case(
                 (and_(
                     reaction_aliased.kind == ReactionKind.LIKE.value,
-                    shout_author_aliased.reply_to.is_(None)
+                    reaction_aliased.reply_to.is_(None)
                 ), 1),
                 (and_(
                     reaction_aliased.kind == ReactionKind.DISLIKE.value,
-                    shout_author_aliased.reply_to.is_(None)
+                    reaction_aliased.reply_to.is_(None)
                 ), -1),
                 else_=0
             )), 0)
