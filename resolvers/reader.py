@@ -142,7 +142,7 @@ async def load_shouts_by(_, info, options):
     q = (
         select(Shout, Author)
         .options(
-            joinedload(Shout.authors).joinedload(Author.id),
+            joinedload(Shout.authors),
             joinedload(Shout.topics),
         )
         .select_from(Shout)
