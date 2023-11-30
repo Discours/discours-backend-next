@@ -23,14 +23,19 @@ def add_topic_stat_columns(q):
 
     q = (
         q.outerjoin(ShoutTopic, Topic.id == ShoutTopic.topic)
-        .add_columns(func.count(distinct(ShoutTopic.shout)).label("shouts_stat"))
+            .add_columns(func.count(distinct(ShoutTopic.shout))
+                         .label("shouts_stat"))
         .outerjoin(aliased_shout_author, ShoutTopic.shout == aliased_shout_author.shout)
-        .add_columns(func.count(distinct(aliased_shout_author.author)).label("authors_stat"))
+            .add_columns(func.count(distinct(aliased_shout_author.author))
+                         .label("authors_stat"))
         .outerjoin(aliased_topic_follower)
-        .add_columns(func.count(distinct(aliased_topic_follower.follower)).label("followers_stat"))
+            .add_columns(func.count(distinct(aliased_topic_follower.follower))
+                         .label("followers_stat"))
     )
 
     q = q.group_by(Topic.id)
+
+    print(f"[resolvers.topics] Generated SQL: {str(q)}")  # Add this line for debugging
 
     return q
 
@@ -49,18 +54,18 @@ def get_topics_from_query(q):
     return topics
 
 
-def topics_followed_by(author_id):
-    q = select(Topic)
-    q = add_topic_stat_columns(q)
-    q = q.join(TopicFollower).where(TopicFollower.follower == author_id)
-
-    return get_topics_from_query(q)
-
-
 @query.field("get_topics_all")
 async def get_topics_all(_, _info):
     q = select(Topic)
     q = add_topic_stat_columns(q)
+
+    return get_topics_from_query(q)
+
+
+def topics_followed_by(author_id):
+    q = select(Topic)
+    q = add_topic_stat_columns(q)
+    q = q.join(TopicFollower).where(TopicFollower.follower == author_id)
 
     return get_topics_from_query(q)
 

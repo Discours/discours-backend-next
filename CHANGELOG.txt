@@ -1,6 +1,7 @@
 [0.2.17]
 - schema: enum types workaround, ReactionKind, InviteStatus, ShoutVisibility
-- schema: Shout.created_by, Shout.updated_by fixes
+- schema: Shout.created_by, Shout.updated_by
+- schema: Shout.authors can be empty
 - resovlers: optimized reacted shouts updates query
 
 
