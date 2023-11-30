@@ -140,10 +140,9 @@ async def load_shouts_by(_, info, options):
     """
 
     q = (
-        select(Shout)
+        select(Shout, Author)
         .options(
-            # joinedload(Shout.created_by, Author.id == Shout.created_by),
-            joinedload(Shout.authors),
+            joinedload(Shout.authors, Shout.authors.contains(Author.id)),
             joinedload(Shout.topics),
         )
         .where(Shout.deleted_at.is_(None))
