@@ -48,9 +48,9 @@ class ShoutCommunity(Base):
 
 
 class ShoutVisibility(Enumeration):
-    AUTHORS = 0
-    COMMUNITY = 1
-    PUBLIC = 2
+    AUTHORS = "AUTHORS"
+    COMMUNITY = "COMMUNITY"
+    PUBLIC = "PUBLIC"
 
 
 class Shout(Base):
@@ -78,7 +78,7 @@ class Shout(Base):
     communities = relationship(lambda: Community, secondary="shout_community")
     reactions = relationship(lambda: Reaction)
 
-    visibility = Column(Enum(ShoutVisibility), default=ShoutVisibility.AUTHORS)
+    visibility = Column(Enum(ShoutVisibility), default=ShoutVisibility.AUTHORS.value)
 
     lang = Column(String, nullable=False, default="ru", comment="Language")
     version_of = Column(ForeignKey("shout.id"), nullable=True)

@@ -18,23 +18,23 @@ def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT, 1), else_=0)).label("commented_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
-                (aliased_reaction.kind == ReactionKind.AGREE, 1),
-                (aliased_reaction.kind == ReactionKind.DISAGREE, -1),
-                (aliased_reaction.kind == ReactionKind.PROOF, 1),
-                (aliased_reaction.kind == ReactionKind.DISPROOF, -1),
-                (aliased_reaction.kind == ReactionKind.ACCEPT, 1),
-                (aliased_reaction.kind == ReactionKind.REJECT, -1),
-                (aliased_reaction.kind == ReactionKind.LIKE, 1),
-                (aliased_reaction.kind == ReactionKind.DISLIKE, -1),
+                (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISAGREE.value, -1),
+                (aliased_reaction.kind == ReactionKind.PROOF.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISPROOF.value, -1),
+                (aliased_reaction.kind == ReactionKind.ACCEPT.value, 1),
+                (aliased_reaction.kind == ReactionKind.REJECT.value, -1),
+                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
                 else_=0,
             )
         ).label("rating_stat"),
         func.max(
             case(
-                (aliased_reaction.kind != ReactionKind.COMMENT, None),
+                (aliased_reaction.kind != ReactionKind.COMMENT.value, 0),
                 else_=aliased_reaction.created_at,
             )
         ).label("last_comment"),
@@ -50,7 +50,7 @@ def apply_filters(q, filters, author_id=None):
 
     by_published = filters.get("published")
     if by_published:
-        q = q.filter(Shout.visibility == ShoutVisibility.PUBLIC)
+        q = q.filter(Shout.visibility == ShoutVisibility.PUBLIC.value)
     by_layouts = filters.get("layouts")
     if by_layouts:
         q = q.filter(Shout.layout.in_(by_layouts))

@@ -58,7 +58,7 @@ async def create_shout(_, info, inp):
                     "authors": authors,
                     "slug": inp.get("slug") or f"draft-{time.time()}",
                     "topics": inp.get("topics"),
-                    "visibility": ShoutVisibility.AUTHORS,
+                    "visibility": ShoutVisibility.AUTHORS.value,
                     "created_at": current_time,  # Set created_at as Unix timestamp
                 }
             )
@@ -144,9 +144,9 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 Shout.update(shout, shout_input)
                 session.add(shout)
             if publish:
-                if shout.visibility is ShoutVisibility.AUTHORS:
+                if shout.visibility is ShoutVisibility.AUTHORS.value:
                     shout_dict = shout.dict()
-                    shout_dict["visibility"] = ShoutVisibility.COMMUNITY
+                    shout_dict["visibility"] = ShoutVisibility.COMMUNITY.value
                     shout_dict["published_at"] = current_time  # Set published_at as Unix timestamp
                     Shout.update(shout, shout_dict)
                     session.add(shout)

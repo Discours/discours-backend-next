@@ -17,7 +17,7 @@ async def accept_invite(_, info, invite_id: int):
         if author:
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
-            if invite and invite.author_id == author.id and invite.status == InviteStatus.PENDING:
+            if invite and invite.author_id == author.id and invite.status == InviteStatus.PENDING.value:
                 # Add the user to the shout authors
                 shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
                 if shout:
@@ -44,7 +44,7 @@ async def reject_invite(_, info, invite_id: int):
         if author:
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
-            if invite and invite.author_id == author.id and invite.status == InviteStatus.PENDING:
+            if invite and invite.author_id == author.id and invite.status == InviteStatus.PENDING.value:
                 # Delete the invite
                 session.delete(invite)
                 session.commit()
@@ -75,7 +75,7 @@ async def create_invite(_, info, slug: str = "", author_id: int = None):
                         Invite.inviter_id == inviter.id,
                         Invite.author_id == author_id,
                         Invite.shout_id == shout.id,
-                        Invite.status == InviteStatus.PENDING,
+                        Invite.status == InviteStatus.PENDING.value,
                     )
                     .first()
                 )
@@ -84,7 +84,7 @@ async def create_invite(_, info, slug: str = "", author_id: int = None):
 
                 # Create a new invite
                 new_invite = Invite(
-                    inviter_id=user_id, author_id=author_id, shout_id=shout.id, status=InviteStatus.PENDING
+                    inviter_id=user_id, author_id=author_id, shout_id=shout.id, status=InviteStatus.PENDING.value
                 )
                 session.add(new_invite)
                 session.commit()
@@ -126,7 +126,7 @@ async def remove_invite(_, info, invite_id: int):
             shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
             if shout and shout.deleted_at is None and invite:
                 if invite.inviter_id == author.id or author.id == shout.authors.index(0):
-                    if invite.status == InviteStatus.PENDING:
+                    if invite.status == InviteStatus.PENDING.value:
                         # Delete the invite
                         session.delete(invite)
                         session.commit()

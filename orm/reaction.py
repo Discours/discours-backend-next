@@ -10,20 +10,20 @@ class ReactionKind(Enumeration):
     # TYPE = <reaction index> # rating diff
 
     # editor mode
-    AGREE = 1  # +1
-    DISAGREE = 2  # -1
-    ASK = 3  # +0
-    PROPOSE = 4  # +0
-    PROOF = 5  # +1
-    DISPROOF = 6  # -1
-    ACCEPT = 7  # +1
-    REJECT = 8  # -1
+    AGREE = "AGREE"  # +1
+    DISAGREE = "DISAGREE"  # -1
+    ASK = "ASK"  # +0
+    PROPOSE = "PROPOSE"  # +0
+    PROOF = "PROOF"  # +1
+    DISPROOF = "DISPROOF"  # -1
+    ACCEPT = "ACCEPT"  # +1
+    REJECT = "REJECT"  # -1
 
     # public feed
-    QUOTE = 9  # +0 TODO: use to bookmark in collection
-    COMMENT = 0  # +0
-    LIKE = 11  # +1
-    DISLIKE = 12  # -1
+    QUOTE = "QUOTE"  # +0 TODO: use to bookmark in collection
+    COMMENT = "COMMENT"  # +0
+    LIKE = "LIKE"  # +1
+    DISLIKE = "DISLIKE"  # -1
 
 
 class Reaction(Base):
@@ -31,13 +31,13 @@ class Reaction(Base):
 
     body = Column(String, default="", comment="Reaction Body")
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    created_by = Column(ForeignKey("author.id"), nullable=False, index=True)
     updated_at = Column(Integer, nullable=True, comment="Updated at")
     deleted_at = Column(Integer, nullable=True, comment="Deleted at")
     deleted_by = Column(ForeignKey("author.id"), nullable=True, index=True)
-    shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
     reply_to = Column(ForeignKey("reaction.id"), nullable=True)
     quote = Column(String, nullable=True, comment="Original quoted text")
-    kind = Column(Enum(ReactionKind), nullable=False)
+    shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
+    created_by = Column(ForeignKey("author.id"), nullable=False, index=True)
+    kind = Column(Enum(ReactionKind), nullable=False, index=True)
 
     oid = Column(String)
