@@ -61,6 +61,8 @@ class Shout(Base):
     published_at = Column(Integer, nullable=True)
     deleted_at = Column(Integer, nullable=True)
 
+    created_by = Column(ForeignKey("author.id"), nullable=False)
+    updated_by = Column(ForeignKey("author.id"), nullable=True)
     deleted_by = Column(ForeignKey("author.id"), nullable=True)
 
     body = Column(String, nullable=False, comment="Body")

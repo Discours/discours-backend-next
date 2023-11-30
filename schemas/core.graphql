@@ -116,9 +116,11 @@ type Shout {
   description: String
   created_at: Int!
   topics: [Topic]
+  created_by: Author!
+  updated_by: Author
+  deleted_by: Author
   authors: [Author]
   communities: [Community]
-  # mainTopic: String
   title: String
   subtitle: String
   lang: String
@@ -128,9 +130,7 @@ type Shout {
   version_of: String
   visibility: ShoutVisibility
   updated_at: Int
-  updated_by: Author
   deleted_at: Int
-  deleted_by: Author
   published_at: Int
   media: String
   stat: Stat
