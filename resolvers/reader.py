@@ -145,6 +145,7 @@ async def load_shouts_by(_, info, options):
             joinedload(Shout.authors).joinedload(Author.id),
             joinedload(Shout.topics),
         )
+        .select_from(Shout)
         .where(Shout.deleted_at.is_(None))
     )
 
