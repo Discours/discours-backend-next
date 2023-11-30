@@ -113,5 +113,5 @@ async def get_community(_, _info, slug):
     q = select(Community).where(Community.slug == slug)
     q = add_community_stat_columns(q)
 
-    authors = get_communities_from_query(q)
-    return authors[0]
+    communities = get_communities_from_query(q)
+    return communities[0]

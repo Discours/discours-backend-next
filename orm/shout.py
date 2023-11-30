@@ -80,7 +80,7 @@ class Shout(Base):
     communities = relationship(lambda: Community, secondary="shout_community")
     reactions = relationship(lambda: Reaction)
 
-    visibility = Column(Enum(ShoutVisibility), default=ShoutVisibility.AUTHORS.value)
+    visibility = Column(String, default=ShoutVisibility.AUTHORS.value)
 
     lang = Column(String, nullable=False, default="ru", comment="Language")
     version_of = Column(ForeignKey("shout.id"), nullable=True)

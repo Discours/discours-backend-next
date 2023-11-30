@@ -21,9 +21,11 @@ async def accept_invite(_, info, invite_id: int):
                 # Add the user to the shout authors
                 shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
                 if shout:
-                    shout.authors.append(author)
-                    session.delete(invite)
-                    session.commit()
+                    if author not in shout.authors:
+                        shout.authors.append(author)
+                        session.delete(invite)
+                        session.add(shout)
+                        session.commit()
                     return {"success": True, "message": "Invite accepted"}
                 else:
                     return {"error": "Shout not found"}

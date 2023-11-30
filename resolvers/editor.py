@@ -22,6 +22,7 @@ async def get_shouts_drafts(_, info):
             q = (
                 select(Shout)
                 .options(
+                    joinedload(Shout.created_by, Author.id == Shout.created_by),
                     joinedload(Shout.authors),
                     joinedload(Shout.topics),
                 )
@@ -43,9 +44,6 @@ async def create_shout(_, info, inp):
         shout_dict = None
         if author:
             topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
-            authors = inp.get("authors", [])
-            if author.id not in authors:
-                authors.insert(0, author.id)
             current_time = int(time.time())
             new_shout = Shout(
                 **{
@@ -55,7 +53,8 @@ async def create_shout(_, info, inp):
                     "description": inp.get("description"),
                     "body": inp.get("body", ""),
                     "layout": inp.get("layout"),
-                    "authors": authors,
+                    "created_by": author.id,
+                    "authors": [],
                     "slug": inp.get("slug") or f"draft-{time.time()}",
                     "topics": inp.get("topics"),
                     "visibility": ShoutVisibility.AUTHORS.value,
@@ -65,7 +64,7 @@ async def create_shout(_, info, inp):
             for topic in topics:
                 t = ShoutTopic(topic=topic.id, shout=new_shout.id)
                 session.add(t)
-            # NOTE: shout made by one first author
+            # NOTE: shout made by one author
             sa = ShoutAuthor(shout=new_shout.id, author=author.id)
             session.add(sa)
             shout_dict = new_shout.dict()
@@ -89,6 +88,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             shout = (
                 session.query(Shout)
                 .options(
+                    joinedload(Shout.created_by, Author.id == Shout.created_by),
                     joinedload(Shout.authors),
                     joinedload(Shout.topics),
                 )
@@ -97,7 +97,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             )
             if not shout:
                 return {"error": "shout not found"}
-            if shout.created_by != author.id:
+            if shout.created_by != author.id and author.id not in shout.authors:
                 return {"error": "access denied"}
             if shout_input is not None:
                 topics_input = shout_input["topics"]
@@ -136,9 +136,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 )
                 for shout_topic_to_remove in shout_topics_to_remove:
                     session.delete(shout_topic_to_remove)
-                shout_input["mainTopic"] = shout_input["mainTopic"]["slug"]
-                if shout_input["mainTopic"] == "":
-                    del shout_input["mainTopic"]
+
                 # Replace datetime with Unix timestamp
                 shout_input["updated_at"] = current_time  # Set updated_at as Unix timestamp
                 Shout.update(shout, shout_input)
@@ -168,7 +166,7 @@ async def delete_shout(_, info, shout_id):
         if not shout:
             return {"error": "invalid shout id"}
         if author:
-            if author.id not in shout.authors:
+            if shout.created_by != author.id and author.id not in shout.authors:
                 return {"error": "access denied"}
             for author_id in shout.authors:
                 reactions_unfollow(author_id, shout_id)

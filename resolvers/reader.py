@@ -72,6 +72,7 @@ def apply_filters(q, filters, author_id=None):
 async def get_shout(_, _info, slug=None, shout_id=None):
     with local_session() as session:
         q = select(Shout).options(
+            joinedload(Shout.created_by),
             joinedload(Shout.authors),
             joinedload(Shout.topics),
         )
@@ -141,6 +142,7 @@ async def load_shouts_by(_, info, options):
     q = (
         select(Shout)
         .options(
+            joinedload(Shout.created_by, Author.id == Shout.created_by),
             joinedload(Shout.authors),
             joinedload(Shout.topics),
         )

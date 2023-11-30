@@ -38,6 +38,6 @@ class Reaction(Base):
     quote = Column(String, nullable=True, comment="Original quoted text")
     shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
     created_by = Column(ForeignKey("author.id"), nullable=False, index=True)
-    kind = Column(Enum(ReactionKind), nullable=False, index=True)
+    kind = Column(String, nullable=False, index=True)
 
     oid = Column(String)
