@@ -22,11 +22,11 @@ async def get_shouts_drafts(_, info):
             q = (
                 select(Shout)
                 .options(
-                    joinedload(Shout.created_by, Author.id == Shout.created_by),
+                    # joinedload(Shout.created_by, Author.id == Shout.created_by),
                     joinedload(Shout.authors),
                     joinedload(Shout.topics),
                 )
-                .where(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
+                .filter(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
             )
             q = q.group_by(Shout.id)
             shouts = []
@@ -88,7 +88,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             shout = (
                 session.query(Shout)
                 .options(
-                    joinedload(Shout.created_by, Author.id == Shout.created_by),
+                    # joinedload(Shout.created_by, Author.id == Shout.created_by),
                     joinedload(Shout.authors),
                     joinedload(Shout.topics),
                 )
