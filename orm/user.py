@@ -24,7 +24,7 @@ class User(Base):
     # preferred_username = Column(String, nullable=False)
     picture = Column(String)
     revoked_timestamp = Column(Integer)
-    roles = Column(JSON)
+    roles = Column(String, default="author, reader")
     signup_methods = Column(String, default="magic_link_login")
     created_at = Column(Integer, default=lambda: int(time.time()))
     updated_at = Column(Integer, default=lambda: int(time.time()))

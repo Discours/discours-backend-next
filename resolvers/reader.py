@@ -201,6 +201,7 @@ async def load_shouts_feed(_, info, options):
             q = (
                 select(Shout)
                 .options(
+                    joinedload(Shout.created_by, Author.id == Shout.created_by),
                     joinedload(Shout.authors),
                     joinedload(Shout.topics),
                 )

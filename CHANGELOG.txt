@@ -1,6 +1,8 @@
 [0.2.17]
 - schema: enum types workaround, ReactionKind, InviteStatus, ShoutVisibility
+- schema: Shout.created_by, Shout.updated_by fixes
 - resovlers: optimized reacted shouts updates query
+
 
 [0.2.16]
 - resolvers: collab inviting logics

@@ -64,7 +64,7 @@ async def create_invite(_, info, slug: str = "", author_id: int = None):
     with local_session() as session:
         shout = session.query(Shout).filter(Shout.slug == slug).first()
         inviter = session.query(Author).filter(Author.user == user_id).first()
-        if inviter and shout and shout.authors and inviter.id == shout.authors[0]:
+        if inviter and shout and shout.authors and inviter.id == shout.created_by:
             # Check if the author is a valid author
             author = session.query(Author).filter(Author.id == author_id).first()
             if author:
@@ -105,7 +105,7 @@ async def remove_author(_, info, slug: str = "", author_id: int = None):
         if author:
             shout = session.query(Shout).filter(Shout.slug == slug).first()
             # NOTE: owner should be first in a list
-            if shout and author.id == shout.authors[0]:
+            if shout and author.id == shout.created_by:
                 shout.authors = [author for author in shout.authors if author.id != author_id]
                 session.commit()
                 return {}
@@ -125,7 +125,7 @@ async def remove_invite(_, info, invite_id: int):
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
             shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
             if shout and shout.deleted_at is None and invite:
-                if invite.inviter_id == author.id or author.id == shout.authors.index(0):
+                if invite.inviter_id == author.id or author.id == shout.created_by:
                     if invite.status == InviteStatus.PENDING.value:
                         # Delete the invite
                         session.delete(invite)
