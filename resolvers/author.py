@@ -40,16 +40,23 @@ def add_author_stat_columns(q):
     q = (
         q.outerjoin(reaction_aliased, reaction_aliased.shout == shout_author_aliased.shout)
         .add_columns(
-            func.coalesce(func.sum(case([
-                (reaction_aliased.kind == ReactionKind.LIKE.value, 1),
-                (reaction_aliased.kind == ReactionKind.DISLIKE.value, -1),
-            ], else_=0)), 0)
+            func.coalesce(func.sum(case(
+                (and_(
+                    reaction_aliased.kind == ReactionKind.LIKE.value,
+                    shout_author_aliased.reply_to.is_(None)
+                ), 1),
+                (and_(
+                    reaction_aliased.kind == ReactionKind.DISLIKE.value,
+                    shout_author_aliased.reply_to.is_(None)
+                ), -1),
+                else_=0
+            )), 0)
             .label("rating_stat")
         )
     )
 
     q = q.add_columns(
-        func.count(case([(reaction_aliased.kind == ReactionKind.COMMENT.value, 1)], else_=0)).label("commented_stat")
+        func.count(case((reaction_aliased.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat")
     )
 
     # Filter based on shouts where the user is the author
