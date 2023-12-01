@@ -29,7 +29,6 @@ build-backend = "poetry.core.masonry.api"
 pytest = "^7.4.2"
 black = { version = "^23.9.1", python = ">=3.12" }
 ruff = { version = "^0.1.0", python = ">=3.12" }
-setuptools = "^69.0.2"
 
 [tool.black]
 line-length = 120
