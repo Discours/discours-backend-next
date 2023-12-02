@@ -100,6 +100,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                     reacted_stat,
                     commented_stat,
                     rating_stat,
+                    _last_comment,
                 ] = author_stats
                 shout.stat = {
                     "viewed": viewed_stat,
@@ -174,7 +175,6 @@ async def load_shouts_by(_, info, options):
     q = q.limit(limit).offset(offset)
 
     shouts = []
-    shouts_map = {}
     with local_session() as session:
         for [
             shout,
@@ -190,7 +190,6 @@ async def load_shouts_by(_, info, options):
                 "rating": rating_stat,
             }
             shouts.append(shout)
-            shouts_map[shout.id] = shout
 
     return shouts
 
