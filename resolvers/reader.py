@@ -149,15 +149,24 @@ async def load_shouts_by(_, info, options):
         .where(Shout.deleted_at.is_(None))
     )
 
+    # counters
     q = add_stat_columns(q)
+
+    # filters
     q = apply_filters(q, options.get("filters", {}))
 
+    # group
+    q = q.group_by(Shout.id, Author.user)
+
+    # order
     order_by = options.get("order_by", Shout.published_at)
     query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
+    q = q.order_by(nulls_last(query_order_by))
+
+    # limit offset
     offset = options.get("offset", 0)
     limit = options.get("limit", 10)
-
-    q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
+    q = q.limit(limit).offset(offset)
 
     shouts = []
     shouts_map = {}
