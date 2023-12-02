@@ -6,8 +6,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.schema import query
 from orm.author import AuthorFollower, Author
-from orm.topic import TopicFollower, Topic
-from orm.community import CommunityAuthor as CommunityFollower, Community
+from orm.topic import TopicFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from services.search import SearchService
@@ -18,7 +17,12 @@ def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
+        func.sum(
+            case(
+                (aliased_reaction.kind == ReactionKind.COMMENT.value, 1),
+                else_=0
+            )
+        ).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
@@ -41,6 +45,7 @@ def add_stat_columns(q):
     )
 
     return q
+
 
 
 def apply_filters(q, filters, author_id=None):
@@ -156,7 +161,7 @@ async def load_shouts_by(_, info, options):
     q = apply_filters(q, options.get("filters", {}))
 
     # group
-    q = q.group_by(Shout.id, Author.user)
+    q = q.group_by(Shout.id, Author.user, Author.name)
 
     # order
     order_by = options.get("order_by", Shout.published_at)
@@ -177,6 +182,7 @@ async def load_shouts_by(_, info, options):
             reacted_stat,
             commented_stat,
             rating_stat,
+            _last_comment
         ] in session.execute(q).unique():
             shouts.append(shout)
             shout.stat = {
@@ -184,6 +190,7 @@ async def load_shouts_by(_, info, options):
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": rating_stat,
+                # "last_comment": last_comment
             }
             shouts_map[shout.id] = shout
 
