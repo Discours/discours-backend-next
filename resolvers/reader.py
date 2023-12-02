@@ -88,15 +88,9 @@ async def get_shout(_, _info, slug=None, shout_id=None):
         try:
             author_stats = session.execute(q).first()
             if author_stats:
-                [
-                    shout,
-                    reacted_stat,
-                    commented_stat,
-                    rating_stat,
-                    _last_comment,
-                ] = author_stats
+                [shout, reacted_stat, commented_stat, rating_stat, _last_comment] = author_stats
                 shout.stat = {
-                    "viewed": ViewedStorage.get_shout(shout.slug),
+                    "viewed": shout.views,
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": rating_stat,
@@ -228,20 +222,15 @@ async def load_shouts_feed(_, info, options):
             q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
 
             shouts = []
-            for [
-                shout,
-                reacted_stat,
-                commented_stat,
-                rating_stat,
-                _last_comment,
-            ] in session.execute(q).unique():
+            for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
                 shout.stat = {
-                    "viewed": ViewedStorage.get_shout(shout.slug),
+                    "viewed": shout.views,
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": rating_stat,
                 }
                 shouts.append(shout)
+
             return shouts
     return []
 
