@@ -19,45 +19,56 @@ from resolvers.reaction import reacted_shouts_updates as followed_reactions
 
 def add_author_stat_columns(q):
     followers_table = aliased(AuthorFollower)
-    followings_table = aliased(AuthorFollower)
+    # followings_table = aliased(AuthorFollower)
     shout_author_aliased = aliased(ShoutAuthor)
-    reaction_aliased = aliased(Reaction)
+    # reaction_aliased = aliased(Reaction)
 
     q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout))
         .label("shouts_stat")
     )
+
     q = q.outerjoin(followers_table, followers_table.author == Author.id).add_columns(
         func.count(distinct(followers_table.follower))
         .label("followers_stat")
     )
 
-    q = q.outerjoin(followings_table, followings_table.follower == Author.id).add_columns(
-        func.count(distinct(followings_table.author))
-        .label("followings_stat")
-    )
+    q = q.add_columns(literal(0).label("rating_stat"))
+    # TODO: check version 1
+    # q = q.outerjoin(user_rating_aliased, user_rating_aliased.user == User.id).add_columns(
+    #     func.sum(user_rating_aliased.value).label('rating_stat')
+    # )
+    # TODO: check version 2
+    # q = (
+    #         q.outerjoin(reaction_aliased, reaction_aliased.shout == shout_author_aliased.shout)
+    #         .add_columns(
+    #             func.coalesce(func.sum(case(
+    #                 (and_(
+    #                     reaction_aliased.kind == ReactionKind.LIKE.value,
+    #                     reaction_aliased.reply_to.is_(None)
+    #                 ), 1),
+    #                 (and_(
+    #                     reaction_aliased.kind == ReactionKind.DISLIKE.value,
+    #                     reaction_aliased.reply_to.is_(None)
+    #                 ), -1),
+    #                 else_=0
+    #             )), 0)
+    #             .label("rating_stat")
+    #         )
+    #     )
 
-    q = (
-        q.outerjoin(reaction_aliased, reaction_aliased.shout == shout_author_aliased.shout)
-        .add_columns(
-            func.coalesce(func.sum(case(
-                (and_(
-                    reaction_aliased.kind == ReactionKind.LIKE.value,
-                    reaction_aliased.reply_to.is_(None)
-                ), 1),
-                (and_(
-                    reaction_aliased.kind == ReactionKind.DISLIKE.value,
-                    reaction_aliased.reply_to.is_(None)
-                ), -1),
-                else_=0
-            )), 0)
-            .label("rating_stat")
-        )
-    )
+    q = q.add_columns(literal(0).label("commented_stat"))
 
-    q = q.add_columns(
-        func.count(case((reaction_aliased.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat")
-    )
+    # TODO: check version 1
+    # q = q.outerjoin(
+    #     Reaction, and_(Reaction.createdBy == User.id, Reaction.body.is_not(None))
+    # ).add_columns(func.count(distinct(Reaction.id))
+    # .label("commented_stat"))
+
+    # TODO: check version 2
+    # q = q.add_columns(
+    #   func.count(case((reaction_aliased.kind == ReactionKind.COMMENT.value, 1), else_=0))
+    #   .label("commented_stat"))
 
     # Filter based on shouts where the user is the author
     q = q.filter(shout_author_aliased.author == Author.id)

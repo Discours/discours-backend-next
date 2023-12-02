@@ -161,7 +161,7 @@ async def load_shouts_by(_, info, options):
     q = apply_filters(q, options.get("filters", {}))
 
     # group
-    q = q.group_by(Shout.id, Author.user, Author.name, Author.slug)
+    q = q.group_by(Shout.id, Author.user, Author.name, Author.slug, Author.bio, Author.id)
 
     # order
     order_by = options.get("order_by", Shout.published_at)
