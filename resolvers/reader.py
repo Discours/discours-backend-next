@@ -90,7 +90,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
             if author_stats:
                 [shout, reacted_stat, commented_stat, rating_stat, _last_comment] = author_stats
                 shout.stat = {
-                    "viewed": shout.views,
+                    "viewed": ViewedStorage.get_shout(shout.slug),
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": rating_stat,
@@ -224,7 +224,7 @@ async def load_shouts_feed(_, info, options):
             shouts = []
             for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
                 shout.stat = {
-                    "viewed": shout.views,
+                    "viewed": ViewedStorage.get_shout(shout.slug),
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": rating_stat,
