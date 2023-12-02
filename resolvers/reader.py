@@ -178,20 +178,18 @@ async def load_shouts_by(_, info, options):
     with local_session() as session:
         for [
             shout,
-            viewed_stat,
             reacted_stat,
             commented_stat,
             rating_stat,
-            _last_comment
+            _last_comment,
         ] in session.execute(q).unique():
-            shouts.append(shout)
             shout.stat = {
-                "viewed": viewed_stat,
+                "viewed": ViewedStorage.get_shout(shout.slug),
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": rating_stat,
-                # "last_comment": last_comment
             }
+            shouts.append(shout)
             shouts_map[shout.id] = shout
 
     return shouts
