@@ -18,46 +18,45 @@ from resolvers.reaction import reacted_shouts_updates as followed_reactions
 
 
 def add_author_stat_columns(q):
-    followers_table = aliased(AuthorFollower)
-    # followings_table = aliased(AuthorFollower)
+
     shout_author_aliased = aliased(ShoutAuthor)
-    # reaction_aliased = aliased(Reaction)
-
     q = q.outerjoin(shout_author_aliased).add_columns(
-        func.count(distinct(shout_author_aliased.shout))
-        .label("shouts_stat")
+        func.count(distinct(shout_author_aliased.shout)).label("shouts_stat")
     )
 
+    followers_table = aliased(AuthorFollower)
     q = q.outerjoin(followers_table, followers_table.author == Author.id).add_columns(
-        func.count(distinct(followers_table.follower))
-        .label("followers_stat")
+        func.count(distinct(followers_table.follower)).label("followers_stat")
     )
 
-    q = q.add_columns(literal(0).label("rating_stat"))
-    # TODO: check version 1
-    # q = q.outerjoin(user_rating_aliased, user_rating_aliased.user == User.id).add_columns(
-    #     func.sum(user_rating_aliased.value).label('rating_stat')
-    # )
-    # TODO: check version 2
-    # q = (
-    #         q.outerjoin(reaction_aliased, reaction_aliased.shout == shout_author_aliased.shout)
-    #         .add_columns(
-    #             func.coalesce(func.sum(case(
-    #                 (and_(
-    #                     reaction_aliased.kind == ReactionKind.LIKE.value,
-    #                     reaction_aliased.reply_to.is_(None)
-    #                 ), 1),
-    #                 (and_(
-    #                     reaction_aliased.kind == ReactionKind.DISLIKE.value,
-    #                     reaction_aliased.reply_to.is_(None)
-    #                 ), -1),
-    #                 else_=0
-    #             )), 0)
-    #             .label("rating_stat")
-    #         )
-    #     )
+    followings_table = aliased(AuthorFollower)
+    q = q.outerjoin(followings_table, followings_table.follower == Author.id).add_columns(
+        func.count(distinct(followers_table.author)).label("followings_stat")
+    )
+
+    rating_aliased = aliased(Reaction)
+    # q = q.add_columns(literal(0).label("rating_stat"))
+    q = (
+        q.outerjoin(rating_aliased, rating_aliased.shout == shout_author_aliased.shout)
+        .add_columns(
+            func.coalesce(func.sum(case(
+                (and_(
+                    rating_aliased.kind == ReactionKind.LIKE.value,
+                    rating_aliased.reply_to.is_(None)
+                ), 1),
+                (and_(
+                    rating_aliased.kind == ReactionKind.DISLIKE.value,
+                    rating_aliased.reply_to.is_(None)
+                ), -1),
+                else_=0
+            )), 0)
+            .label("rating_stat")
+        )
+    )
 
     q = q.add_columns(literal(0).label("commented_stat"))
+
+    # WARNING: too high cpu cost
 
     # TODO: check version 1
     # q = q.outerjoin(
