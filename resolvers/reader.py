@@ -90,7 +90,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
             [shout, reacted_stat, commented_stat, rating_stat, _last_comment] = session.execute(q).first()
 
             shout.stat = {
-                "viewed": ViewedStorage.get_shout(shout.slug),
+                "viewed": await ViewedStorage.get_shout(shout.slug),
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": rating_stat,
@@ -98,11 +98,11 @@ async def get_shout(_, _info, slug=None, shout_id=None):
 
             for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
                 for author in shout.authors:
-                    if author.id == author_caption.user:
+                    if author.id == author_caption.author:
                         author.caption = author_caption.caption
             return shout
         except Exception:
-            raise HTTPException("Slug was not found: %s" % slug)
+            raise HTTPException(status_code=404, detail=f"shout {slug or shout_id} not found")
 
 
 @query.field("load_shouts_by")
@@ -158,7 +158,7 @@ async def load_shouts_by(_, _info, options):
     with local_session() as session:
         for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
             shout.stat = {
-                "viewed": ViewedStorage.get_shout(shout.slug),
+                "viewed": await ViewedStorage.get_shout(shout.slug),
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": rating_stat,
@@ -243,7 +243,7 @@ async def load_shouts_feed(_, info, options):
             shouts = []
             for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
                 shout.stat = {
-                    "viewed": ViewedStorage.get_shout(shout.slug),
+                    "viewed": await ViewedStorage.get_shout(shout.slug),
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": rating_stat,
