@@ -145,7 +145,7 @@ async def load_shouts_by(_, info, options):
     """
 
     q = (
-        select(Shout, Author)
+        select(Shout)
         .options(
             joinedload(Shout.authors),
             joinedload(Shout.topics),
@@ -180,7 +180,6 @@ async def load_shouts_by(_, info, options):
             reacted_stat,
             commented_stat,
             rating_stat,
-            _last_comment,
         ] in session.execute(q).unique():
             shout.stat = {
                 "viewed": ViewedStorage.get_shout(shout.slug),
