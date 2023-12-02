@@ -15,12 +15,9 @@ from orm.author import Author
 def add_reaction_stat_columns(q):
     aliased_reaction = aliased(Reaction)
 
-    q = (
-        q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
-        func.sum(aliased_reaction.id)
-            .label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0))
-            .label("commented_stat"),
+    q = q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
+        func.sum(aliased_reaction.id).label("reacted_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
@@ -33,9 +30,8 @@ def add_reaction_stat_columns(q):
                 (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
                 else_=0,
             )
-        )
-            .label("rating_stat"),
-    ))
+        ).label("rating_stat"),
+    )
 
     return q, aliased_reaction
 
@@ -187,7 +183,9 @@ async def create_reaction(_, info, reaction):
                     return {"error": "You can't vote twice"}
 
                 opposite_reaction_kind = (
-                    ReactionKind.DISLIKE.value if reaction["kind"] == ReactionKind.LIKE.value else ReactionKind.LIKE.value
+                    ReactionKind.DISLIKE.value
+                    if reaction["kind"] == ReactionKind.LIKE.value
+                    else ReactionKind.LIKE.value
                 )
                 opposite_reaction = (
                     session.query(Reaction)
@@ -405,11 +403,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         ] in result_rows:
             reaction.created_by = author
             reaction.shout = shout
-            reaction.stat = {
-                "rating": rating_stat,
-                "commented": commented_stat,
-                "reacted": reacted_stat
-            }
+            reaction.stat = {"rating": rating_stat, "commented": commented_stat, "reacted": reacted_stat}
             reactions.append(reaction)
 
         # sort if by stat is present
@@ -429,10 +423,7 @@ def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
                 .join(Reaction)
                 .filter(Reaction.created_by == follower_id)
                 .filter(Reaction.created_at > author.last_seen)
-                .options(
-                    joinedload(Reaction.created_by),
-                    joinedload(Reaction.shout)
-                )
+                .options(joinedload(Reaction.created_by), joinedload(Reaction.shout))
                 .limit(limit)
                 .offset(offset)
                 .all()

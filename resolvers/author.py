@@ -18,7 +18,6 @@ from resolvers.reaction import reacted_shouts_updates as followed_reactions
 
 
 def add_author_stat_columns(q):
-
     shout_author_aliased = aliased(ShoutAuthor)
     q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label("shouts_stat")
@@ -36,22 +35,17 @@ def add_author_stat_columns(q):
 
     rating_aliased = aliased(Reaction)
     # q = q.add_columns(literal(0).label("rating_stat"))
-    q = (
-        q.outerjoin(rating_aliased, rating_aliased.shout == shout_author_aliased.shout)
-        .add_columns(
-            func.coalesce(func.sum(case(
-                (and_(
-                    rating_aliased.kind == ReactionKind.LIKE.value,
-                    rating_aliased.reply_to.is_(None)
-                ), 1),
-                (and_(
-                    rating_aliased.kind == ReactionKind.DISLIKE.value,
-                    rating_aliased.reply_to.is_(None)
-                ), -1),
-                else_=0
-            )), 0)
-            .label("rating_stat")
-        )
+    q = q.outerjoin(rating_aliased, rating_aliased.shout == shout_author_aliased.shout).add_columns(
+        func.coalesce(
+            func.sum(
+                case(
+                    (and_(rating_aliased.kind == ReactionKind.LIKE.value, rating_aliased.reply_to.is_(None)), 1),
+                    (and_(rating_aliased.kind == ReactionKind.DISLIKE.value, rating_aliased.reply_to.is_(None)), -1),
+                    else_=0,
+                )
+            ),
+            0,
+        ).label("rating_stat")
     )
 
     q = q.add_columns(literal(0).label("commented_stat"))

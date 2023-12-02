@@ -17,12 +17,7 @@ def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(
-            case(
-                (aliased_reaction.kind == ReactionKind.COMMENT.value, 1),
-                else_=0
-            )
-        ).label("commented_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
@@ -45,7 +40,6 @@ def add_stat_columns(q):
     )
 
     return q
-
 
 
 def apply_filters(q, filters, author_id=None):
@@ -175,12 +169,7 @@ async def load_shouts_by(_, info, options):
 
     shouts = []
     with local_session() as session:
-        for [
-            shout,
-            reacted_stat,
-            commented_stat,
-            rating_stat,
-        ] in session.execute(q).unique():
+        for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
             shout.stat = {
                 "viewed": ViewedStorage.get_shout(shout.slug),
                 "reacted": reacted_stat,
