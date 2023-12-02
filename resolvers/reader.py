@@ -1,20 +1,20 @@
-import time
-from sqlalchemy.orm import joinedload, aliased
-from sqlalchemy.sql.expression import desc, asc, select, func, case, and_, nulls_last
+from sqlalchemy.orm import aliased, joinedload
+from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
+from starlette.exceptions import HTTPException
 
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
-from orm.author import AuthorFollower, Author
 from orm.topic import TopicFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
-from services.search import SearchService
+from orm.author import AuthorFollower, Author
 from services.viewed import ViewedStorage
 
 
 def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
+
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
@@ -28,12 +28,13 @@ def add_stat_columns(q):
                 (aliased_reaction.kind == ReactionKind.REJECT.value, -1),
                 (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
                 (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                (aliased_reaction.reply_to.is_not(None), 0),
                 else_=0,
             )
         ).label("rating_stat"),
         func.max(
             case(
-                (aliased_reaction.kind != ReactionKind.COMMENT.value, 0),
+                (aliased_reaction.kind != ReactionKind.COMMENT.value, None),
                 else_=aliased_reaction.created_at,
             )
         ).label("last_comment"),
@@ -42,8 +43,7 @@ def add_stat_columns(q):
     return q
 
 
-def apply_filters(q, filters, author_id=None):
-    # LoadShoutsFilters handling
+def apply_filters(q, filters, author_id=None):  # noqa: C901
     if filters.get("reacted") and author_id:
         q.join(Reaction, Reaction.created_by == author_id)
 
@@ -71,10 +71,10 @@ def apply_filters(q, filters, author_id=None):
 async def get_shout(_, _info, slug=None, shout_id=None):
     with local_session() as session:
         q = select(Shout).options(
-            # joinedload(Shout.created_by),
             joinedload(Shout.authors),
             joinedload(Shout.topics),
         )
+
         q = add_stat_columns(q)
 
         if slug is not None:
@@ -86,34 +86,27 @@ async def get_shout(_, _info, slug=None, shout_id=None):
         q = q.filter(Shout.deleted_at.is_(None)).group_by(Shout.id)
 
         try:
-            author_stats = session.execute(q).first()
-            if author_stats:
-                [shout, reacted_stat, commented_stat, rating_stat, _last_comment] = author_stats
-                shout.stat = {
-                    "viewed": ViewedStorage.get_shout(shout.slug),
-                    "reacted": reacted_stat,
-                    "commented": commented_stat,
-                    "rating": rating_stat,
-                }
+            [shout, reacted_stat, commented_stat, rating_stat, _last_comment] = session.execute(q).first()
 
-                for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
-                    for author in shout.authors:
-                        if author.id == author_caption.author:
-                            author.caption = author_caption.caption
-                return shout
-        except Exception as e:
-            import traceback
+            shout.stat = {
+                "viewed": ViewedStorage.get_shout(shout.slug),
+                "reacted": reacted_stat,
+                "commented": commented_stat,
+                "rating": rating_stat,
+            }
 
-            traceback.print_exc()
-            print(e)
-            return None
+            for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
+                for author in shout.authors:
+                    if author.id == author_caption.user:
+                        author.caption = author_caption.caption
+            return shout
+        except Exception:
+            raise HTTPException("Slug was not found: %s" % slug)
 
 
 @query.field("load_shouts_by")
-async def load_shouts_by(_, info, options):
+async def load_shouts_by(_, _info, options):
     """
-    :param _:
-    :param info:GraphQLInfo
     :param options: {
         filters: {
             layouts: ['audio', 'video', ..],
@@ -131,25 +124,24 @@ async def load_shouts_by(_, info, options):
     }
     :return: Shout[]
     """
-
+    # base
     q = (
-        select(Shout, Author)
+        select(Shout)
         .options(
-            joinedload(Shout.authors,Author.id.in_(Shout.authors)),
+            joinedload(Shout.authors),
             joinedload(Shout.topics),
         )
-        .select_from(Shout)
-        .where(Shout.deleted_at.is_(None))
+        .where(and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None)))
     )
 
-    # counters
+    # stats
     q = add_stat_columns(q)
 
     # filters
     q = apply_filters(q, options.get("filters", {}))
 
     # group
-    q = q.group_by(Shout.id, Author.user, Author.name, Author.slug, Author.bio, Author.id)
+    q = q.group_by(Shout.id)
 
     # order
     order_by = options.get("order_by", Shout.published_at)
@@ -175,43 +167,66 @@ async def load_shouts_by(_, info, options):
     return shouts
 
 
+@query.field("load_shouts_drafts")
 @login_required
+async def load_shouts_drafts(_, info):
+    user_id = info.context["user_id"]
+
+    q = (
+        select(Shout)
+        .options(
+            joinedload(Shout.authors),
+            joinedload(Shout.topics),
+        )
+        .filter(Shout.deleted_at.is_(None))
+    )
+
+    shouts = []
+    with local_session() as session:
+        reader = session.query(Author).filter(Author.user == user_id).first()
+        if reader:
+            q = q.filter(Shout.created_by == reader.id)
+            q = q.group_by(Shout.id)
+            for [shout] in session.execute(q).unique():
+                shouts.append(shout)
+
+    return shouts
+
+
 @query.field("load_shouts_feed")
+@login_required
 async def load_shouts_feed(_, info, options):
     user_id = info.context["user_id"]
+
     with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
-            author_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == author.id)
-            author_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == author.id)
+        reader = session.query(Author).filter(Author.user == user_id).first()
+        if reader:
+            reader_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == reader.id)
+            reader_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == reader.id)
 
             subquery = (
                 select(Shout.id)
                 .where(Shout.id == ShoutAuthor.shout)
                 .where(Shout.id == ShoutTopic.shout)
                 .where(
-                    (ShoutAuthor.author.in_(author_followed_authors)) | (ShoutTopic.topic.in_(author_followed_topics))
+                    (ShoutAuthor.user.in_(reader_followed_authors))
+                    | (ShoutTopic.topic.in_(reader_followed_topics))
                 )
             )
 
             q = (
                 select(Shout)
                 .options(
-                    # joinedload(Shout.created_by, Author.id == Shout.created_by),
                     joinedload(Shout.authors),
                     joinedload(Shout.topics),
                 )
                 .where(
-                    and_(
-                        Shout.published_at.is_not(None),
-                        Shout.deleted_at.is_(None),
-                        Shout.id.in_(subquery),
-                    )
+                    and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None), Shout.id.in_(subquery))
                 )
             )
 
             q = add_stat_columns(q)
-            q = apply_filters(q, options.get("filters", {}), author.id)
+            q = apply_filters(q, options.get("filters", {}), reader.id)
 
             order_by = options.get("order_by", Shout.published_at)
 
@@ -220,6 +235,8 @@ async def load_shouts_feed(_, info, options):
             limit = options.get("limit", 10)
 
             q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
+
+            # print(q.compile(compile_kwargs={"literal_binds": True}))
 
             shouts = []
             for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
@@ -231,13 +248,4 @@ async def load_shouts_feed(_, info, options):
                 }
                 shouts.append(shout)
 
-            return shouts
-    return []
-
-
-@query.field("load_shouts_search")
-async def load_shouts_search(_, _info, text, limit=50, offset=0):
-    if text and len(text) > 2:
-        return SearchService.search(text, limit, offset)
-    else:
-        return []
+    return shouts
