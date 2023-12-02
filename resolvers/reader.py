@@ -96,14 +96,13 @@ async def get_shout(_, _info, slug=None, shout_id=None):
             if author_stats:
                 [
                     shout,
-                    viewed_stat,
                     reacted_stat,
                     commented_stat,
                     rating_stat,
                     _last_comment,
                 ] = author_stats
                 shout.stat = {
-                    "viewed": viewed_stat,
+                    "viewed": ViewedStorage.get_shout(shout.slug),
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": rating_stat,
