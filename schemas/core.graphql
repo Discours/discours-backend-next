@@ -354,6 +354,7 @@ type Query {
     load_shouts_by(options: LoadShoutsOptions): [Shout]
     load_shouts_search(text: String!, limit: Int, offset: Int): [Shout]
     load_shouts_feed(options: LoadShoutsOptions): [Shout]
+    load_shouts_drafts: [Shout]
 
     # topic
     get_topic(slug: String!): Topic

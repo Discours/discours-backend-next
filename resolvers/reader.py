@@ -9,6 +9,7 @@ from orm.topic import TopicFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from orm.author import AuthorFollower, Author
+from services.search import SearchService
 from services.viewed import ViewedStorage
 
 
@@ -179,6 +180,7 @@ async def load_shouts_drafts(_, info):
             joinedload(Shout.topics),
         )
         .filter(Shout.deleted_at.is_(None))
+        .filter(Shout.visibility == ShoutVisibility.AUTHORS.value)
     )
 
     shouts = []
@@ -249,3 +251,12 @@ async def load_shouts_feed(_, info, options):
                 shouts.append(shout)
 
     return shouts
+
+
+@query.field("load_shouts_search")
+async def load_shouts_search(_, _info, text, limit=50, offset=0):
+    if text and len(text) > 2:
+        return SearchService.search(text, limit, offset)
+    else:
+        return []
+
