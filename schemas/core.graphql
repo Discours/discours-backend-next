@@ -126,6 +126,7 @@ type Shout {
   lang: String
   community: String
   cover: String
+  cover_caption: String
   layout: String
   version_of: String
   visibility: ShoutVisibility

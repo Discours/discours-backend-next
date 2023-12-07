@@ -173,7 +173,10 @@ async def get_author(_, _info, slug="", user=None, author_id=None):
         q = add_author_stat_columns(q)
 
         authors = get_authors_from_query(q)
-        return authors[0]
+        if authors:
+            return authors.pop()
+        else:
+            return {"error": "cant find author"}
 
 
 @query.field("load_authors_by")
@@ -201,15 +204,19 @@ async def load_authors_by(_, _info, by, limit, offset):
 
 @query.field("get_author_followed")
 async def get_author_followed(_, _info, slug="", user=None, author_id=None) -> List[Author]:
-    # First, we need to get the author_id for the given slug
-    with local_session() as session:
+    author_id_query = None
+    if slug:
         author_id_query = select(Author.id).where(Author.slug == slug)
-        author_id = session.execute(author_id_query).scalar()
+    elif user:
+        author_id_query = select(Author.id).where(Author.user == user)
+    if not author_id:
+        with local_session() as session:
+            author_id = session.execute(author_id_query).scalar()
 
     if author_id is None:
         raise ValueError("Author not found")
-
-    return await followed_authors(author_id)
+    else:
+        return await followed_authors(author_id)  # Author[]
 
 
 @query.field("get_author_followers")

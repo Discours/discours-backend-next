@@ -68,6 +68,7 @@ class Shout(Base):
     body = Column(String, nullable=False, comment="Body")
     slug = Column(String, unique=True)
     cover = Column(String, nullable=True, comment="Cover image url")
+    cover_caption = Column(String, nullable=True, comment="Cover image alt caption")
     lead = Column(String, nullable=True)
     description = Column(String, nullable=True)
     title = Column(String, nullable=True)
