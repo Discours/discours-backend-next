@@ -115,6 +115,7 @@ type Shout {
   lead: String
   description: String
   created_at: Int!
+  main_topic: String
   topics: [Topic]
   created_by: Author!
   updated_by: Author
