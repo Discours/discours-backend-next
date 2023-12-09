@@ -17,6 +17,7 @@ class ShoutTopic(Base):
     id = None  # type: ignore
     shout = Column(ForeignKey("shout.id"), primary_key=True, index=True)
     topic = Column(ForeignKey("topic.id"), primary_key=True, index=True)
+    main = Column(Boolean, nullable=True)
 
 
 class ShoutReactionsFollower(Base):
