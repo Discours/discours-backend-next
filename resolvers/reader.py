@@ -5,7 +5,7 @@ from starlette.exceptions import HTTPException
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
-from orm.topic import TopicFollower
+from orm.topic import TopicFollower, Topic
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from orm.author import AuthorFollower, Author
