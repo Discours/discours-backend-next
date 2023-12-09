@@ -101,11 +101,8 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                     if author.id == author_caption.author:
                         author.caption = author_caption.caption
             main_topic = (
-                session.query(ShoutTopics.topic_slug)
-                .filter(
-                    ShoutTopics.shout_id == shout.id,
-                    ShoutTopics.main == True
-                )
+                session.query(Topic.slug)
+                .join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True))
                 .first()
             )
 
@@ -170,11 +167,8 @@ async def load_shouts_by(_, _info, options):
     with local_session() as session:
         for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
             main_topic = (
-                session.query(ShoutTopics.topic_slug)
-                .filter(
-                    ShoutTopics.shout_id == shout.id,
-                    ShoutTopics.main == True
-                )
+                session.query(Topic.slug)
+                .join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True))
                 .first()
             )
 
@@ -214,11 +208,8 @@ async def load_shouts_drafts(_, info):
             q = q.group_by(Shout.id)
             for [shout] in session.execute(q).unique():
                 main_topic = (
-                    session.query(ShoutTopics.topic_slug)
-                    .filter(
-                        ShoutTopics.shout_id == shout.id,
-                        ShoutTopics.main == True
-                    )
+                    session.query(Topic.slug)
+                    .join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True))
                     .first()
                 )
 
@@ -277,11 +268,8 @@ async def load_shouts_feed(_, info, options):
             shouts = []
             for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
                 main_topic = (
-                    session.query(ShoutTopics.topic_slug)
-                    .filter(
-                        ShoutTopics.shout_id == shout.id,
-                        ShoutTopics.main == True
-                    )
+                    session.query(Topic.slug)
+                    .join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True))
                     .first()
                 )
 
