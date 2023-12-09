@@ -100,11 +100,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                 for author in shout.authors:
                     if author.id == author_caption.author:
                         author.caption = author_caption.caption
-
-            shout.main_topic = session.query(ShoutTopics.topic_slug).filter(
-                    ShoutTopics.shout_id == shout.id,
-                    ShoutTopics.main == True
-                ).first()
+            shout.main_topic = session.query(Topic.slug).join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True)).first()
             return shout
         except Exception:
             raise HTTPException(status_code=404, detail=f"shout {slug or shout_id} not found")
@@ -163,11 +159,7 @@ async def load_shouts_by(_, _info, options):
     shouts = []
     with local_session() as session:
         for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
-            # Query the ShoutTopics table for the main topic
-            shout.main_topic = session.query(ShoutTopics.topic_slug).filter(
-                    ShoutTopics.shout_id == shout.id,
-                    ShoutTopics.main == True
-                ).first()
+            shout.main_topic = session.query(Topic.slug).join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True)).first()
             shout.stat = {
                 "viewed": await ViewedStorage.get_shout(shout.slug),
                 "reacted": reacted_stat,
@@ -257,10 +249,7 @@ async def load_shouts_feed(_, info, options):
 
             shouts = []
             for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
-                shout.main_topic = session.query(ShoutTopics.topic_slug).filter(
-                        ShoutTopics.shout_id == shout.id,
-                        ShoutTopics.main == True
-                    ).first()
+                shout.main_topic = session.query(Topic.slug).join(ShoutTopic, and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True)).first()
                 shout.stat = {
                     "viewed": await ViewedStorage.get_shout(shout.slug),
                     "reacted": reacted_stat,
