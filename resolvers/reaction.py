@@ -408,7 +408,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
 
         # sort if by stat is present
         if by.get("stat"):
-            reactions = sorted(reactions, key=lambda r: r.stat.get(by["stat"]) or r.created_at)
+            reactions = sorted(reactions, key=lambda r: r.stat.get(by["stat"]) or r.created_at, reverse=True)
 
     return reactions
 
