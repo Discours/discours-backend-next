@@ -331,7 +331,7 @@ type Mutation {
 type Query {
     # author
     get_author(slug: String, user: String, author_id: Int): Author
-    get_authors_all: [Author]
+    load_authors_all(limit: Int, offset: Int): [Author]
     get_author_followers(slug: String, user: String, author_id: Int): [Author]
     get_author_followed(slug: String, user: String, author_id: Int): [Author]
     load_authors_by(by: AuthorsBy, limit: Int, offset: Int): [Author]

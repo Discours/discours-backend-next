@@ -151,11 +151,12 @@ def author_unfollow(follower_id, slug):
     return False
 
 
-@query.field("get_authors_all")
-async def get_authors_all(_, _info):
+@query.field("load_authors_all")
+async def load_authors_all(_, _info, limit: int = 50, offset: int = 0):
     q = select(Author)
     q = add_author_stat_columns(q)
     q = q.join(ShoutAuthor, Author.id == ShoutAuthor.author)
+    q = q.limit(limit).offset(offset)
 
     return get_authors_from_query(q)
 

@@ -2,7 +2,7 @@ from resolvers.editor import create_shout, delete_shout, update_shout
 
 from resolvers.author import (
     get_author,
-    get_authors_all,
+    load_authors_all,
     get_author_followers,
     get_author_followed,
     load_authors_by,
@@ -31,7 +31,7 @@ from resolvers.community import get_community, get_communities_all
 __all__ = [
     # author
     "get_author",
-    "get_authors_all",
+    "load_authors_all",
     "get_author_followers",
     "get_author_followed",
     "load_authors_by",
