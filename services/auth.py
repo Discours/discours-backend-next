@@ -8,13 +8,13 @@ async def check_auth(req):
     token = req.headers.get("Authorization")
     print(f"[services.auth] checking auth token: {token}")
 
-    headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
+    headers = {"Cookie": f"cookie_session={token};\ncookie_session_domain={token}", "Content-Type": "application/json"}
     # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
     gql = {
         "query": f"query GetSession($params: SessionQueryInput)"
         + "{ session(params: $params) { message user { id } } }",
         "operationName": "GetSession",
-        "variables": None,
+        "variables": {},
     }
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30.0)) as session:
