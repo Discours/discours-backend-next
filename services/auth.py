@@ -8,7 +8,7 @@ async def check_auth(req):
     token = req.headers.get("Authorization")
     print(f"[services.auth] checking auth token: {token}")
 
-    headers = {"Authorization": token, "Content-Type": "application/json"}
+    headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
     # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
     gql = {
         "query": f"query GetSession($params: SessionQueryInput)"
