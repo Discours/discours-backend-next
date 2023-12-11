@@ -7,11 +7,11 @@ from settings import AUTH_URL
 async def check_auth(req):
     token = req.headers.get("Authorization")
     print(f"[services.auth] checking auth token: {token}")
-    query_name = "getSession"
+
     headers = {"Authorization": token, "Content-Type": "application/json"}
     # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
     gql = {
-        "query": f"query {query_name}($params: SessionQueryInput)"
+        "query": f"query GetSession($params: SessionQueryInput)"
         + "{ session(params: $params) { message user { id } } }",
         "operationName": "GetSession",
         "variables": None,
@@ -24,7 +24,7 @@ async def check_auth(req):
                 return False, None
             r = await response.json()
             try:
-                user_id = r.get("data", {}).get(query_name, {}).get("user", {}).get("id", None)
+                user_id = r.get("data", {}).get("session", {}).get("user", {}).get("id", None)
                 is_authenticated = user_id is not None
                 return is_authenticated, user_id
             except Exception as e:
