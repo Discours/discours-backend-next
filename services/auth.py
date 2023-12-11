@@ -23,9 +23,14 @@ async def check_auth(req):
             if response.status != 200:
                 return False, None
             r = await response.json()
+            print(r)
             try:
-                user_id = r.get("data", {}).get("session", {}).get("user", {}).get("id", None)
-                is_authenticated = user_id is not None
+                data = r.get("data")
+                is_authenticated = False
+                user_id = None
+                if data:
+                    user_id = data.get("session", {}).get("user", {}).get("id", None)
+                    is_authenticated = user_id is not None
                 return is_authenticated, user_id
             except Exception as e:
                 print(f"{e}: {r}")
