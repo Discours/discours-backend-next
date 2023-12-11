@@ -29,25 +29,6 @@ enum ReactionKind {
   DISLIKE
 }
 
-class ReactionKind(Enumeration):
-    # TYPE = <reaction index> # rating diff
-
-    # editor mode
-    AGREE = "AGREE"  # +1
-    DISAGREE = "DISAGREE"  # -1
-    ASK = "ASK"  # +0
-    PROPOSE = "PROPOSE"  # +0
-    PROOF = "PROOF"  # +1
-    DISPROOF = "DISPROOF"  # -1
-    ACCEPT = "ACCEPT"  # +1
-    REJECT = "REJECT"  # -1
-
-    # public feed
-    QUOTE = "QUOTE"  # +0 TODO: use to bookmark in collection
-    COMMENT = "COMMENT"  # +0
-    LIKE = "LIKE"  # +1
-    DISLIKE = "DISLIKE"  # -1
-
 
 enum FollowingEntity {
   TOPIC
