@@ -7,16 +7,13 @@ from settings import AUTH_URL
 async def check_auth(req):
     token = req.headers.get("Authorization")
     print(f"[services.auth] checking auth token: {token}")
-
-    query_name = "session"
-    query_type = "query"
-    operation = "GetUserId"
-
+    query_name = "getSession"
     headers = {"Authorization": token, "Content-Type": "application/json"}
-
+    # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
     gql = {
-        "query": query_type + " " + operation + " { " + query_name + " { user { id } } " + " }",
-        "operationName": operation,
+        "query": f"query {query_name}($params: SessionQueryInput)"
+        + "{ session(params: $params) { message user { id } } }",
+        "operationName": "GetSession",
         "variables": None,
     }
 
