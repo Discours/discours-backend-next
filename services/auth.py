@@ -8,10 +8,10 @@ async def check_auth(req):
     token = req.headers.get("Authorization")
     print(f"[services.auth] checking auth token: {token}")
 
-    headers = {"Cookie": f"cookie_session={token};\ncookie_session_domain={token}", "Content-Type": "application/json"}
+    headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
     # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
     gql = {
-        "query": f"query GetSession($params: SessionQueryInput)"
+        "query": "query GetSession($params: SessionQueryInput)"
         + "{ session(params: $params) { message user { id } } }",
         "operationName": "GetSession",
         "variables": {},
