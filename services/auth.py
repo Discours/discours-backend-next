@@ -12,10 +12,9 @@ async def check_auth(req):
         headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
         # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
         gql = {
-            "query": "query GetSession($params: SessionQueryInput)"
-            + "{ session(params: $params) { message user { id } } }",
+            "query": "query GetSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }",
             "operationName": "GetSession",
-            "variables": {},
+            "variables": None,  # {"params": {"roles": ["author"]}},
         }
 
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30.0)) as session:

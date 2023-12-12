@@ -17,6 +17,7 @@ starlette = "^0.32.0.post1"
 gql = "^3.4.1"
 ariadne = "^0.21"
 aiohttp = "^3.9.1"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 setuptools = "^69.0.2"
