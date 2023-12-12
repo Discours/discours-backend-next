@@ -12,9 +12,8 @@ async def check_auth(req):
         headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
         # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
         gql = {
-            "query": "query GetSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }",
-            "operationName": "GetSession",
-            "variables": None,  # {"params": {"roles": ["author"]}},
+            "query": "query getSession($params: SessionQueryInput){session(params: $params) { message access_token expires_in refresh_token id_token should_show_email_otp_screen should_show_mobile_otp_screen should_show_totp_screen authenticator_scanner_image authenticator_secret authenticator_recovery_codes user { id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled app_data } } }",
+            "variables": {},
         }
 
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30.0)) as session:
