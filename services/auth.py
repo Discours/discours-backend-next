@@ -40,6 +40,7 @@ def login_required(f):
     async def decorated_function(*args, **kwargs):
         info = args[1]
         context = info.context
+        print(context)
         req = context.get("request")
         is_authenticated, user_id = await check_auth(req)
         if not is_authenticated:
