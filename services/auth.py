@@ -26,7 +26,7 @@ async def check_auth(req) -> (bool, int | None):
             "query": f"query ValidateToken($params: ValidateJWTTokenInput!) {{ {query_name}(params: $params) {{ is_valid claims }} }}",
             "variables": variables,
         }
-
+        print(f"[services.auth] Graphql: {gql}")
         try:
             # Asynchronous HTTP request to the authentication server
             async with aiohttp.ClientSession() as session:
@@ -67,7 +67,7 @@ def login_required(f):
     async def decorated_function(*args, **kwargs):
         info = args[1]
         context = info.context
-        print(context)
+        # print(context)
         req = context.get("request")
         # Performing authentication check
         is_authenticated, user_id = await check_auth(req)
