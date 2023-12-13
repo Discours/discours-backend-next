@@ -96,7 +96,7 @@ def get_authors_from_query(q):
         for [author, *stat_columns] in session.execute(q):
             author = add_stat(author, stat_columns)
             authors.append(author)
-
+    print(f"[resolvers.author] get_authors_from_query {authors}")
     return authors
 
 
@@ -175,7 +175,7 @@ async def get_author(_, _info, slug="", user=None, author_id=None):
 
         authors = get_authors_from_query(q)
         if authors:
-            return authors.pop()
+            return authors[0]
         else:
             return {"error": "cant find author"}
 
