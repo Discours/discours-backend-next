@@ -19,7 +19,7 @@ async def check_auth(req) -> (bool, int | None):
         variables = {
             "params": {
                 "token_type": "access_token",
-                "token": token,
+                "token": token.encode("utf-8"),
             }
         }
 
