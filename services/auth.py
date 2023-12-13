@@ -33,31 +33,31 @@ async def check_auth(req) -> (bool, int | None):
                 async with session.post(AUTH_URL, json=gql, headers=headers) as response:
                     # Logging the GraphQL response
                     response_text = await response.text()
-                    print(f"GraphQL Response: {response_text}")
+                    print(f"[services.auth] GraphQL Response: {response_text}")
 
                     if response.status == 200:
                         # Parsing JSON response
                         data = await response.json()
                         errors = data.get("errors")
                         if errors:
-                            print(f"Auth connector errors: {errors}")
+                            print(f"[services.auth] errors: {errors}")
                         else:
                             user_id = data.get("data", {}).get(query_name, {}).get("claims", {}).get("sub")
 
                             if user_id:
                                 # Logging the retrieved user ID
-                                print(f"User ID retrieved: {user_id}")
+                                print(f"[services.auth] User ID retrieved: {user_id}")
                                 return True, user_id
                             else:
                                 # Logging when no user ID is found in the response
-                                print("No user ID found in the response")
+                                print("[services.auth] No user ID found in the response")
                     else:
                         # Logging when the request to the authentication server fails
-                        print(f"Request failed with status: {response.status}")
+                        print(f"[services.auth] Request failed with status: {response.status}")
 
         except Exception as e:
             # Handling and logging exceptions during authentication check
-            print(f"Exception during authentication check: {e}")
+            print(f"[services.auth] {e}")
 
     return False, None
 
