@@ -6,7 +6,7 @@ from resolvers import get_author_id
 from settings import AUTH_URL
 
 
-async def check_auth(req) -> (int | None, bool):
+async def check_auth(req) -> (bool, int| None):
     token = req.headers.get("Authorization")
     if token:
         # Logging the authentication token
@@ -44,9 +44,7 @@ async def check_auth(req) -> (int | None, bool):
                         if user_id:
                             # Logging the retrieved user ID
                             print(f"User ID retrieved: {user_id}")
-                            # Fetching author information
-                            author = get_author_id(None, None, user_id)
-                            return author.id, True
+                            return True, user_id
                         else:
                             # Logging when no user ID is found in the response
                             print("No user ID found in the response")
@@ -69,13 +67,13 @@ def login_required(f):
         print(context)
         req = context.get("request")
         # Performing authentication check
-        is_authenticated, author_id = await check_auth(req)
+        is_authenticated, user_id = await check_auth(req)
         if not is_authenticated:
             # Raising an exception if the user is not authenticated
             raise HTTPUnauthorized(text="Please, login first")
         else:
             # Adding user_id to the context
-            context["author_id"] = author_id
+            context["user_id"] = user_id
 
         # If the user is authenticated, execute the resolver
         return await f(*args, **kwargs)
@@ -88,13 +86,13 @@ def auth_request(f):
     async def decorated_function(*args, **kwargs):
         req = args[0]
         # Performing authentication check
-        is_authenticated, author_id = await check_auth(req)
+        is_authenticated, user_id = await check_auth(req)
         if not is_authenticated:
             # Raising HTTPUnauthorized exception if the user is not authenticated
             raise HTTPUnauthorized(text="Please, login first")
         else:
             # Modifying the req with the author_id
-            req["author_id"] = author_id
+            req["user_id"] = user_id
         return await f(*args, **kwargs)
 
     return decorated_function
