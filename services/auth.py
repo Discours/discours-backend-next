@@ -11,6 +11,7 @@ async def check_auth(req) -> (bool, int | None):
         # Logging the authentication token
         print(f"[services.auth] checking auth token: {token}")
         query_name = "validate_jwt_token"
+        opeation = "ValidateTokenå"
         headers = {
             "Content-Type": "application/json",
         }
@@ -23,8 +24,9 @@ async def check_auth(req) -> (bool, int | None):
         }
 
         gql = {
-            "query": f"query ValidateToken($params: ValidateJWTTokenInput!) {{ {query_name}(params: $params) {{ is_valid claims }} }}",
+            "query": f"query {opeation}($params: ValidateJWTTokenInput!) {{ {query_name}(params: $params) {{ is_valid claims }} }}",
             "variables": variables,
+            "operationName": opeation,
         }
         print(f"[services.auth] Graphql: {gql}")
         try:
