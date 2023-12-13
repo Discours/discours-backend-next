@@ -2,7 +2,6 @@ from functools import wraps
 import aiohttp
 from aiohttp.web import HTTPUnauthorized
 
-from resolvers import get_author_id
 from settings import AUTH_URL
 
 
