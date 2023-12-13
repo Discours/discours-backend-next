@@ -9,15 +9,13 @@ async def check_auth(req):
     if token:
         print(f"[services.auth] checking auth token: {token}")
 
-        headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
-        # query getSession($params: SessionQueryInput){ session(params: $params) { message user { id } } }
         gql = {
-            "query": "query getSession($params: SessionQueryInput){session(params: $params) { message access_token expires_in refresh_token id_token should_show_email_otp_screen should_show_mobile_otp_screen should_show_totp_screen authenticator_scanner_image authenticator_secret authenticator_recovery_codes user { id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled app_data } } }",
-            "variables": {},
+            "query": "query { validate_jwt_token( params: ValidateJWTTokenInput) { is_valid claims } }",
+            "variables": {"params": {"token_type": "access_token", "token": token}},
         }
 
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30.0)) as session:
-            async with session.post(AUTH_URL, headers=headers, json=gql) as response:
+            async with session.post(AUTH_URL, json=gql) as response:
                 if response.status != 200:
                     return False, None
                 r = await response.json()
@@ -27,8 +25,10 @@ async def check_auth(req):
                     is_authenticated = False
                     user_id = None
                     if data:
-                        user_id = data.get("session", {}).get("user", {}).get("id", None)
-                        is_authenticated = user_id is not None
+                        result = data.get("validate_jwt_token", {})
+                        is_authenticated = result.get("is_valid")
+                        if is_authenticated:
+                            user_id = result.get("claims", {}).get("sub")
                     return is_authenticated, user_id
                 except Exception as e:
                     print(f"{e}: {r}")
