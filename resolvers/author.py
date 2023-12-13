@@ -161,15 +161,18 @@ async def load_authors_all(_, _info, limit: int = 50, offset: int = 0):
     return get_authors_from_query(q)
 
 
+@query.field("get_author_id")
+async def get_author_id(_, _info, user: str):
+    with local_session() as session:
+        return session.query(Author).where(Author.user == user).first()
+
+
 @query.field("get_author")
-async def get_author(_, _info, slug="", user=None, author_id=None):
+async def get_author(_, _info, slug="", author_id=None):
     q = None
-    if slug or user or author_id:
+    if slug or author_id:
         if slug != "":
             q = select(Author).where(Author.slug == slug)
-        elif user:
-            q = select(Author).where(Author.user == user)
-            print(f"[resolvers.author] SQL: {q}")
         elif author_id:
             q = select(Author).where(Author.id == author_id)
         q = add_author_stat_columns(q)
