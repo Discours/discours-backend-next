@@ -38,15 +38,19 @@ async def check_auth(req) -> (bool, int | None):
                     if response.status == 200:
                         # Parsing JSON response
                         data = await response.json()
-                        user_id = data.get("data", {}).get(query_name, {}).get("claims", {}).get("sub")
-
-                        if user_id:
-                            # Logging the retrieved user ID
-                            print(f"User ID retrieved: {user_id}")
-                            return True, user_id
+                        errors = data.get("errors")
+                        if errors:
+                            print(f"Auth connector errors: {errors}")
                         else:
-                            # Logging when no user ID is found in the response
-                            print("No user ID found in the response")
+                            user_id = data.get("data", {}).get(query_name, {}).get("claims", {}).get("sub")
+
+                            if user_id:
+                                # Logging the retrieved user ID
+                                print(f"User ID retrieved: {user_id}")
+                                return True, user_id
+                            else:
+                                # Logging when no user ID is found in the response
+                                print("No user ID found in the response")
                     else:
                         # Logging when the request to the authentication server fails
                         print(f"Request failed with status: {response.status}")
