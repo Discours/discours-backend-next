@@ -11,7 +11,7 @@ async def check_auth(req) -> (bool, int | None):
         # Logging the authentication token
         print(f"[services.auth] checking auth token: {token}")
         query_name = "validate_jwt_token"
-        opeation = "ValidateTokenå"
+        opeation = "ValidateToken"
         headers = {
             "Content-Type": "application/json",
         }
