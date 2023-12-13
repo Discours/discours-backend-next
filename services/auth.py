@@ -6,7 +6,7 @@ from resolvers import get_author_id
 from settings import AUTH_URL
 
 
-async def check_auth(req) -> (bool, int| None):
+async def check_auth(req) -> (bool, int | None):
     token = req.headers.get("Authorization")
     if token:
         # Logging the authentication token
