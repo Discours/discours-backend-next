@@ -10,7 +10,7 @@ async def check_auth(req):
         print(f"[services.auth] checking auth token: {token}")
 
         gql = {
-            "query": "query { validate_jwt_token( params: ValidateJWTTokenInput!) { is_valid claims } }",
+            "query": "query ValidateToken($params: ValidateJWTTokenInput!) { validate_jwt_token( params: $params) { is_valid claims } }",
             "variables": {"params": {"token_type": "access_token", "token": token}},
         }
 
