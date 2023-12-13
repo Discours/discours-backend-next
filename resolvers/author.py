@@ -165,10 +165,11 @@ async def load_authors_all(_, _info, limit: int = 50, offset: int = 0):
 async def get_author(_, _info, slug="", user=None, author_id=None):
     q = None
     if slug or user or author_id:
-        if slug:
+        if slug != "":
             q = select(Author).where(Author.slug == slug)
         elif user:
             q = select(Author).where(Author.user == user)
+            print(f"[resolvers.author] SQL: {q}")
         elif author_id:
             q = select(Author).where(Author.id == author_id)
         q = add_author_stat_columns(q)

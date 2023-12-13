@@ -16,6 +16,7 @@ async def check_auth(req):
 
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30.0)) as session:
             async with session.post(AUTH_URL, json=gql) as response:
+                print(response)
                 if response.status != 200:
                     return False, None
                 r = await response.json()
