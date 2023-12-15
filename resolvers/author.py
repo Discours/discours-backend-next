@@ -177,7 +177,7 @@ async def get_author(_, _info, slug="", author_id=None):
         elif author_id:
             q = select(Author).where(Author.id == author_id)
         q = add_author_stat_columns(q)
-        print(f"[resolvers.author] SQL: {q}")
+        # print(f"[resolvers.author] SQL: {q}")
         authors = get_authors_from_query(q)
         if authors:
             return authors[0]

@@ -71,6 +71,7 @@ def login_required(f):
         context = info.context
         # print(context)
         req = context.get("request")
+        print(f"[services.auth] request: {req}")
         # Performing authentication check
         is_authenticated, user_id = await check_auth(req)
         if not is_authenticated:
