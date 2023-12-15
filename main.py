@@ -72,6 +72,9 @@ class WebhookEndpoint(HTTPEndpoint):
                         await create_author(user_id, slug)
             return JSONResponse({"status": "success"})
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
             return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
