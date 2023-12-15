@@ -66,9 +66,9 @@ class WebhookEndpoint(HTTPEndpoint):
                 auth = request.headers.get("Authorization")
                 if auth:
                     if auth == os.environ.get("WEBHOOK_SECRET"):
-                        user_id = data["user"]["id"]
-                        slug = (data["user"]["preferred_username"] or data["user"]["email"]).split("@")[0].lowercase()
-                        slug = re.sub("[^0-9a-zA-Z]+", "-", slug or "")
+                        user_id: str = data["user"]["id"]
+                        slug: str = data["user"]["email"].split("@")[0]
+                        slug: str = re.sub("[^0-9a-z]+", "-", slug.lower())
                         await create_author(user_id, slug)
             return JSONResponse({"status": "success"})
         except Exception as e:
