@@ -284,3 +284,4 @@ async def create_author(user_id: str, slug: str):
         new_author = Author(user=user_id, slug=slug)
         session.add(new_author)
         session.commit()
+        print(f"[resolvers.author] created by webhook {new_author.dict()}")
