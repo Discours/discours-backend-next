@@ -1,4 +1,5 @@
 import os
+import re
 from importlib import import_module
 from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
@@ -66,12 +67,8 @@ class WebhookEndpoint(HTTPEndpoint):
                 if auth:
                     if auth == os.environ.get("WEBHOOK_SECRET"):
                         user_id = data["user"]["id"]
-                        slug = (
-                            (data["user"]["preferred_username"] or data["user"]["email"])
-                            .replace(".", "-")
-                            .split("@")
-                            .pop()
-                        )
+                        slug = (data["user"]["preferred_username"] or data["user"]["email"]).split("@")[0].lowercase()
+                        slug = re.sub("[^0-9a-zA-Z]+", "-", slug or "")
                         await create_author(user_id, slug)
             return JSONResponse({"status": "success"})
         except Exception as e:
