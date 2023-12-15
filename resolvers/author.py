@@ -164,6 +164,7 @@ async def load_authors_all(_, _info, limit: int = 50, offset: int = 0):
 @query.field("get_author_id")
 async def get_author_id(_, _info, user: str):
     with local_session() as session:
+        print(f"[resolvers.author] getting author id for {user}")
         return session.query(Author).where(Author.user == user).first()
 
 
