@@ -77,8 +77,9 @@ type Author {
   last_seen: Int
   updated_at: Int
   deleted_at: Int
-  # ratings
-  stat: AuthorStat # synthetic
+  # synthetic
+  stat: AuthorStat # ratings inside
+  communities: [Community]
 }
 
 type ReactionUpdating {

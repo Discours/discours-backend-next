@@ -11,7 +11,7 @@ class CommunityAuthor(Base):
     __tablename__ = "community_author"
 
     id = None  # type: ignore
-    follower = Column(ForeignKey("author.id"), primary_key=True)
+    author = Column(ForeignKey("author.id"), primary_key=True)
     community = Column(ForeignKey("community.id"), primary_key=True)
     joined_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     role = Column(String, nullable=False)
