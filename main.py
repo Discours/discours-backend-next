@@ -4,6 +4,7 @@ from importlib import import_module
 from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
+from sqlalchemy.exc import IntegrityError
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -56,26 +57,6 @@ async def start_up():
 
 async def shutdown():
     await redis.disconnect()
-
-
-class WebhookEndpoint(HTTPEndpoint):
-    async def post(self, request: Request) -> JSONResponse:
-        try:
-            data = await request.json()
-            if data:
-                auth = request.headers.get("Authorization")
-                if auth:
-                    if auth == os.environ.get("WEBHOOK_SECRET"):
-                        user_id: str = data["user"]["id"]
-                        slug: str = data["user"]["email"].split("@")[0]
-                        slug: str = re.sub("[^0-9a-z]+", "-", slug.lower())
-                        await create_author(user_id, slug)
-            return JSONResponse({"status": "success"})
-        except Exception as e:
-            import traceback
-
-            traceback.print_exc()
-            return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 
 routes = [Route("/", GraphQL(schema, debug=True)), Route("/new-author", WebhookEndpoint)]

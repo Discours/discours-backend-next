@@ -35,7 +35,7 @@ poetry run python server.py
 
 ### Auth
 
-Put the header 'Authorization' with token from signIn query or registerUser mutation. Setup `WEBHOOK_SECRET` env var
+Setup `WEBHOOK_SECRET` env var, webhook payload on `/new-author` is expected when User is created. In front-end put the header 'Authorization' with token from signIn query or registerUser mutation.
 
 ### Viewed
 

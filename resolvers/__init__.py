@@ -26,7 +26,14 @@ from resolvers.topic import (
 )
 
 from resolvers.follower import follow, unfollow, get_my_followed
-from resolvers.reader import get_shout, load_shouts_by, load_shouts_feed, load_shouts_search
+from resolvers.reader import (
+    get_shout,
+    load_shouts_by,
+    load_shouts_feed,
+    load_shouts_search,
+    load_shouts_unrated,
+    load_shouts_random_top,
+)
 from resolvers.community import get_community, get_communities_all
 
 __all__ = [
@@ -53,6 +60,8 @@ __all__ = [
     "load_shouts_feed",
     "load_shouts_search",
     "load_shouts_followed",
+    "load_shouts_unrated",
+    "load_shouts_random_top",
     # follower
     "follow",
     "unfollow",

@@ -96,7 +96,7 @@ def get_authors_from_query(q):
         for [author, *stat_columns] in session.execute(q):
             author = add_stat(author, stat_columns)
             authors.append(author)
-    print(f"[resolvers.author] get_authors_from_query {authors}")
+    # print(f"[resolvers.author] get_authors_from_query {authors}")
     return authors
 
 
