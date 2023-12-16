@@ -19,13 +19,14 @@ class WebhookEndpoint(HTTPEndpoint):
                 if auth:
                     if auth == os.environ.get("WEBHOOK_SECRET"):
                         user_id: str = data["user"]["id"]
+                        name: str = data["user"]["given_name"]
                         slug: str = data["user"]["email"].split("@")[0]
                         slug: str = re.sub("[^0-9a-z]+", "-", slug.lower())
                         with local_session() as session:
                             author = session.query(Author).filter(Author.slug == slug).first()
                             if author:
                                 slug = slug + "-" + user_id.split("-").pop()
-                            await create_author(user_id, slug)
+                            await create_author(user_id, slug, name)
 
             return JSONResponse({"status": "success"})
         except Exception as e:

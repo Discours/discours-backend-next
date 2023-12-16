@@ -279,9 +279,9 @@ async def rate_author(_, info, rated_slug, value):
     return {}
 
 
-async def create_author(user_id: str, slug: str):
+async def create_author(user_id: str, slug: str, name: str = ""):
     with local_session() as session:
-        new_author = Author(user=user_id, slug=slug)
+        new_author = Author(user=user_id, slug=slug, name=name)
         session.add(new_author)
         session.commit()
         print(f"[resolvers.author] created by webhook {new_author.dict()}")
