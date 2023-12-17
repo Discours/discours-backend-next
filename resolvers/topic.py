@@ -1,12 +1,12 @@
-from sqlalchemy import and_, select, distinct, func
+from sqlalchemy import and_, distinct, func, select
 from sqlalchemy.orm import aliased
 
+from orm.author import Author
+from orm.shout import ShoutAuthor, ShoutTopic
+from orm.topic import Topic, TopicFollower
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
-from orm.shout import ShoutTopic, ShoutAuthor
-from orm.topic import Topic, TopicFollower
-from orm.author import Author
 
 
 async def followed_topics(follower_id):

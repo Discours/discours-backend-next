@@ -1,4 +1,5 @@
 import redis.asyncio as aredis
+
 from settings import REDIS_URL
 
 
@@ -44,16 +45,6 @@ class RedisCache:
         if not self._client:
             return
         await self._client.publish(channel, data)
-
-    async def lrange(self, key, start, stop):
-        if self._client:
-            print(f"[redis] LRANGE {key} {start} {stop}")
-            return await self._client.lrange(key, start, stop)
-
-    async def mget(self, key, *keys):
-        if self._client:
-            print(f"[redis] MGET {key} {keys}")
-            return await self._client.mget(key, *keys)
 
 
 redis = RedisCache()

@@ -1,14 +1,14 @@
 import asyncio
 import time
-from datetime import timedelta, timezone, datetime
+from datetime import datetime, timedelta, timezone
 from os import environ
 
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 
-from services.db import local_session
+from orm.shout import Shout, ShoutTopic
 from orm.topic import Topic
-from orm.shout import ShoutTopic, Shout
+from services.db import local_session
 
 load_facts = gql(
     """ query getDomains {
@@ -60,7 +60,7 @@ class ViewedStorage:
     pages = None
     domains = None
     period = 60 * 60  # every hour
-    client = None
+    client: Client | None = None
     auth_result = None
     disabled = False
 
@@ -70,7 +70,7 @@ class ViewedStorage:
         self = ViewedStorage
         async with self.lock:
             if token:
-                self.client = create_client({"Authorization": "Bearer %s" % str(token)}, schema=schema_str)
+                self.client = create_client({"Authorization": f"Bearer {token}"}, schema=schema_str)
                 print("[services.viewed] * authorized permanently by ackee.discours.io: %s" % token)
             else:
                 print("[services.viewed] * please set ACKEE_TOKEN")
@@ -83,22 +83,19 @@ class ViewedStorage:
         start = time.time()
         self = ViewedStorage
         try:
-            async with self.client as session:
-                self.pages = await session.execute(load_pages)
+            if self.client:
+                self.pages = self.client.execute(load_pages)
                 self.pages = self.pages["domains"][0]["statistics"]["pages"]
                 shouts = {}
-                try:
-                    for page in self.pages:
-                        p = page["value"].split("?")[0]
-                        slug = p.split("discours.io/")[-1]
-                        shouts[slug] = page["count"]
-                    for slug in shouts.keys():
-                        await ViewedStorage.increment(slug, shouts[slug])
-                except Exception:
-                    pass
+                for page in self.pages:
+                    p = page["value"].split("?")[0]
+                    slug = p.split("discours.io/")[-1]
+                    shouts[slug] = page["count"]
+                for slug in shouts.keys():
+                    await ViewedStorage.increment(slug, shouts[slug])
                 print("[services.viewed] ⎪ %d pages collected " % len(shouts.keys()))
         except Exception as e:
-            raise e
+            raise Exception(e)
 
         end = time.time()
         print("[services.viewed] ⎪ update_pages took %fs " % (end - start))
@@ -106,8 +103,14 @@ class ViewedStorage:
     @staticmethod
     async def get_facts():
         self = ViewedStorage
-        async with self.lock:
-            return await self.client.execute(load_facts)
+        facts = []
+        try:
+            if self.client:
+                async with self.lock:
+                    facts = self.client.execute(load_facts)
+        except Exception as er:
+            print(f"[services.viewed] get_facts error: {er}")
+        return facts or []
 
     @staticmethod
     async def get_shout(shout_slug):
@@ -138,7 +141,7 @@ class ViewedStorage:
         """updates topics counters by shout slug"""
         self = ViewedStorage
         with local_session() as session:
-            for [shout_topic, topic] in (
+            for [_shout_topic, topic] in (
                 session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all()
             ):
                 if not self.by_topics.get(topic.slug):

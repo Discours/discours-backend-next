@@ -2,18 +2,18 @@ from typing import List
 
 from sqlalchemy import select
 
-from orm.community import Community, CommunityAuthor
+from orm.author import Author, AuthorFollower
+from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout
 from orm.topic import Topic, TopicFollower
-from services.auth import login_required
 from resolvers.author import author_follow, author_unfollow
+from resolvers.community import community_follow, community_unfollow
 from resolvers.reaction import reactions_follow, reactions_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.community import community_follow, community_unfollow
-from services.following import FollowingManager, FollowingResult
+from services.auth import login_required
 from services.db import local_session
-from orm.author import Author, AuthorFollower
+from services.following import FollowingManager, FollowingResult
 from services.notify import notify_follower
 from services.schema import mutation, query
 

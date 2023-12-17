@@ -1,40 +1,32 @@
-from resolvers.editor import create_shout, delete_shout, update_shout
-
 from resolvers.author import (
     get_author,
+    get_author_followed,
+    get_author_followers,
     get_author_id,
     load_authors_all,
-    get_author_followers,
-    get_author_followed,
     load_authors_by,
-    update_profile,
     rate_author,
+    update_profile,
 )
-
+from resolvers.community import get_communities_all, get_community
+from resolvers.editor import create_shout, delete_shout, update_shout
+from resolvers.follower import follow, get_my_followed, unfollow
 from resolvers.reaction import (
     create_reaction,
-    update_reaction,
     delete_reaction,
     load_reactions_by,
     load_shouts_followed,
+    update_reaction,
 )
-from resolvers.topic import (
-    get_topics_by_author,
-    get_topics_by_community,
-    get_topics_all,
-    get_topic,
-)
-
-from resolvers.follower import follow, unfollow, get_my_followed
 from resolvers.reader import (
     get_shout,
     load_shouts_by,
     load_shouts_feed,
+    load_shouts_random_top,
     load_shouts_search,
     load_shouts_unrated,
-    load_shouts_random_top,
 )
-from resolvers.community import get_community, get_communities_all
+from resolvers.topic import get_topic, get_topics_all, get_topics_by_author, get_topics_by_community
 
 __all__ = [
     # author

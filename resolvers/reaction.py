@@ -1,15 +1,16 @@
 import time
 from typing import List
 
-from sqlalchemy import and_, asc, desc, select, text, func, case
+from sqlalchemy import and_, asc, case, desc, func, select, text
 from sqlalchemy.orm import aliased, joinedload
-from services.notify import notify_reaction
-from services.auth import login_required
-from services.db import local_session
-from services.schema import mutation, query
+
+from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutReactionsFollower
-from orm.author import Author
+from services.auth import login_required
+from services.db import local_session
+from services.notify import notify_reaction
+from services.schema import mutation, query
 
 
 def add_reaction_stat_columns(q):

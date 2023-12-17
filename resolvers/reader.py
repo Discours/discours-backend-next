@@ -1,15 +1,15 @@
-from sqlalchemy import distinct, bindparam, or_
+from sqlalchemy import bindparam, distinct, or_
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
 
+from orm.author import Author, AuthorFollower
+from orm.reaction import Reaction, ReactionKind
+from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
+from orm.topic import Topic, TopicFollower
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
-from orm.topic import TopicFollower, Topic
-from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
-from orm.author import AuthorFollower, Author
 from services.search import SearchService
 from services.viewed import ViewedStorage
 
@@ -161,7 +161,9 @@ async def load_shouts_by(_, _info, options):
                 session.query(Topic.slug)
                 .join(
                     ShoutTopic,
-                    and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True),
+                    and_(
+                        ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True
+                    ),  # noqa: E712
                 )
                 .first()
             )

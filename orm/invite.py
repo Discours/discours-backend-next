@@ -1,9 +1,11 @@
-from sqlalchemy import Column, ForeignKey, Enum, String
+from enum import Enum as Enumeration
+
+from sqlalchemy import Column, ForeignKey, String
 from sqlalchemy.orm import relationship
-from services.db import Base
+
 from orm.author import Author
 from orm.shout import Shout
-from enum import Enum as Enumeration
+from services.db import Base
 
 
 class InviteStatus(Enumeration):

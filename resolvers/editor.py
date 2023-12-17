@@ -1,15 +1,16 @@
 import time  # For Unix timestamps
+
 from sqlalchemy import and_, select
 from sqlalchemy.orm import joinedload
 
 from orm.author import Author
-from services.auth import login_required
-from services.db import local_session
-from services.schema import mutation, query
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from orm.topic import Topic
 from resolvers.reaction import reactions_follow, reactions_unfollow
+from services.auth import login_required
+from services.db import local_session
 from services.notify import notify_shout
+from services.schema import mutation, query
 
 
 @query.field("get_shouts_drafts")

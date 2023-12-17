@@ -1,4 +1,5 @@
 import sys
+
 import uvicorn
 from uvicorn.main import logger
 
@@ -58,5 +59,5 @@ if __name__ == "__main__":
     if "dev" in sys.argv:
         import os
 
-        os.environ.set("MODE", "development")
+        os.environ["MODE"] = "development"
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, proxy_headers=True, server_header=True)

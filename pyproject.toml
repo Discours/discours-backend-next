@@ -12,24 +12,23 @@ SQLAlchemy = "^2.0.22"
 psycopg2-binary = "^2.9.9"
 redis = {extras = ["hiredis"], version = "^5.0.1"}
 uvicorn = "^0.24"
-sentry-sdk = "^1.38.0"
-starlette = "^0.32.0.post1"
+sentry-sdk = "^1.39.1"
+starlette = "^0.34.0"
 gql = "^3.4.1"
 ariadne = "^0.21"
 aiohttp = "^3.9.1"
-requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 setuptools = "^69.0.2"
+pyright = "^1.1.341"
+pytest = "^7.4.2"
+black = { version = "^23.12.0", python = ">=3.12" }
+ruff = { version = "^0.1.8", python = ">=3.12" }
+isort = "^5.13.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.dev-dependencies]
-pytest = "^7.4.2"
-black = { version = "^23.12.0", python = ">=3.12" }
-ruff = { version = "^0.1.8", python = ">=3.12" }
 
 [tool.black]
 line-length = 120

@@ -1,4 +1,5 @@
 from functools import wraps
+
 import aiohttp
 from aiohttp.web import HTTPUnauthorized
 

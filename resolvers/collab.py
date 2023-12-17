@@ -1,9 +1,9 @@
+from orm.author import Author
+from orm.invite import Invite, InviteStatus
+from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation
-from orm.invite import Invite, InviteStatus
-from orm.author import Author
-from orm.shout import Shout
 
 
 @mutation.field("accept_invite")

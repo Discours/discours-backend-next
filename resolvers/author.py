@@ -1,20 +1,21 @@
 import time
 from typing import List
-from sqlalchemy import and_, func, distinct, select, literal, case
+
+from sqlalchemy import and_, case, distinct, func, literal, select
 from sqlalchemy.orm import aliased
 
-from orm.reaction import Reaction, ReactionKind
-from services.auth import login_required
-from services.db import local_session
-from services.unread import get_total_unread_counter
-from services.schema import mutation, query
+from orm.author import Author, AuthorFollower, AuthorRating
 from orm.community import Community
+from orm.reaction import Reaction, ReactionKind
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from orm.author import AuthorFollower, Author, AuthorRating
 from resolvers.community import followed_communities
-from resolvers.topic import followed_topics
 from resolvers.reaction import reacted_shouts_updates as followed_reactions
+from resolvers.topic import followed_topics
+from services.auth import login_required
+from services.db import local_session
+from services.schema import mutation, query
+from services.unread import get_total_unread_counter
 
 
 def add_author_stat_columns(q):

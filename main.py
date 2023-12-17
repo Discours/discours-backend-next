@@ -1,20 +1,21 @@
 import os
 from importlib import import_module
 from os.path import exists
+
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
-from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from starlette.applications import Starlette
 from starlette.routing import Route
 
 from resolvers.webhook import WebhookEndpoint
 from services.rediscache import redis
 from services.schema import resolvers
-from settings import DEV_SERVER_PID_FILE_NAME, SENTRY_DSN, MODE
+from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN
 
 import_module("resolvers")
 schema = make_executable_schema(load_schema_from_path("schemas/core.graphql"), resolvers)  # type: ignore

@@ -1,10 +1,11 @@
-from services.db import local_session
-from services.schema import query
+from sqlalchemy import and_, distinct, func, literal, select
+from sqlalchemy.orm import aliased
+
 from orm.author import Author
 from orm.community import Community, CommunityAuthor
 from orm.shout import ShoutCommunity
-from sqlalchemy import select, distinct, func, literal, and_
-from sqlalchemy.orm import aliased
+from services.db import local_session
+from services.schema import query
 
 
 def add_community_stat_columns(q):
