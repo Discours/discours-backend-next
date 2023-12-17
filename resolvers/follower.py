@@ -104,9 +104,9 @@ async def get_my_followed(_, info):
 
             # communities_query = select(Community).join(CommunityAuthor).filter(CommunityAuthor.author == author.id)
 
-            topics = session.execute(topics_query).scalars().all()
-            authors = session.execute(authors_query).scalars().all()
-            communities = session.query(Community).scalars().all()
+            topics = session.execute(topics_query).all()
+            authors = session.execute(authors_query).all()
+            communities = session.query(Community).all()
 
             return {"topics": topics, "authors": authors, "communities": communities}
 
