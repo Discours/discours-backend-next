@@ -166,7 +166,8 @@ async def get_author_id(_, _info, user: str):
     with local_session() as session:
         print(f"[resolvers.author] getting author id for {user}")
         a = session.query(Author).filter(Author.user == user).first()
-        print(f"[resolvers.author] got {a}")
+        if a:
+            print(f"[resolvers.author] got @{a.slug}")
         return a
 
 

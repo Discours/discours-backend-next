@@ -94,19 +94,15 @@ async def get_my_followed(_, info):
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            authors_query = (
-                select(Author).join(AuthorFollower).filter(AuthorFollower.follower == author.id).from_(Author)
-            )
+            authors_query = select(Author).join(AuthorFollower).filter(AuthorFollower.follower == author.id)
 
-            topics_query = select(Topic).join(TopicFollower).filter(TopicFollower.follower == author.id).from_(Author)
+            topics_query = select(Topic).join(TopicFollower).filter(TopicFollower.follower == author.id)
 
-            communities_query = (
-                select(Community).join(CommunityAuthor).filter(CommunityAuthor.author == author.id).from_(Author)
-            )
+            # communities_query = select(Community).join(CommunityAuthor).filter(CommunityAuthor.author == author.id)
 
             topics = session.execute(topics_query).scalars().all()
             authors = session.execute(authors_query).scalars().all()
-            communities = session.execute(communities_query).scalars().all()
+            communities = session.query(Community).scalars().all()
 
             return {"topics": topics, "authors": authors, "communities": communities}
 
