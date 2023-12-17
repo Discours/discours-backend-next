@@ -87,3 +87,5 @@ class Shout(Base):
     lang = Column(String, nullable=False, default="ru", comment="Language")
     version_of = Column(ForeignKey("shout.id"), nullable=True)
     oid = Column(String, nullable=True)
+
+    seo = Column(String, nullable=True)  # JSON
