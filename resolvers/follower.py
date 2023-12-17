@@ -97,26 +97,20 @@ async def get_my_followed(_, info):
             authors_query = (
                 select(Author)
                 .join(AuthorFollower, AuthorFollower.author == Author.id)
-                .where(AuthorFollower.follower == author.id)
+                .filter(AuthorFollower.follower == author.id)
             )
 
-            topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
+            topics_query = select(Topic).join(TopicFollower).filter(TopicFollower.follower == author.id)
             communities_query = (
                 select(Community)
                 .join(CommunityAuthor, CommunityAuthor.author == Author.id)
-                .where(CommunityAuthor.author == author.id)
+                .filter(CommunityAuthor.author == author.id)
             )
-            topics = []
-            authors = []
-            communities = []
-            for [author] in session.execute(authors_query):
-                authors.append(author)
 
-            for [topic] in session.execute(topics_query):
-                topics.append(topic)
+            topics = [t for [t] in session.execute(topics_query)]
+            authors = [a for [a] in session.execute(authors_query)]
+            communities = [c for [c] in session.execute(communities_query)]
 
-            for [c] in session.execute(communities_query):
-                communities.append(c)
             return {"topics": topics, "authors": authors, "communities": communities}
 
 
