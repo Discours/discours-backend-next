@@ -34,8 +34,8 @@ async def check_auth(req) -> (bool, int | None):
             async with aiohttp.ClientSession() as session:
                 async with session.post(AUTH_URL, json=gql, headers=headers) as response:
                     # Logging the GraphQL response
-                    response_text = await response.text()
-                    print(f"[services.auth] GraphQL Response: {response_text}")
+                    # response_text = await response.text()
+                    # print(f"[services.auth] GraphQL Response: {response_text}")
 
                     if response.status == 200:
                         # Parsing JSON response
@@ -48,14 +48,16 @@ async def check_auth(req) -> (bool, int | None):
 
                             if user_id:
                                 # Logging the retrieved user ID
-                                print(f"[services.auth] User ID retrieved: {user_id}")
+                                # print(f"[services.auth] User ID retrieved: {user_id}")
                                 return True, user_id
                             else:
                                 # Logging when no user ID is found in the response
-                                print("[services.auth] No user ID found in the response")
+                                # print("[services.auth] No user ID found in the response")
+                                pass
                     else:
                         # Logging when the request to the authentication server fails
-                        print(f"[services.auth] Request failed with status: {response.status}")
+                        # print(f"[services.auth] Request failed with status: {response.status}")
+                        pass
 
         except Exception as e:
             # Handling and logging exceptions during authentication check

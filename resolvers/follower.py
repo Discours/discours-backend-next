@@ -94,7 +94,11 @@ async def get_my_followed(_, info):
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            authors_query = select(Author).join(AuthorFollower).filter(AuthorFollower.follower == author.id)
+            authors_query = (
+                select(Author)
+                .join(AuthorFollower, AuthorFollower.follower == Author.id)
+                .filter(AuthorFollower.follower == author.id)
+            )
 
             topics_query = select(Topic).join(TopicFollower).filter(TopicFollower.follower == author.id)
 
