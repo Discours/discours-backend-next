@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import JSON, Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String
 
 from services.db import Base
 

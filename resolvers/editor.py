@@ -145,9 +145,17 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 # main topic
                 # TODO: test main_topic update
                 if "main_topic" in shout_input:
-                    old_main_topic = session.query(ShoutTopic).filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main == True)).first()
+                    old_main_topic = (
+                        session.query(ShoutTopic)
+                        .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main == True))
+                        .first()
+                    )
                     main_topic = session.query(Topic).filter(Topic.slug == shout_input["main_topic"]).first()
-                    new_main_topic = session.query(ShoutTopic).filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id)).first()
+                    new_main_topic = (
+                        session.query(ShoutTopic)
+                        .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
+                        .first()
+                    )
                     if old_main_topic is not new_main_topic:
                         old_main_topic.main = False
                         new_main_topic.main = True

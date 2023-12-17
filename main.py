@@ -1,22 +1,17 @@
 import os
-import re
 from importlib import import_module
 from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
-from sqlalchemy.exc import IntegrityError
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from starlette.applications import Starlette
-from starlette.endpoints import HTTPEndpoint
-from starlette.requests import Request
-from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from resolvers.author import create_author
+from resolvers.webhook import WebhookEndpoint
 from services.rediscache import redis
 from services.schema import resolvers
 from settings import DEV_SERVER_PID_FILE_NAME, SENTRY_DSN, MODE

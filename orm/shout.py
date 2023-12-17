@@ -1,7 +1,7 @@
 import time
 from enum import Enum as Enumeration
 
-from sqlalchemy import JSON, Boolean, Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from orm.author import Author

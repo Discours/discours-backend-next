@@ -1,7 +1,7 @@
 import time
 from enum import Enum as Enumeration
 
-from sqlalchemy import Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String
 
 from services.db import Base
 
