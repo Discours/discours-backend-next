@@ -65,7 +65,7 @@ def followed_communities(follower_id):
         q = select(Community)
         q = add_community_stat_columns(q)
         q = q.join(CommunityAuthor, CommunityAuthor.community == Community.id).where(
-            CommunityAuthor.follower == follower_id
+            CommunityAuthor.author == follower_id
         )
         # 3. Pass the query to the get_authors_from_query function and return the results
         return get_communities_from_query(q)
