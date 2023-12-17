@@ -2,7 +2,7 @@ from typing import List
 
 from sqlalchemy import select
 
-from orm.community import Community, CommunityAuthor as CommunityFollower
+from orm.community import Community, CommunityAuthor
 from orm.reaction import Reaction
 from orm.shout import Shout
 from orm.topic import Topic, TopicFollower
@@ -103,8 +103,8 @@ async def get_my_followed(_, info):
             topics_query = select(Topic).join(TopicFollower).where(TopicFollower.follower == author.id)
             communities_query = (
                 select(Community)
-                .join(CommunityFollower, CommunityFollower.author == Author.id)
-                .where(CommunityFollower.follower == author.id)
+                .join(CommunityAuthor, CommunityAuthor.author == Author.id)
+                .where(CommunityAuthor.author == author.id)
             )
             topics = []
             authors = []
