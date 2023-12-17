@@ -28,7 +28,7 @@ async def check_auth(req) -> (bool, int | None):
             "variables": variables,
             "operationName": opeation,
         }
-        print(f"[services.auth] Graphql: {gql}")
+        # print(f"[services.auth] Graphql: {gql}")
         try:
             # Asynchronous HTTP request to the authentication server
             async with aiohttp.ClientSession() as session:
@@ -71,7 +71,7 @@ def login_required(f):
         context = info.context
         # print(context)
         req = context.get("request")
-        print(f"[services.auth] login_required request headers: {req.headers}")
+        # print(f"[services.auth] login_required request headers: {req.headers}")
         # Performing authentication check
         is_authenticated, user_id = await check_auth(req)
         if not is_authenticated:
