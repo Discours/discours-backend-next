@@ -1,3 +1,4 @@
+import time
 from typing import List
 
 from sqlalchemy import select
@@ -94,6 +95,10 @@ async def get_my_followed(_, info):
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
+            # update author's last_seen timestamp
+            author.last_seen = time.time()
+            session.add(author)
+
             authors_query = (
                 select(Author)
                 .join(AuthorFollower, AuthorFollower.follower == Author.id)
