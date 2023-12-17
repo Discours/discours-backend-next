@@ -1,6 +1,8 @@
 [0.2.18]
 - schema: added Shout.seo string field
 - resolvers: added /new-author webhook resolver
+- resolvers: added reader.load_shouts_top_random
+- resolvers: added reader.load_shouts_unrated
 - services: auth connector upgraded
 
 

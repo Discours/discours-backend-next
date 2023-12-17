@@ -1,4 +1,4 @@
-from sqlalchemy import distinct
+from sqlalchemy import distinct, bindparam, or_
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
@@ -305,8 +305,6 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 @login_required
 @query.field("load_shouts_unrated")
 async def load_shouts_unrated(_, info, options):
-    user_id = info.context.get("user_id")
-
     q = (
         select(Shout)
         .options(
@@ -321,17 +319,16 @@ async def load_shouts_unrated(_, info, options):
                 Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
+        .outerjoin(Author, Author.user == bindparam("user_id"))
         .where(
             and_(
                 Shout.deleted_at.is_(None),
                 Shout.layout.is_not(None),
                 Shout.created_at >= options.get("after"),
+                or_(Author.id.is_(None), Reaction.created_by != Author.id),
             )
         )
     )
-
-    if user_id:
-        q = q.where(Reaction.created_by != user_id)
 
     # 3 or fewer votes is 0, 1, 2 or 3 votes (null, reaction id1, reaction id2, reaction id3)
     q = q.having(func.count(distinct(Reaction.id)) <= 4)
@@ -340,15 +337,15 @@ async def load_shouts_unrated(_, info, options):
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(options.get("limit", 50)).offset(options.get("offset", 0))
 
-    # print(q.compile(compile_kwargs={"literal_binds": True}))
-
-    return get_shouts_from_query(q)
+    return get_shouts_from_query(q, info.context.get("user_id"))
 
 
-def get_shouts_from_query(q):
+def get_shouts_from_query(q, user_id=None):
     shouts = []
     with local_session() as session:
-        for [shout, reacted_stat, commented_stat, rating_stat, last_comment] in session.execute(q).unique():
+        for [shout, reacted_stat, commented_stat, rating_stat, last_comment] in session.execute(
+            q, {"user_id": user_id}
+        ).unique():
             shouts.append(shout)
             shout.stat = {
                 "viewed": shout.views,
