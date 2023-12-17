@@ -20,20 +20,7 @@ def add_stat_columns(q):
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
-        func.sum(
-            case(
-                (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISAGREE.value, -1),
-                (aliased_reaction.kind == ReactionKind.PROOF.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISPROOF.value, -1),
-                (aliased_reaction.kind == ReactionKind.ACCEPT.value, 1),
-                (aliased_reaction.kind == ReactionKind.REJECT.value, -1),
-                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                (aliased_reaction.reply_to.is_not(None), 0),
-                else_=0,
-            )
-        ).label("rating_stat"),
+        get_rating_func(aliased_reaction).label("rating_stat"),
         func.max(
             case(
                 (aliased_reaction.kind != ReactionKind.COMMENT.value, None),
@@ -360,14 +347,13 @@ def get_shouts_from_query(q, user_id=None):
 def get_rating_func(aliased_reaction):
     return func.sum(
         case(
-            (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
-            (aliased_reaction.kind == ReactionKind.DISAGREE.value, -1),
-            (aliased_reaction.kind == ReactionKind.PROOF.value, 1),
-            (aliased_reaction.kind == ReactionKind.DISPROOF.value, -1),
-            (aliased_reaction.kind == ReactionKind.ACCEPT.value, 1),
-            (aliased_reaction.kind == ReactionKind.REJECT.value, -1),
-            (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-            (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
+            (aliased_reaction.kind == str(ReactionKind.AGREE.value), 1),
+            (aliased_reaction.kind == str(ReactionKind.DISAGREE.value), -1),
+            (aliased_reaction.kind == str(ReactionKind.PROOF.value), 1),
+            (aliased_reaction.kind == str(ReactionKind.DISPROOF.value), -1),
+            (aliased_reaction.kind == str(ReactionKind.ACCEPT.value), 1),
+            (aliased_reaction.kind == str(ReactionKind.REJECT.value), -1),
+            (aliased_reaction.kind == str(ReactionKind.DISLIKE.value), -1),
             (aliased_reaction.reply_to.is_not(None), 0),
             else_=0,
         )
@@ -377,11 +363,14 @@ def get_rating_func(aliased_reaction):
 @query.field("load_shouts_random_top")
 async def load_shouts_random_top(_, _info, params):
     """
+    :param _
+    :param _info: GraphQLInfoContext
     :param params: {
         filters: {
             layouts: ['music']
             after: 13245678
-        fromRandomCount: 100,
+        }
+        random_limit: 100
         limit: 50
         offset: 0
     }
@@ -395,9 +384,9 @@ async def load_shouts_random_top(_, _info, params):
     subquery = apply_filters(subquery, params.get("filters", {}))
     subquery = subquery.group_by(Shout.id).order_by(desc(get_rating_func(aliased_reaction)))
 
-    from_random_count = params.get("fromRandomCount")
-    if from_random_count:
-        subquery = subquery.limit(from_random_count)
+    random_limit = params.get("random_limit")
+    if random_limit:
+        subquery = subquery.limit(random_limit)
 
     q = (
         select(Shout)
