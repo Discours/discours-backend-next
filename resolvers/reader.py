@@ -1,3 +1,4 @@
+from sqlalchemy import distinct
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
@@ -301,8 +302,11 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         return []
 
 
+@login_required
 @query.field("load_shouts_unrated")
-async def load_shouts_unrated(_, info, limit, offset=0):
+async def load_shouts_unrated(_, info, options):
+    user_id = info.context.get("user_id")
+
     q = (
         select(Shout)
         .options(
@@ -314,15 +318,27 @@ async def load_shouts_unrated(_, info, limit, offset=0):
             and_(
                 Reaction.shout == Shout.id,
                 Reaction.replyTo.is_(None),
-                Reaction.kind.in_([ReactionKind.LIKE, ReactionKind.DISLIKE]),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
-        .where(and_(Shout.deletedAt.is_(None), Shout.layout.is_not(None), Reaction.id.is_(None)))
+        .where(
+            and_(
+                Shout.deleted_at.is_(None),
+                Shout.layout.is_not(None),
+                Shout.created_at >= options.get("after"),
+            )
+        )
     )
+
+    if user_id:
+        q = q.where(Reaction.created_by != user_id)
+
+    # 3 or fewer votes is 0, 1, 2 or 3 votes (null, reaction id1, reaction id2, reaction id3)
+    q = q.having(func.count(distinct(Reaction.id)) <= 4)
 
     q = add_stat_columns(q)
 
-    q = q.group_by(Shout.id).order_by(desc(Shout.createdAt)).limit(limit).offset(offset)
+    q = q.group_by(Shout.id).order_by(func.random()).limit(options.get("limit", 50)).offset(options.get("offset", 0))
 
     # print(q.compile(compile_kwargs={"literal_binds": True}))
 
