@@ -1,7 +1,7 @@
 from functools import wraps
 
-import aiohttp
-from aiohttp.web import HTTPUnauthorized
+from aiohttp import ClientSession
+from starlette.exceptions import HTTPException
 
 from settings import AUTH_URL
 
@@ -32,7 +32,7 @@ async def check_auth(req) -> str | None:
         }
         try:
             # Asynchronous HTTP request to the authentication server
-            async with aiohttp.ClientSession() as session:
+            async with ClientSession() as session:
                 async with session.post(AUTH_URL, json=gql, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
@@ -47,7 +47,7 @@ async def check_auth(req) -> str | None:
             print(f"[services.auth] {e}")
 
     if not user_id:
-        raise HTTPUnauthorized(text="Please, login first")
+        raise HTTPException(status_code=401,detail="Unauthorized")
 
 
 def login_required(f):
