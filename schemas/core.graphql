@@ -256,6 +256,7 @@ input LoadShoutsOptions {
   filters: LoadShoutsFilters
   with_author_captions: Boolean
   limit: Int!
+  random_limit: Int
   offset: Int
   order_by: String
   order_by_desc: Boolean
