@@ -19,10 +19,11 @@ class SearchService:
 
     @staticmethod
     async def search(text: str, limit: int = 50, offset: int = 0) -> List[Shout]:
+        payload = []
         try:
-            payload = await redis.execute("GET", text)
+            cached = await redis.execute("GET", text)
 
-            if not payload:
+            if not cached:
                 async with SearchService.lock:
                     # Use aiohttp to send a request to ElasticSearch
                     async with aiohttp.ClientSession() as session:
@@ -33,8 +34,9 @@ class SearchService:
                                 await redis.execute("SET", text, json.dumps(payload))  # use redis as cache
                             else:
                                 logging.error(f"[services.search] response: {response.status}  {await response.text()}")
+            else:
+                payload = json.loads(cached)
         except Exception as e:
             logging.error(f"[services.search] Error during search: {e}")
-            payload = []
 
         return payload[offset : offset + limit]
