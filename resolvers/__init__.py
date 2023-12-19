@@ -3,6 +3,7 @@ from resolvers.author import (
     get_author_followed,
     get_author_followers,
     get_author_id,
+    get_authors_all,
     load_authors_all,
     load_authors_by,
     rate_author,
@@ -32,6 +33,7 @@ __all__ = [
     # author
     "get_author",
     "get_author_id",
+    "get_authors_all",
     "load_authors_all",
     "get_author_followers",
     "get_author_followed",
