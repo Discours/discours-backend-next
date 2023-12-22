@@ -16,39 +16,45 @@ from resolvers.webhook import WebhookEndpoint
 from services.rediscache import redis
 from services.schema import resolvers
 from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN
+import asyncio
+from services.viewed import ViewedStorage
+
 
 import_module("resolvers")
 schema = make_executable_schema(load_schema_from_path("schemas/core.graphql"), resolvers)  # type: ignore
 
 
 async def start_up():
+    await redis.connect()
+
+    views_stat_task = asyncio.create_task(ViewedStorage().worker())
+    print(views_stat_task)
+
     if MODE == "development":
-        if exists(DEV_SERVER_PID_FILE_NAME):
-            await redis.connect()
-            return
-        else:
+        # pid file management
+        if not exists(DEV_SERVER_PID_FILE_NAME):
             with open(DEV_SERVER_PID_FILE_NAME, "w", encoding="utf-8") as f:
                 f.write(str(os.getpid()))
-    else:
-        await redis.connect()
-    try:
-        import sentry_sdk
 
-        sentry_sdk.init(
-            SENTRY_DSN,
-            enable_tracing=True,
-            integrations=[
-                StarletteIntegration(),
-                AriadneIntegration(),
-                SqlalchemyIntegration(),
-                RedisIntegration(),
-                AioHttpIntegration(),
-            ],
-        )
+    if MODE == "production":
+        # sentry monitoring
+        try:
+            import sentry_sdk
 
-    except Exception as e:
-        print("[sentry] init error")
-        print(e)
+            sentry_sdk.init(
+                SENTRY_DSN,
+                enable_tracing=True,
+                integrations=[
+                    StarletteIntegration(),
+                    AriadneIntegration(),
+                    SqlalchemyIntegration(),
+                    RedisIntegration(),
+                    AioHttpIntegration(),
+                ],
+            )
+        except Exception as e:
+            print("[sentry] init error")
+            print(e)
 
 
 async def shutdown():
