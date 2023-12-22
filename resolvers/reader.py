@@ -293,7 +293,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
 @login_required
 @query.field("load_shouts_unrated")
-async def load_shouts_unrated(_, info, options):
+async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = (
         select(Shout)
         .options(
@@ -313,7 +313,6 @@ async def load_shouts_unrated(_, info, options):
             and_(
                 Shout.deleted_at.is_(None),
                 Shout.layout.is_not(None),
-                Shout.created_at >= options.get("after"),
                 or_(Author.id.is_(None), Reaction.created_by != Author.id),
             )
         )
@@ -324,7 +323,7 @@ async def load_shouts_unrated(_, info, options):
 
     q = add_stat_columns(q)
 
-    q = q.group_by(Shout.id).order_by(func.random()).limit(options.get("limit", 50)).offset(options.get("offset", 0))
+    q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
 
     return get_shouts_from_query(q, info.context.get("user_id"))
 
