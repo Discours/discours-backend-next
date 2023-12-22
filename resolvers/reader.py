@@ -420,13 +420,13 @@ async def load_shouts_random_topic(_, info, limit):
             )
             .join(ShoutTopic, and_(Shout.id == ShoutTopic.shout, ShoutTopic.topic == topic.id))
             .where(
-                and_(Shout.deletedAt.is_(None), Shout.layout.is_not(None), Shout.visibility == "public")
+                and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None), Shout.visibility == "public")
             )
         )
 
         q = add_stat_columns(q)
 
-        q = q.group_by(Shout.id).order_by(desc(Shout.createdAt)).limit(limit)
+        q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
 
         shouts = get_shouts_from_query(q)
 
