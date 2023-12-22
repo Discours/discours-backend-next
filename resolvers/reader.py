@@ -12,7 +12,7 @@ from services.db import local_session
 from services.schema import query
 from services.search import SearchService
 from services.viewed import ViewedStorage
-
+from resolvers.topic import get_random_topic
 
 def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
@@ -407,3 +407,28 @@ async def load_shouts_random_top(_, _info, params):
     # print(q.compile(compile_kwargs={"literal_binds": True}))
 
     return get_shouts_from_query(q)
+
+@query.field("load_shouts_random_topic")
+async def load_shouts_random_topic(_, info, limit):
+    topic = get_random_topic()
+    shouts = []
+    if topic:
+        q = (
+            select(Shout)
+            .options(
+                joinedload(Shout.authors),
+                joinedload(Shout.topics),
+            )
+            .join(ShoutTopic, and_(Shout.id == ShoutTopic.shout, ShoutTopic.topic == topic.id))
+            .where(
+                and_(Shout.deletedAt.is_(None), Shout.layout.is_not(None), Shout.visibility == "public")
+            )
+        )
+
+        q = add_stat_columns(q)
+
+        q = q.group_by(Shout.id).order_by(desc(Shout.createdAt)).limit(limit)
+
+        shouts = get_shouts_from_query(q)
+
+    return {"topic": topic, "shouts": shouts}

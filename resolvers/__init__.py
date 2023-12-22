@@ -26,6 +26,7 @@ from resolvers.reader import (
     load_shouts_random_top,
     load_shouts_search,
     load_shouts_unrated,
+    load_shouts_random_topic
 )
 from resolvers.topic import get_topic, get_topics_all, get_topics_by_author, get_topics_by_community
 
@@ -56,6 +57,7 @@ __all__ = [
     "load_shouts_followed",
     "load_shouts_unrated",
     "load_shouts_random_top",
+    "load_shouts_random_topic",
     # follower
     "follow",
     "unfollow",

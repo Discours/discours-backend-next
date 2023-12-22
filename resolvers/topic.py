@@ -187,3 +187,15 @@ async def get_topics_random(_, info, amount=12):
             topics.append(topic)
 
     return topics
+
+
+def get_random_topic():
+    q = select(Topic)
+    q = q.join(ShoutTopic)
+    q = q.group_by(Topic.id)
+    q = q.having(func.count(distinct(ShoutTopic.shout)) > 10)
+    q = q.order_by(func.random()).limit(1)
+    topic = None
+    with local_session() as session:
+        topic = session.execute(q).first()
+    return topic
