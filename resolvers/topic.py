@@ -195,7 +195,7 @@ def get_random_topic():
     q = q.group_by(Topic.id)
     q = q.having(func.count(distinct(ShoutTopic.shout)) > 10)
     q = q.order_by(func.random()).limit(1)
-    topic = None
+
     with local_session() as session:
-        [topic] = session.execute(q).all()
-    return topic
+        [topic] = session.execute(q).first()
+        return topic
