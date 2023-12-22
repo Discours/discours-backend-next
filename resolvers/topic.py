@@ -197,5 +197,5 @@ def get_random_topic():
     q = q.order_by(func.random()).limit(1)
     topic = None
     with local_session() as session:
-        topic = session.execute(q).first()
+        [topic] = session.execute(q).all()
     return topic
