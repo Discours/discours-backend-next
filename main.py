@@ -27,8 +27,8 @@ schema = make_executable_schema(load_schema_from_path("schemas/core.graphql"), r
 async def start_up():
     await redis.connect()
 
-    views_stat_task = asyncio.create_task(ViewedStorage().worker())
-    print(views_stat_task)
+    # start viewed service
+    await ViewedStorage.init()
 
     if MODE == "development":
         # pid file management

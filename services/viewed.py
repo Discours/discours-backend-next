@@ -72,6 +72,9 @@ class ViewedStorage:
             if token:
                 self.client = create_client({"Authorization": f"Bearer {token}"}, schema=schema_str)
                 print("[services.viewed] * authorized permanently by ackee.discours.io: %s" % token)
+
+                views_stat_task = asyncio.create_task(self.worker())
+                print(views_stat_task)
             else:
                 print("[services.viewed] * please set ACKEE_TOKEN")
                 self.disabled = True
