@@ -14,6 +14,7 @@ from services.search import SearchService
 from services.viewed import ViewedStorage
 from resolvers.topic import get_random_topic
 
+
 def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
 
@@ -324,15 +325,21 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = add_stat_columns(q)
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
+    user_id = info.context.get("user_id")
+    if user_id:
+        with local_session() as session:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            if author:
+                return get_shouts_from_query(q, author.id)
+    else:
+        return get_shouts_from_query(q)
 
-    return get_shouts_from_query(q, info.context.get("user_id"))
 
-
-def get_shouts_from_query(q, user_id=None):
+def get_shouts_from_query(q, author_id=None):
     shouts = []
     with local_session() as session:
         for [shout, reacted_stat, commented_stat, rating_stat, last_comment] in session.execute(
-            q, {"user_id": user_id}
+            q, {"author_id": author_id}
         ).unique():
             shouts.append(shout)
             shout.stat = {
@@ -407,8 +414,9 @@ async def load_shouts_random_top(_, _info, params):
 
     return get_shouts_from_query(q)
 
+
 @query.field("load_shouts_random_topic")
-async def load_shouts_random_topic(_, info, limit):
+async def load_shouts_random_topic(_, info, limit: int = 10):
     topic = get_random_topic()
     shouts = []
     if topic:
@@ -419,9 +427,7 @@ async def load_shouts_random_topic(_, info, limit):
                 joinedload(Shout.topics),
             )
             .join(ShoutTopic, and_(Shout.id == ShoutTopic.shout, ShoutTopic.topic == topic.id))
-            .where(
-                and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None), Shout.visibility == "public")
-            )
+            .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public"))
         )
 
         q = add_stat_columns(q)

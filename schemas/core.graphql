@@ -121,13 +121,13 @@ type Shout {
   deleted_by: Author
   authors: [Author]
   communities: [Community]
-  title: String
+  title: String!
   subtitle: String
   lang: String
   community: String
   cover: String
   cover_caption: String
-  layout: String
+  layout: String!
   version_of: String
   visibility: ShoutVisibility
   updated_at: Int

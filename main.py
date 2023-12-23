@@ -16,7 +16,6 @@ from resolvers.webhook import WebhookEndpoint
 from services.rediscache import redis
 from services.schema import resolvers
 from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN
-import asyncio
 from services.viewed import ViewedStorage
 
 

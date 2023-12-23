@@ -72,9 +72,9 @@ class Shout(Base):
     cover_caption = Column(String, nullable=True, comment="Cover image alt caption")
     lead = Column(String, nullable=True)
     description = Column(String, nullable=True)
-    title = Column(String, nullable=True)
+    title = Column(String, nullable=False)
     subtitle = Column(String, nullable=True)
-    layout = Column(String, nullable=True)
+    layout = Column(String, nullable=False, default="article")
     media = Column(JSON, nullable=True)
 
     authors = relationship(lambda: Author, secondary="shout_author")
