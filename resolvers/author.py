@@ -6,7 +6,7 @@ from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower, AuthorRating
 from orm.community import Community
-from orm.reaction import Reaction, ReactionKind
+from orm.reaction import Reaction
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.community import followed_communities
@@ -20,7 +20,7 @@ from services.unread import get_total_unread_counter
 
 def add_author_stat_columns(q):
     shout_author_aliased = aliased(ShoutAuthor)
-    q = q.outerjoin(shout_author_aliased).add_columns(
+    q = q.outerjoin(shout_author_aliased, shout_author_aliased.author == Author.id).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label("shouts_stat")
     )
 
@@ -34,66 +34,34 @@ def add_author_stat_columns(q):
         func.count(distinct(followers_table.author)).label("followings_stat")
     )
 
-    rating_aliased = aliased(Reaction)
-    # q = q.add_columns(literal(0).label("rating_stat"))
-
-    q = q.outerjoin(rating_aliased, rating_aliased.created_by == Author.id).add_columns(
-        func.sum(
-            case(
-                (and_(rating_aliased.kind == ReactionKind.LIKE.value, rating_aliased.reply_to.is_(None)), 1),
-                (and_(rating_aliased.kind == ReactionKind.DISLIKE.value, rating_aliased.reply_to.is_(None)), -1),
-                else_=0,
-            )
-        ).label("rating_stat")
+    comments_table = aliased(Reaction)
+    q = q.outerjoin(comments_table, comments_table.created_by == Author.id).add_columns(
+        func.count()
+        .filter(and_(comments_table.kind == "COMMENT", comments_table.deleted_at.is_(None)))
+        .label("commented_stat")
     )
-
-    comments_aliased = aliased(Reaction)
-    q = (
-        q.outerjoin(comments_aliased, comments_aliased.created_by == Author.id).filter(
-            comments_aliased.kind == ReactionKind.COMMENT.value
-        )
-    ).add_columns(func.count(distinct(comments_aliased.id)).label("commented_stat"))
-
-    # WARNING: too high cpu cost
-    # q = q.add_columns(literal(0).label("commented_stat"))
-
-    # Filter based on shouts where the user is the author
-    q = q.filter(shout_author_aliased.author == Author.id)
 
     q = q.group_by(Author.id)
     return q
 
 
-def add_stat(author, stat_columns):
-    [
-        shouts_stat,
-        followers_stat,
-        followings_stat,
-        rating_stat,
-        commented_stat,
-    ] = stat_columns
-    author.stat = {
-        "shouts": shouts_stat,
-        "followers": followers_stat,
-        "followings": followings_stat,
-        "rating": rating_stat,
-        "commented": commented_stat,
-    }
-
-    return author
-
-
 def get_authors_from_query(q):
     authors = []
     with local_session() as session:
-        for [author, *stat_columns] in session.execute(q):
-            author = add_stat(author, stat_columns)
+        for [author, shouts_stat, followers_stat, followings_stat, commented_stat] in session.execute(q):
+            author.stat = {
+                "shouts": shouts_stat,
+                "followers": followers_stat,
+                "followings": followings_stat,
+                "commented": commented_stat,
+            }
             authors.append(author)
     # print(f"[resolvers.author] get_authors_from_query {authors}")
     return authors
 
 
 async def author_followings(author_id: int):
+    # NOTE: topics, authors, shout-reactions and communities slugs list
     return {
         "unread": await get_total_unread_counter(author_id),
         "topics": [t.slug for t in await followed_topics(author_id)],

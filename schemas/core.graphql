@@ -53,11 +53,11 @@ type AuthorFollowings {
 }
 
 type AuthorStat {
+  shouts: Int
   followings: Int
   followers: Int
-  rating: Int
+  # rating: Int
   commented: Int
-  shouts: Int
 }
 
 type Author {
