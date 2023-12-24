@@ -6,7 +6,7 @@ from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower, AuthorRating
 from orm.community import Community
-from orm.reaction import Reaction
+from orm.reaction import Reaction, ReactionKind
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.community import followed_communities
@@ -34,13 +34,6 @@ def add_author_stat_columns(q):
         func.count(distinct(followers_table.author)).label("followings_stat")
     )
 
-    comments_table = aliased(Reaction)
-    q = q.outerjoin(comments_table, comments_table.created_by == Author.id).add_columns(
-        func.count()
-        .filter(and_(comments_table.kind == "COMMENT", comments_table.deleted_at.is_(None)))
-        .label("commented_stat")
-    )
-
     q = q.group_by(Author.id)
     return q
 
@@ -48,12 +41,11 @@ def add_author_stat_columns(q):
 def get_authors_from_query(q):
     authors = []
     with local_session() as session:
-        for [author, shouts_stat, followers_stat, followings_stat, commented_stat] in session.execute(q):
+        for [author, shouts_stat, followers_stat, followings_stat] in session.execute(q):
             author.stat = {
                 "shouts": shouts_stat,
                 "followers": followers_stat,
                 "followings": followings_stat,
-                "commented": commented_stat,
             }
             authors.append(author)
     # print(f"[resolvers.author] get_authors_from_query {authors}")
@@ -140,7 +132,14 @@ async def get_author(_, _info, slug="", author_id=None):
         q = add_author_stat_columns(q)
         authors = get_authors_from_query(q)
         if authors:
-            return authors[0]
+            author = authors[0]
+            with local_session() as session:
+                comments_count = (
+                    session.query(Reaction)
+                    .where(and_(Reaction.createdBy == author.id, Reaction.kind == ReactionKind.COMMENT.value))
+                    .count()
+                )
+                author.stat["commented"] = comments_count
         else:
             return {"error": "cant find author"}
 
