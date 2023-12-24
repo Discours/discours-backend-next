@@ -429,7 +429,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
 
     q = add_stat_columns(q)
 
-    q = q.group_by(Shout.id).order_by(desc(Shout.createdAt)).limit(limit)
+    q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
 
     shouts = get_shouts_from_query(q)
 
