@@ -167,28 +167,19 @@ async def get_author(_, _info, slug="", author_id=None):
         authors = get_authors_from_query(q)
         if authors:
             author = authors[0]
-            try:
-                with local_session() as session:
-                    print(session)
-                    comments_count = (
-                        session.query(Reaction)
-                        .filter(
-                            and_(
-                                Reaction.created_by == author.id,
-                                Reaction.kind == ReactionKind.COMMENT.value,
-                                Reaction.deleted_at.is_(None),
-                            )
+            with local_session() as session:
+                comments_count = (
+                    session.query(Reaction)
+                    .filter(
+                        and_(
+                            Reaction.created_by == author.id,
+                            Reaction.kind == ReactionKind.COMMENT.value,
+                            Reaction.deleted_at.is_(None),
                         )
-                        .count()
                     )
-                    print(author.id)
-                    print(comments_count)
-                    author.stat["commented"] = comments_count
-            except Exception as e:
-                import traceback
-
-                traceback.print_exc()
-                print(e)
+                    .count()
+                )
+                author.stat["commented"] = comments_count
         else:
             return {"error": "cant find author"}
 
