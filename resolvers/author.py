@@ -7,7 +7,7 @@ from sqlalchemy.orm import aliased
 from orm.author import Author, AuthorFollower, AuthorRating
 from orm.community import Community
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import ShoutAuthor, ShoutTopic
+from orm.shout import ShoutAuthor, ShoutTopic, Shout
 from orm.topic import Topic
 from resolvers.community import followed_communities
 from resolvers.reaction import reacted_shouts_updates as followed_reactions
@@ -121,11 +121,45 @@ async def get_author_id(_, _info, user: str):
         return a
 
 
+def count_author_rating(session, author_id) -> int:
+    shouts_likes = (
+        session.query(Reaction, Shout)
+        .join(Shout, Shout.id == Reaction.shout)
+        .filter(and_(Shout.authors.any(author_id), Reaction.kind == ReactionKind.LIKE.value))
+        .count()
+        or 0
+    )
+    shouts_dislikes = (
+        session.query(Reaction, Shout)
+        .join(Shout, Shout.id == Reaction.shout)
+        .filter(and_(Shout.authors.any(author_id), Reaction.kind == ReactionKind.DISLIKE.value))
+        .count()
+        or 0
+    )
+    replied_alias = aliased(Reaction)
+    replies_likes = (
+        session.query(replied_alias)
+        .join(Reaction, replied_alias.id == Reaction.reply_to)
+        .where(and_(replied_alias.created_by == author_id, replied_alias.kind == ReactionKind.COMMENT.value))
+        .filter(replied_alias.kind == ReactionKind.LIKE.value)
+        .count()
+    ) or 0
+    replies_dislikes = (
+        session.query(replied_alias)
+        .join(Reaction, replied_alias.id == Reaction.reply_to)
+        .where(and_(replied_alias.created_by == author_id, replied_alias.kind == ReactionKind.COMMENT.value))
+        .filter(replied_alias.kind == ReactionKind.DISLIKE.value)
+        .count()
+    ) or 0
+
+    return shouts_likes - shouts_dislikes + replies_likes - replies_dislikes
+
+
 @query.field("get_author")
 async def get_author(_, _info, slug="", author_id=None):
     q = None
     if slug or author_id:
-        if slug != "":
+        if bool(slug):
             q = select(Author).where(Author.slug == slug)
         elif author_id:
             q = select(Author).where(Author.id == author_id)
@@ -133,13 +167,28 @@ async def get_author(_, _info, slug="", author_id=None):
         authors = get_authors_from_query(q)
         if authors:
             author = authors[0]
-            with local_session() as session:
-                comments_count = (
-                    session.query(Reaction)
-                    .where(and_(Reaction.createdBy == author.id, Reaction.kind == ReactionKind.COMMENT.value))
-                    .count()
-                )
-                author.stat["commented"] = comments_count
+            try:
+                with local_session() as session:
+                    print(session)
+                    comments_count = (
+                        session.query(Reaction)
+                        .filter(
+                            and_(
+                                Reaction.created_by == author.id,
+                                Reaction.kind == ReactionKind.COMMENT.value,
+                                Reaction.deleted_at.is_(None),
+                            )
+                        )
+                        .count()
+                    )
+                    print(author.id)
+                    print(comments_count)
+                    author.stat["commented"] = comments_count
+            except Exception as e:
+                import traceback
+
+                traceback.print_exc()
+                print(e)
         else:
             return {"error": "cant find author"}
 
