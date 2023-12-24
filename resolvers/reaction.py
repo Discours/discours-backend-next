@@ -91,7 +91,7 @@ def is_published_author(session, author_id):
     """checks if author has at least one publication"""
     return (
         session.query(Shout)
-        .where(Shout.authors.contains(author_id))
+        .where(Shout.authors.any(author_id))
         .filter(and_(Shout.published_at != "", Shout.deleted_at.is_(None)))
         .count()
         > 0

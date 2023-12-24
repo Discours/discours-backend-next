@@ -22,13 +22,13 @@ logger.setLevel(logging.DEBUG)
 @event.listens_for(Engine, "before_cursor_execute")
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.info.setdefault("query_start_time", []).append(time.time())
-    logger.debug(f" {statement}")
+    # logger.debug(f" {statement}")
 
 
 @event.listens_for(Engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info["query_start_time"].pop(-1)
-    logger.debug(f" Finished in {math.floor(total*10000)/10} ms ")
+    print(f" ----------------- Finished in {math.floor(total*10000)/10} ms ")
 
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)

@@ -125,14 +125,14 @@ def count_author_rating(session, author_id) -> int:
     shouts_likes = (
         session.query(Reaction, Shout)
         .join(Shout, Shout.id == Reaction.shout)
-        .filter(and_(Shout.authors.any(author_id), Reaction.kind == ReactionKind.LIKE.value))
+        .filter(and_(Shout.authors.any(id=author_id), Reaction.kind == ReactionKind.LIKE.value))
         .count()
         or 0
     )
     shouts_dislikes = (
         session.query(Reaction, Shout)
         .join(Shout, Shout.id == Reaction.shout)
-        .filter(and_(Shout.authors.any(author_id), Reaction.kind == ReactionKind.DISLIKE.value))
+        .filter(and_(Shout.authors.any(id=author_id), Reaction.kind == ReactionKind.DISLIKE.value))
         .count()
         or 0
     )

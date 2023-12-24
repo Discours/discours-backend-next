@@ -417,22 +417,20 @@ async def load_shouts_random_top(_, _info, params):
 @query.field("load_shouts_random_topic")
 async def load_shouts_random_topic(_, info, limit: int = 10):
     topic = get_random_topic()
-    shouts = []
-    if topic:
-        q = (
-            select(Shout)
-            .options(
-                joinedload(Shout.authors),
-                joinedload(Shout.topics),
-            )
-            .join(ShoutTopic, and_(Shout.id == ShoutTopic.shout, ShoutTopic.topic == topic.id))
-            .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public"))
+
+    q = (
+        select(Shout)
+        .options(
+            joinedload(Shout.authors),
+            joinedload(Shout.topics),
         )
+        .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public", Shout.topics.any(slug=topic.slug)))
+    )
 
-        q = add_stat_columns(q)
+    q = add_stat_columns(q)
 
-        q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
+    q = q.group_by(Shout.id).order_by(desc(Shout.createdAt)).limit(limit)
 
-        shouts = get_shouts_from_query(q)
+    shouts = get_shouts_from_query(q)
 
     return {"topic": topic, "shouts": shouts}
