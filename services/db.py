@@ -29,7 +29,7 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info["query_start_time"].pop(-1)
     total = math.floor(total * 10000) / 10
-    if total > 100:
+    if total > 35:
         print(f"\n{statement}\n----------------- Finished in {total} ms ")
 
 

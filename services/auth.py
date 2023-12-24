@@ -3,7 +3,7 @@ from functools import wraps
 from aiohttp import ClientSession
 from starlette.exceptions import HTTPException
 
-from settings import AUTH_URL
+from settings import AUTH_URL, AUTH_SECRET
 
 
 async def check_auth(req) -> str | None:
@@ -17,7 +17,6 @@ async def check_auth(req) -> str | None:
         headers = {
             "Content-Type": "application/json",
         }
-
         variables = {
             "params": {
                 "token_type": "access_token",
@@ -47,7 +46,34 @@ async def check_auth(req) -> str | None:
             print(f"[services.auth] {e}")
 
     if not user_id:
-        raise HTTPException(status_code=401,detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+async def add_author_role(author_id):
+    print(f"[services.auth] add author role for author with id {author_id}")
+    query_name = "_update_user"
+    operation = "UpdateUserRoles"
+    headers = {"Content-Type": "application/json", "x-authorizer-admin-secret": AUTH_SECRET}
+    variables = {"params": {"roles": "author, reader"}}
+    gql = {
+        "query": f"mutation {operation}($params: UpdateUserInput!) {{ {query_name}(params: $params) {{ id roles }} }}",
+        "variables": variables,
+        "operationName": operation,
+    }
+    try:
+        # Asynchronous HTTP request to the authentication server
+        async with ClientSession() as session:
+            async with session.post(AUTH_URL, json=gql, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    errors = data.get("errors")
+                    if errors:
+                        print(f"[services.auth] errors: {errors}")
+                    else:
+                        user_id = data.get("data", {}).get(query_name, {}).get("id")
+                        return user_id
+    except Exception as e:
+        print(f"[services.auth] {e}")
 
 
 def login_required(f):
