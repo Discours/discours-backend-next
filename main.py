@@ -18,12 +18,13 @@ from services.schema import resolvers
 from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN
 from services.viewed import ViewedStorage
 
-
 import_module("resolvers")
 schema = make_executable_schema(load_schema_from_path("schemas/core.graphql"), resolvers)  # type: ignore
 
 
 async def start_up():
+    print(f"[main] starting in {MODE} mode")
+
     await redis.connect()
 
     # start viewed service

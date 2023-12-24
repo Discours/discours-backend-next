@@ -1,13 +1,34 @@
+import time
+import logging
+
 # from contextlib import contextmanager
 from typing import Any, Callable, Dict, TypeVar
 
 # from psycopg2.errors import UniqueViolation
-from sqlalchemy import Column, Integer, create_engine
+from sqlalchemy import Column, Integer, create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
+from sqlalchemy.engine import Engine
 
 from settings import DB_URL
+
+logging.basicConfig()
+logger = logging.getLogger("\t [sqlalchemy.profiler]\t")
+logger.setLevel(logging.DEBUG)
+
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault("query_start_time", []).append(time.time())
+    logger.debug(f" {statement}")
+
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.time() - conn.info["query_start_time"].pop(-1)
+    logger.debug(f" Finished in {total*1000} ms ")
+
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
 

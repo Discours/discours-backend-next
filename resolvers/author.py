@@ -36,39 +36,31 @@ def add_author_stat_columns(q):
 
     rating_aliased = aliased(Reaction)
     # q = q.add_columns(literal(0).label("rating_stat"))
-    q = q.outerjoin(rating_aliased, rating_aliased.shout == shout_author_aliased.shout).add_columns(
-        func.coalesce(
-            func.sum(
-                case(
-                    (and_(rating_aliased.kind == ReactionKind.LIKE.value, rating_aliased.reply_to.is_(None)), 1),
-                    (and_(rating_aliased.kind == ReactionKind.DISLIKE.value, rating_aliased.reply_to.is_(None)), -1),
-                    else_=0,
-                )
-            ),
-            0,
+
+    q = q.outerjoin(rating_aliased, rating_aliased.created_by == Author.id).add_columns(
+        func.sum(
+            case(
+                (and_(rating_aliased.kind == ReactionKind.LIKE.value, rating_aliased.reply_to.is_(None)), 1),
+                (and_(rating_aliased.kind == ReactionKind.DISLIKE.value, rating_aliased.reply_to.is_(None)), -1),
+                else_=0,
+            )
         ).label("rating_stat")
     )
 
-    q = q.add_columns(literal(0).label("commented_stat"))
+    comments_aliased = aliased(Reaction)
+    q = (
+        q.outerjoin(comments_aliased, comments_aliased.created_by == Author.id).filter(
+            comments_aliased.kind == ReactionKind.COMMENT.value
+        )
+    ).add_columns(func.count(distinct(comments_aliased.id)).label("commented_stat"))
 
     # WARNING: too high cpu cost
-
-    # TODO: check version 1
-    # q = q.outerjoin(
-    #     Reaction, and_(Reaction.createdBy == User.id, Reaction.body.is_not(None))
-    # ).add_columns(func.count(distinct(Reaction.id))
-    # .label("commented_stat"))
-
-    # TODO: check version 2
-    # q = q.add_columns(
-    #   func.count(case((reaction_aliased.kind == ReactionKind.COMMENT.value, 1), else_=0))
-    #   .label("commented_stat"))
+    # q = q.add_columns(literal(0).label("commented_stat"))
 
     # Filter based on shouts where the user is the author
     q = q.filter(shout_author_aliased.author == Author.id)
 
     q = q.group_by(Author.id)
-
     return q
 
 
@@ -156,17 +148,7 @@ def author_unfollow(follower_id, slug):
 @query.field("get_authors_all")
 async def get_authors_all(_, _info):
     with local_session() as session:
-        return session.query(Author).join(ShoutAuthor, Author.id == ShoutAuthor.author).all()
-
-
-@query.field("load_authors_all")
-async def load_authors_all(_, _info, limit: int = 50, offset: int = 0):
-    q = select(Author)
-    q = add_author_stat_columns(q)
-    q = q.join(ShoutAuthor, Author.id == ShoutAuthor.author)
-    q = q.limit(limit).offset(offset)
-
-    return get_authors_from_query(q)
+        return session.query(Author).all()
 
 
 @query.field("get_author_id")
@@ -188,7 +170,6 @@ async def get_author(_, _info, slug="", author_id=None):
         elif author_id:
             q = select(Author).where(Author.id == author_id)
         q = add_author_stat_columns(q)
-        # print(f"[resolvers.author] SQL: {q}")
         authors = get_authors_from_query(q)
         if authors:
             return authors[0]
@@ -215,7 +196,6 @@ async def load_authors_by(_, _info, by, limit, offset):
         q = q.filter(Author.created_at > before)
 
     q = q.order_by(by.get("order", Author.created_at)).limit(limit).offset(offset)
-
     return get_authors_from_query(q)
 
 

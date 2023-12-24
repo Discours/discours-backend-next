@@ -56,8 +56,4 @@ def exception_handler(_et, exc, _tb):
 
 if __name__ == "__main__":
     sys.excepthook = exception_handler
-    if "dev" in sys.argv:
-        import os
-
-        os.environ["MODE"] = "development"
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, proxy_headers=True, server_header=True)

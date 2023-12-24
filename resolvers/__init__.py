@@ -4,7 +4,6 @@ from resolvers.author import (
     get_author_followers,
     get_author_id,
     get_authors_all,
-    load_authors_all,
     load_authors_by,
     rate_author,
     update_profile,
@@ -26,7 +25,7 @@ from resolvers.reader import (
     load_shouts_random_top,
     load_shouts_search,
     load_shouts_unrated,
-    load_shouts_random_topic
+    load_shouts_random_topic,
 )
 from resolvers.topic import get_topic, get_topics_all, get_topics_by_author, get_topics_by_community
 
@@ -35,7 +34,6 @@ __all__ = [
     "get_author",
     "get_author_id",
     "get_authors_all",
-    "load_authors_all",
     "get_author_followers",
     "get_author_followed",
     "load_authors_by",
