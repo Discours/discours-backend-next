@@ -287,11 +287,11 @@ async def load_shouts_feed(_, info, options):
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
         results = await SearchService.search(text, limit, offset)
-        results_dict = {}
-        for r in results:
-            results_dict[r["slug"]] = r
+        results_dict = {r["slug"]: r for r in results}
+        print(results_dict)
+
         q = (
-            select(Shout)  # Add "score" column
+            select(Shout)
             .options(
                 joinedload(Shout.authors),
                 joinedload(Shout.topics),
@@ -299,15 +299,20 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             .where(and_(Shout.deleted_at.is_(None), Shout.slug.in_(results_dict.keys())))
         )
 
+        shouts_data = []
         with local_session() as session:
-            results = session.execute(q).unique()
-
-            for result in results:
-                shout_slug = result.get("slug")
+            results = list(session.execute(q).unique())
+            print(results)
+            print(f"[resolvers.reader] searched, preparing {len(results)} results")
+            for x in results:
+                shout = x[0]
+                shout_slug = shout.dict().get("slug", "")
                 score = results_dict.get(shout_slug, {}).get("score", 0)
-                result["score"] = score
+                shout_data = shout.dict()  # Convert the Shout instance to a dictionary
+                shout_data["score"] = score  # Add the score to the dictionary
+                shouts_data.append(shout_data)
 
-            return results
+        return shouts_data
     else:
         return []
 
