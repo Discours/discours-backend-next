@@ -287,7 +287,7 @@ async def load_shouts_feed(_, info, options):
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
         results = await SearchService.search(text, limit, offset)
-        results_dict = {[s.slug]: s for s in results}  # { slug, title, score }
+        results_dict = {[s["slug"]]: s for s in results}  # { slug, title, score }
         q = (
             select(Shout)  # Add "score" column
             .options(

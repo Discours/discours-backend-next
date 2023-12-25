@@ -21,6 +21,7 @@ class SearchService:
     async def search(text: str, limit: int = 50, offset: int = 0) -> List[Shout]:
         payload = []
         try:
+            # TODO: add ttl for redis cached search results
             cached = await redis.execute("GET", text)
 
             if not cached:
