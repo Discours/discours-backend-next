@@ -300,11 +300,10 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         with local_session() as session:
             results = session.execute(q).unique()
 
-            # Assuming Shout has a score attribute, you can update each result with the score
             for result in results:
-                shout_slug = result[0].slug  # Assuming id is the primary key of Shout
+                shout_slug = result.get("slug")
                 score = results_dict.get(shout_slug, {}).get("score", 0)
-                setattr(result[0], "score", score)
+                result["score"] = score
 
             return results
     else:
