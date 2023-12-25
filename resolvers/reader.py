@@ -287,7 +287,7 @@ async def load_shouts_feed(_, info, options):
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
         results = await SearchService.search(text, limit, offset)
-        results_dict = {[s.id]: s for s in results}  # { slug, title, score }
+        results_dict = {[s.slug]: s for s in results}  # { slug, title, score }
         q = (
             select(Shout)  # Add "score" column
             .options(
@@ -298,12 +298,12 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         )
 
         with local_session() as session:
-            results = session.execute(q).all()
+            results = session.execute(q).unique()
 
             # Assuming Shout has a score attribute, you can update each result with the score
             for result in results:
-                shout_id = result[0].id  # Assuming id is the primary key of Shout
-                score = results_dict.get(shout_id, {}).get("score", 0)
+                shout_slug = result[0].slug  # Assuming id is the primary key of Shout
+                score = results_dict.get(shout_slug, {}).get("score", 0)
                 setattr(result[0], "score", score)
 
             return results
