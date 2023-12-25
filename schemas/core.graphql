@@ -293,6 +293,11 @@ type Result {
 type SearchResult {
     slug: String!
     title: String!
+    cover: String
+    main_topic: String
+    created_at: Int
+    authors: [Author]
+    topics: [Topic]
     score: Float!
 }
 

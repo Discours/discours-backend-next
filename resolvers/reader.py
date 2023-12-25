@@ -1,4 +1,4 @@
-from sqlalchemy import bindparam, distinct, or_
+from sqlalchemy import bindparam, distinct, or_, literal
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
@@ -286,7 +286,27 @@ async def load_shouts_feed(_, info, options):
 @query.field("load_shouts_search")
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
-        return await SearchService.search(text, limit, offset)
+        results = await SearchService.search(text, limit, offset)
+        results_dict = {[s.id]: s for s in results}  # { slug, title, score }
+        q = (
+            select(Shout)  # Add "score" column
+            .options(
+                joinedload(Shout.authors),
+                joinedload(Shout.topics),
+            )
+            .where(and_(Shout.deleted_at.is_(None), Shout.id.in_(results_dict.keys())))
+        )
+
+        with local_session() as session:
+            results = session.execute(q).all()
+
+            # Assuming Shout has a score attribute, you can update each result with the score
+            for result in results:
+                shout_id = result[0].id  # Assuming id is the primary key of Shout
+                score = results_dict.get(shout_id, {}).get("score", 0)
+                setattr(result[0], "score", score)
+
+            return results
     else:
         return []
 
