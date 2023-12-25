@@ -13,3 +13,5 @@ AUTH_URL = environ.get("AUTH_URL") or ""
 SENTRY_DSN = environ.get("SENTRY_DSN")
 DEV_SERVER_PID_FILE_NAME = "dev-server.pid"
 MODE = "development" if "dev" in sys.argv else "production"
+
+AUTH_SECRET = environ.get("AUTH_SECRET") or "nothing"
