@@ -296,7 +296,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 joinedload(Shout.authors),
                 joinedload(Shout.topics),
             )
-            .where(and_(Shout.deleted_at.is_(None), Shout.id.in_(results_dict.keys())))
+            .where(and_(Shout.deleted_at.is_(None), Shout.slug.in_(results_dict.keys())))
         )
 
         with local_session() as session:
