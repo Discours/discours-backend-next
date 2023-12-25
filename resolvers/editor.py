@@ -144,7 +144,6 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 session.add(shout)
 
                 # main topic
-                # TODO: test main_topic update
                 if "main_topic" in shout_input:
                     old_main_topic = (
                         session.query(ShoutTopic)

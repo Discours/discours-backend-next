@@ -28,9 +28,9 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 @event.listens_for(Engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info["query_start_time"].pop(-1)
-    total = math.floor(total * 10000) / 10
+    total = math.floor(total * 10000) / 10000
     if total > 35:
-        print(f"\n{statement}\n----------------- Finished in {total} ms ")
+        print(f"\n{statement}\n----------------- Finished in {total} s ")
 
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)

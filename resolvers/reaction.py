@@ -272,12 +272,8 @@ async def update_reaction(_, info, rid, reaction):
                 r.body = body
             r.updated_at = int(time.time())
             if r.kind != reaction["kind"]:
-                # NOTE: change mind detection can be here
+                # TODO: change mind detection can be here
                 pass
-
-            # FIXME: range is not stable after body editing
-            if reaction.get("range"):
-                r.range = reaction.get("range")
 
             session.commit()
             r.stat = {

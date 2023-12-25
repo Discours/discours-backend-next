@@ -288,7 +288,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
         results = await SearchService.search(text, limit, offset)
         results_dict = {r["slug"]: r for r in results}
-        print(results_dict)
+        # print(results_dict)
 
         q = (
             select(Shout)
@@ -302,7 +302,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         shouts_data = []
         with local_session() as session:
             results = list(session.execute(q).unique())
-            print(results)
+            # print(results)
             print(f"[resolvers.reader] searched, preparing {len(results)} results")
             for x in results:
                 shout = x[0]
