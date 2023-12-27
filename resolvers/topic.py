@@ -197,5 +197,7 @@ def get_random_topic():
     q = q.order_by(func.random()).limit(1)
 
     with local_session() as session:
-        [topic] = session.execute(q).first()
-        return topic
+        r = session.execute(q).first()
+        if r:
+            [topic] = r
+            return topic

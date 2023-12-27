@@ -179,6 +179,12 @@ async def get_author(_, _info, slug="", author_id=None):
                     )
                     .count()
                 )
+                rating_sum = (
+                    session.query(func.sum(AuthorRating.value))
+                    .filter(AuthorRating.author == author.id)
+                    .scalar()
+                )
+                author.stat["rating"] = rating_sum
                 author.stat["commented"] = comments_count
         else:
             return {"error": "cant find author"}
@@ -213,7 +219,7 @@ async def get_author_followed(_, _info, slug="", user=None, author_id=None) -> L
         author_id_query = select(Author.id).where(Author.slug == slug)
     elif user:
         author_id_query = select(Author.id).where(Author.user == user)
-    if not author_id:
+    if author_id_query is not None and not author_id:
         with local_session() as session:
             author_id = session.execute(author_id_query).scalar()
 
