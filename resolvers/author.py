@@ -198,7 +198,7 @@ async def get_author(_, _info, slug="", author_id=None):
                 author.stat["rating_shouts"] = count_author_shouts_rating(session, author.id)
                 author.stat["rating_comments"] = count_author_comments_rating(session, author.id)
                 author.stat["commented"] = comments_count
-                return count_author_comments_rating
+                return author
         else:
             return {"error": "cant find author"}
 
