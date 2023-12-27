@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from sqlalchemy import and_, case, distinct, func, literal, select
+from sqlalchemy import and_, case, distinct, func, literal, select, cast, Integer
 from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower, AuthorRating
@@ -121,21 +121,7 @@ async def get_author_id(_, _info, user: str):
         return a
 
 
-def count_author_rating(session, author_id) -> int:
-    shouts_likes = (
-        session.query(Reaction, Shout)
-        .join(Shout, Shout.id == Reaction.shout)
-        .filter(and_(Shout.authors.any(id=author_id), Reaction.kind == ReactionKind.LIKE.value))
-        .count()
-        or 0
-    )
-    shouts_dislikes = (
-        session.query(Reaction, Shout)
-        .join(Shout, Shout.id == Reaction.shout)
-        .filter(and_(Shout.authors.any(id=author_id), Reaction.kind == ReactionKind.DISLIKE.value))
-        .count()
-        or 0
-    )
+def count_author_comments_rating(session, author_id) -> int:
     replied_alias = aliased(Reaction)
     replies_likes = (
         session.query(replied_alias)
@@ -152,7 +138,25 @@ def count_author_rating(session, author_id) -> int:
         .count()
     ) or 0
 
-    return shouts_likes - shouts_dislikes + replies_likes - replies_dislikes
+    return  replies_likes - replies_dislikes
+
+
+def count_author_shouts_rating(session, author_id) -> int:
+    shouts_likes = (
+        session.query(Reaction, Shout)
+        .join(Shout, Shout.id == Reaction.shout)
+        .filter(and_(Shout.authors.any(id=author_id), Reaction.kind == ReactionKind.LIKE.value))
+        .count()
+        or 0
+    )
+    shouts_dislikes = (
+        session.query(Reaction, Shout)
+        .join(Shout, Shout.id == Reaction.shout)
+        .filter(and_(Shout.authors.any(id=author_id), Reaction.kind == ReactionKind.DISLIKE.value))
+        .count()
+        or 0
+    )
+    return shouts_likes - shouts_dislikes
 
 
 @query.field("get_author")
@@ -164,9 +168,10 @@ async def get_author(_, _info, slug="", author_id=None):
         elif author_id:
             q = select(Author).where(Author.id == author_id)
         q = add_author_stat_columns(q)
-        authors = get_authors_from_query(q)
-        if authors:
-            author = authors[0]
+
+        [author] = get_authors_from_query(q)
+
+        if author:
             with local_session() as session:
                 comments_count = (
                     session.query(Reaction)
@@ -179,13 +184,21 @@ async def get_author(_, _info, slug="", author_id=None):
                     )
                     .count()
                 )
-                rating_sum = (
-                    session.query(func.sum(AuthorRating.value))
+                ratings_sum = (
+                    session.query(
+                        func.sum(
+                            case((AuthorRating.plus == True, cast(1, Integer)),
+                                else_=cast(-1, Integer))).label("rating")
+                    )
                     .filter(AuthorRating.author == author.id)
                     .scalar()
                 )
-                author.stat["rating"] = rating_sum
+
+                author.stat["rating"] = ratings_sum or 0
+                author.stat["rating_shouts"] = count_author_shouts_rating(session, author.id)
+                author.stat["rating_comments"] = count_author_comments_rating(session, author.id)
                 author.stat["commented"] = comments_count
+                return count_author_comments_rating
         else:
             return {"error": "cant find author"}
 
@@ -261,13 +274,13 @@ async def rate_author(_, info, rated_slug, value):
         rated_author = session.query(Author).filter(Author.slug == rated_slug).first()
         rater = session.query(Author).filter(Author.slug == user_id).first()
         if rater and rated_author:
-            rating = (
+            rating: AuthorRating = (
                 session.query(AuthorRating)
                 .filter(and_(AuthorRating.rater == rater.id, AuthorRating.author == rated_author.id))
                 .first()
             )
-            if value > 0:
-                rating.plus = True
+            if rating:
+                rating.plus = value > 0
                 session.add(rating)
                 session.commit()
                 return {}

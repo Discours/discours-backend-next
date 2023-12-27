@@ -57,6 +57,8 @@ type AuthorStat {
   followings: Int
   followers: Int
   rating: Int
+  rating_shouts: Int
+  rating_comments: Int
   commented: Int
 }
 
