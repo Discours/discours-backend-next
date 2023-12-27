@@ -111,16 +111,6 @@ async def get_authors_all(_, _info):
         return session.query(Author).all()
 
 
-@query.field("get_author_id")
-async def get_author_id(_, _info, user: str):
-    with local_session() as session:
-        print(f"[resolvers.author] getting author id for {user}")
-        a = session.query(Author).filter(Author.user == user).first()
-        if a:
-            print(f"[resolvers.author] got @{a.slug}")
-        return a
-
-
 def count_author_comments_rating(session, author_id) -> int:
     replied_alias = aliased(Reaction)
     replies_likes = (
@@ -159,48 +149,60 @@ def count_author_shouts_rating(session, author_id) -> int:
     return shouts_likes - shouts_dislikes
 
 
+
+def load_author_with_stats(q):
+    q = add_author_stat_columns(q)
+
+    [author] = get_authors_from_query(q)
+
+    if author:
+        with local_session() as session:
+            comments_count = (
+                session.query(Reaction)
+                .filter(
+                    and_(
+                        Reaction.created_by == author.id,
+                        Reaction.kind == ReactionKind.COMMENT.value,
+                        Reaction.deleted_at.is_(None),
+                    )
+                )
+                .count()
+            )
+            ratings_sum = (
+                session.query(
+                    func.sum(
+                        case((AuthorRating.plus == True, cast(1, Integer)),
+                            else_=cast(-1, Integer))).label("rating")
+                )
+                .filter(AuthorRating.author == author.id)
+                .scalar()
+            )
+
+            author.stat["rating"] = ratings_sum or 0
+            author.stat["rating_shouts"] = count_author_shouts_rating(session, author.id)
+            author.stat["rating_comments"] = count_author_comments_rating(session, author.id)
+            author.stat["commented"] = comments_count
+            return author
+
+
 @query.field("get_author")
 async def get_author(_, _info, slug="", author_id=None):
     q = None
     if slug or author_id:
         if bool(slug):
             q = select(Author).where(Author.slug == slug)
-        elif author_id:
+        if author_id:
             q = select(Author).where(Author.id == author_id)
-        q = add_author_stat_columns(q)
 
-        [author] = get_authors_from_query(q)
+        return load_author_with_stats(q)
 
-        if author:
-            with local_session() as session:
-                comments_count = (
-                    session.query(Reaction)
-                    .filter(
-                        and_(
-                            Reaction.created_by == author.id,
-                            Reaction.kind == ReactionKind.COMMENT.value,
-                            Reaction.deleted_at.is_(None),
-                        )
-                    )
-                    .count()
-                )
-                ratings_sum = (
-                    session.query(
-                        func.sum(
-                            case((AuthorRating.plus == True, cast(1, Integer)),
-                                else_=cast(-1, Integer))).label("rating")
-                    )
-                    .filter(AuthorRating.author == author.id)
-                    .scalar()
-                )
 
-                author.stat["rating"] = ratings_sum or 0
-                author.stat["rating_shouts"] = count_author_shouts_rating(session, author.id)
-                author.stat["rating_comments"] = count_author_comments_rating(session, author.id)
-                author.stat["commented"] = comments_count
-                return author
-        else:
-            return {"error": "cant find author"}
+@query.field("get_author_id")
+async def get_author_id(_, _info, user: str):
+    with local_session() as session:
+        print(f"[resolvers.author] getting author id for {user}")
+        q = select(Author).filter(Author.user == user)
+        return load_author_with_stats(q)
 
 
 @query.field("load_authors_by")
