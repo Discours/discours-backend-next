@@ -153,9 +153,10 @@ def count_author_shouts_rating(session, author_id) -> int:
 def load_author_with_stats(q):
     q = add_author_stat_columns(q)
 
-    [author] = get_authors_from_query(q)
+    result = get_authors_from_query(q)
 
-    if author:
+    if result:
+        [author] = result
         with local_session() as session:
             comments_count = (
                 session.query(Reaction)
