@@ -1,3 +1,7 @@
+[0.2.19]
+- fix: adding 'author' role
+- fix: stripping user_id in auth connector
+
 [0.2.18]
 - schema: added Shout.seo string field
 - resolvers: added /new-author webhook resolver

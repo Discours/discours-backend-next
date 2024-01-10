@@ -13,6 +13,7 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 
 from resolvers.webhook import WebhookEndpoint
+from services.auth import init_auth
 from services.rediscache import redis
 from services.schema import resolvers
 from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN

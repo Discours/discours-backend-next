@@ -7,7 +7,7 @@ from sqlalchemy.orm import aliased, joinedload
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutReactionsFollower
-from services.auth import login_required, add_author_role
+from services.auth import login_required, add_user_role
 from services.db import local_session
 from services.notify import notify_reaction
 from services.schema import mutation, query
@@ -142,12 +142,14 @@ def check_to_hide(session, reaction):
     return False
 
 
-def set_published(session, shout_id, approver_id):
+async def set_published(session, shout_id, approver_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
     s.published_at = int(time.time())
     s.published_by = approver_id
     s.visibility = text("public")
-    add_author_role(s.created_by)
+    author = session.query(Author).filter(Author.id == s.created_by).first()
+    if author:
+        await add_user_role(str(author.user))
     session.add(s)
     session.commit()
 
@@ -235,7 +237,7 @@ async def create_reaction(_, info, reaction):
             if check_to_hide(session, r):
                 set_hidden(session, r.shout)
             elif check_to_publish(session, author.id, r):
-                set_published(session, r.shout, author.id)
+                await set_published(session, r.shout, author.id)
 
             try:
                 reactions_follow(author.id, reaction["shout"], True)
