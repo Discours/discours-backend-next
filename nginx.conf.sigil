@@ -49,14 +49,14 @@ server {
     }
 
     # Custom location block for /connect
-    location /connect/ {
-      proxy_pass http://presence-8080/;
-        {{ $proxy_settings }}
-        {{ $gzip_settings }}
-        {{ $cors_headers_options }}
-        {{ $cors_headers_post }}
-        {{ $cors_headers_get }}
-    }
+    # location /connect/ {
+    #  proxy_pass http://presence-8080/;
+    #    {{ $proxy_settings }}
+    #    {{ $gzip_settings }}
+    #    {{ $cors_headers_options }}
+    #    {{ $cors_headers_post }}
+    #    {{ $cors_headers_get }}
+    # }
 
     location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
     expires 30d;  # This means that the client can cache these resources for 30 days.
