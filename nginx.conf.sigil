@@ -38,7 +38,7 @@ server {
         keepalive_timeout   70;
     {{ end }}
 
-    
+
     location / {
         proxy_pass  http://{{ $.APP }}-{{ $upstream_port }};
         {{ $proxy_settings }}
@@ -88,7 +88,7 @@ server {
     internal;
   }
 
-  include /home/dokku/gateway/nginx.conf.d/*.conf;
+  # include /home/dokku/gateway/nginx.conf.d/*.conf;
 
 }
 {{ end }}
