@@ -380,14 +380,11 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = apply_reaction_filters(by, q)
     q = q.where(Reaction.deleted_at.is_(None))
 
-    # order by
-    order_value = by.get("sort", "-created_at")
-    order_way = desc if order_value.startswith("-") else asc
-    order_field = order_value.replace("-", "")
     # group by
-    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.created_at, Reaction[order_field]).order_by(
-        order_way(order_field)
-    )
+    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
+
+    # order by
+    q = q.order_by(desc("created_at"))
 
     # pagination
     q = q.limit(limit).offset(offset)
@@ -409,8 +406,9 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reactions.append(reaction)
 
         # sort if by stat is present
-        if by.get("stat"):
-            reactions = sorted(reactions, key=lambda r: r.stat.get(by["stat"]) or r.created_at, reverse=True)
+        stat_sort = by.get("stat")
+        if stat_sort:
+            reactions = sorted(reactions, key=lambda r: r.stat.get(stat_sort) or r.created_at, reverse=stat_sort.startswith("-"))
 
     return reactions
 
@@ -422,10 +420,10 @@ def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
         if author:
             shouts = (
                 session.query(Shout)
-                .join(Reaction)
+                .join(Reaction, Reaction.shout == Shout.id)
+                .options(joinedload(Reaction.created_by))
                 .filter(Reaction.created_by == follower_id)
                 .filter(Reaction.created_at > author.last_seen)
-                .options(joinedload(Reaction.created_by), joinedload(Reaction.shout))
                 .limit(limit)
                 .offset(offset)
                 .all()
