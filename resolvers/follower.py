@@ -92,6 +92,9 @@ async def unfollow(_, info, what, slug):
 @login_required
 async def get_my_followed(_, info):
     user_id = info.context["user_id"]
+    topics = []
+    authors = []
+    communities = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
@@ -101,19 +104,21 @@ async def get_my_followed(_, info):
                 .filter(AuthorFollower.follower == author.id)
             )
 
-            topics_query = select(Topic).join(TopicFollower).filter(TopicFollower.follower == author.id)
+            topics_query = select(Topic).join(TopicFollower, TopicFollower.follower == Author.id)
 
-            # communities_query = select(Community).join(CommunityAuthor).filter(CommunityAuthor.author == author.id)
+            for [author] in session.execute(authors_query):
+                authors.append(author)
 
-            topics = session.execute(topics_query).all()
-            authors = session.execute(authors_query).all()
+            for [topic] in session.execute(topics_query):
+                topics.append(topic)
+
             communities = session.query(Community).all()
 
-            return {"topics": topics, "authors": authors, "communities": communities}
+    return {"topics": topics, "authors": authors, "communities": communities}
 
 
 @query.field("get_shout_followers")
-def get_shout_followers(_, _info, slug: str = "", shout_id: int = None) -> List[Author]:
+def get_shout_followers(_, _info, slug: str = "", shout_id: int | None = None) -> List[Author]:
     followers = []
     with local_session() as session:
         shout = None
@@ -126,4 +131,4 @@ def get_shout_followers(_, _info, slug: str = "", shout_id: int = None) -> List[
             for r in reactions:
                 followers.append(r.created_by)
 
-            return followers
+    return followers

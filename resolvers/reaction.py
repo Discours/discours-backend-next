@@ -62,7 +62,7 @@ def reactions_follow(author_id, shout_id, auto=False):
         return False
 
 
-def reactions_unfollow(author_id: int, shout_id: int):
+def reactions_unfollow(author_id, shout_id: int):
     try:
         with local_session() as session:
             shout = session.query(Shout).where(Shout.id == shout_id).one()
