@@ -90,27 +90,33 @@ class ViewedStorage:
     async def update_pages():
         """query all the pages from ackee sorted by views count"""
         logger.info(" ⎧ updating ackee pages data ---")
-        start = time.time()
-        self = ViewedStorage
-        if self.client:
-            self.pages = self.client.execute(load_pages)
-            domains = self.pages.get("domains", [])
-            logger.debug(f" | domains: {domains}")
-            for domain in domains:
-                pages = domain.get("statistics", {}).get("pages", [])
-                if pages:
-                    logger.debug(f" | pages: {pages}")
-                    shouts = {}
-                    for page in pages:
-                        p = page["value"].split("?")[0]
-                        slug = p.split("discours.io/")[-1]
-                        shouts[slug] = page["count"]
-                    for slug in shouts.keys():
-                        await ViewedStorage.increment(slug, shouts[slug])
-                    logger.info(" ⎪ %d pages collected " % len(shouts.keys()))
+        try:
+            start = time.time()
+            self = ViewedStorage
+            if self.client:
+                # Use asyncio.run to execute asynchronous code in the main entry point
+                self.pages = await asyncio.to_thread(self.client.execute, load_pages)
+                domains = self.pages.get("domains", [])
+                # logger.debug(f" | domains: {domains}")
+                for domain in domains:
+                    pages = domain.get("statistics", {}).get("pages", [])
+                    if pages:
+                        # logger.debug(f" | pages: {pages}")
+                        shouts = {}
+                        for page in pages:
+                            p = page["value"].split("?")[0]
+                            slug = p.split("discours.io/")[-1]
+                            shouts[slug] = page["count"]
+                        for slug in shouts.keys():
+                            await ViewedStorage.increment(slug, shouts[slug])
+                        logger.info(" ⎪ %d pages collected " % len(shouts.keys()))
 
-        end = time.time()
-        logger.info(" ⎪ update_pages took %fs " % (end - start))
+                end = time.time()
+                logger.info(" ⎪ update_pages took %fs " % (end - start))
+
+        except Exception:
+            import traceback
+            traceback.print_exc()
 
     @staticmethod
     async def get_facts():
@@ -119,7 +125,7 @@ class ViewedStorage:
         try:
             if self.client:
                 async with self.lock:
-                    facts = self.client.execute(load_facts)
+                    facts = await self.client.execute(load_facts)
         except Exception as er:
             logger.error(f" - get_facts error: {er}")
         return facts or []
