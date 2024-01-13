@@ -1,5 +1,6 @@
 import time
 from typing import List
+import logging
 
 from sqlalchemy import select
 
@@ -18,6 +19,10 @@ from services.following import FollowingManager, FollowingResult
 from services.notify import notify_follower
 from services.schema import mutation, query
 
+
+logging.basicConfig()
+logger = logging.getLogger("\t[resolvers.reaction]\t")
+logger.setLevel(logging.DEBUG)
 
 @login_required
 @mutation.field("follow")
@@ -48,7 +53,7 @@ async def follow(_, info, what, slug):
                         result = FollowingResult("NEW", "shout", slug)
                         await FollowingManager.push("shout", result)
     except Exception as e:
-        print(Exception(e))
+        logger.error(e)
         return {"error": str(e)}
 
     return {}

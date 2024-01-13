@@ -1,5 +1,6 @@
 import time
 from typing import List
+import logging
 
 from sqlalchemy import and_, case, distinct, func, literal, select, cast, Integer
 from sqlalchemy.orm import aliased
@@ -16,6 +17,10 @@ from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
 from services.unread import get_total_unread_counter
+
+logging.basicConfig()
+logger = logging.getLogger("\t[resolvers.author]\t")
+logger.setLevel(logging.DEBUG)
 
 
 def add_author_stat_columns(q):
@@ -48,7 +53,6 @@ def get_authors_from_query(q):
                 "followings": followings_stat,
             }
             authors.append(author)
-    # print(f"[resolvers.author] get_authors_from_query {authors}")
     return authors
 
 
@@ -201,7 +205,7 @@ async def get_author(_, _info, slug="", author_id=None):
 @query.field("get_author_id")
 async def get_author_id(_, _info, user: str):
     with local_session() as session:
-        print(f"[resolvers.author] getting author id for {user}")
+        logger.info(f"[resolvers.author] getting author id for {user}")
         q = select(Author).filter(Author.user == user)
         return load_author_with_stats(q)
 
@@ -302,4 +306,4 @@ async def create_author(user_id: str, slug: str, name: str = ""):
         new_author = Author(user=user_id, slug=slug, name=name)
         session.add(new_author)
         session.commit()
-        print(f"[resolvers.author] created by webhook {new_author.dict()}")
+        logger.info(f"author created by webhook {new_author.dict()}")

@@ -1,9 +1,15 @@
 from functools import wraps
+import logging
 
 from aiohttp import ClientSession
 from starlette.exceptions import HTTPException
 
 from settings import AUTH_URL, AUTH_SECRET
+
+
+logging.basicConfig()
+logger = logging.getLogger("\t[services.auth]\t")
+logger.setLevel(logging.DEBUG)
 
 
 async def request_data(gql, headers = { "Content-Type": "application/json" }):
@@ -15,12 +21,12 @@ async def request_data(gql, headers = { "Content-Type": "application/json" }):
                     data = await response.json()
                     errors = data.get("errors")
                     if errors:
-                        print(f"[services.auth] errors: {errors}")
+                        logger.error(f"[services.auth] errors: {errors}")
                     else:
                         return data
     except Exception as e:
         # Handling and logging exceptions during authentication check
-        print(f"[services.auth] request_data error: {e}")
+        logger.error(f"[services.auth] request_data error: {e}")
         return None
 
 
@@ -30,7 +36,7 @@ async def check_auth(req) -> str | None:
     user_id = ""
     if token:
         # Logging the authentication token
-        print(f"[services.auth] checking auth token: {token}")
+        logger.error(f"[services.auth] checking auth token: {token}")
         query_name = "validate_jwt_token"
         operation = "ValidateToken"
         variables = {
@@ -55,7 +61,7 @@ async def check_auth(req) -> str | None:
 
 
 async def add_user_role(user_id):
-    print(f"[services.auth] add author role for user_id: {user_id}")
+    logger.info(f"[services.auth] add author role for user_id: {user_id}")
     query_name = "_update_user"
     operation = "UpdateUserRoles"
     headers = {"Content-Type": "application/json", "x-authorizer-admin-secret": AUTH_SECRET}

@@ -58,7 +58,7 @@ async def get_topics_all(_, _info):
 
 
 def topics_followed_by(author_id):
-    q = select(Topic)
+    q = select(Topic, TopicFollower)
     q = add_topic_stat_columns(q)
     q = q.join(TopicFollower).where(TopicFollower.follower == author_id)
 

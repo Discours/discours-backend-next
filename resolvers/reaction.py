@@ -1,5 +1,6 @@
 import time
 from typing import List
+import logging
 
 from sqlalchemy import and_, asc, case, desc, func, select, text
 from sqlalchemy.orm import aliased, joinedload
@@ -12,6 +13,10 @@ from services.db import local_session
 from services.notify import notify_reaction
 from services.schema import mutation, query
 
+
+logging.basicConfig()
+logger = logging.getLogger("\t[resolvers.reaction]\t")
+logger.setLevel(logging.DEBUG)
 
 def add_reaction_stat_columns(q):
     aliased_reaction = aliased(Reaction)
@@ -242,7 +247,7 @@ async def create_reaction(_, info, reaction):
             try:
                 reactions_follow(author.id, reaction["shout"], True)
             except Exception as e:
-                print(f"[resolvers.reactions] error on reactions auto following: {e}")
+                logger.error(f"[resolvers.reactions] error on reactions auto following: {e}")
 
             rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
@@ -438,8 +443,10 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            author_id: int = author.dict()["id"]
-            shouts = reacted_shouts_updates(author_id, limit, offset)
-            return shouts
-        else:
-            return []
+            try:
+                author_id: int = author.dict()["id"]
+                shouts = reacted_shouts_updates(author_id, limit, offset)
+                return shouts
+            except Exception as error:
+                logger.debug(error)
+    return []
