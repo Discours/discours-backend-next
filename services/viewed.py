@@ -1,14 +1,21 @@
 import asyncio
+from logging import Logger
 import time
 from datetime import datetime, timedelta, timezone
 from os import environ
-
+import logging
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 
 from orm.shout import Shout, ShoutTopic
 from orm.topic import Topic
 from services.db import local_session
+
+
+logging.basicConfig()
+logger = logging.getLogger("\t[services.viewed]\t")
+logger.setLevel(logging.DEBUG)
+
 
 load_facts = gql(
     """ query getDomains {
@@ -71,37 +78,39 @@ class ViewedStorage:
         async with self.lock:
             if token:
                 self.client = create_client({"Authorization": f"Bearer {token}"}, schema=schema_str)
-                print("[services.viewed] * authorized permanently by ackee.discours.io: %s" % token)
+                logger.info(" * authorized permanently by ackee.discours.io: %s" % token)
 
                 views_stat_task = asyncio.create_task(self.worker())
-                print(views_stat_task)
+                logger.info(views_stat_task)
             else:
-                print("[services.viewed] * please set ACKEE_TOKEN")
+                logger.info(" * please set ACKEE_TOKEN")
                 self.disabled = True
 
     @staticmethod
     async def update_pages():
         """query all the pages from ackee sorted by views count"""
-        print("[services.viewed] ⎧ updating ackee pages data ---")
+        logger.info(" ⎧ updating ackee pages data ---")
         start = time.time()
         self = ViewedStorage
-        try:
-            if self.client:
-                self.pages = self.client.execute(load_pages)
-                self.pages = self.pages["domains"][0]["statistics"]["pages"]
-                shouts = {}
-                for page in self.pages:
-                    p = page["value"].split("?")[0]
-                    slug = p.split("discours.io/")[-1]
-                    shouts[slug] = page["count"]
-                for slug in shouts.keys():
-                    await ViewedStorage.increment(slug, shouts[slug])
-                print("[services.viewed] ⎪ %d pages collected " % len(shouts.keys()))
-        except Exception as e:
-            raise Exception(e)
+        if self.client:
+            self.pages = self.client.execute(load_pages)
+            domains = self.pages.get("domains", [])
+            logger.debug(f" | domains: {domains}")
+            for domain in domains:
+                pages = domain.get("statistics", {}).get("pages", [])
+                if pages:
+                    logger.debug(f" | pages: {pages}")
+                    shouts = {}
+                    for page in pages:
+                        p = page["value"].split("?")[0]
+                        slug = p.split("discours.io/")[-1]
+                        shouts[slug] = page["count"]
+                    for slug in shouts.keys():
+                        await ViewedStorage.increment(slug, shouts[slug])
+                    logger.info(" ⎪ %d pages collected " % len(shouts.keys()))
 
         end = time.time()
-        print("[services.viewed] ⎪ update_pages took %fs " % (end - start))
+        logger.info(" ⎪ update_pages took %fs " % (end - start))
 
     @staticmethod
     async def get_facts():
@@ -112,7 +121,7 @@ class ViewedStorage:
                 async with self.lock:
                     facts = self.client.execute(load_facts)
         except Exception as er:
-            print(f"[services.viewed] get_facts error: {er}")
+            logger.error(f" - get_facts error: {er}")
         return facts or []
 
     @staticmethod
@@ -177,20 +186,20 @@ class ViewedStorage:
 
         while True:
             try:
-                print("[services.viewed] - updating views...")
+                logger.info(" - updating views...")
                 await self.update_pages()
                 failed = 0
             except Exception:
                 failed += 1
-                print("[services.viewed] - update failed #%d, wait 10 seconds" % failed)
+                logger.info(" - update failed #%d, wait 10 seconds" % failed)
                 if failed > 3:
-                    print("[services.viewed] - not trying to update anymore")
+                    logger.info(" - not trying to update anymore")
                     break
             if failed == 0:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
-                print("[services.viewed] ⎩ next update: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0]))
+                logger.info(" ⎩ next update: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0]))
                 await asyncio.sleep(self.period)
             else:
                 await asyncio.sleep(10)
-                print("[services.viewed] - trying to update data again")
+                logger.info(" - trying to update data again")
