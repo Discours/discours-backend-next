@@ -380,18 +380,14 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = apply_reaction_filters(by, q)
     q = q.where(Reaction.deleted_at.is_(None))
 
-    # group by
-    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.created_at)
-
     # order by
-    order_way = asc
-    order_field = by.get("sort", "").replace("-", "")
-    if by.get("sort", "").startswith("-"):
-       order_way = desc
-    if not order_field:
-        order_field = "created_at"
-        order_way = desc
-    q = q.order_by(order_way(order_field))
+    order_value = by.get("sort", "-created_at")
+    order_way = desc if order_value.startswith("-") else asc
+    order_field = order_value.replace("-", "")
+    # group by
+    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.created_at, Reaction[order_field]).order_by(
+        order_way(order_field)
+    )
 
     # pagination
     q = q.limit(limit).offset(offset)

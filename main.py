@@ -4,6 +4,7 @@ from os.path import exists
 
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
+
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
