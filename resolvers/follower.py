@@ -104,14 +104,18 @@ async def get_my_followed(_, info):
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
-            aliased_authors = aliased(Author)
+            author_id = int(author.id)
 
             authors_query = (
-                session.query(aliased_authors)
-                .join(AuthorFollower, AuthorFollower.follower == author.id)
-                .filter(AuthorFollower.author == aliased_authors.id)
+                session.query(Author)
+                .join(AuthorFollower, AuthorFollower.follower == author_id)
+                .filter(AuthorFollower.author == Author.id)
             )
-            topics_query = select(Topic).join(TopicFollower, TopicFollower.follower == Author.id)
+
+            topics_query = (
+                session.query(Topic)
+                .join(TopicFollower, TopicFollower.follower == author_id)
+            )
 
             for [author] in session.execute(authors_query):
                 authors.append(author)
@@ -122,6 +126,7 @@ async def get_my_followed(_, info):
             communities = session.query(Community).all()
 
     return {"topics": topics, "authors": authors, "communities": communities}
+
 
 
 @query.field("get_shout_followers")
