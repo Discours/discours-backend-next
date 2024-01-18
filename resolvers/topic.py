@@ -13,9 +13,8 @@ async def followed_topics(follower_id):
     q = select(Author)
     q = add_topic_stat_columns(q)
     q = q.join(TopicFollower, TopicFollower.author == Author.id).where(TopicFollower.follower == follower_id)
-    # Pass the query to the get_authors_from_query function and return the results
+    # Pass the query to the get_topics_from_query function and return the results
     return get_topics_from_query(q)
-
 
 def add_topic_stat_columns(q):
     aliased_shout_author = aliased(ShoutAuthor)
