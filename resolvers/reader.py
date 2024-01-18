@@ -394,11 +394,11 @@ def get_rating_func(aliased_reaction):
 
 
 @query.field("load_shouts_random_top")
-async def load_shouts_random_top(_, _info, params):
+async def load_shouts_random_top(_, _info, options):
     """
     :param _
     :param _info: GraphQLInfoContext
-    :param params: {
+    :param options: {
         filters: {
             layouts: ['music']
             after: 13245678
@@ -414,10 +414,10 @@ async def load_shouts_random_top(_, _info, params):
 
     subquery = select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
 
-    subquery = apply_filters(subquery, params.get("filters", {}))
+    subquery = apply_filters(subquery, options.get("filters", {}))
     subquery = subquery.group_by(Shout.id).order_by(desc(get_rating_func(aliased_reaction)))
 
-    random_limit = params.get("random_limit")
+    random_limit = options.get("random_limit")
     if random_limit:
         subquery = subquery.limit(random_limit)
 
@@ -432,7 +432,7 @@ async def load_shouts_random_top(_, _info, params):
 
     q = add_stat_columns(q)
 
-    limit = params.get("limit", 10)
+    limit = options.get("limit", 10)
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
 
     # print(q.compile(compile_kwargs={"literal_binds": True}))
