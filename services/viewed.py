@@ -119,7 +119,7 @@ class ViewedStorage:
             with open("/dump/views.json", "r") as file:
                 precounted_views = json.load(file)
                 self.views_by_shout.update(precounted_views)
-                logger.info(f" * {len(precounted_views)} pre-counted views loaded successfully.")
+                logger.info(f" * {len(precounted_views)} pre-counted shouts' views loaded successfully.")
         except Exception as e:
             logger.error(f"Error loading pre-counted views: {e}")
 

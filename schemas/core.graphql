@@ -60,6 +60,7 @@ type AuthorStat {
   rating_shouts: Int
   rating_comments: Int
   commented: Int
+  viewed: Int
 }
 
 type Author {
@@ -172,6 +173,7 @@ type TopicStat {
   shouts: Int!
   followers: Int!
   authors: Int!
+  viewed: Int
 }
 
 type Topic {
