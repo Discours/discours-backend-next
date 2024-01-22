@@ -1,5 +1,6 @@
 import asyncio
 import threading
+from typing import Dict
 from logging import Logger
 import time
 from datetime import datetime, timedelta, timezone
@@ -8,8 +9,9 @@ import logging
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from graphql import DocumentNode
+from orm.author import Author
 
-from orm.shout import Shout, ShoutTopic
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from services.db import local_session
 
