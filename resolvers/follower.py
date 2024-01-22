@@ -25,8 +25,9 @@ logging.basicConfig()
 logger = logging.getLogger("\t[resolvers.reaction]\t")
 logger.setLevel(logging.DEBUG)
 
-@login_required
+
 @mutation.field("follow")
+@login_required
 async def follow(_, info, what, slug):
     try:
         user_id = info.context["user_id"]
@@ -61,8 +62,8 @@ async def follow(_, info, what, slug):
     return {}
 
 
-@login_required
 @mutation.field("unfollow")
+@login_required
 async def unfollow(_, info, what, slug):
     user_id = info.context["user_id"]
     try:

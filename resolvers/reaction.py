@@ -454,8 +454,8 @@ def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
     return shouts
 
 
-@login_required
 @query.field("load_shouts_followed")
+@login_required
 async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
     user_id = info.context["user_id"]
     with local_session() as session:
