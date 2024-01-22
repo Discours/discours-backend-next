@@ -28,8 +28,8 @@ logger.setLevel(logging.DEBUG)
 @login_required
 @mutation.field("follow")
 async def follow(_, info, what, slug):
-    user_id = info.context["user_id"]
     try:
+        user_id = info.context["user_id"]
         with local_session() as session:
             actor = session.query(Author).filter(Author.user == user_id).first()
             if actor:
@@ -54,6 +54,7 @@ async def follow(_, info, what, slug):
                         result = FollowingResult("NEW", "shout", slug)
                         await FollowingManager.push("shout", result)
     except Exception as e:
+        logger.debug(info, what, slug)
         logger.error(e)
         return {"error": str(e)}
 
