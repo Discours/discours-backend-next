@@ -21,7 +21,15 @@ def add_stat_columns(q):
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
-        get_rating_func(aliased_reaction).label("rating_stat"),
+        func.sum(
+            case(
+                (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISAGREE.value, -1),
+                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                else_=0,
+            )
+        ).label("rating_stat"),
         func.max(
             case(
                 (aliased_reaction.kind != ReactionKind.COMMENT.value, None),
@@ -375,23 +383,6 @@ def get_shouts_from_query(q, author_id=None):
             }
 
     return shouts
-
-
-def get_rating_func(aliased_reaction):
-    return func.sum(
-        case(
-            (aliased_reaction.kind == str(ReactionKind.AGREE.value), 1),
-            (aliased_reaction.kind == str(ReactionKind.DISAGREE.value), -1),
-            (aliased_reaction.kind == str(ReactionKind.PROOF.value), 1),
-            (aliased_reaction.kind == str(ReactionKind.DISPROOF.value), -1),
-            (aliased_reaction.kind == str(ReactionKind.ACCEPT.value), 1),
-            (aliased_reaction.kind == str(ReactionKind.REJECT.value), -1),
-            (aliased_reaction.kind == str(ReactionKind.DISLIKE.value), -1),
-            (aliased_reaction.reply_to.is_not(None), 0),
-            else_=0,
-        )
-    )
-
 
 @query.field("load_shouts_random_top")
 async def load_shouts_random_top(_, _info, options):
