@@ -165,7 +165,6 @@ def set_hidden(session, shout_id):
     session.add(s)
     session.commit()
 
-
 @mutation.field("create_reaction")
 @login_required
 async def create_reaction(_, info, reaction):
@@ -183,44 +182,47 @@ async def create_reaction(_, info, reaction):
 
             if shout and author:
                 reaction["created_by"] = author.id
-
-                if reaction["kind"] in [ReactionKind.DISLIKE.value, ReactionKind.LIKE.value]:
-                    existing_reaction = (
-                        session.query(Reaction)
-                        .filter(
-                            and_(
-                                Reaction.shout == reaction["shout"],
-                                Reaction.created_by == author.id,
-                                Reaction.kind == reaction["kind"],
-                                Reaction.reply_to == reaction.get("reply_to"),
-                            )
+                kind = reaction.get("kind")
+                if not kind and reaction.get("body"):
+                    kind = ReactionKind.COMMENT.value
+                if not kind:
+                    return { "error": "cannot create reaction with this kind"}
+                existing_reaction = (
+                    session.query(Reaction)
+                    .filter(
+                        and_(
+                            Reaction.shout == shout_id,
+                            Reaction.created_by == author.id,
+                            Reaction.kind == kind,
+                            Reaction.reply_to == reaction.get("reply_to"),
                         )
-                        .first()
                     )
+                    .first()
+                )
 
-                    if existing_reaction is not None:
-                        return {"error": "You can't vote twice"}
+                if existing_reaction is not None:
+                    return {"error": "You can't vote twice"}
 
-                    opposite_reaction_kind = (
-                        ReactionKind.DISLIKE.value
-                        if reaction["kind"] == ReactionKind.LIKE.value
-                        else ReactionKind.LIKE.value
-                    )
-                    opposite_reaction = (
-                        session.query(Reaction)
-                        .filter(
-                            and_(
-                                Reaction.shout == reaction["shout"],
-                                Reaction.created_by == author.id,
-                                Reaction.kind == opposite_reaction_kind,
-                                Reaction.reply_to == reaction.get("reply_to"),
-                            )
+                opposite_reaction_kind = (
+                    ReactionKind.DISLIKE.value
+                    if reaction["kind"] == ReactionKind.LIKE.value
+                    else ReactionKind.LIKE.value
+                )
+                opposite_reaction = (
+                    session.query(Reaction)
+                    .filter(
+                        and_(
+                            Reaction.shout == reaction["shout"],
+                            Reaction.created_by == author.id,
+                            Reaction.kind == opposite_reaction_kind,
+                            Reaction.reply_to == reaction.get("reply_to"),
                         )
-                        .first()
                     )
+                    .first()
+                )
 
-                    if opposite_reaction is not None:
-                        session.delete(opposite_reaction)
+                if opposite_reaction is not None:
+                    session.delete(opposite_reaction)
 
                 r = Reaction(**reaction)
                 rdict = r.dict()
@@ -245,6 +247,7 @@ async def create_reaction(_, info, reaction):
                 session.commit()
                 logger.debug(r)
                 rdict = r.dict()
+
                 # Self-regulation mechanics
                 if check_to_hide(session, r):
                     set_hidden(session, r.shout)
@@ -308,8 +311,8 @@ async def update_reaction(_, info, rid, reaction):
 
             return {"reaction": r}
         else:
-            return {"error": "user"}
-
+                return {"error": "not authorized"}
+    return {"error": "cannot create reaction"}
 
 @mutation.field("delete_reaction")
 @login_required
