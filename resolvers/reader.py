@@ -19,8 +19,15 @@ def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
 
     q = q.outerjoin(aliased_reaction).add_columns(
-        func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
+        # func.sum(aliased_reaction.id).label("reacted_stat"),
+        func.sum(
+            case(
+                (aliased_reaction.kind == ReactionKind.COMMENT.value, 1),
+                (aliased_reaction.kind == ReactionKind.PROOF.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISPROOF.value, 1),
+                else_=0
+            )
+        ).label("commented_stat"),
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
@@ -84,31 +91,33 @@ async def get_shout(_, _info, slug=None, shout_id=None):
         q = q.filter(Shout.deleted_at.is_(None)).group_by(Shout.id)
 
         try:
-            [shout, reacted_stat, commented_stat, rating_stat, _last_comment] = session.execute(q).first()
+            results = session.execute(q).first()
+            if results:
+                [shout, commented_stat, rating_stat, _last_comment] = results
 
-            shout.stat = {
-                "viewed": await ViewedStorage.get_shout(shout.slug),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-                "rating": rating_stat,
-            }
+                shout.stat = {
+                    "viewed": await ViewedStorage.get_shout(shout.slug),
+                    # "reacted": reacted_stat,
+                    "commented": commented_stat,
+                    "rating": rating_stat,
+                }
 
-            for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
-                for author in shout.authors:
-                    if author.id == author_caption.author:
-                        author.caption = author_caption.caption
-            main_topic = (
-                session.query(Topic.slug)
-                .join(
-                    ShoutTopic,
-                    and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True),
+                for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
+                    for author in shout.authors:
+                        if author.id == author_caption.author:
+                            author.caption = author_caption.caption
+                main_topic = (
+                    session.query(Topic.slug)
+                    .join(
+                        ShoutTopic,
+                        and_(ShoutTopic.topic == Topic.id, ShoutTopic.shout == shout.id, ShoutTopic.main == True),
+                    )
+                    .first()
                 )
-                .first()
-            )
 
-            if main_topic:
-                shout.main_topic = main_topic[0]
-            return shout
+                if main_topic:
+                    shout.main_topic = main_topic[0]
+                return shout
         except Exception:
             raise HTTPException(status_code=404, detail=f"shout {slug or shout_id} not found")
 
