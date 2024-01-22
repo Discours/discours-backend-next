@@ -63,7 +63,7 @@ create_record_mutation_string = """
 
 create_record_mutation = gql(f"mutation {{{create_record_mutation_string}}}")
 
-schema_str = open("schemas/stat.graphql").read()
+schema_str = open("schemas/ackee.graphql").read()
 token = environ.get("ACKEE_TOKEN", "")
 domain_id = environ.get("ACKEE_DOMAIN_ID", "")
 ackee_site = environ.get("ACKEE_SITE", "https://testing.discours.io/")
