@@ -263,7 +263,9 @@ async def create_reaction(_, info, reaction):
                 return {"reaction": rdict}
 
     except Exception as e:
-        logger.error(f"[resolvers.reactions] error: {type(e).__name__} - {e}")
+        import traceback
+        traceback.print_exc
+        logger.error(f"{type(e).__name__}: {e}")
 
     return {"error": "Cannot create reaction."}
 
