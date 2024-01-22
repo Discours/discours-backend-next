@@ -22,13 +22,24 @@ async def notify_shout(shout, action: str = "create"):
 
 
 async def notify_follower(follower: dict, author_id: int, action: str = "follow"):
-    fields = follower.keys()
-    for k in fields:
-        if k not in ["id", "name", "slug", "pic"]:
-            del follower[k]
     channel_name = f"follower:{author_id}"
-    data = {"payload": follower, "action": action}
     try:
-        await redis.publish(channel_name, json.dumps(data))
+        # Simplify dictionary before publishing
+        simplified_follower = {k: follower[k] for k in ["id", "name", "slug", "pic"]}
+
+        data = {"payload": simplified_follower, "action": action}
+
+        # Convert data to JSON string
+        json_data = json.dumps(data)
+
+        # Ensure the data is not empty before publishing
+        if not json_data:
+            raise ValueError("Empty data to publish.")
+
+        # Use the 'await' keyword when publishing
+        await redis.publish(channel_name, json_data)
+
     except Exception as e:
+        # Log the error and re-raise it
         print(f"[services.notify] Failed to publish to channel {channel_name}: {e}")
+        raise
