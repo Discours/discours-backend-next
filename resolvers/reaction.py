@@ -243,7 +243,8 @@ async def create_reaction(_, info, reaction):
 
                 session.add(r)
                 session.commit()
-
+                logger.debug(r)
+                rdict = r.dict()
                 # Self-regulation mechanics
                 if check_to_hide(session, r):
                     set_hidden(session, r.shout)
@@ -252,7 +253,7 @@ async def create_reaction(_, info, reaction):
 
                 # Reactions auto-following
                 reactions_follow(author.id, reaction["shout"], True)
-                rdict = r.dict()
+
                 rdict["shout"] = shout.dict()
                 rdict["created_by"] = author.dict()
                 rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
@@ -264,7 +265,7 @@ async def create_reaction(_, info, reaction):
 
     except Exception as e:
         import traceback
-        traceback.print_exc
+        traceback.print_exc()
         logger.error(f"{type(e).__name__}: {e}")
 
     return {"error": "Cannot create reaction."}
