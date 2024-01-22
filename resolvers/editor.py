@@ -48,16 +48,16 @@ async def create_shout(_, info, inp):
             current_time = int(time.time())
             new_shout = Shout(
                 **{
-                    "title": inp.get("title"),
-                    "subtitle": inp.get("subtitle"),
-                    "lead": inp.get("lead"),
-                    "description": inp.get("description"),
+                    "title": inp.get("title", ""),
+                    "subtitle": inp.get("subtitle", ""),
+                    "lead": inp.get("lead", ""),
+                    "description": inp.get("description", ""),
                     "body": inp.get("body", ""),
-                    "layout": inp.get("layout"),
+                    "layout": inp.get("layout", "article"),
                     "created_by": author.id,
                     "authors": [],
                     "slug": inp.get("slug") or f"draft-{time.time()}",
-                    "topics": inp.get("topics"),
+                    "topics": inp.get("topics", []),
                     "visibility": ShoutVisibility.AUTHORS.value,
                     "created_at": current_time,  # Set created_at as Unix timestamp
                 }
