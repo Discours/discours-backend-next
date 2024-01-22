@@ -170,91 +170,103 @@ def set_hidden(session, shout_id):
 @login_required
 async def create_reaction(_, info, reaction):
     user_id = info.context["user_id"]
-    with local_session() as session:
-        shout = session.query(Shout).where(Shout.id == reaction["shout"]).one()
-        author = session.query(Author).where(Author.user == user_id).first()
-        if shout and author:
-            reaction["created_by"] = author.id
-            if reaction["kind"] in [ReactionKind.DISLIKE.value, ReactionKind.LIKE.value]:
-                existing_reaction = (
-                    session.query(Reaction)
-                    .where(
-                        and_(
-                            Reaction.shout == reaction["shout"],
-                            Reaction.created_by == author.id,
-                            Reaction.kind == reaction["kind"],
-                            Reaction.reply_to == reaction.get("reply_to"),
+
+    shout_id = reaction.get("shout")
+
+    if not shout_id:
+        return {"error": "Shout ID is required to create a reaction."}
+
+    try:
+        with local_session() as session:
+            shout = session.query(Shout).filter(Shout.id == shout_id).one()
+            author = session.query(Author).filter(Author.user == user_id).first()
+
+            if shout and author:
+                reaction["created_by"] = author.id
+
+                if reaction["kind"] in [ReactionKind.DISLIKE.value, ReactionKind.LIKE.value]:
+                    existing_reaction = (
+                        session.query(Reaction)
+                        .filter(
+                            and_(
+                                Reaction.shout == reaction["shout"],
+                                Reaction.created_by == author.id,
+                                Reaction.kind == reaction["kind"],
+                                Reaction.reply_to == reaction.get("reply_to"),
+                            )
                         )
+                        .first()
                     )
-                    .first()
-                )
 
-                if existing_reaction is not None:
-                    return {"error": "You can't vote twice"}
+                    if existing_reaction is not None:
+                        return {"error": "You can't vote twice"}
 
-                opposite_reaction_kind = (
-                    ReactionKind.DISLIKE.value
-                    if reaction["kind"] == ReactionKind.LIKE.value
-                    else ReactionKind.LIKE.value
-                )
-                opposite_reaction = (
-                    session.query(Reaction)
-                    .where(
-                        and_(
-                            Reaction.shout == reaction["shout"],
-                            Reaction.created_by == author.id,
-                            Reaction.kind == opposite_reaction_kind,
-                            Reaction.reply_to == reaction.get("reply_to"),
+                    opposite_reaction_kind = (
+                        ReactionKind.DISLIKE.value
+                        if reaction["kind"] == ReactionKind.LIKE.value
+                        else ReactionKind.LIKE.value
+                    )
+                    opposite_reaction = (
+                        session.query(Reaction)
+                        .filter(
+                            and_(
+                                Reaction.shout == reaction["shout"],
+                                Reaction.created_by == author.id,
+                                Reaction.kind == opposite_reaction_kind,
+                                Reaction.reply_to == reaction.get("reply_to"),
+                            )
                         )
+                        .first()
                     )
-                    .first()
-                )
 
-                if opposite_reaction is not None:
-                    session.delete(opposite_reaction)
+                    if opposite_reaction is not None:
+                        session.delete(opposite_reaction)
 
-            r = Reaction(**reaction)
-            rdict = r.dict()
-            # Proposal accepting logix
-            if rdict.get("reply_to"):
-                if r.kind is ReactionKind.ACCEPT.value and author.id in shout.authors:
-                    replied_reaction = session.query(Reaction).where(Reaction.id == r.reply_to).first()
-                    if replied_reaction:
-                        if replied_reaction.kind is ReactionKind.PROPOSE.value:
-                            if replied_reaction.range:
-                                old_body = shout.body
-                                start, end = replied_reaction.range.split(":")
-                                start = int(start)
-                                end = int(end)
-                                new_body = old_body[:start] + replied_reaction.body + old_body[end:]
-                                shout_dict = shout.dict()
-                                shout_dict["body"] = new_body
-                                Shout.update(shout, shout_dict)
+                r = Reaction(**reaction)
+                rdict = r.dict()
 
-            session.add(r)
-            session.commit()
-            rdict = r.dict()
-            rdict["shout"] = shout.dict()
-            rdict["created_by"] = author.dict()
+                # Proposal accepting logic
+                if rdict.get("reply_to"):
+                    if r.kind is ReactionKind.ACCEPT.value and author.id in shout.authors:
+                        replied_reaction = session.query(Reaction).filter(Reaction.id == r.reply_to).first()
+                        if replied_reaction:
+                            if replied_reaction.kind is ReactionKind.PROPOSE.value:
+                                if replied_reaction.range:
+                                    old_body = shout.body
+                                    start, end = replied_reaction.range.split(":")
+                                    start = int(start)
+                                    end = int(end)
+                                    new_body = old_body[:start] + replied_reaction.body + old_body[end:]
+                                    shout_dict = shout.dict()
+                                    shout_dict["body"] = new_body
+                                    Shout.update(shout, shout_dict)
 
-            # self-regulation mechanics
+                session.add(r)
+                session.commit()
 
-            if check_to_hide(session, r):
-                set_hidden(session, r.shout)
-            elif check_to_publish(session, author.id, r):
-                await set_published(session, r.shout, author.id)
+                # Self-regulation mechanics
+                if check_to_hide(session, r):
+                    set_hidden(session, r.shout)
+                elif check_to_publish(session, author.id, r):
+                    await set_published(session, r.shout, author.id)
 
-            try:
+                # Reactions auto-following
                 reactions_follow(author.id, reaction["shout"], True)
-            except Exception as e:
-                logger.error(f"[resolvers.reactions] error on reactions auto following: {e}")
 
-            rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
+                rdict["shout"] = shout.dict()
+                rdict["created_by"] = author.dict()
+                rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
-            # notifications call
-            await notify_reaction(rdict, "create")
+                # Notifications call
+                await notify_reaction(rdict, "create")
 
-            return {"reaction": rdict}
+                return {"reaction": rdict}
+
+    except Exception as e:
+        logger.error(f"[resolvers.reactions] error: {type(e).__name__} - {e}")
+
+    return {"error": "Cannot create reaction."}
+
 
 
 @mutation.field("update_reaction")
