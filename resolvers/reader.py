@@ -14,35 +14,14 @@ from services.search import SearchService
 from services.viewed import ViewedStorage
 from resolvers.topic import get_random_topic
 
-
 def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
 
     q = q.outerjoin(aliased_reaction).add_columns(
-        # func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(
-            case(
-                (aliased_reaction.kind == ReactionKind.COMMENT.value, 1),
-                (aliased_reaction.kind == ReactionKind.PROOF.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISPROOF.value, 1),
-                else_=0
-            )
-        ).label("commented_stat"),
-        func.sum(
-            case(
-                (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISAGREE.value, -1),
-                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                else_=0,
-            )
-        ).label("rating_stat"),
-        func.max(
-            case(
-                (aliased_reaction.kind != ReactionKind.COMMENT.value, None),
-                else_=aliased_reaction.created_at,
-            )
-        ).label("last_comment"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("comments_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.AGREE.value, 1), else_=0)).label("likes_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.DISAGREE.value, 1), else_=0)).label("dislikes_stat"),
+        func.max(case((aliased_reaction.kind != ReactionKind.COMMENT.value, None),else_=aliased_reaction.created_at)).label("last_comment"),
     )
 
     return q
@@ -93,13 +72,13 @@ async def get_shout(_, _info, slug=None, shout_id=None):
         try:
             results = session.execute(q).first()
             if results:
-                [shout, commented_stat, rating_stat, _last_comment] = results
+                [shout, commented_stat, likes_stat, dislikes_stat, _last_comment] = results
 
                 shout.stat = {
                     "viewed": await ViewedStorage.get_shout(shout.slug),
                     # "reacted": reacted_stat,
                     "commented": commented_stat,
-                    "rating": rating_stat,
+                    "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
                 }
 
                 for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
@@ -174,7 +153,7 @@ async def load_shouts_by(_, _info, options):
 
     shouts = []
     with local_session() as session:
-        for [shout, reacted_stat, commented_stat, rating_stat, _last_comment] in session.execute(q).unique():
+        for [shout, commented_stat, likes_stat, dislikes_stat, _last_comment] in session.execute(q).unique():
             main_topic = (
                 session.query(Topic.slug)
                 .join(
@@ -190,9 +169,8 @@ async def load_shouts_by(_, _info, options):
                 shout.main_topic = main_topic[0]
             shout.stat = {
                 "viewed": await ViewedStorage.get_shout(shout.slug),
-                "reacted": reacted_stat,
                 "commented": commented_stat,
-                "rating": rating_stat,
+                "rating": int(likes_stat) - int(dislikes_stat),
             }
             shouts.append(shout)
 
