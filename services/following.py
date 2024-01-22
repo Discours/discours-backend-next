@@ -39,7 +39,8 @@ class FollowingManager:
     async def push(kind, payload):
         try:
             async with FollowingManager.lock:
-                for entity in FollowingManager.followers_by_kind.get(kind, []):
+                entities = FollowingManager.followers_by_kind.get(kind, [])
+                for entity in entities[:]:  # Use a copy to iterate
                     if payload.shout["created_by"] == entity.uid:
                         entity.queue.put_nowait(payload)
         except Exception as e:
