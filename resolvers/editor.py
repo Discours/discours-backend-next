@@ -44,36 +44,42 @@ async def create_shout(_, info, inp):
         author = session.query(Author).filter(Author.user == user_id).first()
         shout_dict = None
         if author:
-            topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
             current_time = int(time.time())
-            new_shout = Shout(
-                **{
-                    "title": inp.get("title", ""),
-                    "subtitle": inp.get("subtitle", ""),
-                    "lead": inp.get("lead", ""),
-                    "description": inp.get("description", ""),
-                    "body": inp.get("body", ""),
-                    "layout": inp.get("layout", "article"),
-                    "created_by": author.id,
-                    "authors": [],
-                    "slug": inp.get("slug") or f"draft-{time.time()}",
-                    "topics": inp.get("topics", []),
-                    "visibility": ShoutVisibility.AUTHORS.value,
-                    "created_at": current_time,  # Set created_at as Unix timestamp
-                }
-            )
-            for topic in topics:
-                t = ShoutTopic(topic=topic.id, shout=new_shout.id)
-                session.add(t)
-            # NOTE: shout made by one author
-            sa = ShoutAuthor(shout=new_shout.id, author=author.id)
-            session.add(sa)
-            shout_dict = new_shout.dict()
+            slug = inp.get("slug") or f"draft-{current_time}"
+            shout_dict = {
+                "title": inp.get("title", ""),
+                "subtitle": inp.get("subtitle", ""),
+                "lead": inp.get("lead", ""),
+                "description": inp.get("description", ""),
+                "body": inp.get("body", ""),
+                "layout": inp.get("layout", "article"),
+                "created_by": author.id,
+                "authors": [],
+                "slug": slug,
+                "topics": inp.get("topics", []),
+                "visibility": ShoutVisibility.AUTHORS.value,
+                "created_at": current_time,  # Set created_at as Unix timestamp
+            }
+
+            new_shout = Shout(**shout_dict)
             session.add(new_shout)
-            reactions_follow(author.id, new_shout.id, True)
             session.commit()
 
-            await notify_shout(shout_dict, "create")
+            # NOTE: shout made by one author
+            shout = session.query(Shout).where(Shout.slug == slug).first()
+            if shout:
+                shout_dict = shout.dict()
+                sa = ShoutAuthor(shout=shout.id, author=author.id)
+                session.add(sa)
+
+                topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
+                for topic in topics:
+                    t = ShoutTopic(topic=topic.id, shout=shout.id)
+                    session.add(t)
+
+                reactions_follow(author.id, shout.id, True)
+
+                await notify_shout(shout_dict, "create")
         return {"shout": shout_dict}
 
 
