@@ -7,6 +7,7 @@ from orm.topic import Topic, TopicFollower
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
+from services.viewed import ViewedStorage
 
 
 async def followed_topics(follower_id):
@@ -14,7 +15,7 @@ async def followed_topics(follower_id):
     q = add_topic_stat_columns(q)
     q = q.join(TopicFollower, TopicFollower.author == Author.id).where(TopicFollower.follower == follower_id)
     # Pass the query to the get_topics_from_query function and return the results
-    return get_topics_from_query(q)
+    return await get_topics_from_query(q)
 
 def add_topic_stat_columns(q):
     aliased_shout_author = aliased(ShoutAuthor)
@@ -34,7 +35,7 @@ def add_topic_stat_columns(q):
     return q
 
 
-def get_topics_from_query(q):
+async def get_topics_from_query(q):
     topics = []
     with local_session() as session:
         for [topic, shouts_stat, authors_stat, followers_stat] in session.execute(q):
@@ -42,6 +43,7 @@ def get_topics_from_query(q):
                 "shouts": shouts_stat,
                 "authors": authors_stat,
                 "followers": followers_stat,
+                "viewed": await ViewedStorage.get_topic(topic.slug),
             }
             topics.append(topic)
 
@@ -53,15 +55,15 @@ async def get_topics_all(_, _info):
     q = select(Topic)
     q = add_topic_stat_columns(q)
 
-    return get_topics_from_query(q)
+    return await get_topics_from_query(q)
 
 
-def topics_followed_by(author_id):
+async def topics_followed_by(author_id):
     q = select(Topic, TopicFollower)
     q = add_topic_stat_columns(q)
     q = q.join(TopicFollower).where(TopicFollower.follower == author_id)
 
-    return get_topics_from_query(q)
+    return await get_topics_from_query(q)
 
 
 @query.field("get_topics_by_community")
@@ -69,7 +71,7 @@ async def get_topics_by_community(_, _info, community_id: int):
     q = select(Topic).where(Topic.community == community_id)
     q = add_topic_stat_columns(q)
 
-    return get_topics_from_query(q)
+    return await get_topics_from_query(q)
 
 
 @query.field("get_topics_by_author")
@@ -83,7 +85,7 @@ async def get_topics_by_author(_, _info, author_id=None, slug="", user=""):
     elif user:
         q = q.join(Author).where(Author.user == user)
 
-    return get_topics_from_query(q)
+    return await get_topics_from_query(q)
 
 
 @query.field("get_topic")
@@ -91,7 +93,7 @@ async def get_topic(_, _info, slug):
     q = select(Topic).where(Topic.slug == slug)
     q = add_topic_stat_columns(q)
 
-    topics = get_topics_from_query(q)
+    topics = await get_topics_from_query(q)
     return topics[0]
 
 

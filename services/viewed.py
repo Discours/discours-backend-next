@@ -82,9 +82,9 @@ def create_client(headers=None, schema=None):
 
 class ViewedStorage:
     lock = asyncio.Lock()
-    by_shouts = {}
-    by_topics = {}
-    by_authors = {}
+    views_by_shout = {}
+    shouts_by_topic = {}
+    shouts_by_author = {}
     views = None
     pages = None
     domains = None
@@ -118,7 +118,7 @@ class ViewedStorage:
         try:
             with open("/dump/views.json", "r") as file:
                 precounted_views = json.load(file)
-                self.by_shouts.update(precounted_views)
+                self.views_by_shout.update(precounted_views)
                 logger.info(f" * {len(precounted_views)} pre-counted views loaded successfully.")
         except Exception as e:
             logger.error(f"Error loading pre-counted views: {e}")
@@ -146,7 +146,7 @@ class ViewedStorage:
                                 slug = p.split("discours.io/")[-1]
                                 shouts[slug] = page["count"]
                             for slug in shouts.keys():
-                                self.by_shouts[slug] = self.by_shouts.get(slug, 0) + 1
+                                self.views_by_shout[slug] = self.views_by_shout.get(slug, 0) + 1
                                 self.update_topics(slug)
                             logger.info(" ⎪ %d pages collected " % len(shouts.keys()))
 
@@ -175,14 +175,14 @@ class ViewedStorage:
         """getting shout views metric by slug"""
         self = ViewedStorage
         async with self.lock:
-            return self.by_shouts.get(shout_slug, 0)
+            return self.views_by_shout.get(shout_slug, 0)
 
     @staticmethod
     async def get_shout_media(shout_slug) -> Dict[str, int]:
         """getting shout plays metric by slug"""
         self = ViewedStorage
         async with self.lock:
-            return self.by_shouts.get(shout_slug, 0)
+            return self.views_by_shout.get(shout_slug, 0)
 
     @staticmethod
     async def get_topic(topic_slug) -> int:
@@ -190,40 +190,35 @@ class ViewedStorage:
         self = ViewedStorage
         topic_views = 0
         async with self.lock:
-            for shout_slug in self.by_topics.get(topic_slug, {}).keys():
-                topic_views += self.by_topics[topic_slug].get(shout_slug, 0)
+            for shout_slug in self.shouts_by_topic.get(topic_slug, []):
+                topic_views += self.views_by_shout.get(shout_slug, 0)
         return topic_views
 
     @staticmethod
-    async def get_authors(author_slug) -> int:
+    async def get_author(author_slug) -> int:
         """getting author views value summed"""
         self = ViewedStorage
         author_views = 0
         async with self.lock:
-            for shout_slug in self.by_authors.get(author_slug, {}).keys():
-                author_views += self.by_authors[author_slug].get(shout_slug, 0)
+            for shout_slug in self.shouts_by_author.get(author_slug, []):
+                author_views += self.views_by_shout.get(shout_slug, 0)
         return author_views
 
     @staticmethod
     def update_topics(shout_slug):
-        """updates topics counters by shout slug"""
+        """Updates topics counters by shout slug"""
         self = ViewedStorage
         with local_session() as session:
-            # grouped by topics
-            for [_shout_topic, topic] in (
-                session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all()
-            ):
-                if not self.by_topics.get(topic.slug):
-                    self.by_topics[topic.slug] = {}
-                self.by_topics[topic.slug][shout_slug] = self.by_shouts[shout_slug]
+            # Define a helper function to avoid code repetition
+            def update_groups(dictionary, key, value):
+                dictionary[key] = list(set(dictionary.get(key, []) + [value]))
 
-            # grouped by authors
-            for [_shout_author, author] in (
-                session.query(ShoutAuthor, Author).join(Author).join(Shout).where(Shout.slug == shout_slug).all()
-            ):
-                if not self.by_authors.get(author.slug):
-                    self.by_authors[author.slug] = {}
-                self.by_authors[author.slug][shout_slug] = self.by_shouts[shout_slug]
+            # Update topics and authors using the helper function
+            for [_shout_topic, topic] in session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all():
+                update_groups(self.shouts_by_topic, topic.slug, shout_slug)
+
+            for [_shout_topic, author] in session.query(ShoutAuthor, Author).join(Author).join(Shout).where(Shout.slug == shout_slug).all():
+                update_groups(self.shouts_by_author, author.slug, shout_slug)
 
     @staticmethod
     async def increment(shout_slug):
@@ -231,7 +226,7 @@ class ViewedStorage:
         resource = ackee_site + shout_slug
         self = ViewedStorage
         async with self.lock:
-            self.by_shouts[shout_slug] = self.by_shouts.get(shout_slug, 0) + 1
+            self.views_by_shout[shout_slug] = self.views_by_shout.get(shout_slug, 0) + 1
             self.update_topics(shout_slug)
             variables = {"domainId": domain_id, "input": {"siteLocation": resource}}
             if self.client:

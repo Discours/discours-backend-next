@@ -17,6 +17,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
 from services.unread import get_total_unread_counter
+from services.viewed import ViewedStorage
 
 logging.basicConfig()
 logger = logging.getLogger("\t[resolvers.author]\t")
@@ -43,7 +44,7 @@ def add_author_stat_columns(q):
     return q
 
 
-def get_authors_from_query(q):
+async def get_authors_from_query(q):
     authors = []
     with local_session() as session:
         for [author, shouts_stat, followers_stat, followings_stat] in session.execute(q):
@@ -51,6 +52,7 @@ def get_authors_from_query(q):
                 "shouts": shouts_stat,
                 "followers": followers_stat,
                 "followings": followings_stat,
+                "viewed": await ViewedStorage.get_author(author.slug),
             }
             authors.append(author)
     return authors
@@ -154,10 +156,10 @@ def count_author_shouts_rating(session, author_id) -> int:
 
 
 
-def load_author_with_stats(q):
+async def load_author_with_stats(q):
     q = add_author_stat_columns(q)
 
-    result = get_authors_from_query(q)
+    result = await get_authors_from_query(q)
 
     if result:
         [author] = result
@@ -199,7 +201,7 @@ async def get_author(_, _info, slug="", author_id=None):
         if author_id:
             q = select(Author).where(Author.id == author_id)
 
-        return load_author_with_stats(q)
+        return await load_author_with_stats(q)
 
 
 @query.field("get_author_id")
@@ -207,7 +209,7 @@ async def get_author_id(_, _info, user: str):
     with local_session() as session:
         logger.info(f"[resolvers.author] getting author id for {user}")
         q = select(Author).filter(Author.user == user)
-        return load_author_with_stats(q)
+        return await load_author_with_stats(q)
 
 
 @query.field("load_authors_by")
@@ -229,7 +231,7 @@ async def load_authors_by(_, _info, by, limit, offset):
         q = q.filter(Author.created_at > before)
 
     q = q.order_by(by.get("order", Author.created_at)).limit(limit).offset(offset)
-    return get_authors_from_query(q)
+    return await get_authors_from_query(q)
 
 
 @query.field("get_author_followed")
@@ -261,7 +263,7 @@ async def get_author_followers(_, _info, slug) -> List[Author]:
         .where(aliased_author.slug == slug)
     )
 
-    return get_authors_from_query(q)
+    return await get_authors_from_query(q)
 
 
 async def followed_authors(follower_id):
@@ -269,7 +271,7 @@ async def followed_authors(follower_id):
     q = add_author_stat_columns(q)
     q = q.join(AuthorFollower, AuthorFollower.author == Author.id).where(AuthorFollower.follower == follower_id)
     # Pass the query to the get_authors_from_query function and return the results
-    return get_authors_from_query(q)
+    return await get_authors_from_query(q)
 
 
 @mutation.field("rate_author")
