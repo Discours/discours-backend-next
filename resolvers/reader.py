@@ -19,8 +19,8 @@ def add_stat_columns(q):
 
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("comments_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.AGREE.value, 1), else_=0)).label("likes_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.DISAGREE.value, 1), else_=0)).label("dislikes_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.LIKE.value, 1), else_=0)).label("likes_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.DISLIKE.value, 1), else_=0)).label("dislikes_stat"),
         func.max(case((aliased_reaction.kind != ReactionKind.COMMENT.value, None),else_=aliased_reaction.created_at)).label("last_comment"),
     )
 
