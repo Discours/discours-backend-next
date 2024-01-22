@@ -16,13 +16,7 @@ from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from services.db import local_session
 
-logging.basicConfig(
-    format="[%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
-    level=logging.DEBUG,
-    handlers=[
-        logging.StreamHandler(),
-    ],
-)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("\t[services.viewed]\t")
 logger.setLevel(logging.DEBUG)
 
