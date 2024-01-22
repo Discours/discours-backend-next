@@ -252,7 +252,7 @@ async def create_reaction(_, info, reaction):
 
                 # Reactions auto-following
                 reactions_follow(author.id, reaction["shout"], True)
-
+                rdict = r.dict()
                 rdict["shout"] = shout.dict()
                 rdict["created_by"] = author.dict()
                 rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
