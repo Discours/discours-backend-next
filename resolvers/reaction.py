@@ -4,6 +4,7 @@ import logging
 
 from sqlalchemy import and_, asc, case, desc, func, select, text, or_
 from sqlalchemy.orm import aliased, joinedload
+from sqlalchemy.sql import union
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
@@ -408,13 +409,17 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reaction,
             author,
             shout,
-            reacted_stat,
             commented_stat,
-            rating_stat,
+            likes_stat,
+            dislikes_stat,
+            _last_comment
         ] in result_rows:
             reaction.created_by = author
             reaction.shout = shout
-            reaction.stat = {"rating": rating_stat, "commented": commented_stat, "reacted": reacted_stat}
+            reaction.stat = {
+                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                "commented": commented_stat
+                }
             reactions.append(reaction)
 
         # sort if by stat is present
@@ -426,38 +431,54 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
 
 
 
-def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
+async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
     shouts: List[Shout] = []
     with local_session() as session:
         author = session.query(Author).filter(Author.id == follower_id).first()
         if author:
             # Shouts where follower is the author
-            shouts_author, aliased_reaction = add_stat_columns(
-                session.query(Shout)
-                .outerjoin(Reaction, and_(Reaction.shout_id == Shout.id, Reaction.created_by == follower_id))
-                .outerjoin(Author, Shout.authors.any(id=follower_id))
-                .options(joinedload(Shout.reactions), joinedload(Shout.authors)),
-                aliased(Reaction)
-            ).filter(Author.id == follower_id).group_by(Shout.id).all()
+            q1 = select(Shout).outerjoin(
+                Reaction, and_(Reaction.shout_id == Shout.id, Reaction.created_by == follower_id)
+            ).outerjoin(
+                Author, Shout.authors.any(id=follower_id)
+            ).options(
+                joinedload(Shout.reactions),
+                joinedload(Shout.authors)
+            )
+            q1 = add_stat_columns(q1, aliased(Reaction))
+            q1 = q1.filter(Author.id == follower_id).group_by(Shout.id)
 
-            # Shouts where follower has reactions
-            shouts_reactions = (
-                session.query(Shout)
+            # Shouts where follower reacted
+            q2 = (
+                select(Shout)
                 .join(Reaction, Reaction.shout_id == Shout.id)
-                .options(joinedload(Shout.reactions), joinedload(Shout.authors))
+                .options(
+                    joinedload(Shout.reactions),
+                    joinedload(Shout.authors)
+                )
                 .filter(Reaction.created_by == follower_id)
                 .group_by(Shout.id)
-                .all()
             )
-
-            # Combine shouts from both queries
-            shouts = list(set(shouts_author + shouts_reactions))
+            q2 = add_stat_columns(q2, aliased(Reaction))
 
             # Sort shouts by the `last_comment` field
-            shouts.sort(key=lambda shout: shout.last_comment, reverse=True)
-
-            # Apply limit and offset
-            shouts = shouts[offset: offset + limit]
+            combined_query = union(q1, q2).order_by(desc("last_comment")).limit(limit).offset(offset)
+            results = session.execute(combined_query).scalars()
+            with local_session() as session:
+                for [
+                    shout,
+                    commented_stat,
+                    likes_stat,
+                    dislikes_stat,
+                    last_comment
+                ] in results:
+                    shout.stat = {
+                        "viewed": await ViewedStorage.get_shout(shot.slug),
+                        "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                        "commented": commented_stat,
+                        "last_comment": last_comment
+                        }
+                    shouts.append(shout)
 
     return shouts
 
@@ -470,7 +491,7 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
         if author:
             try:
                 author_id: int = author.dict()["id"]
-                shouts = reacted_shouts_updates(author_id, limit, offset)
+                shouts = await reacted_shouts_updates(author_id, limit, offset)
                 return shouts
             except Exception as error:
                 logger.debug(error)

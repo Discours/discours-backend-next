@@ -350,15 +350,14 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
 def get_shouts_from_query(q, author_id=None):
     shouts = []
     with local_session() as session:
-        for [shout, reacted_stat, commented_stat, rating_stat, last_comment] in session.execute(
+        for [shout,commented_stat, likes_stat, dislikes_stat, last_comment] in session.execute(
             q, {"author_id": author_id}
         ).unique():
             shouts.append(shout)
             shout.stat = {
                 "viewed": shout.views,
-                "reacted": reacted_stat,
                 "commented": commented_stat,
-                "rating": rating_stat,
+                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
             }
 
     return shouts
@@ -385,13 +384,7 @@ async def load_shouts_random_top(_, _info, options):
     subquery = select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
 
     subquery = apply_filters(subquery, options.get("filters", {}))
-    subquery = subquery.group_by(Shout.id).order_by(desc(func.sum(
-        case(
-            (aliased_reaction.kind == str(ReactionKind.LIKE.value), 1),
-            (aliased_reaction.kind == str(ReactionKind.DISLIKE.value), -1),
-            else_=0,
-        )
-    )))
+    subquery = subquery.group_by(Shout.id).order_by(desc(get_rating_func(aliased_reaction)))
 
     random_limit = options.get("random_limit")
     if random_limit:
@@ -405,37 +398,36 @@ async def load_shouts_random_top(_, _info, options):
         )
         .where(Shout.id.in_(subquery))
     )
-
     aliased_reaction = aliased(Reaction)
     q = add_stat_columns(q, aliased_reaction)
 
-    # Calculate the difference between likes_stat and dislikes_stat and use it for ordering
-    q = q.group_by(Shout.id).order_by(desc(func.sum(aliased_reaction.likes_stat - aliased_reaction.dislikes_stat))).limit(limit)
+    limit = options.get("limit", 10)
+    q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
 
     # print(q.compile(compile_kwargs={"literal_binds": True}))
 
     return get_shouts_from_query(q)
 
 
-
 @query.field("load_shouts_random_topic")
 async def load_shouts_random_topic(_, info, limit: int = 10):
     topic = get_random_topic()
-
-    q = (
-        select(Shout)
-        .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
+    shouts = []
+    if topic:
+        q = (
+            select(Shout)
+            .options(
+                joinedload(Shout.authors),
+                joinedload(Shout.topics),
+            )
+            .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public", Shout.topics.any(slug=topic.slug)))
         )
-        .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public", Shout.topics.any(slug=topic.slug)))
-    )
 
-    aliased_reaction = aliased(Reaction)
-    q = add_stat_columns(q, aliased_reaction)
+        aliased_reaction = aliased(Reaction)
+        q = add_stat_columns(q, aliased_reaction)
 
-    q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
+        q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
 
-    shouts = get_shouts_from_query(q)
+        shouts = get_shouts_from_query(q)
 
     return {"topic": topic, "shouts": shouts}
