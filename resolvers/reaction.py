@@ -13,6 +13,7 @@ from services.auth import login_required, add_user_role
 from services.db import local_session
 from services.notify import notify_reaction
 from services.schema import mutation, query
+from services.viewed import ViewedStorage
 
 
 logging.basicConfig()
@@ -473,7 +474,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                     last_comment
                 ] in results:
                     shout.stat = {
-                        "viewed": await ViewedStorage.get_shout(shot.slug),
+                        "viewed": await ViewedStorage.get_shout(shout.slug),
                         "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
                         "commented": commented_stat,
                         "last_comment": last_comment
