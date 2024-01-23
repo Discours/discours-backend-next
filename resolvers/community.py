@@ -63,13 +63,15 @@ def followed_communities(follower_id):
 def community_follow(follower_id, slug):
     try:
         with local_session() as session:
-            community = session.query(Community).where(Community.slug == slug).one()
-            cf = CommunityAuthor(author=follower_id, community=community.id)
-            session.add(cf)
-            session.commit()
-        return True
+            community = session.query(Community).where(Community.slug == slug).first()
+            if isinstance(community, Community):
+                cf = CommunityAuthor(author=follower_id, community=community.id)
+                session.add(cf)
+                session.commit()
+                return True
     except Exception:
-        return False
+        pass
+    return False
 
 
 # for mutation.field("unfollow")
