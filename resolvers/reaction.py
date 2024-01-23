@@ -213,7 +213,6 @@ async def create_reaction(_, info, reaction):
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).one()
             author = session.query(Author).filter(Author.user == user_id).first()
-            dont_create_new = False
             if shout and author:
                 reaction["created_by"] = author.id
                 kind = reaction.get("kind")
@@ -240,7 +239,7 @@ async def create_reaction(_, info, reaction):
                     )
 
                     if same_reaction is not None:
-                        return {"error": "You can't vote twice"}
+                        return {"error": "You can't like or dislike same thing twice"}
 
                     opposite_reaction_kind = (
                         ReactionKind.DISLIKE.value
@@ -261,9 +260,7 @@ async def create_reaction(_, info, reaction):
                     )
 
                     if opposite_reaction is not None:
-                        await notify_reaction(opposite_reaction, "delete")
-                        session.delete(opposite_reaction)
-                        return {}
+                        return {"error": "Remove opposite vote first"}
                     else:
                         rdict = await _create_reaction(session, shout, author, reaction)
                         return {"reaction": rdict}
