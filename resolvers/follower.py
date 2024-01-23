@@ -105,8 +105,8 @@ async def get_my_followed(_, info):
     communities = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
-            author_id = int(author.id)
+        if isinstance(author, Author):
+            author_id = author.id
 
             authors_query = (
                 session.query(Author)

@@ -2,7 +2,7 @@ import time
 from typing import List
 import logging
 
-from sqlalchemy import and_, asc, case, desc, func, select, text
+from sqlalchemy import and_, asc, case, desc, func, select, text, or_
 from sqlalchemy.orm import aliased, joinedload
 
 from orm.author import Author
@@ -18,8 +18,7 @@ logging.basicConfig()
 logger = logging.getLogger("\t[resolvers.reaction]\t")
 logger.setLevel(logging.DEBUG)
 
-def add_stat_columns(q):
-    aliased_reaction = aliased(Reaction)
+def add_stat_columns(q, aliased_reaction):
 
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("comments_stat"),
@@ -28,7 +27,7 @@ def add_stat_columns(q):
         func.max(case((aliased_reaction.kind != ReactionKind.COMMENT.value, None),else_=aliased_reaction.created_at)).label("last_comment"),
     )
 
-    return q, aliased_reaction
+    return q
 
 
 def reactions_follow(author_id, shout_id, auto=False):
@@ -270,7 +269,8 @@ async def update_reaction(_, info, rid, reaction):
     user_id = info.context["user_id"]
     with local_session() as session:
         q = select(Reaction).filter(Reaction.id == rid)
-        q, aliased_reaction = add_stat_columns(q)
+        aliased_reaction = aliased(Reaction)
+        q = add_stat_columns(q, aliased_reaction)
         q = q.group_by(Reaction.id)
 
         [r, commented_stat, likes_stat, dislikes_stat, _l] = session.execute(q).unique().one()
@@ -385,7 +385,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     )
 
     # calculate counters
-    q, aliased_reaction = add_stat_columns(q)
+    aliased_reaction = aliased(Reaction)
+    q = add_stat_columns(q, aliased_reaction)
 
     # filter
     q = apply_reaction_filters(by, q)
@@ -424,23 +425,41 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     return reactions
 
 
+
 def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
     shouts: List[Shout] = []
     with local_session() as session:
-        author = session.query(Author).where(Author.id == follower_id).first()
+        author = session.query(Author).filter(Author.id == follower_id).first()
         if author:
-            shouts = (
+            # Shouts where follower is the author
+            shouts_author, aliased_reaction = add_stat_columns(
                 session.query(Shout)
-                .join(Reaction, Reaction.shout == Shout.id)
-                .options(joinedload(Reaction.created_by))
+                .outerjoin(Reaction, and_(Reaction.shout_id == Shout.id, Reaction.created_by == follower_id))
+                .outerjoin(Author, Shout.authors.any(id=follower_id))
+                .options(joinedload(Shout.reactions), joinedload(Shout.authors)),
+                aliased(Reaction)
+            ).filter(Author.id == follower_id).group_by(Shout.id).all()
+
+            # Shouts where follower has reactions
+            shouts_reactions = (
+                session.query(Shout)
+                .join(Reaction, Reaction.shout_id == Shout.id)
+                .options(joinedload(Shout.reactions), joinedload(Shout.authors))
                 .filter(Reaction.created_by == follower_id)
-                .filter(Reaction.created_at > author.last_seen)
-                .limit(limit)
-                .offset(offset)
+                .group_by(Shout.id)
                 .all()
             )
-    return shouts
 
+            # Combine shouts from both queries
+            shouts = list(set(shouts_author + shouts_reactions))
+
+            # Sort shouts by the `last_comment` field
+            shouts.sort(key=lambda shout: shout.last_comment, reverse=True)
+
+            # Apply limit and offset
+            shouts = shouts[offset: offset + limit]
+
+    return shouts
 
 @query.field("load_shouts_followed")
 @login_required

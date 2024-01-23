@@ -47,8 +47,8 @@ async def get_shout(_, _info, slug=None, shout_id=None):
             joinedload(Shout.authors),
             joinedload(Shout.topics),
         )
-
-        q, _ar = add_stat_columns(q)
+        aliased_reaction = aliased(Reaction)
+        q = add_stat_columns(q, aliased_reaction)
 
         if slug is not None:
             q = q.filter(Shout.slug == slug)
@@ -122,7 +122,8 @@ async def load_shouts_by(_, _info, options):
     )
 
     # stats
-    q, _ar = add_stat_columns(q)
+    aliased_reaction = aliased(Reaction)
+    q = add_stat_columns(q, aliased_reaction)
 
     # filters
     q = apply_filters(q, options.get("filters", {}))
@@ -209,6 +210,7 @@ async def load_shouts_drafts(_, info):
 async def load_shouts_feed(_, info, options):
     user_id = info.context["user_id"]
 
+    shouts = []
     with local_session() as session:
         reader = session.query(Author).filter(Author.user == user_id).first()
         if reader:
@@ -231,7 +233,8 @@ async def load_shouts_feed(_, info, options):
                 .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None), Shout.id.in_(subquery)))
             )
 
-            q, _ar = add_stat_columns(q)
+            aliased_reaction = aliased(Reaction)
+            q = add_stat_columns(q, aliased_reaction)
             q = apply_filters(q, options.get("filters", {}), reader.id)
 
             order_by = options.get("order_by", Shout.published_at)
@@ -244,7 +247,6 @@ async def load_shouts_feed(_, info, options):
 
             # print(q.compile(compile_kwargs={"literal_binds": True}))
 
-            shouts = []
             for [shout, reacted_stat, commented_stat, _last_comment] in session.execute(q).unique():
                 main_topic = (
                     session.query(Topic.slug)
@@ -331,7 +333,8 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     # 3 or fewer votes is 0, 1, 2 or 3 votes (null, reaction id1, reaction id2, reaction id3)
     q = q.having(func.count(distinct(Reaction.id)) <= 4)
 
-    q, _ar = add_stat_columns(q)
+    aliased_reaction = aliased(Reaction)
+    q = add_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
     user_id = info.context.get("user_id")
@@ -382,7 +385,13 @@ async def load_shouts_random_top(_, _info, options):
     subquery = select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
 
     subquery = apply_filters(subquery, options.get("filters", {}))
-    subquery = subquery.group_by(Shout.id).order_by(desc(get_rating_func(aliased_reaction)))
+    subquery = subquery.group_by(Shout.id).order_by(desc(func.sum(
+        case(
+            (aliased_reaction.kind == str(ReactionKind.LIKE.value), 1),
+            (aliased_reaction.kind == str(ReactionKind.DISLIKE.value), -1),
+            else_=0,
+        )
+    )))
 
     random_limit = options.get("random_limit")
     if random_limit:
@@ -397,14 +406,16 @@ async def load_shouts_random_top(_, _info, options):
         .where(Shout.id.in_(subquery))
     )
 
-    q, _ar = add_stat_columns(q)
+    aliased_reaction = aliased(Reaction)
+    q = add_stat_columns(q, aliased_reaction)
 
-    limit = options.get("limit", 10)
-    q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
+    # Calculate the difference between likes_stat and dislikes_stat and use it for ordering
+    q = q.group_by(Shout.id).order_by(desc(func.sum(aliased_reaction.likes_stat - aliased_reaction.dislikes_stat))).limit(limit)
 
     # print(q.compile(compile_kwargs={"literal_binds": True}))
 
     return get_shouts_from_query(q)
+
 
 
 @query.field("load_shouts_random_topic")
@@ -420,7 +431,8 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
         .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public", Shout.topics.any(slug=topic.slug)))
     )
 
-    q, _ar = add_stat_columns(q)
+    aliased_reaction = aliased(Reaction)
+    q = add_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
 
