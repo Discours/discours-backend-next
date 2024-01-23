@@ -104,7 +104,7 @@ async def load_shouts_by(_, _info, options):
         }
         offset: 0
         limit: 50
-        order_by: 'created_at' | 'commented' | 'reacted' | 'rating'
+        order_by: 'created_at' | 'commented'  | 'likes_stat'
         order_by_desc: true
 
     }

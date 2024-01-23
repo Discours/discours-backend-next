@@ -263,15 +263,10 @@ async def create_reaction(_, info, reaction):
                     if opposite_reaction is not None:
                         await notify_reaction(opposite_reaction, "delete")
                         session.delete(opposite_reaction)
-
-                        return {"reaction": reaction}
+                        return {}
                     else:
-
                         rdict = await _create_reaction(session, shout, author, reaction)
-
                         return {"reaction": rdict}
-
-
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -335,18 +330,11 @@ async def delete_reaction(_, info, rid):
 
             if r.kind in [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]:
                 session.delete(r)
-            else:
-                rdict = r.dict()
-                rdict["deleted_at"] = int(time.time())
-                Reaction.update(r, rdict)
-                session.add(r)
-            session.commit()
-
-            await notify_reaction(r.dict(), "delete")
-
-            return {"reaction": r}
+                session.commit()
+                await notify_reaction(r.dict(), "delete")
         else:
             return {"error": "access denied"}
+    return {}
 
 
 def apply_reaction_filters(by, q):
