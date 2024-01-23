@@ -329,7 +329,7 @@ type Mutation {
   # reaction
   create_reaction(reaction: ReactionInput!): Result!
   update_reaction(id: Int!, reaction: ReactionInput!): Result!
-  delete_reaction(id: Int!): Result!
+  delete_reaction(reaction_id: Int!): Result!
 
   # collab
   create_invite(slug: String, author_id: Int): Result!

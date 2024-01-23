@@ -314,10 +314,10 @@ async def update_reaction(_, info, rid, reaction):
 
 @mutation.field("delete_reaction")
 @login_required
-async def delete_reaction(_, info, rid):
+async def delete_reaction(_, info, reaction_id):
     user_id = info.context["user_id"]
     with local_session() as session:
-        r = session.query(Reaction).filter(Reaction.id == rid).first()
+        r = session.query(Reaction).filter(Reaction.id == reaction_id).first()
         if not r:
             return {"error": "invalid reaction id"}
         author = session.query(Author).filter(Author.user == user_id).first()
