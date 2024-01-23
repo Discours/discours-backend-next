@@ -12,24 +12,13 @@ def add_community_stat_columns(q):
     community_followers = aliased(CommunityAuthor)
     shout_community_aliased = aliased(ShoutCommunity)
 
+
     q = q.outerjoin(shout_community_aliased).add_columns(
         func.count(distinct(shout_community_aliased.shout)).label("shouts_stat")
     )
     q = q.outerjoin(community_followers, community_followers.author == Author.id).add_columns(
         func.count(distinct(community_followers.follower)).label("followers_stat")
     )
-
-    q = q.add_columns(literal(0).label("rating_stat"))
-    # FIXME
-    # q = q.outerjoin(author_rating_aliased, author_rating_aliased.user == Author.id).add_columns(
-    #     # TODO: check
-    #     func.sum(author_rating_aliased.value).label('rating_stat')
-    # )
-
-    q = q.add_columns(literal(0).label("commented_stat"))
-    # q = q.outerjoin(Reaction, and_(Reaction.created_by == Author.id, Reaction.body.is_not(''))).add_columns(
-    #     func.count(distinct(Reaction.id)).label('commented_stat')
-    # )
 
     q = q.group_by(Author.id)
 
@@ -39,13 +28,11 @@ def add_community_stat_columns(q):
 def get_communities_from_query(q):
     ccc = []
     with local_session() as session:
-        for [c, *stat_columns] in session.execute(q):
-            [shouts_stat, followers_stat, rating_stat, commented_stat] = stat_columns
+        for [c, shouts_stat, followers_stat] in session.execute(q):
             c.stat = {
                 "shouts": shouts_stat,
                 "followers": followers_stat,
-                "rating": rating_stat,
-                "commented": commented_stat,
+                # "commented": commented_stat,
             }
             ccc.append(c)
 
