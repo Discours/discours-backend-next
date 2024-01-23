@@ -39,7 +39,7 @@ Setup `WEBHOOK_SECRET` env var, webhook payload on `/new-author` is expected whe
 
 ### Viewed
 
-Set ACKEE_TOKEN var to collect stats
+Set GOOGLE_ANALYTICS_TOKEN var to collect stats
 
 ### Seacrh
 

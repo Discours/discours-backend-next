@@ -1,3 +1,7 @@
+[0.2.20]
+- services: ackee removed
+- services: following manager fixed
+
 [0.2.19]
 - fix: adding 'author' role
 - fix: stripping user_id in auth connector

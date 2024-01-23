@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "discoursio-core"
-version = "0.2.19"
+version = "0.2.20"
 description = "core module for discours.io"
 authors = ["discoursio devteam"]
 license = "MIT"
@@ -17,6 +17,9 @@ starlette = "^0.34.0"
 gql = "^3.4.1"
 ariadne = "^0.21"
 aiohttp = "^3.9.1"
+google-oauth2-tool = "^0.0.3"
+google-api-python-client = "^2.114.0"
+pandas = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 setuptools = "^69.0.2"
