@@ -64,7 +64,7 @@ async def author_followings(author_id: int):
         "unread": await get_total_unread_counter(author_id),
         "topics": [t.slug for t in await followed_topics(author_id)],
         "authors": [a.slug for a in await followed_authors(author_id)],
-        "reactions": [s.slug for s in followed_reactions(author_id)],
+        "reactions": [s.slug for s in await followed_reactions(author_id)],
         "communities": [c.slug for c in [followed_communities(author_id)] if isinstance(c, Community)],
     }
 

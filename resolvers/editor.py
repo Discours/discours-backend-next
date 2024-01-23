@@ -104,7 +104,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             )
             if not shout:
                 return {"error": "shout not found"}
-            if shout.created_by != author.id and author.id not in shout.authors:
+            if shout.created_by is not author.id and author.id not in shout.authors:
                 return {"error": "access denied"}
             if shout_input is not None:
                 topics_input = shout_input["topics"]
@@ -157,16 +157,18 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                         .first()
                     )
                     main_topic = session.query(Topic).filter(Topic.slug == shout_input["main_topic"]).first()
-                    new_main_topic = (
-                        session.query(ShoutTopic)
-                        .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
-                        .first()
-                    )
-                    if old_main_topic is not new_main_topic:
-                        old_main_topic.main = False
-                        new_main_topic.main = True
-                        session.add(old_main_topic)
-                        session.add(new_main_topic)
+                    if isinstance(main_topic, Topic):
+                        new_main_topic = (
+                            session.query(ShoutTopic)
+                            .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
+                            .first()
+                        )
+                        if isinstance(old_main_topic, ShoutTopic) and isinstance(new_main_topic, ShoutTopic) \
+                            and old_main_topic is not new_main_topic:
+                            ShoutTopic.update(old_main_topic, {"main": False})
+                            session.add(old_main_topic)
+                            ShoutTopic.update(new_main_topic, {"main": True})
+                            session.add(new_main_topic)
 
                 session.commit()
 
@@ -194,15 +196,15 @@ async def delete_shout(_, info, shout_id):
         shout = session.query(Shout).filter(Shout.id == shout_id).first()
         if not shout:
             return {"error": "invalid shout id"}
-        if author:
-            if shout.created_by != author.id and author.id not in shout.authors:
+        if isinstance(author, Author) and isinstance(shout, Shout):
+            # TODO: add editor role allowed here
+            if shout.created_by is not author.id and author.id not in shout.authors:
                 return {"error": "access denied"}
             for author_id in shout.authors:
                 reactions_unfollow(author_id, shout_id)
-            # Replace datetime with Unix timestamp
-            current_time = int(time.time())
+
             shout_dict = shout.dict()
-            shout_dict["deleted_at"] = current_time  # Set deleted_at as Unix timestamp
+            shout_dict["deleted_at"] = int(time.time())
             Shout.update(shout, shout_dict)
             session.add(shout)
             session.commit()

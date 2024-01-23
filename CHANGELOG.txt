@@ -1,6 +1,14 @@
+[0.2.21]
+- fix: rating logix
+- fix: load_top_random_shouts
+- resolvers: add_stat_* refactored
+- services: use google analytics
+- services: minor fixes search
+
 [0.2.20]
 - services: ackee removed
 - services: following manager fixed
+- services: import views.json
 
 [0.2.19]
 - fix: adding 'author' role

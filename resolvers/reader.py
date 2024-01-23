@@ -342,12 +342,12 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
             if author:
-                return get_shouts_from_query(q, author.id)
+                return await get_shouts_from_query(q, author.id)
     else:
-        return get_shouts_from_query(q)
+        return await get_shouts_from_query(q)
 
 
-def get_shouts_from_query(q, author_id=None):
+async def get_shouts_from_query(q, author_id=None):
     shouts = []
     with local_session() as session:
         for [shout,commented_stat, likes_stat, dislikes_stat, last_comment] in session.execute(
@@ -355,7 +355,7 @@ def get_shouts_from_query(q, author_id=None):
         ).unique():
             shouts.append(shout)
             shout.stat = {
-                "viewed": shout.views,
+                "viewed": await ViewedStorage.get_shout(shout_slug=shout.slug),
                 "commented": commented_stat,
                 "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
             }
@@ -384,7 +384,18 @@ async def load_shouts_random_top(_, _info, options):
     subquery = select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
 
     subquery = apply_filters(subquery, options.get("filters", {}))
-    subquery = subquery.group_by(Shout.id).order_by(desc(get_rating_func(aliased_reaction)))
+    subquery = subquery.group_by(Shout.id).order_by(desc(
+            func.sum(
+                case(
+                    (Reaction.kind == ReactionKind.LIKE.value, 1),
+                    (Reaction.kind == ReactionKind.AGREE.value, 1),
+                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                    (Reaction.kind == ReactionKind.DISAGREE.value, -1),
+                    else_=0
+                )
+            )
+        )
+    )
 
     random_limit = options.get("random_limit")
     if random_limit:
@@ -406,7 +417,7 @@ async def load_shouts_random_top(_, _info, options):
 
     # print(q.compile(compile_kwargs={"literal_binds": True}))
 
-    return get_shouts_from_query(q)
+    return await get_shouts_from_query(q)
 
 
 @query.field("load_shouts_random_topic")

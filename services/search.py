@@ -23,7 +23,6 @@ class SearchService:
         try:
             # TODO: add ttl for redis cached search results
             cached = await redis.execute("GET", text)
-
             if not cached:
                 async with SearchService.lock:
                     # Use aiohttp to send a request to ElasticSearch
@@ -35,7 +34,7 @@ class SearchService:
                                 await redis.execute("SET", text, json.dumps(payload))  # use redis as cache
                             else:
                                 logging.error(f"[services.search] response: {response.status}  {await response.text()}")
-            else:
+            elif isinstance(cached, str):
                 payload = json.loads(cached)
         except Exception as e:
             logging.error(f"[services.search] Error during search: {e}")
