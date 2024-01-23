@@ -86,7 +86,7 @@ def is_published_author(session, author_id):
     return (
         session.query(Shout)
         .where(Shout.authors.any(id=author_id))
-        .filter(and_(Shout.published_at != "", Shout.deleted_at.is_(None)))
+        .filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .count()
         > 0
     )
