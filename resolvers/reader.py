@@ -221,7 +221,7 @@ async def load_shouts_feed(_, info, options):
                 select(Shout.id)
                 .where(Shout.id == ShoutAuthor.shout)
                 .where(Shout.id == ShoutTopic.shout)
-                .where((ShoutAuthor.user.in_(reader_followed_authors)) | (ShoutTopic.topic.in_(reader_followed_topics)))
+                .where((ShoutAuthor.author.in_(reader_followed_authors)) | (ShoutTopic.topic.in_(reader_followed_topics)))
             )
 
             q = (
