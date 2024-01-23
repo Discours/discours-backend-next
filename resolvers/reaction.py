@@ -18,25 +18,14 @@ logging.basicConfig()
 logger = logging.getLogger("\t[resolvers.reaction]\t")
 logger.setLevel(logging.DEBUG)
 
-def add_reaction_stat_columns(q):
+def add_stat_columns(q):
     aliased_reaction = aliased(Reaction)
 
-    q = q.outerjoin(aliased_reaction, Reaction.id == aliased_reaction.reply_to).add_columns(
-        func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("commented_stat"),
-        func.sum(
-            case(
-                (aliased_reaction.kind == ReactionKind.AGREE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISAGREE.value, -1),
-                (aliased_reaction.kind == ReactionKind.PROOF.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISPROOF.value, -1),
-                (aliased_reaction.kind == ReactionKind.ACCEPT.value, 1),
-                (aliased_reaction.kind == ReactionKind.REJECT.value, -1),
-                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                else_=0,
-            )
-        ).label("rating_stat"),
+    q = q.outerjoin(aliased_reaction).add_columns(
+        func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label("comments_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.LIKE.value, 1), else_=0)).label("likes_stat"),
+        func.sum(case((aliased_reaction.kind == ReactionKind.DISLIKE.value, 1), else_=0)).label("dislikes_stat"),
+        func.max(case((aliased_reaction.kind != ReactionKind.COMMENT.value, None),else_=aliased_reaction.created_at)).label("last_comment"),
     )
 
     return q, aliased_reaction
@@ -281,10 +270,10 @@ async def update_reaction(_, info, rid, reaction):
     user_id = info.context["user_id"]
     with local_session() as session:
         q = select(Reaction).filter(Reaction.id == rid)
-        q, aliased_reaction = add_reaction_stat_columns(q)
+        q, aliased_reaction = add_stat_columns(q)
         q = q.group_by(Reaction.id)
 
-        [r, reacted_stat, commented_stat, rating_stat] = session.execute(q).unique().one()
+        [r, commented_stat, likes_stat, dislikes_stat, _l] = session.execute(q).unique().one()
 
         if not r:
             return {"error": "invalid reaction id"}
@@ -303,15 +292,14 @@ async def update_reaction(_, info, rid, reaction):
             session.commit()
             r.stat = {
                 "commented": commented_stat,
-                "reacted": reacted_stat,
-                "rating": rating_stat,
+                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
             }
 
             await notify_reaction(r.dict(), "update")
 
             return {"reaction": r}
         else:
-                return {"error": "not authorized"}
+            return {"error": "not authorized"}
     return {"error": "cannot create reaction"}
 
 @mutation.field("delete_reaction")
@@ -397,7 +385,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     )
 
     # calculate counters
-    q, aliased_reaction = add_reaction_stat_columns(q)
+    q, aliased_reaction = add_stat_columns(q)
 
     # filter
     q = apply_reaction_filters(by, q)
