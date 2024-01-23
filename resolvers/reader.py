@@ -431,7 +431,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
                 joinedload(Shout.authors),
                 joinedload(Shout.topics),
             )
-            .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == "public", Shout.topics.any(slug=topic.slug)))
+            .filter(and_(Shout.deleted_at.is_(None), Shout.visibility == ShoutVisibility.PUBLIC.value, Shout.topics.any(slug=topic.slug)))
         )
 
         aliased_reaction = aliased(Reaction)

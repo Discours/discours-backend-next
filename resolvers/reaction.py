@@ -8,7 +8,7 @@ from sqlalchemy.sql import union
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutReactionsFollower
+from orm.shout import Shout, ShoutReactionsFollower, ShoutVisibility
 from services.auth import login_required, add_user_role
 from services.db import local_session
 from services.notify import notify_reaction
@@ -142,7 +142,7 @@ async def set_published(session, shout_id, approver_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
     s.published_at = int(time.time())
     s.published_by = approver_id
-    s.visibility = text("public")
+    s.visibility = ShoutVisibility.PUBLIC.value
     author = session.query(Author).filter(Author.id == s.created_by).first()
     if author:
         await add_user_role(str(author.user))
@@ -152,7 +152,7 @@ async def set_published(session, shout_id, approver_id):
 
 def set_hidden(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
-    s.visibility = text("community")
+    s.visibility = ShoutVisibility.COMMUNITY.value
     session.add(s)
     session.commit()
 

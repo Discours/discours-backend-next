@@ -132,7 +132,7 @@ type Shout {
   cover_caption: String
   layout: String!
   version_of: String
-  visibility: ShoutVisibility
+  visibility: String
   updated_at: Int
   deleted_at: Int
   published_at: Int
