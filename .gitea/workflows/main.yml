@@ -1,6 +1,8 @@
-name: 'deploy'
+name: 'Deploy to core'
 on: 
   push:
+    branches:
+      - feature/core
 
 jobs:
   deploy:
@@ -11,15 +13,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get Branch Name
-        id: branch_name
-        run: echo "::set-output name=branch::$(echo ${GITHUB_REF##*/})"
-
-      - name: Push to dokku
+      - name: Push to core
         uses: dokku/github-action@master
         with:
           ssh-private-key: ${{ secrets.DOKKU_SSH_PRIVATE_KEY }}
           ssh-host: staging.discours.io
           ssh-user: dokku
-          app-name: ${{ (steps.branch_name.outputs.branch == 'main') ? 'discoursio-api' : 'core' }}
-          git-remote-url: ${{ (steps.branch_name.outputs.branch == 'main') ? 'ssh://dokku@staging.discours.io:22/discoursio-api' : 'ssh://dokku@staging.discours.io:22/core' }}
+          app-name: core
+          git-remote-url: ssh://dokku@staging.discours.io:22/core
