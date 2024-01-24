@@ -13,30 +13,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Push to core
-        uses: dokku/github-action@master
-        with:
-          ssh-private-key: ${{ secrets.DOKKU_SSH_PRIVATE_KEY }}
-          ssh-host: staging.discours.io
-          ssh-user: dokku
-          app-name: core
-          git-remote-url: ssh://dokku@staging.discours.io:22/core
-
-name: 'Deploy to core'
-on: 
-  push:
-    branches:
-      - feature/core
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cloning repo
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-
       - name: Get Repo Name
         id: repo_name
         run: echo "::set-output name=repo::$(echo ${GITHUB_REPOSITORY##*/})"
