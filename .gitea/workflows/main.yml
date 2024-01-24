@@ -21,5 +21,5 @@ jobs:
           ssh-private-key: ${{ secrets.DOKKU_SSH_PRIVATE_KEY }}
           ssh-host: staging.discours.io
           ssh-user: dokku
-          app-name: ${{ steps.branch_name.outputs.branch == 'main' ? 'discoursio-api' : 'core' }}
-          git-remote-url: ${{ steps.branch_name.outputs.branch == 'main' ? 'ssh://dokku@staging.discours.io:22/discoursio-api' : 'ssh://dokku@staging.discours.io:22/core' }}
+          app-name: ${{ (steps.branch_name.outputs.branch == 'main') ? 'discoursio-api' : 'core' }}
+          git-remote-url: ${{ (steps.branch_name.outputs.branch == 'main') ? 'ssh://dokku@staging.discours.io:22/discoursio-api' : 'ssh://dokku@staging.discours.io:22/core' }}
