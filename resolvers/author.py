@@ -207,7 +207,7 @@ async def get_author(_, _info, slug="", author_id=None):
 @query.field("get_author_id")
 async def get_author_id(_, _info, user: str):
     with local_session() as session:
-        logger.info(f"[resolvers.author] getting author id for {user}")
+        logger.info(f"getting author id for {user}")
         q = select(Author).filter(Author.user == user)
         return await load_author_with_stats(q)
 
