@@ -2,7 +2,7 @@ fail_fast: true
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.5.0
     hooks:
       - id: check-yaml
       - id: check-toml
@@ -14,11 +14,9 @@ repos:
       - id: check-ast
       - id: check-merge-conflict
 
-  - repo: local
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.13
     hooks:
-      - id: lint-python
-        name: Lint Python
-        entry: ruff check
-        types: [python]
-        language: system
-        pass_filenames: false
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

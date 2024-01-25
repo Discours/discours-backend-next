@@ -19,7 +19,7 @@ class Following:
 class FollowingManager:
     lock = asyncio.Lock()
     followers_by_kind = {}
-    data = {"author": [], "topic": [], "shout": [], "community": []}
+    data = {'author': [], 'topic': [], 'shout': [], 'community': []}
 
     @staticmethod
     async def register(kind, uid):
@@ -41,7 +41,7 @@ class FollowingManager:
             async with FollowingManager.lock:
                 entities = FollowingManager.followers_by_kind.get(kind, [])
                 for entity in entities[:]:  # Use a copy to iterate
-                    if payload.shout["created_by"] == entity.uid:
+                    if payload.shout['created_by'] == entity.uid:
                         entity.queue.put_nowait(payload)
         except Exception as e:
             print(Exception(e))

@@ -15,28 +15,28 @@ class SearchService:
     @staticmethod
     async def init(session):
         async with SearchService.lock:
-            logging.info("[services.search] Initializing SearchService")
+            logging.info('[services.search] Initializing SearchService')
 
     @staticmethod
     async def search(text: str, limit: int = 50, offset: int = 0) -> List[Shout]:
         payload = []
         try:
             # TODO: add ttl for redis cached search results
-            cached = await redis.execute("GET", text)
+            cached = await redis.execute('GET', text)
             if not cached:
                 async with SearchService.lock:
                     # Use aiohttp to send a request to ElasticSearch
                     async with aiohttp.ClientSession() as session:
-                        search_url = f"https://search.discours.io/search?q={text}"
+                        search_url = f'https://search.discours.io/search?q={text}'
                         async with session.get(search_url) as response:
                             if response.status == 200:
                                 payload = await response.json()
-                                await redis.execute("SET", text, json.dumps(payload))  # use redis as cache
+                                await redis.execute('SET', text, json.dumps(payload))  # use redis as cache
                             else:
-                                logging.error(f"[services.search] response: {response.status}  {await response.text()}")
+                                logging.error(f'[services.search] response: {response.status}  {await response.text()}')
             elif isinstance(cached, str):
                 payload = json.loads(cached)
         except Exception as e:
-            logging.error(f"[services.search] Error during search: {e}")
+            logging.error(f'[services.search] Error during search: {e}')
 
         return payload[offset : offset + limit]

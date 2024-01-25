@@ -1,3 +1,8 @@
+[0.2.22]
+- added precommit hook
+- fmt
+- granian asgi
+
 [0.2.21]
 - fix: rating logix
 - fix: load_top_random_shouts

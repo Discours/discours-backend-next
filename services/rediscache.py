@@ -1,9 +1,11 @@
+import logging
+
 import redis.asyncio as aredis
 
 from settings import REDIS_URL
-import logging
 
-logger = logging.getLogger("[services.redis] ")
+
+logger = logging.getLogger('[services.redis] ')
 logger.setLevel(logging.DEBUG)
 
 
@@ -23,7 +25,7 @@ class RedisCache:
     async def execute(self, command, *args, **kwargs):
         if self._client:
             try:
-                logger.debug(f"{command} {args} {kwargs}")
+                logger.debug(f'{command} {args} {kwargs}')
                 r = await self._client.execute_command(command, *args, **kwargs)
                 logger.debug(type(r))
                 logger.debug(r)
@@ -51,6 +53,7 @@ class RedisCache:
             return
         await self._client.publish(channel, data)
 
+
 redis = RedisCache()
 
-__all__ = ["redis"]
+__all__ = ['redis']

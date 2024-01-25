@@ -10,34 +10,34 @@ class ReactionKind(Enumeration):
     # TYPE = <reaction index> # rating diff
 
     # editor mode
-    AGREE = "AGREE"  # +1
-    DISAGREE = "DISAGREE"  # -1
-    ASK = "ASK"  # +0
-    PROPOSE = "PROPOSE"  # +0
-    PROOF = "PROOF"  # +1
-    DISPROOF = "DISPROOF"  # -1
-    ACCEPT = "ACCEPT"  # +1
-    REJECT = "REJECT"  # -1
+    AGREE = 'AGREE'  # +1
+    DISAGREE = 'DISAGREE'  # -1
+    ASK = 'ASK'  # +0
+    PROPOSE = 'PROPOSE'  # +0
+    PROOF = 'PROOF'  # +1
+    DISPROOF = 'DISPROOF'  # -1
+    ACCEPT = 'ACCEPT'  # +1
+    REJECT = 'REJECT'  # -1
 
     # public feed
-    QUOTE = "QUOTE"  # +0 TODO: use to bookmark in collection
-    COMMENT = "COMMENT"  # +0
-    LIKE = "LIKE"  # +1
-    DISLIKE = "DISLIKE"  # -1
+    QUOTE = 'QUOTE'  # +0 TODO: use to bookmark in collection
+    COMMENT = 'COMMENT'  # +0
+    LIKE = 'LIKE'  # +1
+    DISLIKE = 'DISLIKE'  # -1
 
 
 class Reaction(Base):
-    __tablename__ = "reaction"
+    __tablename__ = 'reaction'
 
-    body = Column(String, default="", comment="Reaction Body")
+    body = Column(String, default='', comment='Reaction Body')
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    updated_at = Column(Integer, nullable=True, comment="Updated at")
-    deleted_at = Column(Integer, nullable=True, comment="Deleted at")
-    deleted_by = Column(ForeignKey("author.id"), nullable=True, index=True)
-    reply_to = Column(ForeignKey("reaction.id"), nullable=True)
-    quote = Column(String, nullable=True, comment="Original quoted text")
-    shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
-    created_by = Column(ForeignKey("author.id"), nullable=False, index=True)
+    updated_at = Column(Integer, nullable=True, comment='Updated at')
+    deleted_at = Column(Integer, nullable=True, comment='Deleted at')
+    deleted_by = Column(ForeignKey('author.id'), nullable=True, index=True)
+    reply_to = Column(ForeignKey('reaction.id'), nullable=True)
+    quote = Column(String, nullable=True, comment='Original quoted text')
+    shout = Column(ForeignKey('shout.id'), nullable=False, index=True)
+    created_by = Column(ForeignKey('author.id'), nullable=False, index=True)
     kind = Column(String, nullable=False, index=True)
 
     oid = Column(String)

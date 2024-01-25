@@ -1,47 +1,48 @@
+import logging
 import math
 import time
-import logging
 
 # from contextlib import contextmanager
 from typing import Any, Callable, Dict, TypeVar
 
 # from psycopg2.errors import UniqueViolation
 from sqlalchemy import Column, Integer, create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
-from sqlalchemy.engine import Engine
 
 from settings import DB_URL
 
+
 logging.basicConfig()
-logger = logging.getLogger("\t [sqlalchemy.profiler]\t")
+logger = logging.getLogger('\t [sqlalchemy.profiler]\t')
 logger.setLevel(logging.DEBUG)
 
 
-@event.listens_for(Engine, "before_cursor_execute")
+@event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.info.setdefault("query_start_time", []).append(time.time())
+    conn.info.setdefault('query_start_time', []).append(time.time())
     # logger.debug(f" {statement}")
 
 
-@event.listens_for(Engine, "after_cursor_execute")
+@event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    total = time.time() - conn.info["query_start_time"].pop(-1)
+    total = time.time() - conn.info['query_start_time'].pop(-1)
     total = math.floor(total * 10000) / 10000
     if total > 35:
-        print(f"\n{statement}\n----------------- Finished in {total} s ")
+        print(f'\n{statement}\n----------------- Finished in {total} s ')
 
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 REGISTRY: Dict[str, type] = {}
 
 
 # @contextmanager
-def local_session(src=""):
+def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)
 
     # try:
@@ -69,7 +70,7 @@ class Base(declarative_base()):
     __init__: Callable
     __allow_unmapped__ = True
     __abstract__ = True
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True)
 
@@ -78,12 +79,12 @@ class Base(declarative_base()):
 
     def dict(self) -> Dict[str, Any]:
         column_names = self.__table__.columns.keys()
-        if "_sa_instance_state" in column_names:
-            column_names.remove("_sa_instance_state")
+        if '_sa_instance_state' in column_names:
+            column_names.remove('_sa_instance_state')
         try:
             return {c: getattr(self, c) for c in column_names}
         except Exception as e:
-            print(f"[services.db] Error dict: {e}")
+            print(f'[services.db] Error dict: {e}')
             return {}
 
     def update(self, values: Dict[str, Any]) -> None:
