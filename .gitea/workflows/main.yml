@@ -2,7 +2,7 @@ name: 'Deploy to core'
 on: 
   push:
     branches:
-      - feature/core
+      - main
 
 jobs:
   deploy:
