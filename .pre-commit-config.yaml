@@ -18,7 +18,7 @@ repos:
     hooks:
       - id: lint-python
         name: Lint Python
-        entry: make lint-python
+        entry: ruff check
         types: [python]
         language: system
         pass_filenames: false
