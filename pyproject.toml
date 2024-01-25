@@ -33,48 +33,46 @@ isort = "^5.13.2"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 120
-target-version = ['py312']
-include = '\.pyi?$'
-exclude = '''
-
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | foo.py           # also separately exclude a file named foo.py in
-                     # the root of the project
-)
-'''
-
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 120
-
-
 [tool.ruff]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
-# McCabe complexity (`C901`) by default.
-select = ["E4", "E7", "E9", "F"]
-ignore = []
 line-length = 120
+extend-select = [
+    # E and F are enabled by default
+    'B',      # flake8-bugbear
+    'C4',     # flake8-comprehensions
+    'C90',    # mccabe
+    'I',      # isort
+    'N',      # pep8-naming
+    'Q',      # flake8-quotes
+    'RUF100', # ruff (unused noqa)
+    'S',      # flake8-bandit
+    'W',      # pycodestyle
+]
+extend-ignore = [
+    'B008', # function calls in args defaults are fine
+    'B009', # getattr with constants is fine
+    'B034', # re.split won't confuse us
+    'B904', # rising without from is fine
+    'E501', # leave line length to black
+    'N818', # leave to us exceptions naming
+    'S101', # assert is fine
+]
+flake8-quotes = { inline-quotes = 'single', multiline-quotes = 'double' }
+mccabe = { max-complexity = 13 }
 target-version = "py312"
 
+[tool.ruff.format]
+quote-style = 'single'
+
+[tool.ruff.isort]
+combine-as-imports = true
+lines-after-imports = 2
+known-first-party = ['granian', 'tests']
+
+[tool.ruff.per-file-ignores]
+'tests/**' = ['B018', 'S110', 'S501']
+
+[tool.pytest.ini_options]
+asyncio_mode = 'auto'
 
 [tool.pyright]
 venvPath = "."
