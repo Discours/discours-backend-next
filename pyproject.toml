@@ -20,6 +20,7 @@ aiohttp = "^3.9.1"
 google-oauth2-tool = "^0.0.3"
 google-api-python-client = "^2.114.0"
 pandas = "^2.2.0"
+pre-commit = "^3.6.0"
 
 [tool.poetry.group.dev.dependencies]
 setuptools = "^69.0.2"
