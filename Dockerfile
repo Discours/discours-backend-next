@@ -10,4 +10,4 @@ RUN apt-get update && apt-get install -y git gcc curl postgresql && \
     poetry install --no-dev
 
 # Run server when the container launches
-CMD granian --no-ws --host 0.0.0.0 --port 8000 --interface asgi main:app
+CMD granian --no-ws --host 0.0.0.0 --port 8080 --interface asgi main:app
