@@ -89,7 +89,7 @@ class ViewedStorage:
     async def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
         self = ViewedStorage
-        if not self.disabled and GOOGLE_GA_VIEW_ID:
+        if not self.disabled and bool(GOOGLE_GA_VIEW_ID):
             logger.info(' ⎧ Обновление данных просмотров от Google Analytics ---')
             try:
                 start = time.time()

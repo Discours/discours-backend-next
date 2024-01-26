@@ -1,59 +1,60 @@
-# discoursio-core
+## Техстек
 
 
 - sqlalchemy
 - redis
 - ariadne
 - starlette
-- uvicorn
+- granian
 
-# Local development
+# Локальная разработка
 
-Install deps first
+Подготовьте зависимости
 
-on osx
+osx:
 ```
 brew install redis nginx postgres
 brew services start redis
 ```
 
-on debian/ubuntu
+debian/ubuntu:
 ```
 apt install redis nginx
 ```
 
-Then run nginx, redis and API server
+Затем запустите postgres, redis и наш API-сервер:
 
 ```shell
 mkdir .venv
 python3.12 -m venv .venv
 poetry env use .venv/bin/python3.12
 poetry update
-poetry granian --no-ws --host 0.0.0.0 --port 8000 --interface asgi main:app
+poetry granian --no-ws --host 0.0.0.0 --port 8080 --interface asgi main:app
 ```
-## Services
+## Подключенные сервисы
 
-### Auth
+Для межсерверной коммуникации используется разны механики, похожим образом это устроено в других сервисах нашей инфраструктуры.
 
-Setup `WEBHOOK_SECRET` env var, webhook payload on `/new-author` is expected when User is created. In front-end put the header 'Authorization' with token from signIn query or registerUser mutation.
+### auth.py
 
-### Viewed
+Настройте переменную окружения WEBHOOK_SECRET и настройте webhook-полезную нагрузку на /new-author. Он ожидается при создании нового пользователя. На фронтенде включите заголовок Authorization с токеном из запроса signIn или мутации registerUser.
 
-Set GOOGLE_ANALYTICS_TOKEN var to collect stats
+### viewed.py
 
-### Seacrh
+Для статистики просмотров установите переменные окружения GOOGLE_ANALYTICS_TOKEN и GOOGLE_GA_VIEW_ID для сбора данных из Google Analytics.
 
-ElasticSearch
+### search.py
 
-### Notifications
+Результаты ElasticSearch с оценкой `score`, объединенные с запросами к базе данных, запрашиваем через GraphQL API `load_shouts_search`.
 
-Connected using Redis PubSub channels
+### notify.py
 
-### Inbox
+Отправка уведомлений по Redis PubSub каналам
 
-To get unread counter raw redis query to Inbox's data is used
+###  unread.py
 
+Счетчик непрочитанных сообщений получается через Redis-запрос к данным сервиса сообщений.
 
-### Following Manager
+### following.py
 
-Internal service with async access to storage
+Внутренний сервис, обеспечивающий асинхронный доступ к оперативному хранилищу подписчиков на комментарии, топики и авторы.

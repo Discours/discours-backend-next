@@ -1,5 +1,5 @@
 from sqlalchemy import bindparam, distinct, or_
-from sqlalchemy.orm import aliased, joinedload
+from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
 
@@ -203,7 +203,7 @@ async def load_shouts_drafts(_, info):
     shouts = []
     with local_session() as session:
         reader = session.query(Author).filter(Author.user == user_id).first()
-        if reader:
+        if isinstance(reader, Author):
             q = q.filter(Shout.created_by == reader.id)
             q = q.group_by(Shout.id)
             for [shout] in session.execute(q).unique():
@@ -370,8 +370,8 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = (
         select(Shout)
         .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
+            selectinload(Shout.authors),
+            selectinload(Shout.topics),
         )
         .outerjoin(
             Reaction,
