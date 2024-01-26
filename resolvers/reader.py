@@ -343,7 +343,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 if topic:
                     shout_data['main_topic'] = topic
                 authors = (
-                    session.query(Author)
+                    session.query(Author, ShoutAuthor)
                     .join(
                         ShoutTopic,
                         and_(
