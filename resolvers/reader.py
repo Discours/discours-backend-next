@@ -337,6 +337,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 joinedload(Shout.topics),
                 joinedload(Shout.communities),
             )
+            .select_from(Shout)
             .where(
                 and_(Shout.deleted_at.is_(None), Shout.slug.in_(results_dict.keys()))
             )
