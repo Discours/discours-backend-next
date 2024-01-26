@@ -326,9 +326,36 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             print(f'[resolvers.reader] searched, preparing {len(results)} results')
             for x in results:
                 shout = x[0]
-                shout_slug = shout.dict().get('slug', '')
+                shout_data = shout.dict()
+                shout_slug = shout_data.get('slug', '')
+                topic = (
+                    session.query(Topic)
+                    .join(
+                        ShoutTopic,
+                        and_(
+                            ShoutTopic.topic == Topic.id,
+                            ShoutTopic.shout == shout.id,
+                            ShoutTopic.main == True,
+                        ),
+                    )
+                    .first()
+                )
+                if topic:
+                    shout_data['main_topic'] = topic
+                authors = (
+                    session.query(Author)
+                    .join(
+                        ShoutTopic,
+                        and_(
+                            ShoutAuthor.author == Author.id,
+                            ShoutTopic.shout == shout.id,
+                        ),
+                    )
+                    .all()
+                )
+                if authors:
+                    shout_data['authors'] = authors
                 score = results_dict.get(shout_slug, {}).get('score', 0)
-                shout_data = shout.dict()  # Convert the Shout instance to a dictionary
                 shout_data['score'] = score  # Add the score to the dictionary
                 shouts_data.append(shout_data)
 

@@ -138,6 +138,7 @@ type Shout {
   published_at: Int
   media: String
   stat: Stat
+  score: Float
 }
 
 type Stat {
