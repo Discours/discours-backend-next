@@ -29,7 +29,7 @@ mkdir .venv
 python3.12 -m venv .venv
 poetry env use .venv/bin/python3.12
 poetry update
-poetry granian --no-ws --host 0.0.0.0 --port 8080 --interface asgi main:app
+poetry run main.py
 ```
 ## Подключенные сервисы
 
