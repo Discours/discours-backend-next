@@ -77,9 +77,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                     'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
                 }
 
-                for author_caption in (
-                    session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug)
-                ):
+                for author_caption in session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug):
                     for author in shout.authors:
                         if author.id == author_caption.author:
                             author.caption = author_caption.caption
@@ -100,9 +98,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                     shout.main_topic = main_topic[0]
                 return shout
         except Exception:
-            raise HTTPException(
-                status_code=404, detail=f'shout {slug or shout_id} not found'
-            )
+            raise HTTPException(status_code=404, detail=f'shout {slug or shout_id} not found')
 
 
 @query.field('load_shouts_by')
@@ -148,9 +144,7 @@ async def load_shouts_by(_, _info, options):
 
     # order
     order_by = options.get('order_by', Shout.published_at)
-    query_order_by = (
-        desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
-    )
+    query_order_by = desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
     q = q.order_by(nulls_last(query_order_by))
 
     # limit offset
@@ -243,20 +237,15 @@ async def load_shouts_feed(_, info, options):
     with local_session() as session:
         reader = session.query(Author).filter(Author.user == user_id).first()
         if reader:
-            reader_followed_authors = select(AuthorFollower.author).where(
-                AuthorFollower.follower == reader.id
-            )
-            reader_followed_topics = select(TopicFollower.topic).where(
-                TopicFollower.follower == reader.id
-            )
+            reader_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == reader.id)
+            reader_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == reader.id)
 
             subquery = (
                 select(Shout.id)
                 .where(Shout.id == ShoutAuthor.shout)
                 .where(Shout.id == ShoutTopic.shout)
                 .where(
-                    (ShoutAuthor.author.in_(reader_followed_authors))
-                    | (ShoutTopic.topic.in_(reader_followed_topics))
+                    (ShoutAuthor.author.in_(reader_followed_authors)) | (ShoutTopic.topic.in_(reader_followed_topics))
                 )
             )
 
@@ -281,24 +270,15 @@ async def load_shouts_feed(_, info, options):
 
             order_by = options.get('order_by', Shout.published_at)
 
-            query_order_by = (
-                desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
-            )
+            query_order_by = desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
             offset = options.get('offset', 0)
             limit = options.get('limit', 10)
 
-            q = (
-                q.group_by(Shout.id)
-                .order_by(nulls_last(query_order_by))
-                .limit(limit)
-                .offset(offset)
-            )
+            q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
 
             # print(q.compile(compile_kwargs={"literal_binds": True}))
 
-            for [shout, reacted_stat, commented_stat, _last_comment] in session.execute(
-                q
-            ).unique():
+            for [shout, reacted_stat, commented_stat, _last_comment] in session.execute(q).unique():
                 main_topic = (
                     session.query(Topic.slug)
                     .join(
@@ -342,9 +322,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             .join(Author, Shout.authors)  # Ensure this join is not duplicated
             .join(Topic, Shout.topics)  # Ensure this join is not duplicated
             .join(Community, Shout.communities)  # Ensure this join is not duplicated
-            .where(
-                and_(Shout.deleted_at.is_(None), Shout.slug.in_(results_dict.keys()))
-            )
+            .where(and_(Shout.deleted_at.is_(None), Shout.slug.in_(results_dict.keys())))
         )
 
         shouts_data = []
@@ -406,9 +384,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
             and_(
                 Reaction.shout == Shout.id,
                 Reaction.replyTo.is_(None),
-                Reaction.kind.in_(
-                    [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
-                ),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
         .outerjoin(Author, Author.user == bindparam('user_id'))
@@ -477,9 +453,7 @@ async def load_shouts_random_top(_, _info, options):
 
     aliased_reaction = aliased(Reaction)
 
-    subquery = (
-        select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
-    )
+    subquery = select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
 
     subquery = apply_filters(subquery, options.get('filters', {}))
     subquery = subquery.group_by(Shout.id).order_by(
