@@ -340,7 +340,13 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         with local_session() as session:
             results = (
                 session.query(Shout)
-                .where(
+                .join(ShoutAuthor, Shout.id == ShoutAuthor.shout)
+                .join(ShoutTopic, Shout.id == ShoutTopic.shout)
+                .options(
+                    joinedload(Shout.authors),
+                    joinedload(Shout.topics),
+                )
+                .filter(
                     and_(
                         Shout.deleted_at.is_(None),
                         Shout.slug.in_(found_keys),
@@ -348,10 +354,8 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 )
                 .limit(limit)
                 .offset(offset)
-                .all()
+                .unique()
             )
-
-            # print(results)
             logger.debug(f'search found {len(results)} results')
             for shout in results:
                 shout_data = shout.dict()
