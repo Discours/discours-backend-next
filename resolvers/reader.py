@@ -354,7 +354,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 )
                 .limit(limit)
                 .offset(offset)
-                .unique()
+                .all()
             )
             logger.debug(f'search found {len(results)} results')
             for shout in results:
