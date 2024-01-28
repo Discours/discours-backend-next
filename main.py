@@ -1,6 +1,7 @@
 import os
 from importlib import import_module
 from os.path import exists
+import sentry_sdk
 
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
