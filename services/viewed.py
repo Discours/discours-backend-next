@@ -60,9 +60,7 @@ class ViewedStorage:
 
                 if os.path.exists(VIEWS_FILEPATH):
                     file_timestamp = os.path.getctime(VIEWS_FILEPATH)
-                    self.start_date = datetime.fromtimestamp(file_timestamp).strftime(
-                        '%Y-%m-%d'
-                    )
+                    self.start_date = datetime.fromtimestamp(file_timestamp).strftime('%Y-%m-%d')
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
@@ -78,9 +76,7 @@ class ViewedStorage:
             with open(VIEWS_FILEPATH, 'r') as file:
                 precounted_views = json.load(file)
                 self.views_by_shout.update(precounted_views)
-                logger.info(
-                    f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.'
-                )
+                logger.info(f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.')
         except Exception as e:
             logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
 
@@ -98,9 +94,7 @@ class ViewedStorage:
                             property=f'properties/{GOOGLE_PROPERTY_ID}',
                             dimensions=[Dimension(name='pagePath')],
                             metrics=[Metric(name='screenPageViews')],
-                            date_ranges=[
-                                DateRange(start_date=self.start_date, end_date='today')
-                            ],
+                            date_ranges=[DateRange(start_date=self.start_date, end_date='today')],
                         )
                         response = self.analytics_client.run_report(request)
                         if response and isinstance(response.rows, list):
@@ -117,9 +111,7 @@ class ViewedStorage:
                                     views_count = int(row.metric_values[0].value)
 
                                     # Обновление данных в хранилище
-                                    self.views_by_shout[slug] = self.views_by_shout.get(
-                                        slug, 0
-                                    )
+                                    self.views_by_shout[slug] = self.views_by_shout.get(slug, 0)
                                     self.views_by_shout[slug] += views_count
                                     self.update_topics(slug)
 
@@ -178,20 +170,12 @@ class ViewedStorage:
 
             # Обновление тем и авторов с использованием вспомогательной функции
             for [_shout_topic, topic] in (
-                session.query(ShoutTopic, Topic)
-                .join(Topic)
-                .join(Shout)
-                .where(Shout.slug == shout_slug)
-                .all()
+                session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all()
             ):
                 update_groups(self.shouts_by_topic, topic.slug, shout_slug)
 
             for [_shout_topic, author] in (
-                session.query(ShoutAuthor, Author)
-                .join(Author)
-                .join(Shout)
-                .where(Shout.slug == shout_slug)
-                .all()
+                session.query(ShoutAuthor, Author).join(Author).join(Shout).where(Shout.slug == shout_slug).all()
             ):
                 update_groups(self.shouts_by_author, author.slug, shout_slug)
 
@@ -216,10 +200,7 @@ class ViewedStorage:
             if failed == 0:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
-                logger.info(
-                    ' ⎩ Следующее обновление: %s'
-                    % (t.split('T')[0] + ' ' + t.split('T')[1].split('.')[0])
-                )
+                logger.info(' ⎩ Следующее обновление: %s' % (t.split('T')[0] + ' ' + t.split('T')[1].split('.')[0]))
                 await asyncio.sleep(self.period)
             else:
                 await asyncio.sleep(10)
