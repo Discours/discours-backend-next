@@ -41,7 +41,7 @@ poetry run main.py
 
 ### viewed.py
 
-Задайте переменные окружения `GOOGLE_ANALYTICS_TOKEN` и `GOOGLE_GA_VIEW_ID` для сбора данных из [Google Analytics](https://developers.google.com/analytics?hl=ru).
+Задайте переменные окружения `GOOGLE_KEYFILE_PATH` и `GOOGLE_PROPERTY_ID` для получения данных из [Google Analytics](https://developers.google.com/analytics?hl=ru).
 
 ### search.py
 

@@ -1,15 +1,14 @@
 import asyncio
 import json
 import logging
-import math
 import os
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict
 
 # ga
-from apiclient.discovery import build
-from google.oauth2.service_account import Credentials
+from google.analytics.data_v1beta import BetaAnalyticsDataClient
+from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
 
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
@@ -23,17 +22,8 @@ logger = logging.getLogger('\t[services.viewed]\t')
 logger.setLevel(logging.DEBUG)
 
 GOOGLE_KEYFILE_PATH = os.environ.get('GOOGLE_KEYFILE_PATH', '/dump/google-service.json')
-# GOOGLE_ANALYTICS_API = 'https://analyticsreporting.googleapis.com/v4'
-GOOGLE_ANALYTICS_SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
-
+GOOGLE_PROPERTY_ID = os.environ.get('GOOGLE_PROPERTY_ID', '')
 VIEWS_FILEPATH = '/dump/views.json'
-
-
-# Функция для создания объекта службы Analytics Reporting API V4
-def get_service():
-    credentials = Credentials.from_service_account_file(GOOGLE_KEYFILE_PATH, scopes=GOOGLE_ANALYTICS_SCOPES)
-    service = build(serviceName='analyticsreporting', version='v4', credentials=credentials)
-    return service
 
 
 class ViewedStorage:
@@ -43,7 +33,7 @@ class ViewedStorage:
     shouts_by_author = {}
     views = None
     period = 60 * 60  # каждый час
-    analytics_client = None
+    analytics_client: BetaAnalyticsDataClient | None = None
     auth_result = None
     disabled = False
     updated = int(time.time())
@@ -53,9 +43,13 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
-            if os.path.exists(GOOGLE_KEYFILE_PATH):
-                self.analytics_client = get_service()
-                logger.info(f' * Постоянная авторизация в Google Analytics {self.analytics_client}')
+            creds = open(GOOGLE_KEYFILE_PATH).read()
+            os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', creds)
+            if creds and GOOGLE_PROPERTY_ID:
+                # Using a default constructor instructs the client to use the credentials
+                # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
+                self.analytics_client = BetaAnalyticsDataClient()
+                logger.info(f' * Постоянная авторизация в Google Analytics: {self.analytics_client}')
 
                 # Загрузка предварительно подсчитанных просмотров из файла JSON
                 self.load_precounted_views()
@@ -74,7 +68,7 @@ class ViewedStorage:
         """Загрузка предварительно подсчитанных просмотров из файла JSON"""
         self = ViewedStorage
         try:
-            with open('/dump/views.json', 'r') as file:
+            with open(VIEWS_FILEPATH, 'r') as file:
                 precounted_views = json.load(file)
                 self.views_by_shout.update(precounted_views)
                 logger.info(f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.')
@@ -91,43 +85,30 @@ class ViewedStorage:
                 start = time.time()
                 async with self.lock:
                     if self.analytics_client:
-                        hours_ago = math.floor((int(time.time()) - self.updated) / 3600) or 1
-                        data = (
-                            self.analytics_client.data()
-                            .batchRunReports(
-                                {
-                                    'requests': [
-                                        {
-                                            'dateRanges': [{'startDate': f'{hours_ago}hoursAgo', 'endDate': 'today'}],
-                                            'metrics': [{'expression': 'ga:pageviews'}],
-                                            'dimensions': [{'name': 'ga:pagePath'}],
-                                        }
-                                    ]
-                                }
-                            )
-                            .execute()
+                        request = RunReportRequest(
+                            property=f'properties/{GOOGLE_PROPERTY_ID}',
+                            dimensions=[Dimension(name='pagePath')],
+                            metrics=[Metric(name='pageviews')],
+                            date_ranges=[DateRange(start_date=self.start_date, end_date='today')],
                         )
-                        if isinstance(data, dict):
+                        response = self.analytics_client.run_report(request)
+                        if response and isinstance(response.rows, list):
                             slugs = set()
-                            reports = data.get('reports', [])
-                            if reports and isinstance(reports, list):
-                                rows = list(reports[0].get('data', {}).get('rows', []))
-                                for row in rows:
-                                    # Извлечение путей страниц из ответа Google Analytics
-                                    if isinstance(row, dict):
-                                        dimensions = row.get('dimensions', [])
-                                        if isinstance(dimensions, list) and dimensions:
-                                            page_path = dimensions[0]
-                                            slug = page_path.split('discours.io/')[-1]
-                                            views_count = int(row['metrics'][0]['values'][0])
+                            for row in response.rows:
+                                print(row.dimension_values[0].value, row.metric_values[0].value)
+                                # Извлечение путей страниц из ответа Google Analytics
+                                if isinstance(row.dimension_values, list):
+                                    page_path = row.dimension_values[0].value
+                                    slug = page_path.split('discours.io/')[-1]
+                                    views_count = int(row.metric_values[0].value)
 
-                                            # Обновление данных в хранилище
-                                            self.views_by_shout[slug] = self.views_by_shout.get(slug, 0)
-                                            self.views_by_shout[slug] += views_count
-                                            self.update_topics(slug)
+                                    # Обновление данных в хранилище
+                                    self.views_by_shout[slug] = self.views_by_shout.get(slug, 0)
+                                    self.views_by_shout[slug] += views_count
+                                    self.update_topics(slug)
 
-                                            # Запись путей страниц для логирования
-                                            slugs.add(slug)
+                                    # Запись путей страниц для логирования
+                                    slugs.add(slug)
 
                                 logger.info(f' ⎪ Собрано страниц: {len(slugs)} ')
 
