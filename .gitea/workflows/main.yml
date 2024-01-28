@@ -1,8 +1,5 @@
 name: 'Deploy to core'
-on: 
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
   deploy:
