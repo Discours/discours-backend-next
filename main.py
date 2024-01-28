@@ -26,7 +26,11 @@ schema = make_executable_schema(load_schema_from_path('schemas/core.graphql'), r
 async def start_up():
     print(f'[main] starting in {MODE} mode')
 
-    await redis.connect()
+    with sentry_sdk.start_transaction(
+        op="task",
+        name="Redis Connection"
+    ):
+        await redis.connect()
 
     # start viewed service
     await ViewedStorage.init()
