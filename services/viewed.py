@@ -22,7 +22,6 @@ logger = logging.getLogger('\t[services.viewed]\t')
 logger.setLevel(logging.DEBUG)
 
 GOOGLE_KEYFILE_PATH = os.environ.get('GOOGLE_KEYFILE_PATH', '/dump/google-service.json')
-GOOGLE_GA_VIEW_ID = os.environ.get('GOOGLE_GA_VIEW_ID', '')
 # GOOGLE_ANALYTICS_API = 'https://analyticsreporting.googleapis.com/v4'
 GOOGLE_ANALYTICS_SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
 
@@ -51,29 +50,27 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
-            if os.path.exists(GOOGLE_KEYFILE_PATH) and GOOGLE_GA_VIEW_ID:
+            if os.path.exists(GOOGLE_KEYFILE_PATH):
                 self.analytics_client = get_service()
                 logger.info(f' * Постоянная авторизация в Google Analytics {self.analytics_client}')
 
                 # Загрузка предварительно подсчитанных просмотров из файла JSON
                 self.load_precounted_views()
 
-                # Установка диапазона дат на основе времени создания файла views.json
                 file_path = '/dump/views.json'
-
                 if os.path.exists(file_path):
                     creation_time = os.path.getctime(file_path)
                     current_time = datetime.now().timestamp()
                     time_difference_seconds = current_time - creation_time
                     self.days_ago = int(time_difference_seconds / (24 * 3600))  # Convert seconds to days
-                    print(f'The file {file_path} was created {self. days_ago} days ago.')
+                    logger.info(f'The file {file_path} was created {self. days_ago} days ago.')
                 else:
-                    print(f'The file {file_path} does not exist.')
+                    logger.info(f'The file {file_path} does not exist.')
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
             else:
-                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics и задайте переменную GOOGLE_GA_VIEW_ID')
+                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics')
                 self.disabled = True
 
     @staticmethod
@@ -101,12 +98,10 @@ class ViewedStorage:
                 async with self.lock:
                     if self.analytics_client:
                         data = (
-                            self.analytics_client.reports()
-                            .batchGet(
-                                body={
-                                    'reportRequests': [
+                            self.analytics_client.data().batchRunReports(
+                                {
+                                    'requests': [
                                         {
-                                            'viewId': GOOGLE_GA_VIEW_ID,
                                             'dateRanges': [{'startDate': f'{self.days_ago}daysAgo', 'endDate': 'today'}],
                                             'metrics': [{'expression': 'ga:pageviews'}],
                                             'dimensions': [{'name': 'ga:pagePath'}],
