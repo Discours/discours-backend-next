@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -25,6 +26,8 @@ GOOGLE_KEYFILE_PATH = os.environ.get('GOOGLE_KEYFILE_PATH', '/dump/google-servic
 # GOOGLE_ANALYTICS_API = 'https://analyticsreporting.googleapis.com/v4'
 GOOGLE_ANALYTICS_SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
 
+VIEWS_FILEPATH = '/dump/views.json'
+
 
 # Функция для создания объекта службы Analytics Reporting API V4
 def get_service():
@@ -43,7 +46,7 @@ class ViewedStorage:
     analytics_client = None
     auth_result = None
     disabled = False
-    days_ago = 0
+    updated = int(time.time())
 
     @staticmethod
     async def init():
@@ -57,15 +60,8 @@ class ViewedStorage:
                 # Загрузка предварительно подсчитанных просмотров из файла JSON
                 self.load_precounted_views()
 
-                file_path = '/dump/views.json'
-                if os.path.exists(file_path):
-                    creation_time = os.path.getctime(file_path)
-                    current_time = datetime.now().timestamp()
-                    time_difference_seconds = current_time - creation_time
-                    self.days_ago = int(time_difference_seconds / (24 * 3600))  # Convert seconds to days
-                    logger.info(f'The file {file_path} was created {self. days_ago} days ago.')
-                else:
-                    logger.info(f'The file {file_path} does not exist.')
+                if os.path.exists(VIEWS_FILEPATH):
+                    self.updated = os.path.getctime(VIEWS_FILEPATH)
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
@@ -81,9 +77,7 @@ class ViewedStorage:
             with open('/dump/views.json', 'r') as file:
                 precounted_views = json.load(file)
                 self.views_by_shout.update(precounted_views)
-                logger.info(
-                    f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.'
-                )
+                logger.info(f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.')
         except Exception as e:
             logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
 
@@ -97,12 +91,14 @@ class ViewedStorage:
                 start = time.time()
                 async with self.lock:
                     if self.analytics_client:
+                        hours_ago = math.floor((int(time.time()) - self.updated) / 3600) or 1
                         data = (
-                            self.analytics_client.data().batchRunReports(
+                            self.analytics_client.data()
+                            .batchRunReports(
                                 {
                                     'requests': [
                                         {
-                                            'dateRanges': [{'startDate': f'{self.days_ago}daysAgo', 'endDate': 'today'}],
+                                            'dateRanges': [{'startDate': f'{hours_ago}hoursAgo', 'endDate': 'today'}],
                                             'metrics': [{'expression': 'ga:pageviews'}],
                                             'dimensions': [{'name': 'ga:pagePath'}],
                                         }
