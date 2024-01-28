@@ -353,8 +353,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
             # print(results)
             logger.debug(f'search found {len(results)} results')
-            for x in results:
-                shout = x[0]
+            for shout in results:
                 shout_data = shout.dict()
                 shout_slug = shout_data.get('slug', '')
                 topic = (
