@@ -43,9 +43,8 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
-            creds = open(GOOGLE_KEYFILE_PATH).read()
-            os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', creds)
-            if creds and GOOGLE_PROPERTY_ID:
+            os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', GOOGLE_KEYFILE_PATH)
+            if GOOGLE_KEYFILE_PATH:
                 # Using a default constructor instructs the client to use the credentials
                 # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
                 self.analytics_client = BetaAnalyticsDataClient()
