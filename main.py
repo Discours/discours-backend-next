@@ -2,6 +2,7 @@ import os
 from importlib import import_module
 from os.path import exists
 
+import sentry_sdk
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
@@ -26,7 +27,8 @@ schema = make_executable_schema(load_schema_from_path('schemas/core.graphql'), r
 async def start_up():
     print(f'[main] starting in {MODE} mode')
 
-    await redis.connect()
+    with sentry_sdk.start_transaction(op='task', name='Redis Connection'):
+        await redis.connect()
 
     # start viewed service
     await ViewedStorage.init()
@@ -40,8 +42,6 @@ async def start_up():
     if MODE == 'production':
         # sentry monitoring
         try:
-            import sentry_sdk
-
             sentry_sdk.init(
                 SENTRY_DSN,
                 enable_tracing=True,

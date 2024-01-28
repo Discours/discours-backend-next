@@ -65,8 +65,8 @@ class ViewedStorage:
                 start_date = creation_time.strftime('%Y-%m-%d')
                 self.date_range = f'{start_date},{end_date}'
 
-                views_stat_task = asyncio.create_task(self.worker())
-                logger.info(views_stat_task)
+                _views_stat_task = asyncio.create_task(self.worker())
+                # logger.info(views_stat_task)
             else:
                 logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics')
                 self.disabled = True
@@ -207,7 +207,6 @@ class ViewedStorage:
 
         while True:
             try:
-                logger.info(' - Обновление записей...')
                 await self.update_pages()
                 failed = 0
             except Exception:

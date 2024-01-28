@@ -4,7 +4,6 @@ from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, s
 from starlette.exceptions import HTTPException
 
 from orm.author import Author, AuthorFollower
-from orm.community import Community
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from orm.topic import Topic, TopicFollower
@@ -316,12 +315,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             .options(
                 joinedload(Shout.authors),
                 joinedload(Shout.topics),
-                joinedload(Shout.communities),
             )
-            .select_from(Shout)
-            .join(Author, Shout.authors)  # Ensure this join is not duplicated
-            .join(Topic, Shout.topics)  # Ensure this join is not duplicated
-            .join(Community, Shout.communities)  # Ensure this join is not duplicated
             .where(and_(Shout.deleted_at.is_(None), Shout.slug.in_(results_dict.keys())))
         )
 

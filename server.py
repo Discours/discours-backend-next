@@ -7,11 +7,11 @@ if __name__ == '__main__':
 
     granian_instance = Granian(
         'main:app',
-        address='0.0.0.0', # noqa S104
+        address='0.0.0.0',  # noqa S104
         port=8000,
         workers=2,
         threads=2,
         websockets=False,
-        interface=Interfaces.ASGI
+        interface=Interfaces.ASGI,
     )
     granian_instance.serve()
