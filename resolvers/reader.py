@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import bindparam, distinct, or_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
@@ -14,6 +16,10 @@ from services.db import local_session
 from services.schema import query
 from services.search import SearchService
 from services.viewed import ViewedStorage
+
+
+logger = logging.getLogger('[resolvers.reader] ')
+logger.setLevel(logging.DEBUG)
 
 
 def apply_filters(q, filters, author_id=None):
@@ -328,19 +334,12 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
         results = await SearchService.search(text, limit, offset)
         results_dict = {r['slug']: r for r in results}
-        found_keys = results_dict.keys()
+        found_keys = list(results_dict.keys())
 
-        q = (
-            select(Shout)
-            .options(
-                joinedload(Shout.authors),
-                joinedload(Shout.topics),
-            )
-            .where(
-                and_(
-                    Shout.deleted_at.is_(None),
-                    Shout.slug.in_(found_keys),
-                )
+        q = select(Shout).where(
+            and_(
+                Shout.deleted_at.is_(None),
+                Shout.slug.in_(found_keys),
             )
         )
 
@@ -348,7 +347,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         with local_session() as session:
             results = list(session.execute(q).unique())
             # print(results)
-            print(f'[resolvers.reader] searched, preparing {len(results)} results')
+            logger.debug(f'search found {len(results)} results')
             for x in results:
                 shout = x[0]
                 shout_data = shout.dict()
