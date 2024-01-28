@@ -36,7 +36,7 @@ class ViewedStorage:
     analytics_client: BetaAnalyticsDataClient | None = None
     auth_result = None
     disabled = False
-    updated = int(time.time())
+    start_date = int(time.time())
 
     @staticmethod
     async def init():
@@ -55,7 +55,8 @@ class ViewedStorage:
                 self.load_precounted_views()
 
                 if os.path.exists(VIEWS_FILEPATH):
-                    self.updated = os.path.getctime(VIEWS_FILEPATH)
+                    file_timestamp = os.path.getctime(VIEWS_FILEPATH)
+                    self.start_date = datetime.fromtimestamp(file_timestamp).strftime('%Y-%m-%d')
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
