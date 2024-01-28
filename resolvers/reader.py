@@ -339,7 +339,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             .where(
                 and_(
                     Shout.deleted_at.is_(None),
-                    Shout.id.in_(found_keys),
+                    Shout.slug.in_(found_keys),
                 )
             )
         )
