@@ -24,4 +24,3 @@ jobs:
           branch: 'feature/core'
           git_remote_url: 'ssh://dokku@v2.discours.io:22/core'
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-          git_push_flags: '--force'
