@@ -363,16 +363,17 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
             # Use the subquery in the main query
             q = (
-                select([subquery])
+                select([subquery.c.Shout, subquery.c.score])
                 .order_by(desc(subquery.c.score))
                 .limit(limit)
                 .offset(offset)
             )
-            shouts_data = []
-            for shout, score in session.execute(q).all():
-                sdict = shout.dict()
-                sdict['score'] = score
-                shouts_data.append(sdict)
+
+            results = session.execute(q).all()
+            logger.debug(f'search found {len(results)} results')
+
+            # Directly build the shouts_data list within the loop
+            shouts_data = [shout.Shout.dict() for score, shout in results]
 
             return shouts_data
 
