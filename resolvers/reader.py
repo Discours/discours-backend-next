@@ -345,7 +345,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
         shouts_data = []
         with local_session() as session:
-            results = list(session.execute(q).unique())
+            results = set(session.execute(q).all())
             # print(results)
             logger.debug(f'search found {len(results)} results')
             for x in results:
@@ -382,7 +382,11 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 score = results_dict.get(shout_slug, {}).get('score', 0)
                 shout_data['score'] = score  # Add the score to the dictionary
                 shouts_data.append(shout_data)
-
+        shouts_data = sorted(
+            shouts_data,
+            key=lambda x: float(x.get('score', '0')),
+            reverse=True,
+        )
         return shouts_data
     else:
         return []
