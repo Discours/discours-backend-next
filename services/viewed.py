@@ -44,7 +44,7 @@ class ViewedStorage:
     analytics_client = None
     auth_result = None
     disabled = False
-    start_date = ''
+    days_ago = 0
 
     @staticmethod
     async def init():
@@ -59,7 +59,16 @@ class ViewedStorage:
                 self.load_precounted_views()
 
                 # Установка диапазона дат на основе времени создания файла views.json
-                self.start_date = datetime.fromtimestamp(os.path.getctime('/dump/views.json'))
+                file_path = '/dump/views.json'
+
+                if os.path.exists(file_path):
+                    creation_time = os.path.getctime(file_path)
+                    current_time = datetime.now().timestamp()
+                    time_difference_seconds = current_time - creation_time
+                    self.days_ago = int(time_difference_seconds / (24 * 3600))  # Convert seconds to days
+                    print(f'The file {file_path} was created {self. days_ago} days ago.')
+                else:
+                    print(f'The file {file_path} does not exist.')
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
@@ -90,7 +99,6 @@ class ViewedStorage:
             try:
                 start = time.time()
                 async with self.lock:
-                    now_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
                     if self.analytics_client:
                         data = (
                             self.analytics_client.reports()
@@ -99,7 +107,7 @@ class ViewedStorage:
                                     'reportRequests': [
                                         {
                                             'viewId': GOOGLE_GA_VIEW_ID,
-                                            'dateRanges': f'{self.start_date},{now_date}',
+                                            'dateRanges': [{'startDate': f'{self.days_ago}daysAgo', 'endDate': 'today'}],
                                             'metrics': [{'expression': 'ga:pageviews'}],
                                             'dimensions': [{'name': 'ga:pagePath'}],
                                         }
