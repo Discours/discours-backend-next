@@ -51,7 +51,7 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
-            if os.path.exists(GOOGLE_KEYFILE_PATH):
+            if os.path.exists(GOOGLE_KEYFILE_PATH) and GOOGLE_GA_VIEW_ID:
                 self.analytics_client = get_service()
                 logger.info(f' * Постоянная авторизация в Google Analytics {self.analytics_client}')
 
@@ -68,7 +68,7 @@ class ViewedStorage:
                 _views_stat_task = asyncio.create_task(self.worker())
                 # logger.info(views_stat_task)
             else:
-                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics')
+                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics  и задайте ')
                 self.disabled = True
 
     @staticmethod
@@ -80,7 +80,7 @@ class ViewedStorage:
                 precounted_views = json.load(file)
                 self.views_by_shout.update(precounted_views)
                 logger.info(
-                    f' * {len(precounted_views)} предварительно подсчитанных просмотров shouts успешно загружены.'
+                    f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.'
                 )
         except Exception as e:
             logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
@@ -89,8 +89,8 @@ class ViewedStorage:
     async def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
         self = ViewedStorage
-        if not self.disabled and bool(GOOGLE_GA_VIEW_ID):
-            logger.info(' ⎧ Обновление данных просмотров от Google Analytics ---')
+        logger.info(' ⎧ Обновление данных просмотров от Google Analytics ---')
+        if not self.disabled:
             try:
                 start = time.time()
                 async with self.lock:
@@ -137,11 +137,8 @@ class ViewedStorage:
 
                         end = time.time()
                         logger.info(' ⎪ Обновление страниц заняло %fs ' % (end - start))
-
-            except Exception:
-                import traceback
-
-                traceback.print_exc()
+            except Exception as error:
+                logger.error(error)
 
     @staticmethod
     async def get_shout(shout_slug) -> int:
