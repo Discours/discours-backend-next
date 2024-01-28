@@ -336,16 +336,21 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         results_dict = {r['slug']: r for r in results}
         found_keys = list(results_dict.keys())
 
-        q = select(Shout).where(
-            and_(
-                Shout.deleted_at.is_(None),
-                Shout.slug.in_(found_keys),
-            )
-        )
-
         shouts_data = []
         with local_session() as session:
-            results = set(session.execute(q).all())
+            results = (
+                session.query(Shout)
+                .where(
+                    and_(
+                        Shout.deleted_at.is_(None),
+                        Shout.slug.in_(found_keys),
+                    )
+                )
+                .limit(limit)
+                .offset(offset)
+                .all()
+            )
+
             # print(results)
             logger.debug(f'search found {len(results)} results')
             for x in results:
