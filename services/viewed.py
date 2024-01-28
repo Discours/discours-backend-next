@@ -44,7 +44,7 @@ class ViewedStorage:
     analytics_client = None
     auth_result = None
     disabled = False
-    date_range = ''
+    start_date = ''
 
     @staticmethod
     async def init():
@@ -59,16 +59,12 @@ class ViewedStorage:
                 self.load_precounted_views()
 
                 # Установка диапазона дат на основе времени создания файла views.json
-                views_json_path = '/dump/views.json'
-                creation_time = datetime.fromtimestamp(os.path.getctime(views_json_path))
-                end_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-                start_date = creation_time.strftime('%Y-%m-%d')
-                self.date_range = f'{start_date},{end_date}'
+                self.start_date = datetime.fromtimestamp(os.path.getctime('/dump/views.json'))
 
-                _views_stat_task = asyncio.create_task(self.worker())
-                # logger.info(views_stat_task)
+                # Запуск фоновой задачи
+                asyncio.create_task(self.worker())
             else:
-                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics  и задайте ')
+                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics и задайте переменную GOOGLE_GA_VIEW_ID')
                 self.disabled = True
 
     @staticmethod
@@ -94,6 +90,7 @@ class ViewedStorage:
             try:
                 start = time.time()
                 async with self.lock:
+                    now_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
                     if self.analytics_client:
                         data = (
                             self.analytics_client.reports()
@@ -102,7 +99,7 @@ class ViewedStorage:
                                     'reportRequests': [
                                         {
                                             'viewId': GOOGLE_GA_VIEW_ID,
-                                            'dateRanges': self.date_range,
+                                            'dateRanges': f'{self.start_date},{now_date}',
                                             'metrics': [{'expression': 'ga:pageviews'}],
                                             'dimensions': [{'name': 'ga:pagePath'}],
                                         }
