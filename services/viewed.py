@@ -48,7 +48,7 @@ class ViewedStorage:
                 # Using a default constructor instructs the client to use the credentials
                 # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
                 self.analytics_client = BetaAnalyticsDataClient()
-                logger.info(f' * Постоянная авторизация в Google Analytics: {self.analytics_client}')
+                logger.info(' * Клиент Google Analytics успешно авторизован')
 
                 # Загрузка предварительно подсчитанных просмотров из файла JSON
                 self.load_precounted_views()
