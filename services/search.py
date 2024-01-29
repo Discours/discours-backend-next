@@ -10,12 +10,18 @@ from services.rediscache import redis
 logger = logging.getLogger('[services.search] ')
 logger.setLevel(logging.DEBUG)
 
-ELASTIC_HOST = os.environ.get('ELASTIC_HOST', 'localhost').replace('https://', '').replace('http://', '')
+ELASTIC_HOST = (
+    os.environ.get('ELASTIC_HOST', 'localhost')
+    .replace('https://', '')
+    .replace('http://', '')
+)
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')
 ELASTIC_PASSWORD = os.environ.get('ELASTIC_PASSWORD', '')
 ELASTIC_PORT = os.environ.get('ELASTIC_PORT', 9200)
 ELASTIC_AUTH = f'{ELASTIC_USER}:{ELASTIC_PASSWORD}' if ELASTIC_USER else ''
-ELASTIC_URL = os.environ.get('ELASTIC_URL', f'https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}')
+ELASTIC_URL = os.environ.get(
+    'ELASTIC_URL', f'https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}'
+)
 REDIS_TTL = 86400  # 1 day in seconds
 
 
@@ -26,13 +32,13 @@ class SearchService:
         self.disabled = False
         try:
             self.client = OpenSearch(
-                hosts = [{'host': ELASTIC_HOST, 'port': ELASTIC_PORT}],
-                http_compress = True,
-                http_auth = (ELASTIC_USER, ELASTIC_PASSWORD),
-                use_ssl = True,
-                verify_certs = False,
-                ssl_assert_hostname = False,
-                ssl_show_warn = False,
+                hosts=[{'host': ELASTIC_HOST, 'port': ELASTIC_PORT}],
+                http_compress=True,
+                http_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
+                use_ssl=True,
+                verify_certs=False,
+                ssl_assert_hostname=False,
+                ssl_show_warn=False,
                 # ca_certs = ca_certs_path
             )
 
@@ -44,6 +50,13 @@ class SearchService:
 
     def info(self):
         logging.info(f'{self.client}')
+        try:
+            indices = self.client.indices.get_alias('*')
+            logger.debug('List of indices:')
+            for index in indices:
+                logger.debug(f'- {index}')
+        except Exception as e:
+            logger.error(f'Error while listing indices: {e}')
 
     def delete_index(self):
         self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
@@ -116,7 +129,9 @@ class SearchService:
                 }
             }
             if mapping != expected_mapping:
-                logger.debug(f'Recreating {self.index_name} index due to incorrect mapping')
+                logger.debug(
+                    f'Recreating {self.index_name} index due to incorrect mapping'
+                )
                 self.recreate_index()
 
     def recreate_index(self):
