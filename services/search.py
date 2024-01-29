@@ -62,7 +62,7 @@ class SearchService:
 
     def delete_index(self):
         if not self.disabled and self.client:
-            self.client.indices.delete(index=self.index_name, params={'ignore_unavailable': True})
+            self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
     def create_index(self):
         index_settings = {
