@@ -100,6 +100,7 @@ class SearchService:
         try:
             if self.client:
                 with self.lock:
+                    logger.debug(f' Создаём новый индекс: {self.index_name} ')
                     self.client.indices.create(
                         index=self.index_name, body=index_settings
                     )
@@ -122,7 +123,6 @@ class SearchService:
     def check_index(self):
         if self.client:
             if not self.client.indices.exists(index=self.index_name):
-                logger.debug(f' Создаём новый индекс: {self.index_name} ')
                 self.create_index()
                 self.put_mapping()
             else:
@@ -136,13 +136,13 @@ class SearchService:
                     }
                 }
                 if mapping != expected_mapping:
-                    logger.debug(
-                        f' Пересоздаём индекс {self.index_name} из-за неправильной структуры данных'
-                    )
                     self.recreate_index()
 
     def recreate_index(self):
         with self.lock:
+            logger.debug(
+                f' Пересоздаём индекс {self.index_name} из-за неправильной структуры данных'
+            )
             self.delete_index()
             self.check_index()
 
@@ -153,7 +153,7 @@ class SearchService:
             self.client.index(index=self.index_name, id=id_, body=shout)
 
     def search(self, query, limit, offset):
-        logger.debug(f'query: {query}')
+        logger.debug(f' Ищем: {query}')
         search_body = {
             'query': {'match': {'_all': query}},
         }
