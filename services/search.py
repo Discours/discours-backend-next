@@ -85,10 +85,12 @@ class SearchService:
                 }
             },
         }
-
-        self.client.indices.create(index=self.index_name, body=index_settings)
-        self.client.indices.close(index=self.index_name)
-        self.client.indices.open(index=self.index_name)
+        try:
+            self.client.indices.create(index=self.index_name, body=index_settings)
+            self.client.indices.close(index=self.index_name)
+            self.client.indices.open(index=self.index_name)
+        except Exception as error:
+            logger.warn(error)
 
     def put_mapping(self):
         mapping = {
