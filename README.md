@@ -45,7 +45,7 @@ poetry run main.py
 
 ### search.py
 
-Позволяет получать результаты пользовательских поисковых запросов в кешируемом виде от ElasticSearch с оценкой `score`, объединенные с запросами к базе данных, запрашиваем через GraphQL API `load_shouts_search`. Требует установка `ELASTIC_URL` (можно отдельными компонентами).
+Позволяет получать результаты пользовательских поисковых запросов в кешируемом виде от ElasticSearch с оценкой `score`, объединенные с запросами к базе данных, запрашиваем через GraphQL API `load_shouts_search`. Требует установка `ELASTIC_HOST`, `ELASTIC_PORT`, `ELASTIC_USER` и `ELASTIC_PASSWORD`.
 
 ### notify.py
 
