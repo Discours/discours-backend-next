@@ -197,5 +197,5 @@ async def search_text(text: str, limit: int = 50, offset: int = 0):
     payload = []
     if search_service.client:
         # Use OpenSearchService.search_post method
-        payload = search_service.search(text, limit, offset)
+        payload = await search_service.search(text, limit, offset)
     return payload
