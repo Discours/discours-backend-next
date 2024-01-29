@@ -40,10 +40,8 @@ class SearchService:
         except Exception as exc:
             logger.error(exc)
             self.disabled = True
-        self.check_index()
 
-        if ELASTIC_REINDEX:
-            self.recreate_index()
+        self.check_index()
 
     def info(self):
         logging.info(f'{self.client}')
@@ -108,6 +106,19 @@ class SearchService:
             logger.debug(f'Creating {self.index_name} index')
             self.create_index()
             self.put_mapping()
+        else:
+            # Check if the mapping is correct, and recreate the index if needed
+            mapping = self.client.indices.get_mapping(index=self.index_name)
+            expected_mapping = {
+                'properties': {
+                    'body': {'type': 'text', 'analyzer': 'ru'},
+                    'text': {'type': 'text'},
+                    'author': {'type': 'text'},
+                }
+            }
+            if mapping != expected_mapping:
+                logger.debug(f'Recreating {self.index_name} index due to incorrect mapping')
+                self.recreate_index()
 
     def recreate_index(self):
         self.delete_index()
