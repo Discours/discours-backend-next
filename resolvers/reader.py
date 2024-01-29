@@ -69,6 +69,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
             if results:
                 [
                     shout,
+                    reacted_stat,
                     commented_stat,
                     likes_stat,
                     dislikes_stat,
@@ -77,7 +78,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
 
                 shout.stat = {
                     'viewed': await ViewedStorage.get_shout(shout.slug),
-                    # "reacted": reacted_stat,
+                    'reacted': reacted_stat,
                     'commented': commented_stat,
                     'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
                 }
@@ -161,6 +162,7 @@ async def load_shouts_by(_, _info, options):
     with local_session() as session:
         for [
             shout,
+            reacted_stat,
             commented_stat,
             likes_stat,
             dislikes_stat,
@@ -183,6 +185,7 @@ async def load_shouts_by(_, _info, options):
                 shout.main_topic = main_topic[0]
             shout.stat = {
                 'viewed': await ViewedStorage.get_shout(shout.slug),
+                'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat) - int(dislikes_stat),
             }
@@ -283,7 +286,7 @@ async def load_shouts_feed(_, info, options):
 
             # print(q.compile(compile_kwargs={"literal_binds": True}))
 
-            for [shout, reacted_stat, commented_stat, _last_comment] in session.execute(q).unique():
+            for [shout, reacted_stat, commented_stat, likes_stat, dislikes_stat, _last_comment] in session.execute(q).unique():
                 main_topic = (
                     session.query(Topic.slug)
                     .join(
@@ -303,6 +306,7 @@ async def load_shouts_feed(_, info, options):
                     'viewed': await ViewedStorage.get_shout(shout.slug),
                     'reacted': reacted_stat,
                     'commented': commented_stat,
+                    'rating': likes_stat - dislikes_stat
                 }
                 shouts.append(shout)
 
@@ -367,16 +371,19 @@ async def get_shouts_from_query(q, author_id=None):
     with local_session() as session:
         for [
             shout,
+            reacted_stat,
             commented_stat,
             likes_stat,
             dislikes_stat,
-            _last_comment,
+            last_comment,
         ] in session.execute(q, {'author_id': author_id}).unique():
             shouts.append(shout)
             shout.stat = {
                 'viewed': await ViewedStorage.get_shout(shout_slug=shout.slug),
+                'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                'last_comment': last_comment
             }
 
     return shouts

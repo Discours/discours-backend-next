@@ -22,6 +22,7 @@ logger.setLevel(logging.DEBUG)
 
 def add_stat_columns(q, aliased_reaction):
     q = q.outerjoin(aliased_reaction).add_columns(
+        func.sum(aliased_reaction.id).label('reacted_stat'),
         func.sum(case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)).label('comments_stat'),
         func.sum(case((aliased_reaction.kind == ReactionKind.LIKE.value, 1), else_=0)).label('likes_stat'),
         func.sum(case((aliased_reaction.kind == ReactionKind.DISLIKE.value, 1), else_=0)).label('dislikes_stat'),
@@ -291,7 +292,7 @@ async def update_reaction(_, info, rid, reaction):
         q = add_stat_columns(q, aliased_reaction)
         q = q.group_by(Reaction.id)
 
-        [r, commented_stat, likes_stat, dislikes_stat, _l] = session.execute(q).unique().one()
+        [r, reacted_stat, commented_stat, likes_stat, dislikes_stat, _l] = session.execute(q).unique().first()
 
         if not r:
             return {'error': 'invalid reaction id'}
@@ -309,6 +310,7 @@ async def update_reaction(_, info, rid, reaction):
 
             session.commit()
             r.stat = {
+                'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
             }
@@ -420,6 +422,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reaction,
             author,
             shout,
+            reacted_stat,
             commented_stat,
             likes_stat,
             dislikes_stat,
@@ -429,6 +432,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reaction.shout = shout
             reaction.stat = {
                 'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                'reacted': reacted_stat,
                 'commented': commented_stat,
             }
             reactions.append(reaction)
@@ -482,6 +486,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             with local_session() as session:
                 for [
                     shout,
+                    reacted_stat,
                     commented_stat,
                     likes_stat,
                     dislikes_stat,
@@ -490,6 +495,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                     shout.stat = {
                         'viewed': await ViewedStorage.get_shout(shout.slug),
                         'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                        'reacted': reacted_stat,
                         'commented': commented_stat,
                         'last_comment': last_comment,
                     }
