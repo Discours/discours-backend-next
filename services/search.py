@@ -30,7 +30,7 @@ class SearchService:
     def __init__(self, index_name, delete_index_on_startup):
         self.index_name = index_name
         self.delete_index_on_startup = delete_index_on_startup
-        self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}')
+        self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}', verify_certs=False)
 
         if self.delete_index_on_startup:
             self.delete_index()
