@@ -24,7 +24,12 @@ class SearchService:
     async def __init__(self, index_name='search_index'):
         logger.info('initialized')
         self.index_name = index_name
-        self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}', verify_certs=False)
+        self.disabled = False
+        try:
+            self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}', verify_certs=False)
+        except Exception as exc:
+            logger.error(exc)
+            self.disabled = True
         self.check_index()
 
         if ELASTIC_REINDEX:
@@ -129,10 +134,11 @@ async def search_text(text: str, limit: int = 50, offset: int = 0):
     try:
         # Use a key with a prefix to differentiate search results from other Redis data
         redis_key = f'search:{text}'
-        # Use OpenSearchService.search_post method
-        payload = search.search_post(text, limit, offset)
-        # Use Redis as cache with TTL
-        await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(payload))
+        if not search.disabled:
+            # Use OpenSearchService.search_post method
+            payload = search.search_post(text, limit, offset)
+            # Use Redis as cache with TTL
+            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(payload))
     except Exception as e:
         logging.error(f'Error during search: {e}')
     return payload
