@@ -36,7 +36,6 @@ class SearchService:
 
         # Only initialize the instance if it's not already initialized
         if not self.initialized_flag.value and ELASTIC_HOST:
-            logger.info(' инициализация клиента OpenSearch.org')
             try:
                 self.client = OpenSearch(
                     hosts=[{'host': ELASTIC_HOST, 'port': ELASTIC_PORT}],
@@ -48,14 +47,11 @@ class SearchService:
                     ssl_show_warn=False,
                     # ca_certs = ca_certs_path
                 )
-
+                logger.info(' Клиент OpenSearch.org подключен')
+                self.check_index()
             except Exception as exc:
                 logger.error(exc)
                 self.client = None
-
-            self.check_index()
-        else:
-            self.disabled = True
 
     def info(self):
         if self.client:
@@ -96,8 +92,8 @@ class SearchService:
             'mappings': {
                 'properties': {
                     'body': {'type': 'text', 'analyzer': 'ru'},
-                    'text': {'type': 'text'},
-                    'author': {'type': 'text'},
+                    'title': {'type': 'text', 'analyzer': 'ru'},
+                    # 'author': {'type': 'text'},
                 }
             },
         }
@@ -116,8 +112,8 @@ class SearchService:
         mapping = {
             'properties': {
                 'body': {'type': 'text', 'analyzer': 'ru'},
-                'text': {'type': 'text'},
-                'author': {'type': 'text'},
+                'title': {'type': 'text', 'analyzer': 'ru'},
+                # 'author': {'type': 'text'},
             }
         }
         if self.client:
@@ -135,8 +131,8 @@ class SearchService:
                 expected_mapping = {
                     'properties': {
                         'body': {'type': 'text', 'analyzer': 'ru'},
-                        'text': {'type': 'text'},
-                        'author': {'type': 'text'},
+                        'title': {'type': 'text', 'analyzer': 'ru'},
+                        # 'author': {'type': 'text'},
                     }
                 }
                 if mapping != expected_mapping:
@@ -150,13 +146,13 @@ class SearchService:
             self.delete_index()
             self.check_index()
 
-    def index_post(self, shout):
+    def index(self, shout):
         if self.client:
             id_ = str(shout.id)
             logger.debug(f' Индексируем пост {id_}')
             self.client.index(index=self.index_name, id=id_, body=shout)
 
-    def search_post(self, query, limit, offset):
+    def search(self, query, limit, offset):
         logger.debug(f'query: {query}')
         search_body = {
             'query': {'match': {'_all': query}},
@@ -177,7 +173,7 @@ class SearchService:
         return []
 
 
-search = SearchService()
+search_service = SearchService()
 
 
 async def search_text(text: str, limit: int = 50, offset: int = 0):
@@ -185,9 +181,9 @@ async def search_text(text: str, limit: int = 50, offset: int = 0):
     try:
         # Use a key with a prefix to differentiate search results from other Redis data
         redis_key = f'search:{text}'
-        if not search.client:
+        if not search_service.client:
             # Use OpenSearchService.search_post method
-            payload = search.search_post(text, limit, offset)
+            payload = search_service.search(text, limit, offset)
             # Use Redis as cache with TTL
             await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(payload))
     except Exception as e:

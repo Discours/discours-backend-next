@@ -11,7 +11,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_shout
 from services.schema import mutation, query
-from services.search import search
+from services.search import search_service
 
 
 @query.field('get_shouts_drafts')
@@ -73,7 +73,11 @@ async def create_shout(_, info, inp):
                 sa = ShoutAuthor(shout=shout.id, author=author.id)
                 session.add(sa)
 
-                topics = session.query(Topic).filter(Topic.slug.in_(inp.get('topics', []))).all()
+                topics = (
+                    session.query(Topic)
+                    .filter(Topic.slug.in_(inp.get('topics', [])))
+                    .all()
+                )
                 for topic in topics:
                     t = ShoutTopic(topic=topic.id, shout=shout.id)
                     session.add(t)
@@ -114,7 +118,9 @@ async def update_shout(  # noqa: C901
                 topics_input = shout_input['topics']
                 del shout_input['topics']
                 new_topics_to_link = []
-                new_topics = [topic_input for topic_input in topics_input if topic_input['id'] < 0]
+                new_topics = [
+                    topic_input for topic_input in topics_input if topic_input['id'] < 0
+                ]
                 for new_topic in new_topics:
                     del new_topic['id']
                     created_new_topic = Topic(**new_topic)
@@ -123,21 +129,31 @@ async def update_shout(  # noqa: C901
                 if len(new_topics) > 0:
                     session.commit()
                 for new_topic_to_link in new_topics_to_link:
-                    created_unlinked_topic = ShoutTopic(shout=shout.id, topic=new_topic_to_link.id)
+                    created_unlinked_topic = ShoutTopic(
+                        shout=shout.id, topic=new_topic_to_link.id
+                    )
                     session.add(created_unlinked_topic)
-                existing_topics_input = [topic_input for topic_input in topics_input if topic_input.get('id', 0) > 0]
+                existing_topics_input = [
+                    topic_input
+                    for topic_input in topics_input
+                    if topic_input.get('id', 0) > 0
+                ]
                 existing_topic_to_link_ids = [
                     existing_topic_input['id']
                     for existing_topic_input in existing_topics_input
-                    if existing_topic_input['id'] not in [topic.id for topic in shout.topics]
+                    if existing_topic_input['id']
+                    not in [topic.id for topic in shout.topics]
                 ]
                 for existing_topic_to_link_id in existing_topic_to_link_ids:
-                    created_unlinked_topic = ShoutTopic(shout=shout.id, topic=existing_topic_to_link_id)
+                    created_unlinked_topic = ShoutTopic(
+                        shout=shout.id, topic=existing_topic_to_link_id
+                    )
                     session.add(created_unlinked_topic)
                 topic_to_unlink_ids = [
                     topic.id
                     for topic in shout.topics
-                    if topic.id not in [topic_input['id'] for topic_input in existing_topics_input]
+                    if topic.id
+                    not in [topic_input['id'] for topic_input in existing_topics_input]
                 ]
                 shout_topics_to_remove = session.query(ShoutTopic).filter(
                     and_(
@@ -149,7 +165,9 @@ async def update_shout(  # noqa: C901
                     session.delete(shout_topic_to_remove)
 
                 # Replace datetime with Unix timestamp
-                shout_input['updated_at'] = current_time  # Set updated_at as Unix timestamp
+                shout_input[
+                    'updated_at'
+                ] = current_time  # Set updated_at as Unix timestamp
                 Shout.update(shout, shout_input)
                 session.add(shout)
 
@@ -157,10 +175,16 @@ async def update_shout(  # noqa: C901
                 if 'main_topic' in shout_input:
                     old_main_topic = (
                         session.query(ShoutTopic)
-                        .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main == True))
+                        .filter(
+                            and_(ShoutTopic.shout == shout.id, ShoutTopic.main == True)
+                        )
                         .first()
                     )
-                    main_topic = session.query(Topic).filter(Topic.slug == shout_input['main_topic']).first()
+                    main_topic = (
+                        session.query(Topic)
+                        .filter(Topic.slug == shout_input['main_topic'])
+                        .first()
+                    )
                     if isinstance(main_topic, Topic):
                         new_main_topic = (
                             session.query(ShoutTopic)
@@ -187,9 +211,12 @@ async def update_shout(  # noqa: C901
 
             if not publish:
                 await notify_shout(shout_dict, 'update')
-            if shout.visibility is ShoutVisibility.COMMUNITY.value or shout.visibility is ShoutVisibility.PUBLIC.value:
+            if (
+                shout.visibility is ShoutVisibility.COMMUNITY.value
+                or shout.visibility is ShoutVisibility.PUBLIC.value
+            ):
                 # search service indexing
-                search.index_post(shout)
+                search_service.index(shout)
 
         return {'shout': shout_dict}
 
