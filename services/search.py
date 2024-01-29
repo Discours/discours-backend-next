@@ -50,7 +50,13 @@ class SearchService:
                     # ca_certs = ca_certs_path
                 )
                 logger.info(' Клиент OpenSearch.org подключен')
-                self.check_index()
+                if self.lock.acquire(blocking=False):
+                    try:
+                        self.check_index()
+                    finally:
+                        self.lock.release()
+                else:
+                    logger.debug(' проверка пропущена')
             except Exception as exc:
                 logger.error(f' {exc}')
                 self.client = None
@@ -63,6 +69,7 @@ class SearchService:
 
     def delete_index(self):
         if self.client:
+            logger.debug(f' Удаляем индекс {self.index_name}')
             self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
     def create_index(self):
@@ -126,6 +133,7 @@ class SearchService:
             }
         }
         if self.client:
+            logger.debug(f' Разметка индекации {self.index_name}')
             self.client.indices.put_mapping(index=self.index_name, body=mapping)
 
     def check_index(self):
@@ -149,9 +157,6 @@ class SearchService:
     def recreate_index(self):
         if self.lock.acquire(blocking=False):
             try:
-                logger.debug(
-                    f' Удаляем индекс {self.index_name} из-за неправильной структуры данных'
-                )
                 self.delete_index()
                 self.check_index()
             finally:
