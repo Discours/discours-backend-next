@@ -99,13 +99,15 @@ class SearchService:
         }
         try:
             if self.client:
-                with self.lock:
+                if self.lock.acquire(blocking=False):
                     logger.debug(f' Создаём новый индекс: {self.index_name} ')
                     self.client.indices.create(
                         index=self.index_name, body=index_settings
                     )
                     self.client.indices.close(index=self.index_name)
                     self.client.indices.open(index=self.index_name)
+                else:
+                    logger.debug('..')
         except Exception as error:
             logging.error(f' Ошибка поиска: {error}')
 
@@ -139,12 +141,17 @@ class SearchService:
                     self.recreate_index()
 
     def recreate_index(self):
-        with self.lock:
-            logger.debug(
-                f' Пересоздаём индекс {self.index_name} из-за неправильной структуры данных'
-            )
-            self.delete_index()
-            self.check_index()
+        if self.lock.acquire(blocking=False):
+            try:
+                logger.debug(
+                    f' Удаляем индекс {self.index_name} из-за неправильной структуры данных'
+                )
+                self.delete_index()
+                self.check_index()
+            finally:
+                self.lock.release()
+        else:
+            logger.debug(' ..')
 
     def index(self, shout):
         if self.client:
