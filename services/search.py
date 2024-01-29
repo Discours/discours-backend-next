@@ -1,12 +1,9 @@
-import asyncio
 import json
 import logging
 import os
-from typing import List
 
 from elasticsearch import Elasticsearch
 
-from orm.shout import Shout
 from services.rediscache import redis
 
 
@@ -24,21 +21,17 @@ REDIS_TTL = 86400  # 1 day in seconds
 
 
 class SearchService:
-    lock = asyncio.Lock()
-    elastic = None
-
-    def __init__(self, index_name, delete_index_on_startup):
+    async def __init__(self, index_name='search_index'):
+        logging.info('Initializing SearchService')
         self.index_name = index_name
-        self.delete_index_on_startup = delete_index_on_startup
         self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}', verify_certs=False)
-
-        if self.delete_index_on_startup:
-            self.delete_index()
-
         self.check_index()
 
         if ELASTIC_REINDEX:
             self.recreate_index()
+
+    def info(self):
+        logging.info(f'Initializing SearchService {self.elasticsearch_client}')
 
     def delete_index(self):
         self.elasticsearch_client.indices.delete(index=self.index_name, ignore_unavailable=True)
@@ -127,27 +120,19 @@ class SearchService:
             for hit in hits
         ]
 
-    @staticmethod
-    async def init():
-        self = SearchService
-        async with self.lock:
-            logging.info('Initializing SearchService')
-            try:
-                self.elastic = SearchService('shouts_index', False)
-            except Exception as exc:
-                logger.error(exc)
 
-    @staticmethod
-    async def search(text: str, limit: int = 50, offset: int = 0) -> List[Shout]:
-        payload = []
-        self = SearchService
-        try:
-            # Use a key with a prefix to differentiate search results from other Redis data
-            redis_key = f'search:{text}'
-            # Use OpenSearchService.search_post method
-            payload = await self.elastic.search_post(text, limit, offset)
-            # Use Redis as cache with TTL
-            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(payload))
-        except Exception as e:
-            logging.error(f'Error during search: {e}')
-        return payload
+search = SearchService()
+
+
+async def search_text(text: str, limit: int = 50, offset: int = 0):
+    payload = []
+    try:
+        # Use a key with a prefix to differentiate search results from other Redis data
+        redis_key = f'search:{text}'
+        # Use OpenSearchService.search_post method
+        payload = search.search_post(text, limit, offset)
+        # Use Redis as cache with TTL
+        await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(payload))
+    except Exception as e:
+        logging.error(f'Error during search: {e}')
+    return payload

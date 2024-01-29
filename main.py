@@ -16,7 +16,7 @@ from starlette.routing import Route
 from resolvers.webhook import WebhookEndpoint
 from services.rediscache import redis
 from services.schema import resolvers
-from services.search import SearchService
+from services.search import search
 from services.viewed import ViewedStorage
 from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN
 
@@ -35,7 +35,7 @@ async def start_up():
     await ViewedStorage.init()
 
     # start search service
-    await SearchService.init()
+    search.info()
 
     if MODE == 'development':
         # pid file management

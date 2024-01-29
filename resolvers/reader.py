@@ -14,7 +14,7 @@ from resolvers.topic import get_random_topic
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
-from services.search import SearchService
+from services.search import search_text
 from services.viewed import ViewedStorage
 
 
@@ -312,7 +312,7 @@ async def load_shouts_feed(_, info, options):
 @query.field('load_shouts_search')
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
-        results = await SearchService.search(text, limit, offset)
+        results = await search_text(text, limit, offset)
         results_dict = {r['slug']: r for r in results}
         found_keys = list(results_dict.keys())
 
