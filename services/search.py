@@ -63,7 +63,7 @@ class SearchService:
 
     def info(self):
         if self.client:
-            logger.info(f' {self.client}')
+            logger.info(f' Поиск подключен: {self.client.host}')
         else:
             logger.info(' * Задайте переменные среды для подключения к серверу поиска')
 
