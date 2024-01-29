@@ -22,7 +22,7 @@ REDIS_TTL = 86400  # 1 day in seconds
 
 class SearchService:
     async def __init__(self, index_name='search_index'):
-        logging.info('Initializing SearchService')
+        logger.info('initialized')
         self.index_name = index_name
         self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}', verify_certs=False)
         self.check_index()
@@ -31,7 +31,7 @@ class SearchService:
             self.recreate_index()
 
     def info(self):
-        logging.info(f'Initializing SearchService {self.elasticsearch_client}')
+        logging.info(f'{self.elasticsearch_client}')
 
     def delete_index(self):
         self.elasticsearch_client.indices.delete(index=self.index_name, ignore_unavailable=True)
