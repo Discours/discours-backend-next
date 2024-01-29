@@ -311,7 +311,7 @@ async def load_shouts_feed(_, info, options):
 
 @query.field('load_shouts_search')
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
-    if text and len(text) > 2:
+    if isinstance(text, str) and len(text) > 2:
         return await search_text(text, limit, offset)
     return []
 

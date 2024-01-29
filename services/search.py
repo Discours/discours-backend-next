@@ -8,6 +8,8 @@ from opensearchpy import OpenSearch
 from services.rediscache import redis
 
 
+os_logger = logging.getLogger(name='opensearch')
+os_logger.setLevel(logging.INFO)
 logger = logging.getLogger('\t[services.search]\t')
 logger.setLevel(logging.DEBUG)
 
@@ -46,7 +48,7 @@ class SearchService:
                 logger.info(' Клиент OpenSearch.org подключен')
                 self.check_index()
             except Exception as exc:
-                logger.error(exc)
+                logger.error(f' {exc}')
                 self.client = None
 
     def info(self):
@@ -104,7 +106,7 @@ class SearchService:
                     finally:
                         self.lock.release()
                 else:
-                    logger.debug('..')
+                    logger.debug(' ..')
         except Exception as error:
             logging.warning(f' {error}')
 
@@ -154,22 +156,26 @@ class SearchService:
             logger.debug(f' Индексируем пост {id_}')
             self.client.index(index=self.index_name, id=id_, body=shout)
 
-    def search(self, query, limit, offset):
-        logger.debug(f' Ищем: {query}')
+    async def search(self, text, limit, offset):
+        logger.debug(f' Ищем: {text}')
         search_body = {
-            'query': {'match': {'_all': query}},
+            'query': {'match': {'_all': text}},
         }
         if self.client:
             search_response = self.client.search(index=self.index_name, body=search_body, size=limit, from_=offset)
             hits = search_response['hits']['hits']
 
-            return [
+            results = [
                 {
                     **hit['_source'],
                     'score': hit['_score'],
                 }
                 for hit in hits
             ]
+
+            # Use Redis as cache with TTL
+            redis_key = f'search:{text}'
+            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results))
         return []
 
 
@@ -178,14 +184,7 @@ search_service = SearchService()
 
 async def search_text(text: str, limit: int = 50, offset: int = 0):
     payload = []
-    try:
-        # Use a key with a prefix to differentiate search results from other Redis data
-        redis_key = f'search:{text}'
-        if not search_service.client:
-            # Use OpenSearchService.search_post method
-            payload = search_service.search(text, limit, offset)
-            # Use Redis as cache with TTL
-            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(payload))
-    except Exception as e:
-        logging.error(f' Ошибка поиска: {e}')
+    if search_service.client:
+        # Use OpenSearchService.search_post method
+        payload = search_service.search(text, limit, offset)
     return payload
