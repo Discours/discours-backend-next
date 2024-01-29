@@ -197,7 +197,7 @@ class ViewedStorage:
             try:
                 await self.update_pages()
                 failed = 0
-            except Exception:
+            except Exception as _exc:
                 failed += 1
                 logger.info(' - Обновление не удалось #%d, ожидание 10 секунд' % failed)
                 if failed > 3:

@@ -149,4 +149,4 @@ dev-server.pid
 backups/
 poetry.lock
 .ruff_cache
-dev-server.pid
+.jj

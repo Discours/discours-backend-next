@@ -159,7 +159,7 @@ def topic_follow(follower_id, slug):
             topic = session.query(Topic).where(Topic.slug == slug).one()
             _following = TopicFollower(topic=topic.id, follower=follower_id)
             return True
-    except Exception:
+    except Exception as _exc:
         return False
 
 

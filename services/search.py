@@ -14,7 +14,7 @@ logger = logging.getLogger('\t[services.search]\t')
 logger.setLevel(logging.DEBUG)
 
 ELASTIC_HOST = (
-    os.environ.get('ELASTIC_HOST', '').replace('https://', '').replace('http://', '')
+    os.environ.get('ELASTIC_HOST', '').replace('https://', '')
 )
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')
 ELASTIC_PASSWORD = os.environ.get('ELASTIC_PASSWORD', '')
@@ -99,8 +99,8 @@ class SearchService:
                 self.client = None
 
     def info(self):
-        if self.client:
-            logger.info(f' Поиск подключен: {self.client.host}')
+        if isinstance(self.client, OpenSearch):
+            logger.info(f' Поиск подключен: {self.client.info()}')
         else:
             logger.info(' * Задайте переменные среды для подключения к серверу поиска')
 
@@ -119,8 +119,6 @@ class SearchService:
                     )
                     self.client.indices.close(index=self.index_name)
                     self.client.indices.open(index=self.index_name)
-                except Exception as _exc:  # noqa: S110
-                    pass
                 finally:
                     self.lock.release()
             else:
