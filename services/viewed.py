@@ -49,7 +49,7 @@ class ViewedStorage:
         self = ViewedStorage
         async with self.lock:
             os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', GOOGLE_KEYFILE_PATH)
-            if GOOGLE_KEYFILE_PATH:
+            if GOOGLE_KEYFILE_PATH and os.path.isfile(GOOGLE_KEYFILE_PATH):
                 # Using a default constructor instructs the client to use the credentials
                 # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
                 self.analytics_client = BetaAnalyticsDataClient()

@@ -11,6 +11,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_shout
 from services.schema import mutation, query
+from services.search import SearchService
 
 
 @query.field('get_shouts_drafts')
@@ -79,7 +80,11 @@ async def create_shout(_, info, inp):
 
                 reactions_follow(author.id, shout.id, True)
 
+                # notifier
                 await notify_shout(shout_dict, 'create')
+
+                # search service indexing
+                SearchService.elastic.index_post(shout)
         return {'shout': shout_dict}
 
 
@@ -185,6 +190,9 @@ async def update_shout(  # noqa: C901
 
             if not publish:
                 await notify_shout(shout_dict, 'update')
+
+            # search service indexing
+            SearchService.elastic.index_post(shout)
 
         return {'shout': shout_dict}
 
