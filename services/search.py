@@ -1,20 +1,18 @@
 import json
 import logging
 import os
-from multiprocessing import Lock
+from multiprocessing import Manager
 
 from opensearchpy import OpenSearch
 
 from services.rediscache import redis
 
 
-logger = logging.getLogger('[services.search] ')
+logger = logging.getLogger('\t[services.search]\t')
 logger.setLevel(logging.DEBUG)
 
 ELASTIC_HOST = (
-    os.environ.get('ELASTIC_HOST', 'localhost')
-    .replace('https://', '')
-    .replace('http://', '')
+    os.environ.get('ELASTIC_HOST', '').replace('https://', '').replace('http://', '')
 )
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')
 ELASTIC_PASSWORD = os.environ.get('ELASTIC_PASSWORD', '')
@@ -25,37 +23,53 @@ ELASTIC_URL = os.environ.get(
 )
 REDIS_TTL = 86400  # 1 day in seconds
 
+
 class SearchService:
-    lock = Lock()
     def __init__(self, index_name='posts'):
-        logger.info('initialized')
         self.index_name = index_name
         self.disabled = False
-        try:
-            self.client = OpenSearch(
-                hosts=[{'host': ELASTIC_HOST, 'port': ELASTIC_PORT}],
-                http_compress=True,
-                http_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
-                use_ssl=True,
-                verify_certs=False,
-                ssl_assert_hostname=False,
-                ssl_show_warn=False,
-                # ca_certs = ca_certs_path
-            )
+        self.manager = Manager()
+        self.client = None
 
-        except Exception as exc:
-            logger.error(exc)
+        # Используем менеджер для создания Lock и Value
+        self.lock = self.manager.Lock()
+        self.initialized_flag = self.manager.Value('i', 0)
+
+        # Only initialize the instance if it's not already initialized
+        if not self.initialized_flag.value and ELASTIC_HOST:
+            logger.info(' инициализация клиента OpenSearch.org')
+            try:
+                self.client = OpenSearch(
+                    hosts=[{'host': ELASTIC_HOST, 'port': ELASTIC_PORT}],
+                    http_compress=True,
+                    http_auth=(ELASTIC_USER, ELASTIC_PASSWORD),
+                    use_ssl=True,
+                    verify_certs=False,
+                    ssl_assert_hostname=False,
+                    ssl_show_warn=False,
+                    # ca_certs = ca_certs_path
+                )
+
+            except Exception as exc:
+                logger.error(exc)
+                self.disabled = True
+
+            self.check_index()
+        else:
             self.disabled = True
 
-        self.check_index()
-
     def info(self):
-        logging.info(f'{self.client}')
         try:
-            indices = self.client.indices.get_alias('*')
-            logger.debug('List of indices:')
-            for index in indices:
-                logger.debug(f'- {index}')
+            if self.client:
+                logger.info(f'{self.client}')
+                indices = self.client.indices.get_alias('*')
+                logger.debug('List of indices:')
+                for index in indices:
+                    logger.debug(f'- {index}')
+            else:
+                logger.info(
+                    ' * Задайте переменные среды для подключения к серверу поиска'
+                )
         except Exception as e:
             logger.error(f'Error while listing indices: {e}')
 
@@ -144,7 +158,7 @@ class SearchService:
             self.check_index()
 
     def index_post(self, shout):
-        if not  not self.disabled:
+        if not not self.disabled:
             id_ = str(shout.id)
             logger.debug(f'Indexing post id {id_}')
             self.client.index(index=self.index_name, id=id_, body=shout)

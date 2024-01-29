@@ -29,7 +29,7 @@ mkdir .venv
 python3.12 -m venv .venv
 poetry env use .venv/bin/python3.12
 poetry update
-poetry run main.py
+poetry run server.py
 ```
 ## Подключенные сервисы
 
