@@ -26,6 +26,43 @@ ELASTIC_URL = os.environ.get(
 REDIS_TTL = 86400  # 1 day in seconds
 
 
+index_settings = {
+    'settings': {
+        'index': {
+            'number_of_shards': 1,
+            'auto_expand_replicas': '0-all',
+        },
+        'analysis': {
+            'analyzer': {
+                'ru': {
+                    'tokenizer': 'standard',
+                    'filter': ['lowercase', 'ru_stop', 'ru_stemmer'],
+                }
+            },
+            'filter': {
+                'ru_stemmer': {
+                    'type': 'stemmer',
+                    'language': 'russian',
+                },
+                'ru_stop': {
+                    'type': 'stop',
+                    'stopwords': '_russian_',
+                },
+            },
+        },
+    },
+    'mappings': {
+        'properties': {
+            'body': {'type': 'text', 'analyzer': 'ru'},
+            'title': {'type': 'text', 'analyzer': 'ru'},
+            # 'author': {'type': 'text'},
+        }
+    },
+}
+
+expected_mapping = index_settings['mappings']
+
+
 class SearchService:
     def __init__(self, index_name='search_index'):
         self.index_name = index_name
@@ -73,68 +110,28 @@ class SearchService:
             self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
     def create_index(self):
-        index_settings = {
-            'settings': {
-                'index': {
-                    'number_of_shards': 1,
-                    'auto_expand_replicas': '0-all',
-                },
-                'analysis': {
-                    'analyzer': {
-                        'ru': {
-                            'tokenizer': 'standard',
-                            'filter': ['lowercase', 'ru_stop', 'ru_stemmer'],
-                        }
-                    },
-                    'filter': {
-                        'ru_stemmer': {
-                            'type': 'stemmer',
-                            'language': 'russian',
-                        },
-                        'ru_stop': {
-                            'type': 'stop',
-                            'stopwords': '_russian_',
-                        },
-                    },
-                },
-            },
-            'mappings': {
-                'properties': {
-                    'body': {'type': 'text', 'analyzer': 'ru'},
-                    'title': {'type': 'text', 'analyzer': 'ru'},
-                    # 'author': {'type': 'text'},
-                }
-            },
-        }
-        try:
-            if self.client:
-                if self.lock.acquire(blocking=False):
-                    try:
-                        logger.debug(f' Создаём новый индекс: {self.index_name} ')
-                        self.client.indices.create(
-                            index=self.index_name, body=index_settings
-                        )
-                        self.client.indices.close(index=self.index_name)
-                        self.client.indices.open(index=self.index_name)
-                    finally:
-                        self.lock.release()
-                else:
-                    logger.debug(' ..')
-        except Exception as _error:  # noqa: S110
-            # logging.warning(f' {error}')
-            pass
+        if self.client:
+            if self.lock.acquire(blocking=False):
+                try:
+                    logger.debug(f' Создаём новый индекс: {self.index_name} ')
+                    self.client.indices.create(
+                        index=self.index_name, body=index_settings
+                    )
+                    self.client.indices.close(index=self.index_name)
+                    self.client.indices.open(index=self.index_name)
+                except Exception as _exc:  # noqa: S110
+                    pass
+                finally:
+                    self.lock.release()
+            else:
+                logger.debug(' ..')
 
     def put_mapping(self):
-        mapping = {
-            'properties': {
-                'body': {'type': 'text', 'analyzer': 'ru'},
-                'title': {'type': 'text', 'analyzer': 'ru'},
-                # 'author': {'type': 'text'},
-            }
-        }
         if self.client:
             logger.debug(f' Разметка индекации {self.index_name}')
-            self.client.indices.put_mapping(index=self.index_name, body=mapping)
+            self.client.indices.put_mapping(
+                index=self.index_name, body=expected_mapping
+            )
 
     def check_index(self):
         if self.client:
@@ -144,13 +141,6 @@ class SearchService:
             else:
                 # Check if the mapping is correct, and recreate the index if needed
                 mapping = self.client.indices.get_mapping(index=self.index_name)
-                expected_mapping = {
-                    'properties': {
-                        'body': {'type': 'text', 'analyzer': 'ru'},
-                        'title': {'type': 'text', 'analyzer': 'ru'},
-                        # 'author': {'type': 'text'},
-                    }
-                }
                 if mapping != expected_mapping:
                     self.recreate_index()
 
