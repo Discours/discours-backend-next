@@ -112,7 +112,7 @@ class SearchService:
                 else:
                     logger.debug('..')
         except Exception as error:
-            logging.error(f' Ошибка поиска: {error}')
+            logging.warning(f' {error}')
 
     def put_mapping(self):
         mapping = {
