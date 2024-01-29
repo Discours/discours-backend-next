@@ -11,16 +11,12 @@ from services.rediscache import redis
 logger = logging.getLogger('\t[services.search]\t')
 logger.setLevel(logging.DEBUG)
 
-ELASTIC_HOST = (
-    os.environ.get('ELASTIC_HOST', '').replace('https://', '').replace('http://', '')
-)
+ELASTIC_HOST = os.environ.get('ELASTIC_HOST', '').replace('https://', '').replace('http://', '')
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')
 ELASTIC_PASSWORD = os.environ.get('ELASTIC_PASSWORD', '')
 ELASTIC_PORT = os.environ.get('ELASTIC_PORT', 9200)
 ELASTIC_AUTH = f'{ELASTIC_USER}:{ELASTIC_PASSWORD}' if ELASTIC_USER else ''
-ELASTIC_URL = os.environ.get(
-    'ELASTIC_URL', f'https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}'
-)
+ELASTIC_URL = os.environ.get('ELASTIC_URL', f'https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}')
 REDIS_TTL = 86400  # 1 day in seconds
 
 
@@ -102,9 +98,7 @@ class SearchService:
                 if self.lock.acquire(blocking=False):
                     try:
                         logger.debug(f' Создаём новый индекс: {self.index_name} ')
-                        self.client.indices.create(
-                            index=self.index_name, body=index_settings
-                        )
+                        self.client.indices.create(index=self.index_name, body=index_settings)
                         self.client.indices.close(index=self.index_name)
                         self.client.indices.open(index=self.index_name)
                     finally:
@@ -146,9 +140,7 @@ class SearchService:
     def recreate_index(self):
         if self.lock.acquire(blocking=False):
             try:
-                logger.debug(
-                    f' Удаляем индекс {self.index_name} из-за неправильной структуры данных'
-                )
+                logger.debug(f' Удаляем индекс {self.index_name} из-за неправильной структуры данных')
                 self.delete_index()
                 self.check_index()
             finally:
@@ -168,9 +160,7 @@ class SearchService:
             'query': {'match': {'_all': query}},
         }
         if self.client:
-            search_response = self.client.search(
-                index=self.index_name, body=search_body, size=limit, from_=offset
-            )
+            search_response = self.client.search(index=self.index_name, body=search_body, size=limit, from_=offset)
             hits = search_response['hits']['hits']
 
             return [

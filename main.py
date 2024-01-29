@@ -70,6 +70,4 @@ routes = [
     Route('/', GraphQL(schema, debug=True)),
     Route('/new-author', WebhookEndpoint),
 ]
-app = Starlette(
-    routes=routes, debug=True, on_startup=[start_up], on_shutdown=[shutdown]
-)
+app = Starlette(routes=routes, debug=True, on_startup=[start_up], on_shutdown=[shutdown])

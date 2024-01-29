@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import bindparam, distinct, literal_column, or_
+from sqlalchemy import bindparam, distinct, or_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
@@ -312,49 +312,7 @@ async def load_shouts_feed(_, info, options):
 @query.field('load_shouts_search')
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if text and len(text) > 2:
-        results = await search_text(text, limit, offset)
-        results_dict = {r['slug']: r for r in results}
-        found_keys = list(results_dict.keys())
-
-        with local_session() as session:
-            # Create a subquery with the synthetic 'score' column
-            subquery = (
-                select(
-                    [
-                        Shout,
-                        literal_column(f"({results_dict.get(Shout.slug, {}).get('score', 0)})").label('score'),
-                    ]
-                )
-                .select_from(Shout)
-                .join(ShoutTopic, Shout.id == ShoutTopic.shout)
-                .options(
-                    joinedload(Shout.authors),
-                    joinedload(Shout.topics),
-                )
-                .filter(
-                    and_(
-                        Shout.deleted_at.is_(None),
-                        Shout.slug.in_(found_keys),
-                    )
-                )
-            ).alias('scored_shouts')
-
-            # Use the subquery in the main query
-            q = (
-                select([subquery.c.Shout, subquery.c.score])
-                .order_by(desc(subquery.c.score))
-                .limit(limit)
-                .offset(offset)
-            )
-
-            results = session.execute(q).all()
-            logger.debug(f'search found {len(results)} results')
-
-            # Directly build the shouts_data list within the loop
-            shouts_data = [shout.Shout.dict() for score, shout in results]
-
-            return shouts_data
-
+        return await search_text(text, limit, offset)
     return []
 
 
