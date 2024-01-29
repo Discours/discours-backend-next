@@ -21,7 +21,7 @@ REDIS_TTL = 86400  # 1 day in seconds
 
 
 class SearchService:
-    async def __init__(self, index_name='search_index'):
+    def __init__(self, index_name='search_index'):
         logger.info('initialized')
         self.index_name = index_name
         self.disabled = False
