@@ -11,21 +11,17 @@ from services.rediscache import redis
 logger = logging.getLogger('\t[services.search]\t')
 logger.setLevel(logging.DEBUG)
 
-ELASTIC_HOST = (
-    os.environ.get('ELASTIC_HOST', '').replace('https://', '').replace('http://', '')
-)
+ELASTIC_HOST = os.environ.get('ELASTIC_HOST', '').replace('https://', '').replace('http://', '')
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')
 ELASTIC_PASSWORD = os.environ.get('ELASTIC_PASSWORD', '')
 ELASTIC_PORT = os.environ.get('ELASTIC_PORT', 9200)
 ELASTIC_AUTH = f'{ELASTIC_USER}:{ELASTIC_PASSWORD}' if ELASTIC_USER else ''
-ELASTIC_URL = os.environ.get(
-    'ELASTIC_URL', f'https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}'
-)
+ELASTIC_URL = os.environ.get('ELASTIC_URL', f'https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}')
 REDIS_TTL = 86400  # 1 day in seconds
 
 
 class SearchService:
-    def __init__(self, index_name='posts'):
+    def __init__(self, index_name='search_index'):
         self.index_name = index_name
         self.disabled = False
         self.manager = Manager()
@@ -59,23 +55,14 @@ class SearchService:
             self.disabled = True
 
     def info(self):
-        try:
-            if self.client:
-                logger.info(f'{self.client}')
-                indices = self.client.indices.get_alias('*')
-                logger.debug('List of indices:')
-                for index in indices:
-                    logger.debug(f'- {index}')
-            else:
-                logger.info(
-                    ' * Задайте переменные среды для подключения к серверу поиска'
-                )
-        except Exception as e:
-            logger.error(f'Error while listing indices: {e}')
+        if self.client:
+            logger.info(f'{self.client}')
+        else:
+            logger.info(' * Задайте переменные среды для подключения к серверу поиска')
 
     def delete_index(self):
-        if not self.disabled:
-            self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
+        if not self.disabled and self.client:
+            self.client.indices.delete(index=self.index_name, params={'ignore_unavailable': True})
 
     def create_index(self):
         index_settings = {
@@ -112,10 +99,11 @@ class SearchService:
             },
         }
         try:
-            with self.lock:
-                self.client.indices.create(index=self.index_name, body=index_settings)
-                self.client.indices.close(index=self.index_name)
-                self.client.indices.open(index=self.index_name)
+            if self.client:
+                with self.lock:
+                    self.client.indices.create(index=self.index_name, body=index_settings)
+                    self.client.indices.close(index=self.index_name)
+                    self.client.indices.open(index=self.index_name)
         except Exception as error:
             logger.warn(error)
             self.disabled = True
@@ -128,29 +116,28 @@ class SearchService:
                 'author': {'type': 'text'},
             }
         }
-
-        self.client.indices.put_mapping(index=self.index_name, body=mapping)
+        if self.client:
+            self.client.indices.put_mapping(index=self.index_name, body=mapping)
 
     def check_index(self):
-        if not self.client.indices.exists(index=self.index_name) and not self.disabled:
-            logger.debug(f'Creating {self.index_name} index')
-            self.create_index()
-            self.put_mapping()
-        else:
-            # Check if the mapping is correct, and recreate the index if needed
-            mapping = self.client.indices.get_mapping(index=self.index_name)
-            expected_mapping = {
-                'properties': {
-                    'body': {'type': 'text', 'analyzer': 'ru'},
-                    'text': {'type': 'text'},
-                    'author': {'type': 'text'},
+        if self.client:
+            if not self.client.indices.exists(index=self.index_name) and not self.disabled:
+                logger.debug(f'Creating {self.index_name} index')
+                self.create_index()
+                self.put_mapping()
+            else:
+                # Check if the mapping is correct, and recreate the index if needed
+                mapping = self.client.indices.get_mapping(index=self.index_name)
+                expected_mapping = {
+                    'properties': {
+                        'body': {'type': 'text', 'analyzer': 'ru'},
+                        'text': {'type': 'text'},
+                        'author': {'type': 'text'},
+                    }
                 }
-            }
-            if mapping != expected_mapping:
-                logger.debug(
-                    f'Recreating {self.index_name} index due to incorrect mapping'
-                )
-                self.recreate_index()
+                if mapping != expected_mapping:
+                    logger.debug(f'Recreating {self.index_name} index due to incorrect mapping')
+                    self.recreate_index()
 
     def recreate_index(self):
         with self.lock:
@@ -158,7 +145,7 @@ class SearchService:
             self.check_index()
 
     def index_post(self, shout):
-        if not not self.disabled:
+        if not not self.disabled and self.client:
             id_ = str(shout.id)
             logger.debug(f'Indexing post id {id_}')
             self.client.index(index=self.index_name, id=id_, body=shout)
@@ -168,19 +155,18 @@ class SearchService:
         search_body = {
             'query': {'match': {'_all': query}},
         }
+        if self.client:
+            search_response = self.client.search(index=self.index_name, body=search_body, size=limit, from_=offset)
+            hits = search_response['hits']['hits']
 
-        search_response = self.client.search(
-            index=self.index_name, body=search_body, size=limit, from_=offset
-        )
-        hits = search_response['hits']['hits']
-
-        return [
-            {
-                **hit['_source'],
-                'score': hit['_score'],
-            }
-            for hit in hits
-        ]
+            return [
+                {
+                    **hit['_source'],
+                    'score': hit['_score'],
+                }
+                for hit in hits
+            ]
+        return []
 
 
 search = SearchService()
