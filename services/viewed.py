@@ -61,6 +61,12 @@ class ViewedStorage:
                 if os.path.exists(VIEWS_FILEPATH):
                     file_timestamp = os.path.getctime(VIEWS_FILEPATH)
                     self.start_date = datetime.fromtimestamp(file_timestamp).strftime('%Y-%m-%d')
+                    now_date = datetime.now().strftime('%Y-%m-%d')
+
+                    if now_date == self.start_date:
+                        logger.info(' * Данные актуализованы!')
+                    else:
+                        logger.info(f' * Миграция проводилась: {self.start_date}')
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
