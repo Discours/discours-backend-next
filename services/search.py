@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from elasticsearch import Elasticsearch
+from opensearchpy import OpenSearch
 
 from services.rediscache import redis
 
@@ -26,7 +26,17 @@ class SearchService:
         self.index_name = index_name
         self.disabled = False
         try:
-            self.elasticsearch_client = Elasticsearch(f'{ELASTIC_URL}', verify_certs=False)
+            self.client = OpenSearch(
+                hosts = [{'host': ELASTIC_HOST, 'port': ELASTIC_PORT}],
+                http_compress = True,
+                http_auth = (ELASTIC_USER, ELASTIC_PASSWORD),
+                use_ssl = True,
+                verify_certs = False,
+                ssl_assert_hostname = False,
+                ssl_show_warn = False,
+                # ca_certs = ca_certs_path
+            )
+
         except Exception as exc:
             logger.error(exc)
             self.disabled = True
@@ -36,10 +46,10 @@ class SearchService:
             self.recreate_index()
 
     def info(self):
-        logging.info(f'{self.elasticsearch_client}')
+        logging.info(f'{self.client}')
 
     def delete_index(self):
-        self.elasticsearch_client.indices.delete(index=self.index_name, ignore_unavailable=True)
+        self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
     def create_index(self):
         index_settings = {
@@ -76,9 +86,9 @@ class SearchService:
             },
         }
 
-        self.elasticsearch_client.indices.create(index=self.index_name, body=index_settings)
-        self.elasticsearch_client.indices.close(index=self.index_name)
-        self.elasticsearch_client.indices.open(index=self.index_name)
+        self.client.indices.create(index=self.index_name, body=index_settings)
+        self.client.indices.close(index=self.index_name)
+        self.client.indices.open(index=self.index_name)
 
     def put_mapping(self):
         mapping = {
@@ -89,10 +99,10 @@ class SearchService:
             }
         }
 
-        self.elasticsearch_client.indices.put_mapping(index=self.index_name, body=mapping)
+        self.client.indices.put_mapping(index=self.index_name, body=mapping)
 
     def check_index(self):
-        if not self.elasticsearch_client.indices.exists(index=self.index_name):
+        if not self.client.indices.exists(index=self.index_name):
             logger.debug(f'Creating {self.index_name} index')
             self.create_index()
             self.put_mapping()
@@ -104,7 +114,7 @@ class SearchService:
     def index_post(self, shout):
         id_ = str(shout.id)
         logger.debug(f'Indexing post id {id_}')
-        self.elasticsearch_client.index(index=self.index_name, id=id_, body=shout)
+        self.client.index(index=self.index_name, id=id_, body=shout)
 
     def search_post(self, query, limit, offset):
         logger.debug(f'query: {query}')
@@ -112,7 +122,7 @@ class SearchService:
             'query': {'match': {'_all': query}},
         }
 
-        search_response = self.elasticsearch_client.search(
+        search_response = self.client.search(
             index=self.index_name, body=search_body, size=limit, from_=offset
         )
         hits = search_response['hits']['hits']
