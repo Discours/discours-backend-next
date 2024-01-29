@@ -100,12 +100,15 @@ class SearchService:
         try:
             if self.client:
                 if self.lock.acquire(blocking=False):
-                    logger.debug(f' Создаём новый индекс: {self.index_name} ')
-                    self.client.indices.create(
-                        index=self.index_name, body=index_settings
-                    )
-                    self.client.indices.close(index=self.index_name)
-                    self.client.indices.open(index=self.index_name)
+                    try:
+                        logger.debug(f' Создаём новый индекс: {self.index_name} ')
+                        self.client.indices.create(
+                            index=self.index_name, body=index_settings
+                        )
+                        self.client.indices.close(index=self.index_name)
+                        self.client.indices.open(index=self.index_name)
+                    finally:
+                        self.lock.release()
                 else:
                     logger.debug('..')
         except Exception as error:
