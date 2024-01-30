@@ -415,7 +415,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     # pagination
     q = q.limit(limit).offset(offset)
 
-    reactions = []
+    reactions = set()
     with local_session() as session:
         result_rows = session.execute(q)
         for [
@@ -435,7 +435,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
             }
-            reactions.append(reaction)
+            reactions.add(reaction)
 
         # sort if by stat is present
         stat_sort = by.get('stat')
