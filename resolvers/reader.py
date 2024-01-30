@@ -286,7 +286,9 @@ async def load_shouts_feed(_, info, options):
 
             # print(q.compile(compile_kwargs={"literal_binds": True}))
 
-            for [shout, reacted_stat, commented_stat, likes_stat, dislikes_stat, _last_comment] in session.execute(q).unique():
+            for [shout, reacted_stat, commented_stat, likes_stat, dislikes_stat, _last_comment] in session.execute(
+                q
+            ).unique():
                 main_topic = (
                     session.query(Topic.slug)
                     .join(
@@ -306,7 +308,7 @@ async def load_shouts_feed(_, info, options):
                     'viewed': await ViewedStorage.get_shout(shout.slug),
                     'reacted': reacted_stat,
                     'commented': commented_stat,
-                    'rating': likes_stat - dislikes_stat
+                    'rating': likes_stat - dislikes_stat,
                 }
                 shouts.append(shout)
 
@@ -383,7 +385,7 @@ async def get_shouts_from_query(q, author_id=None):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                'last_comment': last_comment
+                'last_comment': last_comment,
             }
 
     return shouts

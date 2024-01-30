@@ -27,7 +27,7 @@ logger.setLevel(logging.DEBUG)
 
 def add_author_stat_columns(q):
     shout_author_aliased = aliased(ShoutAuthor)
-    q = q.outerjoin(shout_author_aliased, shout_author_aliased.author == Author.id).add_columns(
+    q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label('shouts_stat')
     )
 
@@ -51,9 +51,9 @@ async def get_authors_from_query(q):
         for [author, shouts_stat, followers_stat, followings_stat] in session.execute(q):
             author.stat = {
                 'shouts': shouts_stat,
+                'viewed': await ViewedStorage.get_author(author.slug),
                 'followers': followers_stat,
                 'followings': followings_stat,
-                'viewed': await ViewedStorage.get_author(author.slug),
             }
             authors.append(author)
     return authors
