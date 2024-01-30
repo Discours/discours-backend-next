@@ -7,7 +7,6 @@ from starlette.exceptions import HTTPException
 from settings import AUTH_SECRET, AUTH_URL
 
 
-logging.basicConfig()
 logger = logging.getLogger('\t[services.auth]\t')
 logger.setLevel(logging.DEBUG)
 
@@ -23,7 +22,7 @@ async def request_data(gql, headers=None):
                     data = await response.json()
                     errors = data.get('errors')
                     if errors:
-                        logger.error(f'[services.auth] errors: {errors}')
+                        logger.error(f'HTTP Errors: {errors}')
                     else:
                         return data
     except Exception as e:
@@ -37,7 +36,7 @@ async def check_auth(req) -> str | None:
     user_id = ''
     if token:
         # Logging the authentication token
-        logger.error(f'[services.auth] checking auth token: {token}')
+        logger.debug(f'{token}')
         query_name = 'validate_jwt_token'
         operation = 'ValidateToken'
         variables = {

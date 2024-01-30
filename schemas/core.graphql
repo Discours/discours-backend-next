@@ -349,7 +349,7 @@ type Query {
   get_authors_all: [Author]
   get_author_followers(slug: String, user: String, author_id: Int): [Author]
   get_author_followed(slug: String, user: String, author_id: Int): [Author]
-  load_authors_by(by: AuthorsBy, limit: Int, offset: Int): [Author]
+  load_authors_by(by: AuthorsBy!, limit: Int, offset: Int): [Author]
 
   # community
   get_community: Community
