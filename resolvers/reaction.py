@@ -170,6 +170,7 @@ async def _create_reaction(session, shout, author, reaction):
     rdict = r.dict()
     session.add(r)
     session.commit()
+    rdict['id'] = r.id
 
     # Proposal accepting logic
     if rdict.get('reply_to'):
