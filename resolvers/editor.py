@@ -199,7 +199,7 @@ async def update_shout(  # noqa: C901
 async def delete_shout(_, info, shout_id):
     user_id = info.context['user_id']
     with local_session() as session:
-        author = session.query(Author).filter(Author.id == user_id).first()
+        author = session.query(Author).filter(Author.user == user_id).first()
         shout = session.query(Shout).filter(Shout.id == shout_id).first()
         if not shout:
             return {'error': 'invalid shout id'}
