@@ -113,7 +113,7 @@ async def get_my_followed(_, info):
             topics_query = (
                 session.query(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
-                .filter(AuthorFollower.author == Author.id)
+                .filter(TopicFollower.topic == Topic.id)
             )
 
             for [author] in session.execute(authors_query).unique():
