@@ -1,6 +1,8 @@
 import logging
 from typing import List
 
+from sqlalchemy.orm import aliased
+
 from orm.author import Author, AuthorFollower
 from orm.community import Community
 from orm.reaction import Reaction
@@ -103,23 +105,23 @@ async def get_my_followed(_, info):
         author = session.query(Author).filter(Author.user == user_id).first()
         if isinstance(author, Author):
             author_id = author.id
-
+            aliased_author = aliased(Author)
             authors_query = (
-                session.query(Author)
+                session.query(aliased_author, AuthorFollower)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
-                .filter(AuthorFollower.author == Author.id)
+                .filter(AuthorFollower.author == aliased_author.id)
             )
 
             topics_query = (
-                session.query(Topic)
+                session.query(Topic, TopicFollower)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
             )
 
-            for [author] in session.execute(authors_query).unique():
+            for [author] in session.execute(authors_query).all():
                 authors.add(author)
 
-            for [topic] in session.execute(topics_query).unique():
+            for [topic] in session.execute(topics_query).all():
                 topics.add(topic)
 
             communities = session.query(Community).all()
