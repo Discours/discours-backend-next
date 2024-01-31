@@ -96,8 +96,8 @@ async def unfollow(_, info, what, slug):
 @login_required
 async def get_my_followed(_, info):
     user_id = info.context['user_id']
-    topics = []
-    authors = []
+    topics = set()
+    authors = set()
     communities = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
@@ -110,17 +110,21 @@ async def get_my_followed(_, info):
                 .filter(AuthorFollower.author == Author.id)
             )
 
-            topics_query = session.query(Topic).join(TopicFollower, TopicFollower.follower == author_id)
+            topics_query = (
+                session.query(Topic)
+                .join(TopicFollower, TopicFollower.follower == author_id)
+                .filter(AuthorFollower.author == Author.id)
+            )
 
-            for [author] in session.execute(authors_query):
-                authors.append(author)
+            for [author] in session.execute(authors_query).unique():
+                authors.add(author)
 
-            for [topic] in session.execute(topics_query):
-                topics.append(topic)
+            for [topic] in session.execute(topics_query).unique():
+                topics.add(topic)
 
             communities = session.query(Community).all()
 
-    return {'topics': topics, 'authors': authors, 'communities': communities}
+    return {'topics': list(topics), 'authors': list(authors), 'communities': communities}
 
 
 @query.field('get_shout_followers')
