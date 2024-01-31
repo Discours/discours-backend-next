@@ -118,12 +118,8 @@ async def get_my_followed(_, info):
                 .filter(TopicFollower.topic == Topic.id)
             )
 
-            for [author] in session.execute(authors_query).all():
-                authors.add(author)
-
-            for [topic] in session.execute(topics_query).all():
-                topics.add(topic)
-
+            authors = set(session.execute(authors_query).all())
+            topics = set(session.execute(topics_query).all())
             communities = session.query(Community).all()
 
     return {'topics': list(topics), 'authors': list(authors), 'communities': communities}
