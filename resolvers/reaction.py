@@ -167,10 +167,9 @@ def set_hidden(session, shout_id):
 
 async def _create_reaction(session, shout, author, reaction):
     r = Reaction(**reaction)
-    rdict = r.dict()
     session.add(r)
     session.commit()
-    rdict['id'] = r.id
+    rdict = r.dict()
 
     # Proposal accepting logic
     if rdict.get('reply_to'):
