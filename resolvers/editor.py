@@ -91,6 +91,8 @@ async def create_shout(_, info, inp):
 @login_required
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     user_id = info.context['user_id']
+    if not shout_input:
+        shout_input = {}
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         shout_dict = None
@@ -109,90 +111,89 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 return {'error': 'shout not found'}
             if shout.created_by is not author.id and author.id not in shout.authors:
                 return {'error': 'access denied'}
-            if shout_input is not None:
-                topics_input = shout_input['topics']
-                del shout_input['topics']
-                new_topics_to_link = [Topic(**new_topic) for new_topic in topics_input if new_topic['id'] < 0]
-                if new_topics_to_link:
-                    session.add_all(new_topics_to_link)
-                    session.commit()
+            topics_input = shout_input['topics']
+            del shout_input['topics']
+            new_topics_to_link = [Topic(**new_topic) for new_topic in topics_input if new_topic['id'] < 0]
+            if new_topics_to_link:
+                session.add_all(new_topics_to_link)
+                session.commit()
 
-                for new_topic_to_link in new_topics_to_link:
-                    created_unlinked_topic = ShoutTopic(shout=shout.id, topic=new_topic_to_link.id)
-                    session.add(created_unlinked_topic)
+            for new_topic_to_link in new_topics_to_link:
+                created_unlinked_topic = ShoutTopic(shout=shout.id, topic=new_topic_to_link.id)
+                session.add(created_unlinked_topic)
 
-                existing_topics_input = [topic_input for topic_input in topics_input if topic_input.get('id', 0) > 0]
-                existing_topic_to_link_ids = [
-                    existing_topic_input['id']
-                    for existing_topic_input in existing_topics_input
-                    if existing_topic_input['id'] not in [topic.id for topic in shout.topics]
-                ]
+            existing_topics_input = [topic_input for topic_input in topics_input if topic_input.get('id', 0) > 0]
+            existing_topic_to_link_ids = [
+                existing_topic_input['id']
+                for existing_topic_input in existing_topics_input
+                if existing_topic_input['id'] not in [topic.id for topic in shout.topics]
+            ]
 
-                for existing_topic_to_link_id in existing_topic_to_link_ids:
-                    created_unlinked_topic = ShoutTopic(shout=shout.id, topic=existing_topic_to_link_id)
-                    session.add(created_unlinked_topic)
+            for existing_topic_to_link_id in existing_topic_to_link_ids:
+                created_unlinked_topic = ShoutTopic(shout=shout.id, topic=existing_topic_to_link_id)
+                session.add(created_unlinked_topic)
 
-                topic_to_unlink_ids = [
-                    topic.id
-                    for topic in shout.topics
-                    if topic.id not in [topic_input['id'] for topic_input in existing_topics_input]
-                ]
+            topic_to_unlink_ids = [
+                topic.id
+                for topic in shout.topics
+                if topic.id not in [topic_input['id'] for topic_input in existing_topics_input]
+            ]
 
-                session.query(ShoutTopic).filter(
-                    and_(
-                        ShoutTopic.shout == shout.id,
-                        ShoutTopic.topic.in_(topic_to_unlink_ids),
+            session.query(ShoutTopic).filter(
+                and_(
+                    ShoutTopic.shout == shout.id,
+                    ShoutTopic.topic.in_(topic_to_unlink_ids),
+                )
+            ).delete(synchronize_session=False)
+
+            shout_input['updated_at'] = current_time
+            shout_input['published_at'] = current_time if publish else None
+            Shout.update(shout, shout_input)
+            session.add(shout)
+
+            # main topic
+            if 'main_topic' in shout_input:
+                old_main_topic = (
+                    session.query(ShoutTopic)
+                    .filter(
+                        and_(
+                            ShoutTopic.shout == shout.id,
+                            ShoutTopic.main == True,
+                        )
                     )
-                ).delete(synchronize_session=False)
+                    .first()
+                )
 
-                shout_input['updated_at'] = current_time
-                shout_input['published_at'] = current_time if publish else None
-                Shout.update(shout, shout_input)
-                session.add(shout)
+                main_topic = session.query(Topic).filter(Topic.slug == shout_input['main_topic']).first()
 
-                # main topic
-                if 'main_topic' in shout_input:
-                    old_main_topic = (
+                if main_topic:
+                    new_main_topic = (
                         session.query(ShoutTopic)
                         .filter(
                             and_(
                                 ShoutTopic.shout == shout.id,
-                                ShoutTopic.main == True,
+                                ShoutTopic.topic == main_topic.id,
                             )
                         )
                         .first()
                     )
 
-                    main_topic = session.query(Topic).filter(Topic.slug == shout_input['main_topic']).first()
+                    if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
+                        ShoutTopic.update(old_main_topic, {'main': False})
+                        session.add(old_main_topic)
 
-                    if main_topic:
-                        new_main_topic = (
-                            session.query(ShoutTopic)
-                            .filter(
-                                and_(
-                                    ShoutTopic.shout == shout.id,
-                                    ShoutTopic.topic == main_topic.id,
-                                )
-                            )
-                            .first()
-                        )
+                        ShoutTopic.update(new_main_topic, {'main': True})
+                        session.add(new_main_topic)
 
-                        if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
-                            ShoutTopic.update(old_main_topic, {'main': False})
-                            session.add(old_main_topic)
+        shout_dict = shout.dict()
+        session.commit()
 
-                            ShoutTopic.update(new_main_topic, {'main': True})
-                            session.add(new_main_topic)
-
-            shout_dict = shout.dict()
-            session.commit()
-
-            if not publish:
-                await notify_shout(shout_dict, 'update')
-            else:
-                await notify_shout(shout_dict, 'published')
-                # search service indexing
-                search_service.index(shout)
+        if not publish:
+            await notify_shout(shout_dict, 'update')
+        else:
+            await notify_shout(shout_dict, 'published')
+            # search service indexing
+            search_service.index(shout)
 
         return {'shout': shout_dict}
 
