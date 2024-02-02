@@ -50,6 +50,7 @@ def is_featured_author(session, author_id):
         > 0
     )
 
+
 def check_to_feature(session, approver_id, reaction):
     """set shout to public if publicated approvers amount > 4"""
     if not reaction.reply_to and is_positive(reaction.kind):
@@ -70,7 +71,11 @@ def check_to_unfeature(session, rejecter_id, reaction):
     """unfeature any shout if 20% of reactions are negative"""
     if not reaction.reply_to and is_negative(reaction.kind):
         if is_featured_author(session, rejecter_id):
-            reactions = session.query(Reaction).where(and_(Reaction.shout == reaction.shout, Reaction.kind.in_(RATING_REACTIONS))).all()
+            reactions = (
+                session.query(Reaction)
+                .where(and_(Reaction.shout == reaction.shout, Reaction.kind.in_(RATING_REACTIONS)))
+                .all()
+            )
             rejects = 0
             for r in reactions:
                 approver = session.query(Author).filter(Author.id == r.created_by).first()

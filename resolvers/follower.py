@@ -141,7 +141,6 @@ def get_shout_followers(_, _info, slug: str = '', shout_id: int | None = None) -
     return followers
 
 
-
 def reactions_follow(author_id, shout_id, auto=False):
     try:
         with local_session() as session:

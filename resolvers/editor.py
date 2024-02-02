@@ -229,7 +229,11 @@ def handle_proposing(session, r, shout):
         replied_reaction = session.query(Reaction).filter(Reaction.id == r.reply_to).first()
         if replied_reaction and replied_reaction.kind is ReactionKind.PROPOSE.value and replied_reaction.quote:
             # patch all the proposals' quotes
-            proposals = session.query(Reaction).filter(and_(Reaction.shout == r.shout, Reaction.kind == ReactionKind.PROPOSE.value)).all()
+            proposals = (
+                session.query(Reaction)
+                .filter(and_(Reaction.shout == r.shout, Reaction.kind == ReactionKind.PROPOSE.value))
+                .all()
+            )
             for proposal in proposals:
                 if proposal.quote:
                     proposal_diff = get_diff(shout.body, proposal.quote)

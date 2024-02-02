@@ -16,6 +16,7 @@ def get_diff(original, modified):
     diff = list(ndiff(original.split(), modified.split()))
     return diff
 
+
 def apply_diff(original, diff):
     """
     Apply the difference to the original string.
