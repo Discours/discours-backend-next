@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "discoursio_core"
+name = "discoursio-core"
 version = "0.3.0"
 description = "core module for discours.io"
 authors = ["discoursio devteam"]
