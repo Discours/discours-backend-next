@@ -272,29 +272,35 @@ async def delete_reaction(_, info, reaction_id):
 
 
 def apply_reaction_filters(by, q):
-    if by.get('shout'):
-        q = q.filter(Shout.slug == by['shout'])
+    shout_slug = by.get('shout', None)
+    if shout_slug:
+        q = q.filter(Shout.slug == shout_slug)
 
     elif by.get('shouts'):
-        q = q.filter(Shout.slug.in_(by['shouts']))
+        q = q.filter(Shout.slug.in_(by.get('shouts', [])))
 
-    if by.get('created_by'):
-        q = q.filter(Author.id == by['created_by'])
+    created_by = by.get('created_by', None)
+    if created_by:
+        q = q.filter(Author.id == created_by)
 
-    if by.get('topic'):
-        q = q.filter(Shout.topics.contains(by['topic']))
+    topic = by.get('topic', None)
+    if topic:
+        q = q.filter(Shout.topics.contains(topic))
 
-    if by.get('comment'):
-        q = q.filter(func.length(Reaction.body) > 0)
+    if by.get('comment', False):
+        q = q.filter(func.length(str(Reaction.body)) > 0)
 
-    # NOTE: not using ElasticSearch here
     by_search = by.get('search', '')
     if len(by_search) > 2:
         q = q.filter(Reaction.body.ilike(f'%{by_search}%'))
 
-    if by.get('after'):
-        after = int(by['after'])
-        q = q.filter(Reaction.created_at > after)
+    after = by.get('after', None)
+    if after is not None:
+        try:
+            after = int(after)
+            q = q.filter(Reaction.created_at > after)
+        except ValueError:
+            pass  # Handle invalid 'after' value gracefully
 
     return q
 
