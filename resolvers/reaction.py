@@ -8,7 +8,10 @@ from sqlalchemy.sql import union
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutReactionsFollower, ShoutVisibility
+from orm.shout import Shout, ShoutVisibility
+from resolvers.editor import handle_proposing
+from resolvers.follower import reactions_follow
+from resolvers.rater import RATING_REACTIONS, is_negative, is_positive
 from services.auth import add_user_role, login_required
 from services.db import local_session
 from services.notify import notify_reaction
@@ -37,120 +40,52 @@ def add_stat_columns(q, aliased_reaction):
     return q
 
 
-def reactions_follow(author_id, shout_id, auto=False):
-    try:
-        with local_session() as session:
-            shout = session.query(Shout).where(Shout.id == shout_id).one()
-
-            following = (
-                session.query(ShoutReactionsFollower)
-                .where(
-                    and_(
-                        ShoutReactionsFollower.follower == author_id,
-                        ShoutReactionsFollower.shout == shout.id,
-                    )
-                )
-                .first()
-            )
-
-            if not following:
-                following = ShoutReactionsFollower(follower=author_id, shout=shout.id, auto=auto)
-                session.add(following)
-                session.commit()
-                return True
-    except Exception:
-        return False
-
-
-def reactions_unfollow(author_id, shout_id: int):
-    try:
-        with local_session() as session:
-            shout = session.query(Shout).where(Shout.id == shout_id).one()
-
-            following = (
-                session.query(ShoutReactionsFollower)
-                .where(
-                    and_(
-                        ShoutReactionsFollower.follower == author_id,
-                        ShoutReactionsFollower.shout == shout.id,
-                    )
-                )
-                .first()
-            )
-
-            if following:
-                session.delete(following)
-                session.commit()
-                return True
-    except Exception as ex:
-        logger.debug(ex)
-    return False
-
-
-def is_published_author(session, author_id):
-    """checks if author has at least one publication"""
+def is_featured_author(session, author_id):
+    """checks if author has at least one featured publication"""
     return (
         session.query(Shout)
         .where(Shout.authors.any(id=author_id))
-        .filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        .filter(and_(Shout.featured_at.is_not(None), Shout.deleted_at.is_(None)))
         .count()
         > 0
     )
 
-
-def is_negative(x):
-    return x in [
-        ReactionKind.ACCEPT.value,
-        ReactionKind.LIKE.value,
-        ReactionKind.PROOF.value,
-    ]
-
-
-def is_positive(x):
-    return x in [
-        ReactionKind.ACCEPT.value,
-        ReactionKind.LIKE.value,
-        ReactionKind.PROOF.value,
-    ]
-
-
-def check_to_publish(session, approver_id, reaction):
+def check_to_feature(session, approver_id, reaction):
     """set shout to public if publicated approvers amount > 4"""
     if not reaction.reply_to and is_positive(reaction.kind):
-        if is_published_author(session, approver_id):
+        if is_featured_author(session, approver_id):
+            approvers = []
+            approvers.append(approver_id)
             # now count how many approvers are voted already
-            approvers_reactions = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
-            approvers = [
-                approver_id,
-            ]
-            for ar in approvers_reactions:
-                a = ar.created_by
-                if is_published_author(session, a):
-                    approvers.append(a)
+            reacted_readers = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
+            for reacted_reader in reacted_readers:
+                if is_featured_author(session, reacted_reader.id):
+                    approvers.append(reacted_reader.id)
             if len(approvers) > 4:
                 return True
     return False
 
 
-def check_to_hide(session, reaction):
-    """hides any shout if 20% of reactions are negative"""
+def check_to_unfeature(session, rejecter_id, reaction):
+    """unfeature any shout if 20% of reactions are negative"""
     if not reaction.reply_to and is_negative(reaction.kind):
-        # if is_published_author(author_id):
-        approvers_reactions = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
-        rejects = 0
-        for r in approvers_reactions:
-            if is_negative(r.kind):
-                rejects += 1
-        if len(approvers_reactions) / rejects < 5:
-            return True
+        if is_featured_author(session, rejecter_id):
+            reactions = session.query(Reaction).where(and_(Reaction.shout == reaction.shout, Reaction.kind.in_(RATING_REACTIONS))).all()
+            rejects = 0
+            for r in reactions:
+                approver = session.query(Author).filter(Author.id == r.created_by).first()
+                if is_featured_author(session, approver):
+                    if is_negative(r.kind):
+                        rejects += 1
+            if len(reactions) / rejects < 5:
+                return True
     return False
 
 
-async def set_published(session, shout_id, approver_id):
+async def set_featured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
-    s.published_at = int(time.time())
-    s.published_by = approver_id
-    Shout.update(s, {'visibility': ShoutVisibility.PUBLIC.value})
+    s.featured_at = int(time.time())
+    Shout.update(s, {'visibility': ShoutVisibility.FEATURED.value})
     author = session.query(Author).filter(Author.id == s.created_by).first()
     if author:
         await add_user_role(str(author.user))
@@ -158,7 +93,7 @@ async def set_published(session, shout_id, approver_id):
     session.commit()
 
 
-def set_hidden(session, shout_id):
+def set_unfeatured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
     Shout.update(s, {'visibility': ShoutVisibility.COMMUNITY.value})
     session.add(s)
@@ -171,38 +106,24 @@ async def _create_reaction(session, shout, author, reaction):
     session.commit()
     rdict = r.dict()
 
-    # Proposal accepting logic
-    if rdict.get('reply_to'):
-        if r.kind in ['LIKE', 'APPROVE'] and author.id in shout.authors:
-            replied_reaction = session.query(Reaction).filter(Reaction.id == r.reply_to).first()
-            if replied_reaction:
-                if replied_reaction.kind is ReactionKind.PROPOSE.value:
-                    if replied_reaction.range:
-                        old_body = shout.body
-                        start, end = replied_reaction.range.split(':')
-                        start = int(start)
-                        end = int(end)
-                        new_body = old_body[:start] + replied_reaction.body + old_body[end:]
-                        shout_dict = shout.dict()
-                        shout_dict['body'] = new_body
-                        Shout.update(shout, shout_dict)
-                        session.add(shout)
-                        session.commit()
+    # collaborative editing
+    if rdict.get('reply_to') and r.kind in RATING_REACTIONS and author.id in shout.authors:
+        handle_proposing(session, r, shout)
 
-    # Self-regulation mechanics
-    if check_to_hide(session, r):
-        set_hidden(session, shout.id)
-    elif check_to_publish(session, author.id, r):
-        await set_published(session, shout.id, author.id)
+    # self-regultaion mechanics
+    if check_to_unfeature(session, author.id, r):
+        set_unfeatured(session, shout.id)
+    elif check_to_feature(session, author.id, r):
+        await set_featured(session, shout.id)
 
-    # Reactions auto-following
+    # reactions auto-following
     reactions_follow(author.id, reaction['shout'], True)
 
     rdict['shout'] = shout.dict()
     rdict['created_by'] = author.dict()
     rdict['stat'] = {'commented': 0, 'reacted': 0, 'rating': 0}
 
-    # Notifications call
+    # notifications call
     await notify_reaction(rdict, 'create')
 
     return rdict
@@ -220,14 +141,14 @@ async def create_reaction(_, info, reaction):
 
     try:
         with local_session() as session:
-            shout = session.query(Shout).filter(Shout.id == shout_id).one()
+            shout = session.query(Shout).filter(Shout.id == shout_id).first()
             author = session.query(Author).filter(Author.user == user_id).first()
             if shout and author:
                 reaction['created_by'] = author.id
                 kind = reaction.get('kind')
                 shout_id = shout.id
 
-                if not kind and reaction.get('body'):
+                if not kind and isinstance(reaction.get('body'), str):
                     kind = ReactionKind.COMMENT.value
 
                 if not kind:

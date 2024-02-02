@@ -1,3 +1,9 @@
+[0.3.0]
+- Shout.featured_at timestamp of the frontpage featuring event
+- added proposal accepting logics
+- schema modulized
+-
+
 [0.2.22]
 - added precommit hook
 - fmt

@@ -82,35 +82,6 @@ async def update_profile(_, info, profile):
         return {'error': None, 'author': author}
 
 
-# for mutation.field("follow")
-def author_follow(follower_id, slug):
-    try:
-        with local_session() as session:
-            author = session.query(Author).where(Author.slug == slug).one()
-            af = AuthorFollower(follower=follower_id, author=author.id)
-            session.add(af)
-            session.commit()
-        return True
-    except Exception:
-        return False
-
-
-# for mutation.field("unfollow")
-def author_unfollow(follower_id, slug):
-    with local_session() as session:
-        flw = (
-            session.query(AuthorFollower)
-            .join(Author, Author.id == AuthorFollower.author)
-            .filter(and_(AuthorFollower.follower == follower_id, Author.slug == slug))
-            .first()
-        )
-        if flw:
-            session.delete(flw)
-            session.commit()
-            return True
-    return False
-
-
 # TODO: caching query
 @query.field('get_authors_all')
 async def get_authors_all(_, _info):

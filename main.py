@@ -13,16 +13,17 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 from starlette.applications import Starlette
 from starlette.routing import Route
 
-from resolvers.webhook import WebhookEndpoint
 from services.rediscache import redis
 from services.schema import resolvers
 from services.search import search_service
 from services.viewed import ViewedStorage
+from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE, SENTRY_DSN
 
 
 import_module('resolvers')
-schema = make_executable_schema(load_schema_from_path('schemas/core.graphql'), resolvers)  # type: ignore
+
+schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
 
 
 async def start_up():

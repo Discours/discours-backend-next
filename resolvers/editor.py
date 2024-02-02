@@ -4,11 +4,14 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import joinedload
 
 from orm.author import Author
+from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
 from orm.topic import Topic
-from resolvers.reaction import reactions_follow, reactions_unfollow
+from resolvers.follower import reactions_follow, reactions_unfollow
+from resolvers.rater import is_negative, is_positive
 from services.auth import login_required
 from services.db import local_session
+from services.diff import apply_diff, get_diff
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
@@ -187,7 +190,8 @@ async def update_shout(  # noqa: C901
 
             if not publish:
                 await notify_shout(shout_dict, 'update')
-            if shout.visibility is ShoutVisibility.COMMUNITY.value or shout.visibility is ShoutVisibility.PUBLIC.value:
+            else:
+                await notify_shout(shout_dict, 'published')
                 # search service indexing
                 search_service.index(shout)
 
@@ -217,3 +221,30 @@ async def delete_shout(_, info, shout_id):
             session.commit()
             await notify_shout(shout_dict, 'delete')
     return {}
+
+
+def handle_proposing(session, r, shout):
+    if is_positive(r.kind):
+        # Proposal accepting logic
+        replied_reaction = session.query(Reaction).filter(Reaction.id == r.reply_to).first()
+        if replied_reaction and replied_reaction.kind is ReactionKind.PROPOSE.value and replied_reaction.quote:
+            # patch all the proposals' quotes
+            proposals = session.query(Reaction).filter(and_(Reaction.shout == r.shout, Reaction.kind == ReactionKind.PROPOSE.value)).all()
+            for proposal in proposals:
+                if proposal.quote:
+                    proposal_diff = get_diff(shout.body, proposal.quote)
+                    proposal_dict = proposal.dict()
+                    proposal_dict['quote'] = apply_diff(replied_reaction.quote, proposal_diff)
+                    Reaction.update(proposal, proposal_dict)
+                    session.add(proposal)
+
+            # patch shout's body
+            shout_dict = shout.dict()
+            shout_dict['body'] = replied_reaction.quote
+            Shout.update(shout, shout_dict)
+            session.add(shout)
+            session.commit()
+
+    if is_negative(r.kind):
+        # TODO: rejection logic
+        pass

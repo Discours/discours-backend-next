@@ -26,9 +26,9 @@ def apply_filters(q, filters, author_id=None):
     if filters.get('reacted') and author_id:
         q.join(Reaction, Reaction.created_by == author_id)
 
-    by_published = filters.get('published')
-    if by_published:
-        q = q.filter(Shout.visibility == ShoutVisibility.PUBLIC.value)
+    by_featured = filters.get('featured')
+    if by_featured:
+        q = q.filter(Shout.visibility == ShoutVisibility.FEATURED.value)
     by_layouts = filters.get('layouts')
     if by_layouts:
         q = q.filter(Shout.layout.in_(by_layouts))
@@ -114,7 +114,7 @@ async def load_shouts_by(_, _info, options):
         filters: {
             layouts: ['audio', 'video', ..],
             reacted: True,
-            published: True, // filter published-only
+            featured: True, // filter featured-only
             author: 'discours',
             topic: 'culture',
             after: 1234567 // unixtime
@@ -143,13 +143,14 @@ async def load_shouts_by(_, _info, options):
     q = add_stat_columns(q, aliased_reaction)
 
     # filters
-    q = apply_filters(q, options.get('filters', {}))
+    filters = options.get('filters', {})
+    q = apply_filters(q, filters)
 
     # group
     q = q.group_by(Shout.id)
 
     # order
-    order_by = options.get('order_by', Shout.published_at)
+    order_by = options.get('order_by', Shout.featured_at if filters.get('featured') else Shout.published_at)
     query_order_by = desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
     q = q.order_by(nulls_last(query_order_by))
 
@@ -274,9 +275,10 @@ async def load_shouts_feed(_, info, options):
 
             aliased_reaction = aliased(Reaction)
             q = add_stat_columns(q, aliased_reaction)
-            q = apply_filters(q, options.get('filters', {}), reader.id)
+            filters = options.get('filters', {})
+            q = apply_filters(q, filters, reader.id)
 
-            order_by = options.get('order_by', Shout.published_at)
+            order_by = options.get('order_by', Shout.featured_at if filters.get('featured') else Shout.published_at)
 
             query_order_by = desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
             offset = options.get('offset', 0)
@@ -464,7 +466,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
             .filter(
                 and_(
                     Shout.deleted_at.is_(None),
-                    Shout.visibility == ShoutVisibility.PUBLIC.value,
+                    Shout.visibility == ShoutVisibility.FEATURED.value,
                     Shout.topics.any(slug=topic.slug),
                 )
             )

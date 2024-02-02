@@ -1,0 +1,46 @@
+enum ShoutVisibility {
+  AUTHORS
+  COMMUNITY
+  FEATURED
+}
+
+enum ReactionStatus {
+  NEW
+  UPDATED
+  CHANGED
+  EXPLAINED
+  DELETED
+}
+
+enum ReactionKind {
+
+  # collabs
+  AGREE
+  DISAGREE
+  ASK
+  PROPOSE
+  PROOF
+  DISPROOF
+  ACCEPT
+  REJECT
+
+  # public feed
+  QUOTE
+  COMMENT
+  LIKE
+  DISLIKE
+
+}
+
+enum FollowingEntity {
+  TOPIC
+  AUTHOR
+  COMMUNITY
+  REACTIONS
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}

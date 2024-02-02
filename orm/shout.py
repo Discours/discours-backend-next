@@ -51,7 +51,7 @@ class ShoutCommunity(Base):
 class ShoutVisibility(Enumeration):
     AUTHORS = 'AUTHORS'
     COMMUNITY = 'COMMUNITY'
-    PUBLIC = 'PUBLIC'
+    FEATURED = 'FEATURED'
 
 
 class Shout(Base):
@@ -60,6 +60,7 @@ class Shout(Base):
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     updated_at = Column(Integer, nullable=True)
     published_at = Column(Integer, nullable=True)
+    featured_at = Column(Integer, nullable=True)
     deleted_at = Column(Integer, nullable=True)
 
     created_by = Column(ForeignKey('author.id'), nullable=False)

@@ -1,0 +1,31 @@
+type Mutation {
+  # author
+  rate_author(rated_slug: String!, value: Int!): Result!
+  update_profile(profile: ProfileInput!): Result!
+
+  # editor
+  create_shout(inp: ShoutInput!): Result!
+  update_shout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): Result!
+  delete_shout(shout_id: Int!): Result!
+
+  # follower
+  follow(what: FollowingEntity!, slug: String!): Result!
+  unfollow(what: FollowingEntity!, slug: String!): Result!
+
+  # topic
+  create_topic(input: TopicInput!): Result!
+  update_topic(input: TopicInput!): Result!
+  delete_topic(slug: String!): Result!
+
+  # reaction
+  create_reaction(reaction: ReactionInput!): Result!
+  update_reaction(id: Int!, reaction: ReactionInput!): Result!
+  delete_reaction(reaction_id: Int!): Result!
+
+  # collab
+  create_invite(slug: String, author_id: Int): Result!
+  remove_author(slug: String, author_id: Int): Result!
+  remove_invite(invite_id: Int!): Result!
+  accept_invite(invite_id: Int!): Result!
+  reject_invite(invite_id: Int!): Result!
+}

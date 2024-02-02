@@ -1,0 +1,182 @@
+type AuthorFollowings {
+  unread: Int
+  topics: [String]
+  authors: [String]
+  reactions: [Int]
+  communities: [String]
+}
+
+type AuthorStat {
+  shouts: Int
+  followings: Int
+  followers: Int
+  rating: Int
+  rating_shouts: Int
+  rating_comments: Int
+  commented: Int
+  viewed: Int
+}
+
+type Author {
+  id: Int!
+  user: String! # user.id
+  slug: String! # user.nickname
+  name: String # user.preferred_username
+  pic: String
+  bio: String
+  about: String
+  links: [String]
+  created_at: Int
+  last_seen: Int
+  updated_at: Int
+  deleted_at: Int
+  seo: String
+  # synthetic
+  stat: AuthorStat # ratings inside
+  communities: [Community]
+}
+
+type ReactionUpdating {
+  error: String
+  status: ReactionStatus
+  reaction: Reaction
+}
+
+type Rating {
+  rater: String!
+  value: Int!
+}
+
+type Reaction {
+  id: Int!
+  shout: Shout!
+  created_at: Int!
+  created_by: Author!
+  updated_at: Int
+  deleted_at: Int
+  deleted_by: Author
+  range: String
+  kind: ReactionKind!
+  body: String
+  reply_to: Int
+  stat: Stat
+  oid: String
+  # old_thread: String
+}
+
+type Shout {
+  id: Int!
+  slug: String!
+  body: String!
+  lead: String
+  description: String
+  main_topic: String
+  topics: [Topic]
+  created_by: Author!
+  updated_by: Author
+  deleted_by: Author
+  authors: [Author]
+  communities: [Community]
+  title: String!
+  subtitle: String
+  lang: String
+  community: String
+  cover: String
+  cover_caption: String
+  layout: String!
+  visibility: String
+
+  created_at: Int!
+  updated_at: Int
+  published_at: Int
+  featured_at: Int
+  deleted_at: Int
+
+  version_of: Shout  # TODO: use version_of somewhere
+
+  media: String
+  stat: Stat
+  score: Float
+}
+
+type Stat {
+  viewed: Int
+  reacted: Int
+  rating: Int
+  commented: Int
+  ranking: Int
+}
+
+type Community {
+  id: Int!
+  slug: String!
+  name: String!
+  desc: String
+  pic: String!
+  created_at: Int!
+  created_by: Author!
+}
+
+type Collection {
+  id: Int!
+  slug: String!
+  title: String!
+  desc: String
+  amount: Int
+  published_at: Int
+  created_at: Int!
+  created_by: Author!
+}
+
+type TopicStat {
+  shouts: Int!
+  followers: Int!
+  authors: Int!
+  viewed: Int
+}
+
+type Topic {
+  id: Int!
+  slug: String!
+  title: String
+  body: String
+  pic: String
+  stat: TopicStat
+  oid: String
+}
+
+# output type
+
+type Result {
+  error: String
+  slugs: [String]
+  shout: Shout
+  shouts: [Shout]
+  author: Author
+  authors: [Author]
+  reaction: Reaction
+  reactions: [Reaction]
+  topic: Topic
+  topics: [Topic]
+  community: Community
+  communities: [Community]
+}
+
+type SearchResult {
+    slug: String!
+    title: String!
+    cover: String
+    main_topic: String
+    created_at: Int
+    authors: [Author]
+    topics: [Topic]
+    score: Float!
+}
+
+type Invite {
+  id: Int!
+  inviter_id: Int!
+  author_id: Int!
+  shout_id: Int!
+  status: InviteStatus
+}

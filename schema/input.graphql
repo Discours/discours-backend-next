@@ -1,0 +1,80 @@
+input ShoutInput {
+  slug: String
+  title: String
+  body: String
+  lead: String
+  description: String
+  layout: String
+  media: String
+  authors: [String]
+  topics: [TopicInput]
+  community: Int
+  subtitle: String
+  cover: String
+}
+
+input ProfileInput {
+  slug: String
+  name: String
+  pic: String
+  links: [String]
+  bio: String
+  about: String
+}
+
+input TopicInput {
+  id: Int
+  slug: String!
+  title: String
+  body: String
+  pic: String
+}
+
+input ReactionInput {
+  kind: ReactionKind!
+  shout: Int!
+  quote: String
+  body: String
+  reply_to: Int
+}
+
+input AuthorsBy {
+  last_seen: Int
+  created_at: Int
+  slug: String
+  name: String
+  topic: String
+  order: String
+  after: Int
+  stat: String
+}
+
+input LoadShoutsFilters {
+  topic: String
+  author: String
+  layouts: [String]
+  featured: Boolean
+  reacted: Boolean
+  after: Int
+}
+
+input LoadShoutsOptions {
+  filters: LoadShoutsFilters
+  with_author_captions: Boolean
+  limit: Int!
+  random_limit: Int
+  offset: Int
+  order_by: String
+  order_by_desc: Boolean
+}
+
+input ReactionBy {
+  shout: String
+  shouts: [String]
+  search: String
+  comment: Boolean
+  topic: String
+  created_by: Int
+  after: Int
+  sort: String
+}

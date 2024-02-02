@@ -2,15 +2,14 @@ import logging
 from typing import List
 
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
 from orm.community import Community
 from orm.reaction import Reaction
-from orm.shout import Shout
+from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.author import author_follow, author_unfollow
 from resolvers.community import community_follow, community_unfollow
-from resolvers.reaction import reactions_follow, reactions_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
 from services.auth import login_required
 from services.db import local_session
@@ -140,3 +139,83 @@ def get_shout_followers(_, _info, slug: str = '', shout_id: int | None = None) -
                 followers.append(r.created_by)
 
     return followers
+
+
+
+def reactions_follow(author_id, shout_id, auto=False):
+    try:
+        with local_session() as session:
+            shout = session.query(Shout).where(Shout.id == shout_id).one()
+
+            following = (
+                session.query(ShoutReactionsFollower)
+                .where(
+                    and_(
+                        ShoutReactionsFollower.follower == author_id,
+                        ShoutReactionsFollower.shout == shout.id,
+                    )
+                )
+                .first()
+            )
+
+            if not following:
+                following = ShoutReactionsFollower(follower=author_id, shout=shout.id, auto=auto)
+                session.add(following)
+                session.commit()
+                return True
+    except Exception:
+        return False
+
+
+def reactions_unfollow(author_id, shout_id: int):
+    try:
+        with local_session() as session:
+            shout = session.query(Shout).where(Shout.id == shout_id).one()
+
+            following = (
+                session.query(ShoutReactionsFollower)
+                .where(
+                    and_(
+                        ShoutReactionsFollower.follower == author_id,
+                        ShoutReactionsFollower.shout == shout.id,
+                    )
+                )
+                .first()
+            )
+
+            if following:
+                session.delete(following)
+                session.commit()
+                return True
+    except Exception as ex:
+        logger.debug(ex)
+    return False
+
+
+# for mutation.field("follow")
+def author_follow(follower_id, slug):
+    try:
+        with local_session() as session:
+            author = session.query(Author).where(Author.slug == slug).one()
+            af = AuthorFollower(follower=follower_id, author=author.id)
+            session.add(af)
+            session.commit()
+        return True
+    except Exception:
+        return False
+
+
+# for mutation.field("unfollow")
+def author_unfollow(follower_id, slug):
+    with local_session() as session:
+        flw = (
+            session.query(AuthorFollower)
+            .join(Author, Author.id == AuthorFollower.author)
+            .filter(and_(AuthorFollower.follower == follower_id, Author.slug == slug))
+            .first()
+        )
+        if flw:
+            session.delete(flw)
+            session.commit()
+            return True
+    return False
