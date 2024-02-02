@@ -148,7 +148,7 @@ class SearchService:
         if self.client:
             id_ = str(shout.id)
             logger.debug(f' Индексируем пост {id_}')
-            self.client.index(index=self.index_name, id=id_, body=shout)
+            self.client.index(index=self.index_name, id=id_, body=shout.dict())
 
     async def search(self, text, limit, offset):
         logger.debug(f' Ищем: {text}')
