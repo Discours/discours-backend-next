@@ -100,7 +100,7 @@ async def set_featured(session, shout_id):
 
 def set_unfeatured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
-    Shout.update(s, {'visibility': ShoutVisibility.COMMUNITY.value})
+    Shout.update(s, {'visibility': ShoutVisibility.COMMUNITY.value , 'featured_at': None })
     session.add(s)
     session.commit()
 
