@@ -153,8 +153,7 @@ async def update_shout(  # noqa: C901
 
                 # Replace datetime with Unix timestamp
                 shout_input['updated_at'] = current_time  # Set updated_at as Unix timestamp
-                if publish:
-                    shout_input['published_at'] = current_time
+                shout_input['published_at'] = current_time if publish else None
                 Shout.update(shout, shout_input)
                 session.add(shout)
 
