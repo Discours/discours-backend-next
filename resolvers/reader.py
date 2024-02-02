@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.reaction import add_stat_columns
 from resolvers.topic import get_random_topic
@@ -28,7 +28,7 @@ def apply_filters(q, filters, author_id=None):
 
     by_featured = filters.get('featured')
     if by_featured:
-        q = q.filter(Shout.visibility == ShoutVisibility.FEATURED.value)
+        q = q.filter(Shout.featered_at.is_not(None))
     by_layouts = filters.get('layouts')
     if by_layouts:
         q = q.filter(Shout.layout.in_(by_layouts))
@@ -206,8 +206,7 @@ async def load_shouts_drafts(_, info):
             joinedload(Shout.authors),
             joinedload(Shout.topics),
         )
-        .filter(Shout.deleted_at.is_(None))
-        .filter(Shout.visibility == ShoutVisibility.AUTHORS.value)
+        .filter(and_(Shout.deleted_at.is_(None), Shout.published_at.is_(None)))
     )
 
     shouts = []
@@ -466,7 +465,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
             .filter(
                 and_(
                     Shout.deleted_at.is_(None),
-                    Shout.visibility == ShoutVisibility.FEATURED.value,
+                    Shout.featured_at.is_not(None),
                     Shout.topics.any(slug=topic.slug),
                 )
             )

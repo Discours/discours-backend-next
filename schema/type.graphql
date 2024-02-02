@@ -84,7 +84,6 @@ type Shout {
   cover: String
   cover_caption: String
   layout: String!
-  visibility: String
 
   created_at: Int!
   updated_at: Int

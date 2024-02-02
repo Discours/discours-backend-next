@@ -8,7 +8,7 @@ from sqlalchemy.sql import union
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutVisibility
+from orm.shout import Shout
 from resolvers.editor import handle_proposing
 from resolvers.follower import reactions_follow
 from resolvers.rater import RATING_REACTIONS, is_negative, is_positive
@@ -90,7 +90,7 @@ def check_to_unfeature(session, rejecter_id, reaction):
 async def set_featured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
     s.featured_at = int(time.time())
-    Shout.update(s, {'visibility': ShoutVisibility.FEATURED.value})
+    Shout.update(s, { 'featured_at': int(time.time()) })
     author = session.query(Author).filter(Author.id == s.created_by).first()
     if author:
         await add_user_role(str(author.user))
@@ -100,7 +100,7 @@ async def set_featured(session, shout_id):
 
 def set_unfeatured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
-    Shout.update(s, {'visibility': ShoutVisibility.COMMUNITY.value , 'featured_at': None })
+    Shout.update(s, {'featured_at': None })
     session.add(s)
     session.commit()
 

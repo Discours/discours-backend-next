@@ -1,5 +1,4 @@
 import time
-from enum import Enum as Enumeration
 
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
@@ -48,12 +47,6 @@ class ShoutCommunity(Base):
     community = Column(ForeignKey('community.id'), primary_key=True, index=True)
 
 
-class ShoutVisibility(Enumeration):
-    AUTHORS = 'AUTHORS'
-    COMMUNITY = 'COMMUNITY'
-    FEATURED = 'FEATURED'
-
-
 class Shout(Base):
     __tablename__ = 'shout'
 
@@ -82,8 +75,6 @@ class Shout(Base):
     topics = relationship(lambda: Topic, secondary='shout_topic')
     communities = relationship(lambda: Community, secondary='shout_community')
     reactions = relationship(lambda: Reaction)
-
-    visibility = Column(String, default=ShoutVisibility.AUTHORS.value)
 
     lang = Column(String, nullable=False, default='ru', comment='Language')
     version_of = Column(ForeignKey('shout.id'), nullable=True)

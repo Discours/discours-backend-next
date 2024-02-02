@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutVisibility
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import reactions_follow, reactions_unfollow
 from resolvers.rater import is_negative, is_positive
@@ -61,7 +61,7 @@ async def create_shout(_, info, inp):
                 'authors': [],
                 'slug': slug,
                 'topics': inp.get('topics', []),
-                'visibility': ShoutVisibility.AUTHORS.value,
+                'published_at': None,
                 'created_at': current_time,  # Set created_at as Unix timestamp
             }
 
