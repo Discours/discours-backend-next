@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from sqlalchemy import aliased
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower

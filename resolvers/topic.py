@@ -211,3 +211,4 @@ def get_random_topic():
         if r:
             [topic] = r
             return topic
+    return
