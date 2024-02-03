@@ -1,11 +1,10 @@
 import logging
 from typing import List
 
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
-from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
@@ -13,7 +12,6 @@ from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
 from services.auth import login_required
 from services.db import local_session
-from services.following import FollowingManager, FollowingResult
 from services.notify import notify_follower
 from services.schema import mutation, query
 
@@ -34,23 +32,15 @@ async def follow(_, info, what, slug):
                 follower_id = actor.id
                 if what == 'AUTHOR':
                     if author_follow(follower_id, slug):
-                        result = FollowingResult('NEW', 'author', slug)
-                        await FollowingManager.push('author', result)
                         author = session.query(Author.id).where(Author.slug == slug).one()
                         follower = session.query(Author).where(Author.id == follower_id).one()
                         await notify_follower(follower.dict(), author.id)
                 elif what == 'TOPIC':
-                    if topic_follow(follower_id, slug):
-                        result = FollowingResult('NEW', 'topic', slug)
-                        await FollowingManager.push('topic', result)
+                    topic_follow(follower_id, slug)
                 elif what == 'COMMUNITY':
-                    if community_follow(follower_id, slug):
-                        result = FollowingResult('NEW', 'community', slug)
-                        await FollowingManager.push('community', result)
+                    community_follow(follower_id, slug)
                 elif what == 'REACTIONS':
-                    if reactions_follow(follower_id, slug):
-                        result = FollowingResult('NEW', 'shout', slug)
-                        await FollowingManager.push('shout', result)
+                    reactions_follow(follower_id, slug)
     except Exception as e:
         logger.debug(info, what, slug)
         logger.error(e)
@@ -70,23 +60,15 @@ async def unfollow(_, info, what, slug):
                 follower_id = actor.id
                 if what == 'AUTHOR':
                     if author_unfollow(follower_id, slug):
-                        result = FollowingResult('DELETED', 'author', slug)
-                        await FollowingManager.push('author', result)
                         author = session.query(Author.id).where(Author.slug == slug).one()
                         follower = session.query(Author).where(Author.id == follower_id).one()
                         await notify_follower(follower.dict(), author.id, 'unfollow')
                 elif what == 'TOPIC':
-                    if topic_unfollow(follower_id, slug):
-                        result = FollowingResult('DELETED', 'topic', slug)
-                        await FollowingManager.push('topic', result)
+                    topic_unfollow(follower_id, slug)
                 elif what == 'COMMUNITY':
-                    if community_unfollow(follower_id, slug):
-                        result = FollowingResult('DELETED', 'community', slug)
-                        await FollowingManager.push('community', result)
+                    community_unfollow(follower_id, slug)
                 elif what == 'REACTIONS':
-                    if reactions_unfollow(follower_id, slug):
-                        result = FollowingResult('DELETED', 'shout', slug)
-                        await FollowingManager.push('shout', result)
+                    reactions_unfollow(follower_id, slug)
     except Exception as e:
         return {'error': str(e)}
 
@@ -97,31 +79,35 @@ async def unfollow(_, info, what, slug):
 @login_required
 async def get_my_followed(_, info):
     user_id = info.context['user_id']
-    topics = set()
-    authors = set()
     communities = []
+
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
+
         if isinstance(author, Author):
             author_id = author.id
-            aliased_author = aliased(Author)
+
+            # Using joinedload to eagerly load AuthorFollower and Author data
             authors_query = (
-                session.query(aliased_author, AuthorFollower)
+                session.query(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
-                .filter(AuthorFollower.author == aliased_author.id)
+                .options(selectinload(Author.followers))
+                .all()
             )
 
+            # Using joinedload to eagerly load TopicFollower and Topic data
             topics_query = (
-                session.query(Topic, TopicFollower)
+                session.query(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
-                .filter(TopicFollower.topic == Topic.id)
+                .options(selectinload(Topic.followers))
+                .all()
             )
 
-            authors = set(session.execute(authors_query).scalars())
-            topics = set(session.execute(topics_query).scalars())
-            communities = session.query(Community).all()
+            # No need for a separate query for communities as it's fetched directly
+            communities = author.communities
 
-    return {'topics': list(topics), 'authors': list(authors), 'communities': communities}
+    return {'topics': topics_query, 'authors': authors_query, 'communities': communities}
+
 
 
 @query.field('get_shout_followers')
