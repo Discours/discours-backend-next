@@ -79,14 +79,16 @@ async def update_profile(_, info, profile):
         Author.update(author, profile)
         session.add(author)
         session.commit()
-        return {'error': None, 'author': author}
+    return {'error': None, 'author': author}
 
 
 # TODO: caching query
 @query.field('get_authors_all')
 async def get_authors_all(_, _info):
+    authors = []
     with local_session() as session:
-        return session.query(Author).all()
+        authors = session.query(Author).all()
+    return authors
 
 
 def count_author_comments_rating(session, author_id) -> int:

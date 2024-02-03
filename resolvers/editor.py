@@ -21,6 +21,7 @@ from services.search import search_service
 @login_required
 async def get_shouts_drafts(_, info):
     user_id = info.context['user_id']
+    shouts = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
@@ -34,7 +35,7 @@ async def get_shouts_drafts(_, info):
                 .group_by(Shout.id)
             )
             shouts = [shout for [shout] in session.execute(q).unique()]
-            return shouts
+    return shouts
 
 
 @mutation.field('create_shout')
@@ -189,7 +190,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             # main topic
             main_topic = shout_input.get('main_topic')
             if main_topic:
-                patch_main_topic(main_topic)
+                patch_main_topic(session, main_topic, shout)
 
             shout_input['updated_at'] = current_time
             shout_input['published_at'] = current_time if publish else None

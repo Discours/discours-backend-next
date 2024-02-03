@@ -109,11 +109,13 @@ async def get_topic(_, _info, slug):
 async def create_topic(_, _info, inp):
     with local_session() as session:
         # TODO: check user permissions to create topic for exact community
+        # and actor is permitted to craete it
         new_topic = Topic(**inp)
         session.add(new_topic)
         session.commit()
 
-    return {'topic': new_topic}
+        return {'topic': new_topic}
+    return {'error': 'cannot create topic'}
 
 
 @mutation.field('update_topic')
@@ -130,6 +132,7 @@ async def update_topic(_, _info, inp):
             session.commit()
 
             return {'topic': topic}
+    return {'error': 'cannot update' }
 
 
 @mutation.field('delete_topic')
@@ -149,8 +152,7 @@ async def delete_topic(_, info, slug: str):
             session.commit()
 
             return {}
-        else:
-            return {'error': 'access denied'}
+    return {'error': 'access denied'}
 
 
 def topic_follow(follower_id, slug):
