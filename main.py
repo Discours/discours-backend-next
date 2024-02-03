@@ -13,6 +13,7 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 from starlette.applications import Starlette
 from starlette.routing import Route
 
+from services.following import FollowingManager
 from services.rediscache import redis
 from services.schema import resolvers
 from services.search import search_service
@@ -34,6 +35,9 @@ async def start_up():
 
     # start viewed service
     await ViewedStorage.init()
+
+    # preload following data
+    await FollowingManager.preload()
 
     # start search service
     search_service.info()
