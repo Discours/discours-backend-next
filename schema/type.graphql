@@ -146,7 +146,7 @@ type Topic {
 
 # output type
 
-type Result {
+type CommonResult {
   error: String
   slugs: [String]
   shout: Shout

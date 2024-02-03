@@ -109,7 +109,6 @@ async def get_my_followed(_, info):
     return {'topics': topics_query, 'authors': authors_query, 'communities': communities}
 
 
-
 @query.field('get_shout_followers')
 def get_shout_followers(_, _info, slug: str = '', shout_id: int | None = None) -> List[Author]:
     followers = []

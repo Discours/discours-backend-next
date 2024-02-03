@@ -15,7 +15,7 @@ type Query {
   get_shouts_drafts: [Shout]
 
   # follower
-  get_my_followed: Result # { authors topics communities }
+  get_my_followed: CommonResult! # { authors topics communities }
   get_shout_followers(slug: String, shout_id: Int): [Author]
 
   # reaction

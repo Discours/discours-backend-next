@@ -1,31 +1,31 @@
 type Mutation {
   # author
-  rate_author(rated_slug: String!, value: Int!): Result!
-  update_profile(profile: ProfileInput!): Result!
+  rate_author(rated_slug: String!, value: Int!): CommonResult!
+  update_profile(profile: ProfileInput!): CommonResult!
 
   # editor
-  create_shout(inp: ShoutInput!): Result!
-  update_shout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): Result!
-  delete_shout(shout_id: Int!): Result!
+  create_shout(inp: ShoutInput!): CommonResult!
+  update_shout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): CommonResult!
+  delete_shout(shout_id: Int!): CommonResult!
 
   # follower
-  follow(what: FollowingEntity!, slug: String!): Result!
-  unfollow(what: FollowingEntity!, slug: String!): Result!
+  follow(what: FollowingEntity!, slug: String!): CommonResult!
+  unfollow(what: FollowingEntity!, slug: String!): CommonResult!
 
   # topic
-  create_topic(input: TopicInput!): Result!
-  update_topic(input: TopicInput!): Result!
-  delete_topic(slug: String!): Result!
+  create_topic(input: TopicInput!): CommonResult!
+  update_topic(input: TopicInput!): CommonResult!
+  delete_topic(slug: String!): CommonResult!
 
   # reaction
-  create_reaction(reaction: ReactionInput!): Result!
-  update_reaction(id: Int!, reaction: ReactionInput!): Result!
-  delete_reaction(reaction_id: Int!): Result!
+  create_reaction(reaction: ReactionInput!): CommonResult!
+  update_reaction(id: Int!, reaction: ReactionInput!): CommonResult!
+  delete_reaction(reaction_id: Int!): CommonResult!
 
   # collab
-  create_invite(slug: String, author_id: Int): Result!
-  remove_author(slug: String, author_id: Int): Result!
-  remove_invite(invite_id: Int!): Result!
-  accept_invite(invite_id: Int!): Result!
-  reject_invite(invite_id: Int!): Result!
+  create_invite(slug: String, author_id: Int): CommonResult!
+  remove_author(slug: String, author_id: Int): CommonResult!
+  remove_invite(invite_id: Int!): CommonResult!
+  accept_invite(invite_id: Int!): CommonResult!
+  reject_invite(invite_id: Int!): CommonResult!
 }
