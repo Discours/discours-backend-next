@@ -1,7 +1,7 @@
 type Mutation {
   # author
   rate_author(rated_slug: String!, value: Int!): CommonResult!
-  update_profile(profile: ProfileInput!): CommonResult!
+  update_author(profile: ProfileInput!): CommonResult!
 
   # editor
   create_shout(inp: ShoutInput!): CommonResult!
