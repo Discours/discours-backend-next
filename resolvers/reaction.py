@@ -288,7 +288,7 @@ def apply_reaction_filters(by, q):
         q = q.filter(Shout.topics.contains(topic))
 
     if by.get('comment', False):
-        q = q.filter(func.length(str(Reaction.body)) > 0)
+        q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)
 
     by_search = by.get('search', '')
     if len(by_search) > 2:
