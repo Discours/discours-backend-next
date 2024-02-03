@@ -49,25 +49,34 @@ class FollowingManager:
                     FollowingManager.followers_by_kind[kind] = [follower[0] for follower in followers]
 
                 # Load authors_by_follower
+                c = 0
                 for following in session.query(AuthorFollower).all():
                     FollowingManager.authors_by_follower[following.follower] = FollowingManager.authors_by_follower.get(
                         following.follower, []
                     )
                     FollowingManager.authors_by_follower[following.follower].append(following.author)
+                    c += 1
+                logger.info(f' {c} authors followings')
 
                 # Load topics_by_follower
+                c = 0
                 for following in session.query(TopicFollower).all():
                     FollowingManager.topics_by_follower[following.follower] = FollowingManager.topics_by_follower.get(
                         following.follower, []
                     )
                     FollowingManager.topics_by_follower[following.follower].append(following.topic)
+                    c += 1
+                logger.info(f' {c} topics followings')
 
                 # Load shouts_by_follower
+                c = 0
                 for following in session.query(ShoutReactionsFollower).all():
                     FollowingManager.shouts_by_follower[following.follower] = FollowingManager.shouts_by_follower.get(
                         following.follower, []
                     )
                     FollowingManager.shouts_by_follower[following.follower].append(following.shout)
+                    c += 1
+                logger.info(f' {c} shouts followings')
         logger.info(f' preloading finished at {(int(time.time()) - ts)/1000} secs')
 
     @staticmethod
