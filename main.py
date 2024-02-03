@@ -35,7 +35,6 @@ async def start_up():
     # start viewed service
     await ViewedStorage.init()
 
-
     # start search service
     search_service.info()
 

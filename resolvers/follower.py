@@ -1,10 +1,11 @@
 import logging
 from typing import List
 
-from sqlalchemy.orm import selectinload
+from sqlalchemy import aliased
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
+from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
@@ -79,34 +80,31 @@ async def unfollow(_, info, what, slug):
 @login_required
 async def get_my_followed(_, info):
     user_id = info.context['user_id']
+    topics = set()
+    authors = set()
     communities = []
-
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
-
         if isinstance(author, Author):
             author_id = author.id
-
-            # Using joinedload to eagerly load AuthorFollower and Author data
+            aliased_author = aliased(Author)
             authors_query = (
-                session.query(Author)
+                session.query(aliased_author, AuthorFollower)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
-                .options(selectinload(Author.followers))
-                .all()
+                .filter(AuthorFollower.author == aliased_author.id)
             )
 
-            # Using joinedload to eagerly load TopicFollower and Topic data
             topics_query = (
-                session.query(Topic)
+                session.query(Topic, TopicFollower)
                 .join(TopicFollower, TopicFollower.follower == author_id)
-                .options(selectinload(Topic.followers))
-                .all()
+                .filter(TopicFollower.topic == Topic.id)
             )
 
-            # No need for a separate query for communities as it's fetched directly
-            communities = author.communities
+            authors = set(session.execute(authors_query).scalars())
+            topics = set(session.execute(topics_query).scalars())
+            communities = session.query(Community).all()
 
-    return {'topics': topics_query, 'authors': authors_query, 'communities': communities}
+    return {'topics': list(topics), 'authors': list(authors), 'communities': communities}
 
 
 @query.field('get_shout_followers')

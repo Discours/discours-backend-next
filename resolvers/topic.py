@@ -132,7 +132,7 @@ async def update_topic(_, _info, inp):
             session.commit()
 
             return {'topic': topic}
-    return {'error': 'cannot update' }
+    return {'error': 'cannot update'}
 
 
 @mutation.field('delete_topic')
