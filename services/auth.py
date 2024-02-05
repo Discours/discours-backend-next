@@ -31,7 +31,7 @@ async def request_data(gql, headers=None):
         return None
 
 
-async def check_auth(req) -> str | None:
+async def check_auth(req):
     token = req.headers.get('Authorization')
     user_id = ''
     if token:
@@ -55,8 +55,10 @@ async def check_auth(req) -> str | None:
         }
         data = await request_data(gql)
         if data:
-            user_id = data.get('data', {}).get(query_name, {}).get('claims', {}).get('sub')
-            return user_id
+            user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
+            user_id = user_data.get('sub')
+            user_roles = user_data.get('allowed_roles')
+            return [user_id, user_roles]
 
     if not user_id:
         raise HTTPException(status_code=401, detail='Unauthorized')
@@ -88,9 +90,11 @@ def login_required(f):
         info = args[1]
         context = info.context
         req = context.get('request')
-        user_id = await check_auth(req)
-        if user_id:
+        [user_id, user_roles] = (await check_auth(req)) or []
+        if user_id and user_roles:
+            logger.info(f' got {user_id} roles: {user_roles}')
             context['user_id'] = user_id.strip()
+            context['roles'] = user_roles
         return await f(*args, **kwargs)
 
     return decorated_function
@@ -100,9 +104,10 @@ def auth_request(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         req = args[0]
-        user_id = await check_auth(req)
+        [user_id, user_roles] = (await check_auth(req)) or []
         if user_id:
             req['user_id'] = user_id.strip()
+            req['roles'] = user_roles
         return await f(*args, **kwargs)
 
     return decorated_function

@@ -32,6 +32,7 @@ async def get_shouts_drafts(_, info):
                     joinedload(Shout.topics),
                 )
                 .filter(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
+                .filter(Shout.published_at.is_(None))
                 .group_by(Shout.id)
             )
             shouts = [shout for [shout] in session.execute(q).unique()]
@@ -161,6 +162,7 @@ def patch_topics(session, shout, topics_input):
 @login_required
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     user_id = info.context['user_id']
+    roles = info.context['roles']
     if not shout_input:
         shout_input = {}
     with local_session() as session:
@@ -178,7 +180,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
             )
             if not shout:
                 return {'error': 'shout not found'}
-            if shout.created_by is not author.id and author.id not in shout.authors:
+            if shout.created_by is not author.id and author.id not in shout.authors and 'editor' not in roles:
                 return {'error': 'access denied'}
 
             # topics patch
@@ -215,13 +217,14 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
 @login_required
 async def delete_shout(_, info, shout_id):
     user_id = info.context['user_id']
+    roles = info.context['roles']
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         shout = session.query(Shout).filter(Shout.id == shout_id).first()
         if not shout:
             return {'error': 'invalid shout id'}
         if author and shout:
-            if shout.created_by is not author.id and author.id not in shout.authors:
+            if shout.created_by is not author.id and author.id not in shout.authors and 'editor' not in roles:
                 return {'error': 'access denied'}
 
             for author_id in shout.authors:
