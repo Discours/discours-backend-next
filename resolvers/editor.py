@@ -81,7 +81,7 @@ async def create_shout(_, info, inp):
                 reactions_follow(author.id, shout.id, True)
 
                 # notifier
-                await notify_shout(shout_dict, 'create')
+                # await notify_shout(shout_dict, 'create')
 
             return {'shout': shout_dict}
 

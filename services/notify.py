@@ -12,7 +12,7 @@ async def notify_reaction(reaction, action: str = 'create'):
         print(f'[services.notify] Failed to publish to channel {channel_name}: {e}')
 
 
-async def notify_shout(shout, action: str = 'create'):
+async def notify_shout(shout, action: str = 'update'):
     channel_name = 'shout'
     data = {'payload': shout, 'action': action}
     try:
