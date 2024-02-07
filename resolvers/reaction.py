@@ -157,48 +157,38 @@ async def create_reaction(_, info, reaction):
                     kind = ReactionKind.COMMENT.value
 
                 if not kind:
-                    return {'error': 'cannot create reaction with this kind'}
+                    return {'error': 'cannot create reaction without a kind'}
 
-                if kind in ['LIKE', 'DISLIKE', 'AGREE', 'DISAGREE']:
-                    same_reaction = (
+                if kind in RATING_REACTIONS:
+
+                    opposite_kind = ( ReactionKind.DISLIKE.value
+                        if is_positive(kind)
+                        else ReactionKind.LIKE.value
+                    )
+
+                    rating_reactions = (
                         session.query(Reaction)
                         .filter(
                             and_(
                                 Reaction.shout == shout_id,
                                 Reaction.created_by == author.id,
-                                Reaction.kind == kind,
-                                Reaction.reply_to == reaction.get('reply_to'),
+                                Reaction.kind.in_(RATING_REACTIONS),
+                                Reaction.reply_to == int(reaction.get('reply_to')),
                             )
                         )
-                        .first()
+                        .all()
                     )
-
-                    if same_reaction is not None:
-                        return {'error': "You can't like or dislike same thing twice"}
-
-                    opposite_reaction_kind = (
-                        ReactionKind.DISLIKE.value
-                        if reaction['kind'] == ReactionKind.LIKE.value
-                        else ReactionKind.LIKE.value
-                    )
-                    opposite_reaction = (
-                        session.query(Reaction)
-                        .filter(
-                            and_(
-                                Reaction.shout == reaction['shout'],
-                                Reaction.created_by == author.id,
-                                Reaction.kind == opposite_reaction_kind,
-                                Reaction.reply_to == reaction.get('reply_to'),
-                            )
-                        )
-                        .first()
-                    )
-
-                    if opposite_reaction is not None:
+                    same_rating = filter(lambda r: r.created_by == author.id and r.kind == opposite_kind, rating_reactions)
+                    opposite_rating = filter(lambda r: r.created_by == author.id and r.kind == opposite_kind, rating_reactions)
+                    if same_rating:
+                        return {'error': "You can't rate the same thing twice"}
+                    elif opposite_rating:
                         return {'error': 'Remove opposite vote first'}
-                    else:
-                        rdict = await _create_reaction(session, shout, author, reaction)
-                        return {'reaction': rdict}
+                    elif filter(lambda r: r.created_by == author.id, rating_reactions):
+                        return {'error': "You can't rate your own thing"}
+
+                rdict = await _create_reaction(session, shout, author, reaction)
+                return {'reaction': rdict}
     except Exception as e:
         import traceback
 
@@ -253,25 +243,25 @@ async def update_reaction(_, info, rid, reaction):
 
 @mutation.field('delete_reaction')
 @login_required
-async def delete_reaction(_, info, reaction_id):
+async def delete_reaction(_, info, reaction_id: int):
     user_id = info.context['user_id']
     roles = info.context['roles']
-    with local_session() as session:
-        r = session.query(Reaction).filter(Reaction.id == reaction_id).first()
-        if not r:
-            return {'error': 'invalid reaction id'}
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
-            if r.created_by is author.id and 'editor' not in roles:
-                return {'error': 'access denied'}
+    if isinstance(reaction_id, int) and user_id and isinstance(roles, list):
+        with local_session() as session:
+            try:
+                author = session.query(Author).filter(Author.user == user_id).one()
+                r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
+                if r and author:
+                    if r.created_by is author.id and 'editor' not in roles:
+                        return {'error': 'access denied'}
 
-            if r.kind in [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]:
-                session.delete(r)
-                session.commit()
-                await notify_reaction(r.dict(), 'delete')
-        else:
-            return {'error': 'access denied'}
-    return {}
+                    if r.kind in [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]:
+                        session.delete(r)
+                        session.commit()
+                        await notify_reaction(r.dict(), 'delete')
+            except Exception as exc:
+                return {'error': f'cannot delete reaction: {exc}'}
+    return {'error': 'cannot delete reaction'}
 
 
 def apply_reaction_filters(by, q):
