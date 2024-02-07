@@ -166,18 +166,20 @@ async def create_reaction(_, info, reaction):
                         else ReactionKind.LIKE.value
                     )
 
-                    rating_reactions = (
-                        session.query(Reaction)
+                    q = (
+                        select(Reaction)
                         .filter(
                             and_(
                                 Reaction.shout == shout_id,
                                 Reaction.created_by == author.id,
                                 Reaction.kind.in_(RATING_REACTIONS),
-                                Reaction.reply_to == int(reaction.get('reply_to')),
                             )
                         )
-                        .all()
                     )
+                    reply_to = reaction.get('reply_to')
+                    if reply_to:
+                        q = q.filter(Reaction.reply_to == reply_to)
+                    rating_reactions = session.execute(q).all()
                     same_rating = filter(lambda r: r.created_by == author.id and r.kind == opposite_kind, rating_reactions)
                     opposite_rating = filter(lambda r: r.created_by == author.id and r.kind == opposite_kind, rating_reactions)
                     if same_rating:
@@ -290,12 +292,8 @@ def apply_reaction_filters(by, q):
         q = q.filter(Reaction.body.ilike(f'%{by_search}%'))
 
     after = by.get('after', None)
-    if after is not None:
-        try:
-            after = int(after)
-            q = q.filter(Reaction.created_at > after)
-        except ValueError:
-            pass  # Handle invalid 'after' value gracefully
+    if isinstance(after, int):
+        q = q.filter(Reaction.created_at > after)
 
     return q
 
