@@ -73,6 +73,7 @@ input ReactionBy {
   shouts: [String]
   search: String
   comment: Boolean
+  rating: Boolean
   topic: String
   created_by: Int
   after: Int

@@ -282,6 +282,8 @@ def apply_reaction_filters(by, q):
 
     if by.get('comment', False):
         q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)
+    if by.get('rating', False):
+        q = q.filter(Reaction.kind.in_(RATING_REACTIONS))
 
     by_search = by.get('search', '')
     if len(by_search) > 2:
