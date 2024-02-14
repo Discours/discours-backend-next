@@ -222,8 +222,14 @@ async def load_authors_by(_, _info, by, limit, offset):
         before = int(time.time()) - by['created_at']
         q = q.filter(Author.created_at > before)
 
-    q = q.order_by(by.get('order', Author.created_at)).limit(limit).offset(offset)
-    return await get_authors_from_query(q)
+    q = q.limit(limit).offset(offset)
+
+    authors = await get_authors_from_query(q)
+    order = by.get('order')
+    if order:
+        authors = sorted(authors, key=lambda a: a['stat'].get(order, 0), reverse=True)
+
+    return authors
 
 
 @query.field('get_author_followed')
