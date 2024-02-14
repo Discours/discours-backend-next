@@ -227,7 +227,7 @@ async def load_authors_by(_, _info, by, limit, offset):
     authors = await get_authors_from_query(q)
     order = by.get('order')
     if order:
-        authors = sorted(authors, key=lambda a: a['stat'].get(order, 0), reverse=True)
+        authors = sorted(authors, key=lambda a: a.stat.get(order, 0), reverse=True)
 
     return authors
 
