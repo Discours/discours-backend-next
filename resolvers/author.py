@@ -2,7 +2,7 @@ import logging
 import time
 from typing import List
 
-from sqlalchemy import and_, distinct, func, select
+from sqlalchemy import and_, desc, distinct, func, select
 from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower, AuthorRating
@@ -25,7 +25,7 @@ logger = logging.getLogger('\t[resolvers.author]\t')
 logger.setLevel(logging.DEBUG)
 
 
-def add_author_stat_columns(q):
+def add_author_stat_columns(q, order=''):
     shout_author_aliased = aliased(ShoutAuthor)
     q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label('shouts_stat')
@@ -42,6 +42,8 @@ def add_author_stat_columns(q):
     )
 
     q = q.group_by(Author.id)
+    if order == 'followers' or order == 'shouts':
+        q = q.order_By(desc(f'{order}_stat'))
     return q
 
 
@@ -207,7 +209,7 @@ async def get_author_id(_, _info, user: str):
 @query.field('load_authors_by')
 async def load_authors_by(_, _info, by, limit, offset):
     q = select(Author)
-    q = add_author_stat_columns(q)
+    q = add_author_stat_columns(q, order=by.get('order'))
     if by.get('slug'):
         q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
     elif by.get('name'):
@@ -225,9 +227,6 @@ async def load_authors_by(_, _info, by, limit, offset):
     q = q.limit(limit).offset(offset)
 
     authors = await get_authors_from_query(q)
-    order = by.get('order')
-    if order:
-        authors = sorted(authors, key=lambda a: a.stat.get(order, 0), reverse=True)
 
     return authors
 
