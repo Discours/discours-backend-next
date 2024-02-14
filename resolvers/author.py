@@ -25,7 +25,7 @@ logger = logging.getLogger('\t[resolvers.author]\t')
 logger.setLevel(logging.DEBUG)
 
 
-def add_author_stat_columns(q, order=''):
+def add_author_stat_columns(q):
     shout_author_aliased = aliased(ShoutAuthor)
     q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label('shouts_stat')
@@ -42,8 +42,6 @@ def add_author_stat_columns(q, order=''):
     )
 
     q = q.group_by(Author.id)
-    if order == 'followers' or order == 'shouts':
-        q = q.order_By(desc(f'{order}_stat'))
     return q
 
 
@@ -209,7 +207,7 @@ async def get_author_id(_, _info, user: str):
 @query.field('load_authors_by')
 async def load_authors_by(_, _info, by, limit, offset):
     q = select(Author)
-    q = add_author_stat_columns(q, order=by.get('order'))
+    q = add_author_stat_columns(q)
     if by.get('slug'):
         q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
     elif by.get('name'):
@@ -223,6 +221,10 @@ async def load_authors_by(_, _info, by, limit, offset):
     elif by.get('created_at'):  # in unixtime
         before = int(time.time()) - by['created_at']
         q = q.filter(Author.created_at > before)
+
+    order = by.get('order')
+    if order == 'followers' or order == 'shouts':
+        q = q.order_by(desc(f'{order}_stat'))
 
     q = q.limit(limit).offset(offset)
 
