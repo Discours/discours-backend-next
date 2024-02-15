@@ -45,7 +45,7 @@ async def create_shout(_, info, inp):
     user_id = info.context['user_id']
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
+        if isinstance(author, Author):
             current_time = int(time.time())
             slug = inp.get('slug') or f'draft-{current_time}'
             shout_dict = {
@@ -168,7 +168,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         current_time = int(time.time())
-        if author:
+        if isinstance(author, Author):
             shout = (
                 session.query(Shout)
                 .options(
