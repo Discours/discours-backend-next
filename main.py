@@ -24,15 +24,22 @@ async def dev_pid():
     if MODE == 'development' and not exists(DEV_SERVER_PID_FILE_NAME):
         with open(DEV_SERVER_PID_FILE_NAME, 'w', encoding='utf-8') as f:
             f.write(str(os.getpid()))
-    print(f'[main] started in {MODE} mode')
+    print(f'[main] process started in {MODE} mode')
 
-routes = [
-    Route('/', GraphQL(schema, debug=True)),
-    Route('/new-author', WebhookEndpoint),
-]
-app = Starlette(routes=routes, debug=True, on_startup=[
+# main starlette app object with ariadne mounted in root
+app = Starlette(
+    routes=[
+        Route('/', GraphQL(schema, debug=True)),
+        Route('/new-author', WebhookEndpoint),
+    ],
+    on_startup=[
         redis.connect,
         ViewedStorage.init,
         search_service.info,
         dev_pid
-    ], on_shutdown=[redis.disconnect])
+    ],
+    on_shutdown=[
+        redis.disconnect
+    ],
+    debug=True
+)
