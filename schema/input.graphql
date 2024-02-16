@@ -31,6 +31,7 @@ input TopicInput {
 }
 
 input ReactionInput {
+  id: Int!
   kind: ReactionKind!
   shout: Int!
   quote: String

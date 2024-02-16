@@ -202,44 +202,57 @@ async def create_reaction(_, info, reaction):
 
 @mutation.field('update_reaction')
 @login_required
-async def update_reaction(_, info, rid, reaction):
-    user_id = info.context['user_id']
-    roles = info.context['roles']
-    if user_id and roles:
+async def update_reaction(_, info, reaction):
+    user_id = info.context.get('user_id')
+    roles = info.context.get('roles')
+    rid = reaction.get('id')
+    if rid and user_id and roles:
+        del reaction['id']
         with local_session() as session:
-            q = select(Reaction).filter(Reaction.id == rid)
+            reaction_query = select(Reaction).filter(Reaction.id == int(rid))
             aliased_reaction = aliased(Reaction)
-            q = add_stat_columns(q, aliased_reaction)
-            q = q.group_by(Reaction.id)
+            reaction_query = add_stat_columns(reaction_query, aliased_reaction)
+            reaction_query = reaction_query.group_by(Reaction.id)
 
-            [r, reacted_stat, commented_stat, likes_stat, dislikes_stat, _l] = session.execute(q).unique().first()
+            try:
+                [r, reacted_stat, commented_stat, likes_stat, dislikes_stat, _l] = session.execute(reaction_query).unique().first()
 
-            if not r:
-                return {'error': 'invalid reaction id'}
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if author:
-                if r.created_by != author.id and 'editor' not in roles:
-                    return {'error': 'access denied'}
-                body = reaction.get('body')
-                if body:
-                    r.body = body
-                r.updated_at = int(time.time())
-                if r.kind != reaction['kind']:
-                    # TODO: change mind detection can be here
-                    pass
+                if not r:
+                    return {'error': 'invalid reaction id'}
 
-                session.commit()
-                r.stat = {
-                    'reacted': reacted_stat,
-                    'commented': commented_stat,
-                    'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                }
+                author = session.query(Author).filter(Author.user == user_id).first()
+                if author:
+                    if r.created_by != author.id and 'editor' not in roles:
+                        return {'error': 'access denied'}
 
-                await notify_reaction(r.dict(), 'update')
+                    body = reaction.get('body')
+                    if body:
+                        r.body = body
+                    r.updated_at = int(time.time())
 
-                return {'reaction': r}
-            else:
-                return {'error': 'not authorized'}
+                    if r.kind != reaction['kind']:
+                        # Определение изменения мнения может быть реализовано здесь
+                        pass
+
+                    Reaction.update(r, reaction)
+                    session.add(r)
+                    session.commit()
+
+                    r.stat = {
+                        'reacted': reacted_stat,
+                        'commented': commented_stat,
+                        'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                    }
+
+                    await notify_reaction(r.dict(), 'update')
+
+                    return {'reaction': r}
+                else:
+                    return {'error': 'not authorized'}
+            except Exception:
+                import traceback
+
+                traceback.print_exc()
     return {'error': 'cannot create reaction'}
 
 

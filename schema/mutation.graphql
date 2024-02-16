@@ -19,7 +19,7 @@ type Mutation {
 
   # reaction
   create_reaction(reaction: ReactionInput!): CommonResult!
-  update_reaction(id: Int!, reaction: ReactionInput!): CommonResult!
+  update_reaction(reaction: ReactionInput!): CommonResult!
   delete_reaction(reaction_id: Int!): CommonResult!
 
   # collab
