@@ -1,11 +1,8 @@
 import logging
 import math
 import time
-
-# from contextlib import contextmanager
 from typing import Any, Callable, Dict, TypeVar
 
-# from psycopg2.errors import UniqueViolation
 from sqlalchemy import Column, Integer, create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,52 +12,34 @@ from sqlalchemy.sql.schema import Table
 from settings import DB_URL
 
 
-logging.basicConfig()
-logger = logging.getLogger('\t [sqlalchemy.profiler]\t')
-logger.setLevel(logging.DEBUG)
+# Настройка журнала
+logging.basicConfig(level=logging.DEBUG)
+
+# Создание обработчика журнала для записи сообщений в файл
+logger = logging.getLogger('sqlalchemy.profiler')
 
 
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.info.setdefault('query_start_time', []).append(time.time())
-    # logger.debug(f" {statement}")
 
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info['query_start_time'].pop(-1)
     total = math.floor(total * 10000) / 10000
-    if total > 35:
-        print(f'\n{statement}\n----------------- Finished in {total} s ')
+    if total > 25:
+        logger.debug(f'Long running query: {statement}, Execution Time: {total} s')
 
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
-
 T = TypeVar('T')
-
 REGISTRY: Dict[str, type] = {}
+Base = declarative_base()
 
 
-# @contextmanager
 def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)
-
-    # try:
-    #     yield session
-    #     session.commit()
-    # except Exception as e:
-    #     if not (src == "create_shout" and isinstance(e, UniqueViolation)):
-    #         import traceback
-
-    #         session.rollback()
-    #         print(f"[services.db] {src}: {e}")
-
-    #         traceback.print_exc()
-
-    #         raise Exception("[services.db] exception")
-
-    # finally:
-    #     session.close()
 
 
 class Base(declarative_base()):
@@ -84,7 +63,7 @@ class Base(declarative_base()):
         try:
             return {c: getattr(self, c) for c in column_names}
         except Exception as e:
-            print(f'[services.db] Error dict: {e}')
+            logger.error(f'Error occurred while converting object to dictionary: {e}')
             return {}
 
     def update(self, values: Dict[str, Any]) -> None:
