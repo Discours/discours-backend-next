@@ -29,5 +29,5 @@ def start_sentry():
             ]
         )
     except Exception as e:
-        print('[sentry] init error')
+        print('[services.sentry] init error')
         print(e)
