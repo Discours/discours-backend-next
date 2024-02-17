@@ -170,12 +170,12 @@ async def load_author_with_stats(q):
             )
             likes_count = (
                 session.query(AuthorRating)
-                .filter(and_(AuthorRating.author == author.id, AuthorRating.plus == True))
+                .filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True)))
                 .count()
             )
             dislikes_count = (
                 session.query(AuthorRating)
-                .filter(and_(AuthorRating.author == author.id, AuthorRating.plus != True))
+                .filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_not(True)))
                 .count()
             )
             author.stat['rating'] = likes_count - dislikes_count

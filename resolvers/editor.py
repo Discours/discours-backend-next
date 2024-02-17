@@ -95,7 +95,7 @@ def patch_main_topic(session, main_topic, shout):
         .filter(
             and_(
                 ShoutTopic.shout == shout.id,
-                ShoutTopic.main == True,
+                ShoutTopic.main.is_(True),
             )
         )
         .first()
@@ -163,8 +163,7 @@ def patch_topics(session, shout, topics_input):
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     user_id = info.context['user_id']
     roles = info.context['roles']
-    if not shout_input:
-        shout_input = {}
+    shout_input = shout_input or {}
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         current_time = int(time.time())

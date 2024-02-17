@@ -94,7 +94,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                         and_(
                             ShoutTopic.topic == Topic.id,
                             ShoutTopic.shout == shout.id,
-                            ShoutTopic.main == True,
+                            ShoutTopic.main.is_(True),
                         ),
                     )
                     .first()
@@ -176,7 +176,7 @@ async def load_shouts_by(_, _info, options):
                     and_(
                         ShoutTopic.topic == Topic.id,
                         ShoutTopic.shout == shout.id,
-                        ShoutTopic.main == True,
+                        ShoutTopic.main.is_(True),
                     ),
                 )
                 .first()
@@ -223,7 +223,7 @@ async def load_shouts_drafts(_, info):
                         and_(
                             ShoutTopic.topic == Topic.id,
                             ShoutTopic.shout == shout.id,
-                            ShoutTopic.main == True,
+                            ShoutTopic.main.is_(True),
                         ),
                     )
                     .first()
@@ -297,7 +297,7 @@ async def load_shouts_feed(_, info, options):
                         and_(
                             ShoutTopic.topic == Topic.id,
                             ShoutTopic.shout == shout.id,
-                            ShoutTopic.main == True,
+                            ShoutTopic.main.is_(True),
                         ),
                     )
                     .first()
