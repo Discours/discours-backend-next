@@ -101,7 +101,8 @@ async def get_topic(_, _info, slug):
     q = add_topic_stat_columns(q)
 
     topics = await get_topics_from_query(q)
-    return topics[0]
+    if topics:
+        return topics[0]
 
 
 @mutation.field('create_topic')
