@@ -1,15 +1,15 @@
-FROM python:slim
+FROM python:alpine3.18
 WORKDIR /app
 COPY . /app
 
-RUN apt-get update && apt-get install -y git gcc curl postgresql && \
-    curl -sSL https://install.python-poetry.org | python - && \
-    echo "export PATH=$PATH:/root/.local/bin" >> ~/.bashrc && \
-    . ~/.bashrc && \
+RUN apk update && apk add --no-cache git gcc curl postgresql-client
+
+RUN curl -sSL https://install.python-poetry.org | python - && \
     poetry config virtualenvs.create false && \
     poetry install --no-dev
 
+# Expose port 8000
 EXPOSE 8000
 
 # Run server when the container launches
-CMD python server.py
+CMD ["python", "server.py"]
