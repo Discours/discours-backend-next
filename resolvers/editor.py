@@ -1,3 +1,4 @@
+import logging
 import time
 
 from sqlalchemy import and_, select
@@ -15,6 +16,10 @@ from services.diff import apply_diff, get_diff
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
+
+
+logger = logging.getLogger('[resolver.editor]')
+logger.setLevel(logging.DEBUG)
 
 
 @query.field('get_shouts_drafts')
@@ -160,14 +165,15 @@ def patch_topics(session, shout, topics_input):
 
 @mutation.field('update_shout')
 @login_required
-async def update_shout(_, info, shout_id, shout_input=None, publish=False):
+async def update_shout(_, info, shout_input=None, publish=False):
     user_id = info.context['user_id']
     roles = info.context['roles']
     shout_input = shout_input or {}
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         current_time = int(time.time())
-        if isinstance(author, Author):
+        shout_id = shout_input.get('id')
+        if isinstance(author, Author) and isinstance(shout_id, int):
             shout = (
                 session.query(Shout)
                 .options(
@@ -210,6 +216,8 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 search_service.index(shout)
 
             return {'shout': shout_dict}
+        logger.debug(f' cannot update with data: {shout_input}')
+        return { 'error': 'not enough data' }
     return {'error': 'cannot update'}
 
 
