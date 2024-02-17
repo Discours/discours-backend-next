@@ -2,6 +2,7 @@
 - enabling sentry
 - long query log report added
 - editor fixes
+- authors links cannot be updated by update_shout anymore
 
 [0.3.0]
 - Shout.featured_at timestamp of the frontpage featuring event

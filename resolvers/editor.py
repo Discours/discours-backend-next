@@ -67,7 +67,7 @@ async def create_shout(_, info, inp):
             session.add(new_shout)
             session.commit()
 
-            # NOTE: shout made by one author
+            # NOTE: requesting new shout back
             shout = session.query(Shout).where(Shout.slug == slug).first()
             if shout:
                 shout_dict = shout.dict()
@@ -84,7 +84,7 @@ async def create_shout(_, info, inp):
                 # notifier
                 # await notify_shout(shout_dict, 'create')
 
-            return {'shout': shout_dict}
+                return { 'shout': shout.dict() }
 
     return {'error': 'cant create shout'}
 
@@ -178,6 +178,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 .filter(Shout.id == shout_id)
                 .first()
             )
+
             if not shout:
                 return {'error': 'shout not found'}
             if shout.created_by is not author.id and author.id not in shout.authors and 'editor' not in roles:

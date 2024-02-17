@@ -6,7 +6,6 @@ input ShoutInput {
   description: String
   layout: String
   media: String
-  authors: [String]
   topics: [TopicInput]
   community: Int
   subtitle: String
