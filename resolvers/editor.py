@@ -5,18 +5,17 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import joinedload
 
 from orm.author import Author
+from orm.rating import is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import reactions_follow, reactions_unfollow
-from orm.rating import is_negative, is_positive
 from services.auth import login_required
 from services.db import local_session
 from services.diff import apply_diff, get_diff
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
-
 
 logger = logging.getLogger('[resolver.editor]')
 logger.setLevel(logging.DEBUG)

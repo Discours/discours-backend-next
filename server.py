@@ -1,7 +1,6 @@
 from granian.constants import Interfaces
 from granian.server import Granian
 
-
 if __name__ == '__main__':
     print('[server] started')
 

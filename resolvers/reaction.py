@@ -7,8 +7,8 @@ from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
 from orm.author import Author
-from orm.reaction import Reaction, ReactionKind
 from orm.rating import RATING_REACTIONS, is_negative, is_positive
+from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from resolvers.editor import handle_proposing
 from resolvers.follower import reactions_follow
@@ -17,7 +17,6 @@ from services.db import local_session
 from services.notify import notify_reaction
 from services.schema import mutation, query
 from services.viewed import ViewedStorage
-
 
 logger = logging.getLogger('\t[resolvers.reaction]\t')
 logger.setLevel(logging.DEBUG)

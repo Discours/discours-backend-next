@@ -1,6 +1,5 @@
 from orm.reaction import ReactionKind
 
-
 RATING_REACTIONS = [
     ReactionKind.LIKE.value,
     ReactionKind.ACCEPT.value,

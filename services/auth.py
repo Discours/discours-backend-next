@@ -45,8 +45,9 @@ def cache_auth_request(f):
         cache_key = auth_cache_key(req)
         result = region.get(cache_key)
         if result is None:
-            result = await f(*args, **kwargs)
-            region.set(cache_key, result)
+            [user_id, user_roles]  = await f(*args, **kwargs)
+            if user_id:
+                region.set(cache_key, [user_id, user_roles])
         return result
     return decorated_function
 

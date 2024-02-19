@@ -7,7 +7,6 @@ from opensearchpy import OpenSearch
 
 from services.rediscache import redis
 
-
 os_logger = logging.getLogger(name='opensearch')
 os_logger.setLevel(logging.INFO)
 logger = logging.getLogger('\t[services.search]\t')

@@ -29,7 +29,6 @@ from resolvers.reader import (
 )
 from resolvers.topic import get_topic, get_topics_all, get_topics_by_author, get_topics_by_community
 
-
 __all__ = [
     # author
     'get_author',

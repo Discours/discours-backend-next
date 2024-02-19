@@ -4,7 +4,6 @@ import redis.asyncio as aredis
 
 from settings import REDIS_URL
 
-
 logger = logging.getLogger('[services.redis] ')
 logger.setLevel(logging.DEBUG)
 

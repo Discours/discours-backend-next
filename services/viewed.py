@@ -8,18 +8,12 @@ from typing import Dict
 
 # ga
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import (
-    DateRange,
-    Dimension,
-    Metric,
-    RunReportRequest,
-)
+from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
 
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from services.db import local_session
-
 
 # Настройка журналирования
 logging.basicConfig(level=logging.DEBUG)

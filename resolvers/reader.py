@@ -17,7 +17,6 @@ from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
 
-
 logger = logging.getLogger('[resolvers.reader] ')
 logger.setLevel(logging.DEBUG)
 

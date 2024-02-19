@@ -11,7 +11,6 @@ from services.db import local_session
 from services.schema import mutation, query
 from services.viewed import ViewedStorage
 
-
 logger = logging.getLogger('\t[resolvers.topic]\t')
 logger.setLevel(logging.DEBUG)
 

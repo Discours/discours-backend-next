@@ -16,7 +16,6 @@ from services.db import local_session
 from services.notify import notify_follower
 from services.schema import mutation, query
 
-
 logging.basicConfig()
 logger = logging.getLogger('\t[resolvers.reaction]\t')
 logger.setLevel(logging.DEBUG)

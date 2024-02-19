@@ -9,7 +9,6 @@ from orm.shout import ShoutCommunity
 from services.db import local_session
 from services.schema import query
 
-
 logger = logging.getLogger('\t[resolvers.community]\t')
 logger.setLevel(logging.DEBUG)
 
