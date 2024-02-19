@@ -1,11 +1,10 @@
 import logging
 from functools import wraps
+import httpx
 
-from aiohttp import ClientSession
 from starlette.exceptions import HTTPException
 
-from settings import AUTH_SECRET, AUTH_URL
-
+from settings import ADMIN_SECRET, AUTH_URL
 
 logger = logging.getLogger('\t[services.auth]\t')
 logger.setLevel(logging.DEBUG)
@@ -15,16 +14,15 @@ async def request_data(gql, headers=None):
     if headers is None:
         headers = {'Content-Type': 'application/json'}
     try:
-        # Asynchronous HTTP request to the authentication server
-        async with ClientSession() as session:
-            async with session.post(AUTH_URL, json=gql, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    errors = data.get('errors')
-                    if errors:
-                        logger.error(f'HTTP Errors: {errors}')
-                    else:
-                        return data
+        async with httpx.AsyncClient() as client:
+            response = await client.post(AUTH_URL, json=gql, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                errors = data.get('errors')
+                if errors:
+                    logger.error(f'HTTP Errors: {errors}')
+                else:
+                    return data
     except Exception as e:
         # Handling and logging exceptions during authentication check
         logger.error(f'[services.auth] request_data error: {e}')
@@ -70,7 +68,7 @@ async def add_user_role(user_id):
     operation = 'UpdateUserRoles'
     headers = {
         'Content-Type': 'application/json',
-        'x-authorizer-admin-secret': AUTH_SECRET,
+        'x-authorizer-admin-secret': ADMIN_SECRET,
     }
     variables = {'params': {'roles': 'author, reader', 'id': user_id}}
     gql = {

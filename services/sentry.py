@@ -1,5 +1,4 @@
 import sentry_sdk
-from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -23,9 +22,7 @@ def start_sentry():
             integrations=[
                 StarletteIntegration(),
                 AriadneIntegration(),
-                SqlalchemyIntegration(),
-                # RedisIntegration(),
-                AioHttpIntegration()
+                SqlalchemyIntegration()
             ]
         )
     except Exception as e:

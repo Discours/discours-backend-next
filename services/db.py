@@ -1,6 +1,4 @@
 import logging
-import sys
-import math
 import time
 from typing import Any, Callable, Dict, TypeVar
 
@@ -15,24 +13,20 @@ from settings import DB_URL
 
 # Настройка журнала
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('\t [services.db]\t')
+logger.setLevel(logging.DEBUG)
 
-# Создание обработчика журнала для записи сообщений в stdout
-logger = logging.getLogger('sqlalchemy.profiler')
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.DEBUG)
-logger.addHandler(console_handler)
 
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.info.setdefault('query_start_time', []).append(time.time())
+    logger.debug(f" {statement}")
 
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info['query_start_time'].pop(-1)
-    total = math.floor(total * 10000) / 10000
-    if total > 25:
-        logger.debug(f'Long running query: {statement}, Execution Time: {total} s')
+    logger.debug(f' Finished in {total*1000} ms ')
 
 
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
