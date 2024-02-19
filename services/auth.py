@@ -1,5 +1,6 @@
 import logging
 from functools import wraps
+from typing import List
 
 import httpx
 from dogpile.cache import make_region
@@ -53,7 +54,7 @@ def cache_auth_request(f):
 
 # Измененная функция проверки аутентификации с кэшированием
 @cache_auth_request
-async def check_auth(req):
+async def check_auth(req) -> [str, List[str]]:
     token = req.headers.get('Authorization')
     user_id = ''
     user_roles = []
@@ -108,12 +109,17 @@ async def add_user_role(user_id):
 def login_required(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
+        user_id = ''
+        user_roles = []
         info = args[1]
         context = info.context
         req = context.get('request')
-        # Проверяем, есть ли значения в кэше, и используем их, если они есть
-        [user_id, user_roles] = await check_auth(req)
-        if user_id and user_roles:
+
+        try:
+            [user_id, user_roles] = await check_auth(req)
+        except Exception as e:
+            logger.error(f"Failed to authenticate user: {e}")
+        if user_id:
             logger.info(f' got {user_id} roles: {user_roles}')
             context['user_id'] = user_id.strip()
             context['roles'] = user_roles
@@ -126,9 +132,15 @@ def auth_request(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         req = args[0]
-        # Проверяем, есть ли значения в кэше, и используем их, если они есть
-        [user_id, user_roles] = await check_auth(req)
+        user_id = ''
+        user_roles = []
+
+        try:
+            [user_id, user_roles] = await check_auth(req)
+        except Exception as e:
+            logger.error(f"Failed to authenticate user: {e}")
         if user_id:
+            logger.info(f' got {user_id} roles: {user_roles}')
             req['user_id'] = user_id.strip()
             req['roles'] = user_roles
         return await f(*args, **kwargs)
