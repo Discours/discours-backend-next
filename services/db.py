@@ -1,4 +1,5 @@
 import logging
+import sys
 import math
 import time
 from typing import Any, Callable, Dict, TypeVar
@@ -15,9 +16,11 @@ from settings import DB_URL
 # Настройка журнала
 logging.basicConfig(level=logging.DEBUG)
 
-# Создание обработчика журнала для записи сообщений в файл
+# Создание обработчика журнала для записи сообщений в stdout
 logger = logging.getLogger('sqlalchemy.profiler')
-
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG)
+logger.addHandler(console_handler)
 
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
