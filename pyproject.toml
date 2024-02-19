@@ -39,7 +39,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 120
 
-[tool.ruff]
+[lint]
 select = ["E4", "E7", "E9", "F"]
 ignore = []
 line-length = 120

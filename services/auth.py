@@ -1,13 +1,12 @@
 import logging
 from functools import wraps
-from typing import List
 
 import httpx
 from dogpile.cache import make_region
 
 from settings import ADMIN_SECRET, AUTH_URL
 
-logger = logging.getLogger('\t[services.auth]\t')
+logger = logging.getLogger('[services.auth]')
 logger.setLevel(logging.DEBUG)
 
 
@@ -54,40 +53,42 @@ def cache_auth_request(f):
 
 # Измененная функция проверки аутентификации с кэшированием
 @cache_auth_request
-async def check_auth(req) -> [str, List[str]]:
+async def check_auth(req):
     token = req.headers.get('Authorization')
     user_id = ''
     user_roles = []
-
-    if token:
-        # Logging the authentication token
-        logger.debug(f'{token}')
-        query_name = 'validate_jwt_token'
-        operation = 'ValidateToken'
-        variables = {
-            'params': {
-                'token_type': 'access_token',
-                'token': token,
+    try:
+        if token:
+            # Logging the authentication token
+            logger.debug(f'{token}')
+            query_name = 'validate_jwt_token'
+            operation = 'ValidateToken'
+            variables = {
+                'params': {
+                    'token_type': 'access_token',
+                    'token': token,
+                }
             }
-        }
 
-        gql = {
-            'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{ {query_name}(params: $params) {{ is_valid claims }} }}',
-            'variables': variables,
-            'operationName': operation,
-        }
-        data = await request_data(gql)
-        if data:
-            user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
-            user_id = user_data.get('sub')
-            user_roles = user_data.get('allowed_roles')
+            gql = {
+                'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{ {query_name}(params: $params) {{ is_valid claims }} }}',
+                'variables': variables,
+                'operationName': operation,
+            }
+            data = await request_data(gql)
+            if data:
+                user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
+                user_id = user_data.get('sub')
+                user_roles = user_data.get('allowed_roles')
+    except Exception as e:
+        logger.error(e)
 
     # Возвращаем пустые значения, если не удалось получить user_id и user_roles
     return [user_id, user_roles]
 
 
 async def add_user_role(user_id):
-    logger.info(f'[services.auth] add author role for user_id: {user_id}')
+    logger.info(f'add author role for user_id: {user_id}')
     query_name = '_update_user'
     operation = 'UpdateUserRoles'
     headers = {
