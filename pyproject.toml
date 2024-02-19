@@ -15,11 +15,11 @@ sentry-sdk = { version = "^1.4.1", extras = ["starlette", "aiohttp", "ariadne", 
 starlette = "^0.36.1"
 gql = "^3.4.1"
 ariadne = "^0.21"
-aiohttp = "^3.9.1"
 pre-commit = "^3.6.0"
 granian = "^1.0.1"
 google-analytics-data = "^0.18.3"
 opensearch-py = "^2.4.2"
+httpx = "^0.26.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.2.1"
