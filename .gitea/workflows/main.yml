@@ -1,5 +1,9 @@
 name: 'Deploy to core'
-on: [push]
+on:
+  push:
+    branches:
+      - main
+      - dev
 
 jobs:
   deploy:
@@ -21,5 +25,6 @@ jobs:
       - name: Push to dokku
         uses: dokku/github-action@master
         with:
+          branch: 'dev'
           git_remote_url: 'ssh://dokku@v2.discours.io:22/core'
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
