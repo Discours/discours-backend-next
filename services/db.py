@@ -33,12 +33,12 @@ Base = declarative_base()
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.info.setdefault('query_start_time', []).append(time.time())
-    logger.debug(f" {statement}")
+    logger.debug(f"\n{statement}")
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info['query_start_time'].pop(-1)
-    logger.debug(f' ... {total*1000} s ')
+    logger.debug(f' ... {total*1000} s\n')
 
 def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)

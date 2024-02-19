@@ -61,7 +61,7 @@ class Shout(Base):
     deleted_by = Column(ForeignKey('author.id'), nullable=True)
 
     body = Column(String, nullable=False, comment='Body')
-    slug = Column(String, unique=True)
+    slug = Column(String, unique=True, index=True)
     cover = Column(String, nullable=True, comment='Cover image url')
     cover_caption = Column(String, nullable=True, comment='Cover image alt caption')
     lead = Column(String, nullable=True)

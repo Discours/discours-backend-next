@@ -18,7 +18,7 @@ class TopicFollower(Base):
 class Topic(Base):
     __tablename__ = 'topic'
 
-    slug = Column(String, unique=True)
+    slug = Column(String, unique=True, index=True)
     title = Column(String, nullable=False, comment='Title')
     body = Column(String, nullable=True, comment='Body')
     pic = Column(String, nullable=True, comment='Picture')

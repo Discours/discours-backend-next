@@ -31,7 +31,7 @@ class Author(Base):
     user = Column(String, unique=True)  # unbounded link with authorizer's User type
 
     name = Column(String, nullable=True, comment='Display name')
-    slug = Column(String, unique=True, comment="Author's slug")
+    slug = Column(String, unique=True, comment="Author's slug", index=True)
     bio = Column(String, nullable=True, comment='Bio')  # status description
     about = Column(String, nullable=True, comment='About')  # long and formatted
     pic = Column(String, nullable=True, comment='Picture')
