@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 from functools import wraps
 from typing import Any, Callable, Dict, TypeVar
@@ -38,7 +39,8 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info['query_start_time'].pop(-1)
-    logger.debug(f' ... {total*1000} s\n')
+    stars = '*' * math.floor(total*1000)
+    logger.debug(f' {stars} {total*1000} s\n')
 
 def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)
