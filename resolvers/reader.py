@@ -446,36 +446,40 @@ async def load_shouts_random_top(_, _info, options):
     limit = options.get('limit', 10)
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
 
-    # print(q.compile(compile_kwargs={"literal_binds": True}))
-
     return await get_shouts_from_query(q)
 
 
 @query.field('load_shouts_random_topic')
 async def load_shouts_random_topic(_, info, limit: int = 10):
     topic = get_random_topic()
-    shouts = []
     if topic:
-        q = (
-            select(Shout)
-            .options(
-                joinedload(Shout.authors),
-                joinedload(Shout.topics),
-            )
-            .filter(
-                and_(
-                    Shout.deleted_at.is_(None),
-                    Shout.featured_at.is_not(None),
-                    Shout.topics.any(slug=topic.slug),
-                )
+        shouts = fetch_shouts_by_topic(topic, limit)
+        if shouts:
+            return {'topic': topic, 'shouts': shouts}
+    return { 'error': 'failed to get random topic after few retries', shouts: [], topic: {} }
+
+
+def fetch_shouts_by_topic(topic, limit):
+    q = (
+        select(Shout)
+        .options(
+            joinedload(Shout.authors),
+            joinedload(Shout.topics),
+        )
+        .filter(
+            and_(
+                Shout.deleted_at.is_(None),
+                Shout.featured_at.is_not(None),
+                Shout.topics.any(slug=topic.slug),
             )
         )
+    )
 
-        aliased_reaction = aliased(Reaction)
-        q = add_stat_columns(q, aliased_reaction)
+    aliased_reaction = aliased(Reaction)
+    q = add_stat_columns(q, aliased_reaction)
 
-        q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
+    q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
 
-        shouts = get_shouts_from_query(q)
+    shouts = get_shouts_from_query(q)
 
-    return {'topic': topic, 'shouts': shouts}
+    return shouts
