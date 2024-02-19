@@ -2,23 +2,19 @@ import os
 from importlib import import_module
 from os.path import exists
 
-from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
 
 from services.rediscache import redis
-from services.schema import resolvers
+from services.schema import schema
 from services.search import search_service
 from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 
-
 import_module('resolvers')
-schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
-
 
 async def start():
     if MODE == 'development':
