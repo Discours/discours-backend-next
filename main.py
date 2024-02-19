@@ -19,13 +19,13 @@ from settings import DEV_SERVER_PID_FILE_NAME, MODE
 import_module('resolvers')
 schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
 
-start_sentry()
 
-async def dev_pid():
-    # pid file management
-    if MODE == 'development' and not exists(DEV_SERVER_PID_FILE_NAME):
-        with open(DEV_SERVER_PID_FILE_NAME, 'w', encoding='utf-8') as f:
-            f.write(str(os.getpid()))
+async def start():
+    if MODE == 'development':
+        if not exists(DEV_SERVER_PID_FILE_NAME):
+            # pid file management
+            with open(DEV_SERVER_PID_FILE_NAME, 'w', encoding='utf-8') as f:
+                f.write(str(os.getpid()))
     print(f'[main] process started in {MODE} mode')
 
 # main starlette app object with ariadne mounted in root
@@ -38,7 +38,8 @@ app = Starlette(
         redis.connect,
         ViewedStorage.init,
         search_service.info,
-        dev_pid
+        start_sentry,
+        start
     ],
     on_shutdown=[
         redis.disconnect
