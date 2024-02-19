@@ -1,8 +1,8 @@
 import logging
 from functools import wraps
-from dogpile.cache import make_region
-import httpx
 
+import httpx
+from dogpile.cache import make_region
 from starlette.exceptions import HTTPException
 
 from settings import ADMIN_SECRET, AUTH_URL
