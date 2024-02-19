@@ -8,10 +8,10 @@ from sqlalchemy.sql import union
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
+from orm.rating import RATING_REACTIONS, is_negative, is_positive
 from orm.shout import Shout
 from resolvers.editor import handle_proposing
 from resolvers.follower import reactions_follow
-from resolvers.rater import RATING_REACTIONS, is_negative, is_positive
 from services.auth import add_user_role, login_required
 from services.db import local_session
 from services.notify import notify_reaction
