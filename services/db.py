@@ -1,7 +1,9 @@
+from functools import wraps
 import logging
 import time
 from typing import Any, Callable, Dict, TypeVar
 
+from dogpile.cache import make_region
 from sqlalchemy import Column, Integer, create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,34 +12,36 @@ from sqlalchemy.sql.schema import Table
 
 from settings import DB_URL
 
-
 # Настройка журнала
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('\t [services.db]\t')
+logger = logging.getLogger('[services.db]')
 logger.setLevel(logging.DEBUG)
 
+# Создание региона кэша с TTL 300 секунд
+cache_region = make_region().configure(
+    'dogpile.cache.memory',
+    expiration_time=300
+)
 
-@event.listens_for(Engine, 'before_cursor_execute')
-def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.info.setdefault('query_start_time', []).append(time.time())
-    logger.debug(f" {statement}")
-
-
-@event.listens_for(Engine, 'after_cursor_execute')
-def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    total = time.time() - conn.info['query_start_time'].pop(-1)
-    logger.debug(f' Finished in {total*1000} s ')
-
-
+# Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
 Base = declarative_base()
 
+# Перехватчики для журнала запросов SQLAlchemy
+@event.listens_for(Engine, 'before_cursor_execute')
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault('query_start_time', []).append(time.time())
+    logger.debug(f" {statement}")
+
+@event.listens_for(Engine, 'after_cursor_execute')
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.time() - conn.info['query_start_time'].pop(-1)
+    logger.debug(f' ... {total*1000} s ')
 
 def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)
-
 
 class Base(declarative_base()):
     __table__: Table
@@ -67,3 +71,20 @@ class Base(declarative_base()):
         for key, value in values.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+
+# Декоратор для кэширования методов
+def cache_method(cache_key: str):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Генерация ключа для кэширования
+            key = cache_key.format(*args, **kwargs)
+            # Получение значения из кэша
+            result = cache_region.get(key)
+            if result is None:
+                # Если значение отсутствует в кэше, вызываем функцию и кэшируем результат
+                result = f(*args, **kwargs)
+                cache_region.set(key, result)
+            return result
+        return decorated_function
+    return decorator
