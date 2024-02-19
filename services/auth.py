@@ -112,17 +112,16 @@ def login_required(f):
         user_id = ''
         user_roles = []
         info = args[1]
-        context = info.context
-        req = context.get('request')
 
         try:
+            req = info.context.get('request')
             [user_id, user_roles] = await check_auth(req)
         except Exception as e:
             logger.error(f"Failed to authenticate user: {e}")
         if user_id:
             logger.info(f' got {user_id} roles: {user_roles}')
-            context['user_id'] = user_id.strip()
-            context['roles'] = user_roles
+        info.context['user_id'] = user_id.strip()
+        info.context['roles'] = user_roles
         return await f(*args, **kwargs)
 
     return decorated_function
@@ -131,18 +130,18 @@ def login_required(f):
 def auth_request(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
-        req = args[0]
         user_id = ''
         user_roles = []
-
+        req = {}
         try:
+            req = args[0]
             [user_id, user_roles] = await check_auth(req)
         except Exception as e:
             logger.error(f"Failed to authenticate user: {e}")
         if user_id:
             logger.info(f' got {user_id} roles: {user_roles}')
-            req['user_id'] = user_id.strip()
-            req['roles'] = user_roles
+        req['user_id'] = user_id.strip()
+        req['roles'] = user_roles
         return await f(*args, **kwargs)
 
     return decorated_function
