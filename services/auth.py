@@ -1,5 +1,6 @@
 import logging
 from functools import wraps
+from dogpile.cache import make_region
 import httpx
 
 from starlette.exceptions import HTTPException
@@ -25,10 +26,33 @@ async def request_data(gql, headers=None):
                     return data
     except Exception as e:
         # Handling and logging exceptions during authentication check
-        logger.error(f'[services.auth] request_data error: {e}')
+        logger.error(f'request_data error: {e}')
         return None
 
 
+# Создание региона кэша с TTL 30 секунд
+region = make_region().configure('dogpile.cache.memory', expiration_time=30)
+
+# Функция-ключ для кэширования
+def auth_cache_key(req):
+    token = req.headers.get('Authorization')
+    return f"auth_token:{token}"
+
+# Декоратор для кэширования запроса проверки токена
+def cache_auth_request(f):
+    @wraps(f)
+    async def decorated_function(*args, **kwargs):
+        req = args[0]
+        cache_key = auth_cache_key(req)
+        result = region.get(cache_key)
+        if result is None:
+            result = await f(*args, **kwargs)
+            region.set(cache_key, result)
+        return result
+    return decorated_function
+
+# Измененная функция проверки аутентификации с кэшированием
+@cache_auth_request
 async def check_auth(req):
     token = req.headers.get('Authorization')
     user_id = ''
@@ -45,9 +69,7 @@ async def check_auth(req):
         }
 
         gql = {
-            'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{'
-            + f'{query_name}(params: $params) {{ is_valid claims }} '
-            + '}',
+            'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{ {query_name}(params: $params) {{ is_valid claims }} }}',
             'variables': variables,
             'operationName': operation,
         }
