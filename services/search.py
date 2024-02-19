@@ -95,7 +95,7 @@ class SearchService:
 
     def info(self):
         if isinstance(self.client, OpenSearch):
-            logger.info(f' Поиск подключен: {self.client.info()}')
+            logger.info(' Поиск подключен') # : {self.client.info()}')
         else:
             logger.info(' * Задайте переменные среды для подключения к серверу поиска')
 
