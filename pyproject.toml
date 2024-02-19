@@ -28,7 +28,7 @@ isort = "^5.13.2"
 pyright = "^1.1.350"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
