@@ -9,8 +9,7 @@ if __name__ == '__main__':
         'main:app',
         address='0.0.0.0',  # noqa S104
         port=8000,
-        workers=2,
-        threads=2,
+        threads=4,
         websockets=False,
         interface=Interfaces.ASGI,
     )
