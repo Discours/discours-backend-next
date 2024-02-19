@@ -3,7 +3,6 @@ from functools import wraps
 
 import httpx
 from dogpile.cache import make_region
-from starlette.exceptions import HTTPException
 
 from settings import ADMIN_SECRET, AUTH_URL
 
@@ -56,6 +55,8 @@ def cache_auth_request(f):
 async def check_auth(req):
     token = req.headers.get('Authorization')
     user_id = ''
+    user_roles = []
+
     if token:
         # Logging the authentication token
         logger.debug(f'{token}')
@@ -78,10 +79,9 @@ async def check_auth(req):
             user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
             user_id = user_data.get('sub')
             user_roles = user_data.get('allowed_roles')
-            return [user_id, user_roles]
 
-    if not user_id:
-        raise HTTPException(status_code=401, detail='Unauthorized')
+    # Возвращаем пустые значения, если не удалось получить user_id и user_roles
+    return [user_id, user_roles]
 
 
 async def add_user_role(user_id):
@@ -110,7 +110,8 @@ def login_required(f):
         info = args[1]
         context = info.context
         req = context.get('request')
-        [user_id, user_roles] = (await check_auth(req)) or []
+        # Проверяем, есть ли значения в кэше, и используем их, если они есть
+        [user_id, user_roles] = await check_auth(req)
         if user_id and user_roles:
             logger.info(f' got {user_id} roles: {user_roles}')
             context['user_id'] = user_id.strip()
@@ -124,7 +125,8 @@ def auth_request(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         req = args[0]
-        [user_id, user_roles] = (await check_auth(req)) or []
+        # Проверяем, есть ли значения в кэше, и используем их, если они есть
+        [user_id, user_roles] = await check_auth(req)
         if user_id:
             req['user_id'] = user_id.strip()
             req['roles'] = user_roles
