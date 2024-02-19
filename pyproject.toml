@@ -73,7 +73,7 @@ typings = {}
 mergeTypeStubPackages = false
 
 [tool.pytest.ini_options]
-pythonpath = ["tests"]
+pythonpath = ["."]
 
 [tool.pytest]
 python_files = "*_test.py"

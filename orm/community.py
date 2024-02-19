@@ -21,7 +21,7 @@ class Community(Base):
     __tablename__ = 'community'
 
     name = Column(String, nullable=False)
-    slug = Column(String, nullable=False, unique=True, index=True)
+    slug = Column(String, nullable=False, unique=True)
     desc = Column(String, nullable=False, default='')
     pic = Column(String, nullable=False, default='')
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
