@@ -138,7 +138,10 @@ def auth_request(f):
             req = args[0]
             [user_id, user_roles] = await check_auth(req)
         except Exception as e:
-            logger.error(f"Failed to authenticate user: {e}")
+            import traceback
+
+            traceback.print_exc()
+            logger.error(f"Failed to authenticate user: {args} {e}")
         if user_id:
             logger.info(f' got {user_id} roles: {user_roles}')
         req['user_id'] = user_id.strip()
