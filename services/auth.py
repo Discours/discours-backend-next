@@ -57,8 +57,8 @@ async def check_auth(req):
     token = req.headers.get('Authorization')
     user_id = ''
     user_roles = []
-    try:
-        if token:
+    if token:
+        try:
             # Logging the authentication token
             logger.debug(f'{token}')
             query_name = 'validate_jwt_token'
@@ -80,8 +80,11 @@ async def check_auth(req):
                 user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
                 user_id = user_data.get('sub')
                 user_roles = user_data.get('allowed_roles')
-    except Exception as e:
-        logger.error(e)
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            logger.error(e)
 
     # Возвращаем пустые значения, если не удалось получить user_id и user_roles
     return [user_id, user_roles]
