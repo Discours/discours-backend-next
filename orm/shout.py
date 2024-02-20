@@ -3,10 +3,6 @@ import time
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from orm.author import Author
-from orm.community import Community
-from orm.reaction import Reaction
-from orm.topic import Topic
 from services.db import Base
 
 
@@ -71,10 +67,10 @@ class Shout(Base):
     layout = Column(String, nullable=False, default='article')
     media = Column(JSON, nullable=True)
 
-    authors = relationship(lambda: Author, secondary='shout_author')
-    topics = relationship(lambda: Topic, secondary='shout_topic')
-    communities = relationship(lambda: Community, secondary='shout_community')
-    reactions = relationship(lambda: Reaction)
+    authors = relationship('author', secondary='shout_author')
+    topics = relationship('topic', secondary='shout_topic')
+    communities = relationship('community', secondary='shout_community')
+    reactions = relationship('reaction')
 
     lang = Column(String, nullable=False, default='ru', comment='Language')
     version_of = Column(ForeignKey('shout.id'), nullable=True)

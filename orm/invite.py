@@ -3,8 +3,6 @@ from enum import Enum as Enumeration
 from sqlalchemy import Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
-from orm.author import Author
-from orm.shout import Shout
 from services.db import Base
 
 
@@ -22,6 +20,6 @@ class Invite(Base):
     shout_id = Column(ForeignKey('shout.id'), primary_key=True)
     status = Column(String, default=InviteStatus.PENDING.value)
 
-    inviter = relationship(Author, foreign_keys=[inviter_id])
-    author = relationship(Author, foreign_keys=[author_id])
-    shout = relationship(Shout)
+    inviter = relationship('author', foreign_keys=[inviter_id])
+    author = relationship('author', foreign_keys=[author_id])
+    shout = relationship('shout')

@@ -3,8 +3,7 @@ import time
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from orm.author import Author
-from services.db import Base, local_session
+from services.db import Base
 
 
 class CommunityAuthor(Base):
@@ -26,16 +25,4 @@ class Community(Base):
     pic = Column(String, nullable=False, default='')
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
 
-    authors = relationship(lambda: Author, secondary=CommunityAuthor.__tablename__)
-
-    @staticmethod
-    def init_table():
-        with local_session('orm.community') as session:
-            d = session.query(Community).filter(Community.slug == 'discours').first()
-            if not d:
-                d = Community(name='Дискурс', slug='discours')
-                session.add(d)
-                session.commit()
-                print('[orm.community] created community %s' % d.slug)
-            Community.default_community = d
-            print('[orm.community] default community is %s' % d.slug)
+    authors = relationship('author', secondary='community_author')
