@@ -12,7 +12,7 @@ from sqlalchemy.sql.schema import Table
 from services.logger import get_colorful_logger
 from settings import DB_URL
 
-logger = get_colorful_logger('services.db')
+logger = get_colorful_logger('db')
 
 # Создание региона кэша с TTL 300 секунд
 cache_region = make_region().configure(

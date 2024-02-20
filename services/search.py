@@ -7,9 +7,7 @@ from opensearchpy import OpenSearch
 from services.logger import get_colorful_logger
 from services.rediscache import redis
 
-# os_logger = logging.getLogger(name='opensearch')
-# os_logger.setLevel(logging.INFO)
-logger = get_colorful_logger('services.search')
+logger = get_colorful_logger('search')
 
 ELASTIC_HOST = os.environ.get('ELASTIC_HOST', '').replace('https://', '')
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')

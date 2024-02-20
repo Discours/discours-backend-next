@@ -6,7 +6,7 @@ from dogpile.cache import make_region
 from services.logger import get_colorful_logger
 from settings import ADMIN_SECRET, AUTH_URL
 
-logger = get_colorful_logger('services.auth')
+logger = get_colorful_logger('auth')
 
 
 async def request_data(gql, headers=None):

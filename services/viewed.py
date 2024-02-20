@@ -15,7 +15,7 @@ from orm.topic import Topic
 from services.db import local_session
 from services.logger import get_colorful_logger
 
-logger = get_colorful_logger('services.viewed]')
+logger = get_colorful_logger('viewed')
 GOOGLE_KEYFILE_PATH = os.environ.get('GOOGLE_KEYFILE_PATH', '/dump/google-service.json')
 GOOGLE_PROPERTY_ID = os.environ.get('GOOGLE_PROPERTY_ID', '')
 VIEWS_FILEPATH = '/dump/views.json'

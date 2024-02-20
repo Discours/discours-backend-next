@@ -1,7 +1,7 @@
 import logging
 import colorlog
 
-def get_colorful_logger(name):
+def get_colorful_logger(name='root'):
     # Define the color scheme
     color_scheme = {
         'DEBUG': 'light_black',
@@ -21,7 +21,7 @@ def get_colorful_logger(name):
 
     # Create a ColoredFormatter object for colorized logging
     formatter = colorlog.ColoredFormatter(
-        "%(log_color)s%(asctime)s%(asctime)s %(process)s%(process)s %(log_color)s[%(name)s]%(reset)s %(module)s%(module)s %(log_color)s[%(levelname)-8s]%(reset)s %(white)s%(message)s",
+        "%(log_color)s%(levelname)s: %(log_color)s[%(module)s]%(reset)s %(white)s%(message)s",
         log_colors=color_scheme,
         secondary_log_colors=secondary_colors,  # Set secondary log colors
         style='%',
