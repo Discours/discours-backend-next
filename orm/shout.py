@@ -14,8 +14,8 @@ class ShoutTopic(Base):
     __tablename__ = 'shout_topic'
 
     id = None  # type: ignore
-    shout = Column(ForeignKey('shout.id'), primary_key=True, index=True)
-    topic = Column(ForeignKey('topic.id'), primary_key=True, index=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
+    topic = Column(ForeignKey('topic.id'), primary_key=True)
     main = Column(Boolean, nullable=True)
 
 
@@ -23,8 +23,8 @@ class ShoutReactionsFollower(Base):
     __tablename__ = 'shout_reactions_followers'
 
     id = None  # type: ignore
-    follower = Column(ForeignKey('author.id'), primary_key=True, index=True)
-    shout = Column(ForeignKey('shout.id'), primary_key=True, index=True)
+    follower = Column(ForeignKey('author.id'), primary_key=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
     auto = Column(Boolean, nullable=False, default=False)
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     deleted_at = Column(Integer, nullable=True)
@@ -34,8 +34,8 @@ class ShoutAuthor(Base):
     __tablename__ = 'shout_author'
 
     id = None  # type: ignore
-    shout = Column(ForeignKey('shout.id'), primary_key=True, index=True)
-    author = Column(ForeignKey('author.id'), primary_key=True, index=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
+    author = Column(ForeignKey('author.id'), primary_key=True)
     caption = Column(String, nullable=True, default='')
 
 
@@ -43,8 +43,8 @@ class ShoutCommunity(Base):
     __tablename__ = 'shout_community'
 
     id = None  # type: ignore
-    shout = Column(ForeignKey('shout.id'), primary_key=True, index=True)
-    community = Column(ForeignKey('community.id'), primary_key=True, index=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
+    community = Column(ForeignKey('community.id'), primary_key=True)
 
 
 class Shout(Base):
