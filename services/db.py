@@ -1,4 +1,3 @@
-import logging
 import math
 import time
 from functools import wraps
@@ -10,13 +9,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
-
+from services.logger import get_colorful_logger
 from settings import DB_URL
 
-# Настройка журнала
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('[services.db]')
-logger.setLevel(logging.DEBUG)
+logger = get_colorful_logger('[services.db]')
 
 # Создание региона кэша с TTL 300 секунд
 cache_region = make_region().configure(
