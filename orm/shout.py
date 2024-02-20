@@ -1,11 +1,13 @@
 import time
 
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import event
 from sqlalchemy.orm import relationship
 
 from services.db import Base
 from orm.community import Community
 from orm.author import Author
+from orm.author import get_object, update_follows, update_app_data
 from orm.reaction import Reaction
 from orm.topic import Topic
 
@@ -81,3 +83,14 @@ class Shout(Base):
     oid = Column(String, nullable=True)
 
     seo = Column(String, nullable=True)  # JSON
+
+
+@event.listens_for(ShoutReactionsFollower, 'after_insert')
+@event.listens_for(ShoutReactionsFollower, 'after_delete')
+def after_topic_follower_change(mapper, connection, target):
+    shout_id = target.shout
+    follower_id = target.follower
+    user = get_object(connection, 'authorizer_users', follower_id)
+    if user:
+        app_data = update_follows(user, 'shout', get_object(connection, 'shout', shout_id))
+        update_app_data(connection, follower_id, app_data)

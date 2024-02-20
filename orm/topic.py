@@ -1,9 +1,10 @@
 import time
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import event
 
 from services.db import Base
-
+from orm.author import get_object, update_follows, update_app_data
 
 class TopicFollower(Base):
     __tablename__ = 'topic_followers'
@@ -24,3 +25,14 @@ class Topic(Base):
     pic = Column(String, nullable=True, comment='Picture')
     community = Column(ForeignKey('community.id'), default=1)
     oid = Column(String, nullable=True, comment='Old ID')
+
+
+@event.listens_for(TopicFollower, 'after_insert')
+@event.listens_for(TopicFollower, 'after_delete')
+def after_topic_follower_change(mapper, connection, target):
+    topic_id = target.topic
+    follower_id = target.follower
+    user = get_object(connection, 'authorizer_users', follower_id)
+    if user:
+        app_data = update_follows(user, 'topic', get_object(connection, 'topic', topic_id))
+        update_app_data(connection, follower_id, app_data)
