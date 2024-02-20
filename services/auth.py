@@ -1,13 +1,12 @@
-import logging
 from functools import wraps
 
 import httpx
 from dogpile.cache import make_region
 
+from services.logger import get_colorful_logger
 from settings import ADMIN_SECRET, AUTH_URL
 
-logger = logging.getLogger('[services.auth]')
-logger.setLevel(logging.DEBUG)
+logger = get_colorful_logger('services.auth')
 
 
 async def request_data(gql, headers=None):
