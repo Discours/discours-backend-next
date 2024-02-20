@@ -1,4 +1,3 @@
-import logging
 from typing import List
 
 from sqlalchemy.orm import aliased
@@ -15,10 +14,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_follower
 from services.schema import mutation, query
-
-logging.basicConfig()
-logger = logging.getLogger('\t[resolvers.reaction]\t')
-logger.setLevel(logging.DEBUG)
+from services.logger import root_logger as logger
 
 
 @mutation.field('follow')

@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import List
 
@@ -18,10 +17,7 @@ from services.db import local_session
 from services.schema import mutation, query
 from services.unread import get_total_unread_counter
 from services.viewed import ViewedStorage
-
-logging.basicConfig()
-logger = logging.getLogger('\t[resolvers.author]\t')
-logger.setLevel(logging.DEBUG)
+from services.logger import root_logger as logger
 
 
 def add_author_stat_columns(q):

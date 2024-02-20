@@ -3,11 +3,8 @@ from functools import wraps
 import httpx
 from dogpile.cache import make_region
 
-from services.logger import get_colorful_logger
 from settings import ADMIN_SECRET, AUTH_URL
-
-logger = get_colorful_logger('auth')
-
+from services.logger import root_logger as logger
 
 async def request_data(gql, headers=None):
     if headers is None:

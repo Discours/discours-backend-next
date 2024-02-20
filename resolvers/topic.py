@@ -1,5 +1,3 @@
-import logging
-
 from sqlalchemy import and_, distinct, func, select
 from sqlalchemy.orm import aliased
 
@@ -10,9 +8,7 @@ from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
 from services.viewed import ViewedStorage
-
-logger = logging.getLogger('\t[resolvers.topic]\t')
-logger.setLevel(logging.DEBUG)
+from services.logger import root_logger as logger
 
 
 async def followed_topics(follower_id):

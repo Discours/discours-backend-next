@@ -1,4 +1,3 @@
-import logging
 import time
 
 from sqlalchemy import and_, select
@@ -16,9 +15,7 @@ from services.diff import apply_diff, get_diff
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
-
-logger = logging.getLogger('[resolver.editor]')
-logger.setLevel(logging.DEBUG)
+from services.logger import root_logger as logger
 
 
 @query.field('get_shouts_drafts')

@@ -38,3 +38,5 @@ def get_colorful_logger(name='root'):
     logger.addHandler(stream)
 
     return logger
+
+root_logger = get_colorful_logger()

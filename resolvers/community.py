@@ -1,5 +1,3 @@
-import logging
-
 from sqlalchemy import and_, distinct, func, select
 from sqlalchemy.orm import aliased
 
@@ -8,9 +6,7 @@ from orm.community import Community, CommunityAuthor
 from orm.shout import ShoutCommunity
 from services.db import local_session
 from services.schema import query
-
-logger = logging.getLogger('\t[resolvers.community]\t')
-logger.setLevel(logging.DEBUG)
+from services.logger import root_logger as logger
 
 
 def add_community_stat_columns(q):

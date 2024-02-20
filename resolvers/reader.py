@@ -1,5 +1,3 @@
-import logging
-
 from sqlalchemy import bindparam, distinct, or_
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
@@ -16,9 +14,7 @@ from services.db import local_session
 from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
-
-logger = logging.getLogger('[resolvers.reader] ')
-logger.setLevel(logging.DEBUG)
+from services.logger import root_logger as logger
 
 
 def apply_filters(q, filters, author_id=None):
