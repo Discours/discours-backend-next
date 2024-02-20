@@ -1,8 +1,9 @@
 from granian.constants import Interfaces
 from granian.server import Granian
+from services.logger import root_logger as logger
 
 if __name__ == '__main__':
-    print('[server] started')
+    logger.info('started')
 
     granian_instance = Granian(
         'main:app',
@@ -10,6 +11,6 @@ if __name__ == '__main__':
         port=8000,
         threads=4,
         websockets=False,
-        interface=Interfaces.ASGI,
+        interface=Interfaces.ASGI
     )
     granian_instance.serve()

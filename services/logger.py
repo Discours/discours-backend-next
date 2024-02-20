@@ -1,7 +1,6 @@
 import logging
 import colorlog
 
-
 # Define the color scheme
 color_scheme = {
     'DEBUG': 'light_black',
@@ -19,20 +18,42 @@ secondary_colors = {
     'module': {'DEBUG': 'light_black,bg_blue'},
 }
 
+# Define the log format string
+fmt_string = "%(log_color)s%(levelname)s: %(log_color)s[%(module)s]%(reset)s %(white)s%(message)s"
+
+# Define formatting configuration
+fmt_config = {
+    'log_colors': color_scheme,
+    'secondary_log_colors': secondary_colors,
+    'style': '%',
+    'reset': True
+}
+
 # Create a ColoredFormatter object for colorized logging
-formatter = colorlog.ColoredFormatter(
-    "%(log_color)s%(levelname)s: %(log_color)s[%(module)s]%(reset)s %(white)s%(message)s",
-    log_colors=color_scheme,
-    secondary_log_colors=secondary_colors,  # Set secondary log colors
-    style='%',
-    reset=True
-)
+formatter = colorlog.ColoredFormatter(fmt_string, **fmt_config)
+
+
+class MultilineColoredFormatter(colorlog.ColoredFormatter):
+    def format(self, record):
+        # Check if the message is multiline
+        if record.getMessage() and '\n' in record.getMessage():
+            # Split the message into lines
+            lines = record.getMessage().split('\n')
+            formatted_lines = []
+            for line in lines:
+                # Format each line with the provided format
+                formatted_lines.append(super().format(record, line))
+            # Join the formatted lines
+            return '\n'.join(formatted_lines)
+        else:
+            # If not multiline or no message, use the default formatting
+            return super().format(record)
+
 
 def get_colorful_logger(name='main'):
-
     # Create a stream handler for logging output
     stream = logging.StreamHandler()
-    stream.setFormatter(formatter)
+    stream.setFormatter(MultilineColoredFormatter(fmt_string, **fmt_config))
 
     # Create and configure the logger
     logger = logging.getLogger(name)
@@ -41,8 +62,7 @@ def get_colorful_logger(name='main'):
 
     return logger
 
+# Set up the root logger with the same formatting
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)  # Set the log level
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
-root_logger.addHandler(stream_handler)
+root_logger.setLevel(logging.DEBUG)
+root_logger.addHandler(logging.StreamHandler())
