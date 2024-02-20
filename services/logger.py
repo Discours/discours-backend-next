@@ -25,8 +25,7 @@ def get_colorful_logger(name):
         log_colors=color_scheme,
         secondary_log_colors=secondary_colors,  # Set secondary log colors
         style='%',
-        reset=True,
-        msg_color='white'  # Set message color to white
+        reset=True
     )
 
     # Create a stream handler for logging output
