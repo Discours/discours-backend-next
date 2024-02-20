@@ -4,7 +4,7 @@ from multiprocessing import Manager
 
 from opensearchpy import OpenSearch
 
-from servies.logger import get_colorful_logger
+from services.logger import get_colorful_logger
 from services.rediscache import redis
 
 # os_logger = logging.getLogger(name='opensearch')
