@@ -1,7 +1,6 @@
 import time
 
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
 
 from services.db import Base
 
@@ -37,9 +36,6 @@ class Author(Base):
     about = Column(String, nullable=True, comment='About')  # long and formatted
     pic = Column(String, nullable=True, comment='Picture')
     links = Column(JSON, nullable=True, comment='Links')
-
-    ratings = relationship(AuthorRating, foreign_keys=AuthorRating.author, backref="author", cascade="all, delete-orphan", passive_deletes=True)
-
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     last_seen = Column(Integer, nullable=False, default=lambda: int(time.time()))
     updated_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
