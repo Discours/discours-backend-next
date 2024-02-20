@@ -26,4 +26,4 @@ class Community(Base):
     pic = Column(String, nullable=False, default='')
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
 
-    authors = relationship(Author, secondary='shout_author')
+    authors = relationship(Author, secondary='community_author')
