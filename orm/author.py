@@ -10,7 +10,7 @@ class AuthorRating(Base):
     __tablename__ = 'author_rating'
 
     id = None  # type: ignore
-    rater = Column(ForeignKey('author.id'), primary_key=True, index=True)
+    rater = Column(ForeignKey('author.id'), primary_key=True)
     author = Column(ForeignKey('author.id'), primary_key=True, index=True)
     plus = Column(Boolean)
 
@@ -19,7 +19,7 @@ class AuthorFollower(Base):
     __tablename__ = 'author_follower'
 
     id = None  # type: ignore
-    follower = Column(ForeignKey('author.id'), primary_key=True, index=True)
+    follower = Column(ForeignKey('author.id'), primary_key=True)
     author = Column(ForeignKey('author.id'), primary_key=True, index=True)
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     auto = Column(Boolean, nullable=False, default=False)
