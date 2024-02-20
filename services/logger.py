@@ -6,7 +6,7 @@ def get_colorful_logger(name):
     formatter = colorlog.ColoredFormatter(
         "%(log_color)s%(levelname)-8s%(reset)s %(yellow)s[%(name)s]%(reset)s %(white)s%(message)s",
         log_colors={
-            'DEBUG': 'grey',
+            'DEBUG': 'light_black',
             'INFO': 'green',
             'WARNING': 'yellow',
             'ERROR': 'red',
