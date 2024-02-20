@@ -38,7 +38,7 @@ class Author(Base):
     pic = Column(String, nullable=True, comment='Picture')
     links = Column(JSON, nullable=True, comment='Links')
 
-    ratings = relationship(AuthorRating, foreign_keys=AuthorRating.author)
+    ratings = relationship(AuthorRating, foreign_keys=AuthorRating.author, backref="author", cascade="all, delete-orphan", passive_deletes=True)
 
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     last_seen = Column(Integer, nullable=False, default=lambda: int(time.time()))
