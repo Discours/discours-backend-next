@@ -38,16 +38,13 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
             formatted_lines = []
             for line in lines:
                 # Format each line with the provided format
-                formatted_lines.append(self._format_line(record, line))
+                formatted_lines.append(super().format(record))
             # Join the formatted lines
             return '\n'.join(formatted_lines)
         else:
             # If not multiline or no message, use the default formatting
             return super().format(record)
 
-    def _format_line(self, record, line):
-        # Format each line with the provided format
-        return super().format(record, line)
 
 
 # Create a MultilineColoredFormatter object for colorized logging
