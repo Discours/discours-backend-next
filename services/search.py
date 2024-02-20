@@ -1,16 +1,15 @@
 import json
-import logging
 import os
 from multiprocessing import Manager
 
 from opensearchpy import OpenSearch
 
+from servies.logger import get_colorful_logger
 from services.rediscache import redis
 
-os_logger = logging.getLogger(name='opensearch')
-os_logger.setLevel(logging.INFO)
-logger = logging.getLogger('\t[services.search]\t')
-logger.setLevel(logging.DEBUG)
+# os_logger = logging.getLogger(name='opensearch')
+# os_logger.setLevel(logging.INFO)
+logger = get_colorful_logger('services.search')
 
 ELASTIC_HOST = os.environ.get('ELASTIC_HOST', '').replace('https://', '')
 ELASTIC_USER = os.environ.get('ELASTIC_USER', '')

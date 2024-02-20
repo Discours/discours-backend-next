@@ -1,11 +1,9 @@
-import logging
-
 import redis.asyncio as aredis
 
+from services.logger import get_colorful_logger
 from settings import REDIS_URL
 
-logger = logging.getLogger('[services.redis] ')
-logger.setLevel(logging.DEBUG)
+logger = get_colorful_logger('services.redis')
 
 
 class RedisCache:
