@@ -200,7 +200,7 @@ async def get_author_by_user_id(user_id: str):
     logger.info(f"getting author id for {user_id}")
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
-    await redis.execute("HSET", redis_key, author.dict())
+    await redis.execute("HSET", redis_key, **author.dict())
 
     return author
 

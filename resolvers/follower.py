@@ -137,7 +137,7 @@ async def get_follows_by_user_id(user_id: str):
 
         logger.debug(f"getting follows for {user_id}")
         follows = query_follows(user_id)
-        await redis.execute("HSET", redis_key, follows)
+        await redis.execute("HSET", redis_key, **follows)
 
         return follows
 

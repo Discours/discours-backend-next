@@ -48,7 +48,7 @@ class Author(Base):
 @event.listens_for(Author, "after_update")
 async def after_author_update(mapper, connection, target):
     redis_key = f"user:{target.user}:author"
-    await redis.execute("HSET", redis_key, vars(target))
+    await redis.execute("HSET", redis_key, **vars(target))
 
 
 async def update_follows_for_user(connection, user_id, entity_type, entity, is_insert):
@@ -70,7 +70,7 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
             e for e in follows[f"{entity_type}s"] if e["id"] != entity.id
         ]
 
-    await redis.execute("HSET", redis_key, vars(follows))
+    await redis.execute("HSET", redis_key, **vars(follows))
 
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
