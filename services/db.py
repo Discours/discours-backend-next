@@ -25,14 +25,15 @@ Base = declarative_base()
 # Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.info.setdefault('query_start_time', []).append(time.time())
+    conn.info.setdefault(f'query_start_time:{statement}', time.time())
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    total = time.time() - conn.info['query_start_time'].pop(-1)
+    total = time.time() - conn.info[f'query_start_time:{statement}']
+    del conn.info[f'query_start_time:{statement}']
     stars = '*' * math.floor(total*1000)
     if stars:
-        logger.debug(f'\n{statement}\n {stars} {total*1000} s')
+        logger.debug(f'\n{statement}\n {stars} {total*1000} s\n')
 
 
 def local_session(src=""):
