@@ -98,7 +98,13 @@ def query_follows(user_id: str):
         if isinstance(author, Author):
             author_id = author.id
             authors_query = (
-                select(column('name'), column('id'), column('slug'), column('pic'), column('bio'))
+                select(
+                    column('name'),
+                    column('id'),
+                    column('slug'),
+                    column('pic'),
+                    column('bio'),
+                )
                 .select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
@@ -114,29 +120,45 @@ def query_follows(user_id: str):
             topics_query = add_topic_stat_columns(topics_query)
 
             # Convert query results to lists of dictionaries
-            authors = [{
-                        'id': author.id,
-                        'name': author.name,
-                        'slug': author.slug,
-                        'pic': author.pic,
-                        'bio': author.bio,
-                        'stat': {
-                            'shouts': shouts_stat,
-                            'followers': followers_stat,
-                            'followings': followings_stat,
-                        }
-                    } for [author, shouts_stat, followers_stat, followings_stat] in session.execute(authors_query)]
-            topics = [{
-                        'id': topic.id,
-                        'title': topic.title,
-                        'slug': topic.slug,
-                        'body': topic.body,
-                        'stat': {
-                'shouts': shouts_stat,
-                'authors': authors_stat,
-                'followers': followers_stat,
-            }
-                    } for [topic, shouts_stat, authors_stat, followers_stat] in session.execute(topics_query)]
+            authors = [
+                {
+                    'id': author.id,
+                    'name': author.name,
+                    'slug': author.slug,
+                    'pic': author.pic,
+                    'bio': author.bio,
+                    'stat': {
+                        'shouts': shouts_stat,
+                        'followers': followers_stat,
+                        'followings': followings_stat,
+                    },
+                }
+                for [
+                    author,
+                    shouts_stat,
+                    followers_stat,
+                    followings_stat,
+                ] in session.execute(authors_query)
+            ]
+            topics = [
+                {
+                    'id': topic.id,
+                    'title': topic.title,
+                    'slug': topic.slug,
+                    'body': topic.body,
+                    'stat': {
+                        'shouts': shouts_stat,
+                        'authors': authors_stat,
+                        'followers': followers_stat,
+                    },
+                }
+                for [
+                    topic,
+                    shouts_stat,
+                    authors_stat,
+                    followers_stat,
+                ] in session.execute(topics_query)
+            ]
             # shouts_query = (
             #    session.query(Shout)
             #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)

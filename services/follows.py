@@ -103,14 +103,18 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
         ).first()
         if follower and author:
             await update_follows_for_user(
-                connection, follower.user, 'author', {
-                    "id": author.id,
-                    "name": author.name,
-                    "slug": author.slug,
-                    "pic": author.pic,
-                    "bio": author.bio,
-                    "stat": author.stat
-                }, is_insert
+                connection,
+                follower.user,
+                'author',
+                {
+                    'id': author.id,
+                    'name': author.name,
+                    'slug': author.slug,
+                    'pic': author.pic,
+                    'bio': author.bio,
+                    'stat': author.stat,
+                },
+                is_insert,
             )
 
 
@@ -132,16 +136,22 @@ async def handle_topic_follower_change(connection, topic_id, follower_id, is_ins
         ).first()
         if follower and topic:
             await update_follows_for_user(
-                connection, follower.user, 'topic', {
-                    "id": topic.id,
-                    "title": topic.title,
-                    "slug": topic.slug,
-                    "body": topic.body,
-                    "stat": topic.stat
-                }, is_insert
+                connection,
+                follower.user,
+                'topic',
+                {
+                    'id': topic.id,
+                    'title': topic.title,
+                    'slug': topic.slug,
+                    'body': topic.body,
+                    'stat': topic.stat,
+                },
+                is_insert,
             )
 
+
 BATCH_SIZE = 33
+
 
 class FollowsCached:
     lock = asyncio.Lock()
@@ -175,7 +185,7 @@ class FollowsCached:
                         'slug': author.slug,
                         'pic': author.pic,
                         'bio': author.bio,
-                        'stat': author.stat
+                        'stat': author.stat,
                     }
                 ),
             )
