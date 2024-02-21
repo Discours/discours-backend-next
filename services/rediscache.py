@@ -23,8 +23,8 @@ class RedisCache:
                 logger.debug(f"{command} {args} {kwargs}")
                 for arg in args:
                     if isinstance(arg, dict):
-                        if arg.get('_sa_instance_state'):
-                            del arg['_sa_instance_state']
+                        if arg.get("_sa_instance_state"):
+                            del arg["_sa_instance_state"]
                 r = await self._client.execute_command(command, *args, **kwargs)
                 logger.debug(type(r))
                 logger.debug(r)

@@ -193,7 +193,7 @@ async def get_author(_, _info, slug="", author_id=None):
 
 async def get_author_by_user_id(user_id: str):
     redis_key = f"user:{user_id}:author"
-    res = await redis.execute('GET', redis_key)
+    res = await redis.execute("GET", redis_key)
     if isinstance(res, str):
         author = json.loads(res)
         if author.get("id"):
@@ -204,7 +204,7 @@ async def get_author_by_user_id(user_id: str):
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
     if author:
-        await redis.execute('set', redis_key, json.dumps(author.dict()))
+        await redis.execute("set", redis_key, json.dumps(author.dict()))
         return author
 
 

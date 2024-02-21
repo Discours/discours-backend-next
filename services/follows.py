@@ -16,7 +16,7 @@ from services.viewed import ViewedStorage
 @event.listens_for(Author, "after_update")
 def after_author_update(mapper, connection, target):
     redis_key = f"user:{target.user}:author"
-    asyncio.create_task(redis.execute('set', redis_key, json.dumps(vars(target))))
+    asyncio.create_task(redis.execute("set", redis_key, json.dumps(vars(target))))
 
 
 @event.listens_for(TopicFollower, "after_insert")
@@ -67,7 +67,7 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
         follows[f"{entity_type}s"] = [
             e for e in follows[f"{entity_type}s"] if e["id"] != entity.id
         ]
-    await redis.execute('set', redis_key, json.dumps(follows))
+    await redis.execute("set", redis_key, json.dumps(follows))
 
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
@@ -125,14 +125,21 @@ class FollowsCached:
                     redis_key = f"user:{author.user}:author"
                     author_dict = author.dict()
                     if isinstance(author_dict, dict):
-                        filtered_author_dict = {k: v for k, v in author_dict.items() if v is not None}
-                        await redis.execute('set', redis_key, json.dumps(filtered_author_dict))
+                        filtered_author_dict = {
+                            k: v for k, v in author_dict.items() if v is not None
+                        }
+                        await redis.execute(
+                            "set", redis_key, json.dumps(filtered_author_dict)
+                        )
                     follows = await get_author_follows(None, None, user=author.user)
                     if isinstance(follows, dict):
-                        filtered_follows = {k: v for k, v in follows.items() if v is not None}
+                        filtered_follows = {
+                            k: v for k, v in follows.items() if v is not None
+                        }
                         redis_key = f"user:{author.user}:follows"
-                        await redis.execute('set', redis_key, json.dumps(filtered_follows))
-
+                        await redis.execute(
+                            "set", redis_key, json.dumps(filtered_follows)
+                        )
 
     @staticmethod
     async def worker():
