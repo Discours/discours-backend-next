@@ -5,13 +5,19 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
-from orm.community import Community
+
+# from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.author import add_author_stat_columns, get_authors_from_query
 from resolvers.community import community_follow, community_unfollow
-from resolvers.topic import topic_follow, topic_unfollow, add_topic_stat_columns, get_topics_from_query
+from resolvers.topic import (
+    topic_follow,
+    topic_unfollow,
+    add_topic_stat_columns,
+    get_topics_from_query,
+)
 from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_follower
@@ -85,7 +91,7 @@ async def unfollow(_, info, what, slug):
 def query_follows(user_id: str):
     topics = set()
     authors = set()
-    communities = []
+    # communities = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if isinstance(author, Author):
@@ -103,22 +109,23 @@ def query_follows(user_id: str):
                 .filter(TopicFollower.topic == Topic.id)
             )
 
-            shouts_query = (
-                session.query(Shout, ShoutReactionsFollower)
-                .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
-                .filter(ShoutReactionsFollower.shout == Shout.id)
-            )
+            # NOTE: this loads separated paginating query
+            # shouts_query = (
+            #    session.query(Shout, ShoutReactionsFollower)
+            #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
+            #    .filter(ShoutReactionsFollower.shout == Shout.id)
+            # )
 
             authors = set(session.execute(authors_query).scalars())
             topics = set(session.execute(topics_query).scalars())
-            shouts = set(session.execute(shouts_query).scalars())
-            communities = session.query(Community).all()
+            # shouts = set(session.execute(shouts_query).scalars())
+            # communities = session.query(Community).all()
 
     return {
         "topics": list(topics),
         "authors": list(authors),
-        "shouts": list(shouts),
-        "communities": communities,
+        # "shouts": list(shouts),
+        "communities": {"id": 1, "name": "Дискурс", "slug": "discours"},
     }
 
 
@@ -248,7 +255,7 @@ async def get_author_followers(_, _info, slug) -> List[Author]:
 
 @query.field("get_shout_followers")
 def get_shout_followers(
-        _, _info, slug: str = "", shout_id: int | None = None
+    _, _info, slug: str = "", shout_id: int | None = None
 ) -> List[Author]:
     followers = []
     with local_session() as session:

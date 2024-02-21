@@ -183,6 +183,6 @@ type Invite {
 type AuthorFollows {
   topics: [Topic]
   authors: [Author]
-  shouts: [Shout]
+  # shouts: [Shout]
   communities: [Community]
 }

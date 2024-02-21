@@ -3,7 +3,6 @@ from sqlalchemy import event, select
 from services.rediscache import redis
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
-from orm.shout import Shout, ShoutReactionsFollower
 
 
 @event.listens_for(Author, "after_insert")
@@ -20,7 +19,7 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
         follows = {
             "topics": [],
             "authors": [],
-            "shouts": [],
+            # "shouts": [],
             "communities": [
                 {"slug": "discours", "name": "Дискурс", "id": 1, "desc": ""}
             ],
@@ -48,17 +47,6 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
         )
 
 
-async def handle_shout_follower_change(connection, shout_id, follower_id, is_insert):
-    shout = connection.execute(select(Topic).filter(Shout.id == shout_id)).first()
-    follower = connection.execute(
-        select(Author).filter(Author.id == follower_id)
-    ).first()
-    if follower and shout:
-        await update_follows_for_user(
-            connection, follower.user, "shout", shout, is_insert
-        )
-
-
 async def handle_topic_follower_change(connection, topic_id, follower_id, is_insert):
     topic = connection.execute(select(Topic).filter(Topic.id == topic_id)).first()
     follower = connection.execute(
@@ -78,16 +66,6 @@ async def after_topic_follower_insert(mapper, connection, target):
 @event.listens_for(TopicFollower, "after_delete")
 async def after_topic_follower_delete(mapper, connection, target):
     await handle_topic_follower_change(connection, target.topic, target.follower, False)
-
-
-@event.listens_for(ShoutReactionsFollower, "after_insert")
-async def after_shout_follower_insert(mapper, connection, target):
-    await handle_shout_follower_change(connection, target.shout, target.follower, True)
-
-
-@event.listens_for(ShoutReactionsFollower, "after_delete")
-async def after_shout_follower_delete(mapper, connection, target):
-    await handle_shout_follower_change(connection, target.shout, target.follower, False)
 
 
 @event.listens_for(AuthorFollower, "after_insert")

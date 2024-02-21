@@ -9,7 +9,13 @@ from resolvers.author import (
 )
 from resolvers.community import get_communities_all, get_community
 from resolvers.editor import create_shout, delete_shout, update_shout
-from resolvers.follower import follow, unfollow, get_topic_followers, get_shout_followers, get_author_followers
+from resolvers.follower import (
+    follow,
+    unfollow,
+    get_topic_followers,
+    get_shout_followers,
+    get_author_followers,
+)
 from resolvers.reaction import (
     create_reaction,
     delete_reaction,
