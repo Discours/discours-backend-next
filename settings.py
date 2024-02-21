@@ -1,7 +1,7 @@
 import sys
 from os import environ
 
-PORT = 8080
+PORT = 8000
 DB_URL = (
     environ.get('DATABASE_URL', '').replace('postgres://', 'postgresql://')
     or environ.get('DB_URL', '').replace('postgres://', 'postgresql://')
