@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-from sqlalchemy import select, or_, column
+from sqlalchemy import select, or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import and_
 
@@ -11,7 +11,6 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import add_author_stat_columns
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
 from resolvers.stat import add_topic_stat_columns, get_topics_from_query
@@ -94,76 +93,88 @@ def query_follows(user_id: str):
         if isinstance(author, Author):
             author_id = author.id
             authors_query = (
-                select(
-                    column('name'),
-                    column('id'),
-                    column('slug'),
-                    column('pic'),
-                    column('bio'),
-                )
+                select([
+                    Author.name,
+                    Author.id,
+                    Author.slug,
+                    Author.pic,
+                    Author.bio,
+                    Author.shouts_stat,
+                    Author.followers_stat,
+                    Author.followings_stat,
+                ])
                 .select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
             )
-            authors_query = add_author_stat_columns(authors_query)
-
-            topics_query = (
-                select(column('title'), column('id'), column('slug'), column('body'))
-                .select_from(Topic)
-                .join(TopicFollower, TopicFollower.follower == author_id)
-                .filter(TopicFollower.topic == Topic.id)
-            )
-            topics_query = add_topic_stat_columns(topics_query)
-
-            # Convert query results to lists of dictionaries
             authors = [
                 {
-                    'id': author.id,
-                    'name': author.name,
-                    'slug': author.slug,
-                    'pic': author.pic,
-                    'bio': author.bio,
+                    'id': author_id,
+                    'name': name,
+                    'slug': slug,
+                    'pic': pic,
+                    'bio': bio,
                     'stat': {
                         'shouts': shouts_stat,
                         'followers': followers_stat,
                         'followings': followings_stat,
                     },
                 }
-                for [author, shouts_stat, followers_stat, followings_stat] in session.execute(authors_query)
+                for (
+                    name,
+                    author_id,
+                    slug,
+                    pic,
+                    bio,
+                    shouts_stat,
+                    followers_stat,
+                    followings_stat,
+                ) in session.execute(authors_query)
             ]
+
+            topics_query = (
+                select([
+                    Topic.title,
+                    Topic.id,
+                    Topic.slug,
+                    Topic.body,
+                    Topic.shouts_stat,
+                    Topic.authors_stat,
+                    Topic.followers_stat,
+                ])
+                .select_from(Topic)
+                .join(TopicFollower, TopicFollower.follower == author_id)
+                .filter(TopicFollower.topic == Topic.id)
+            )
             topics = [
                 {
-                    'id': topic.id,
-                    'title': topic.title,
-                    'slug': topic.slug,
-                    'body': topic.body,
+                    'id': topic_id,
+                    'title': title,
+                    'slug': slug,
+                    'body': body,
                     'stat': {
                         'shouts': shouts_stat,
                         'authors': authors_stat,
                         'followers': followers_stat,
                     },
                 }
-                for [
-                    topic,
+                for (
+                    title,
+                    topic_id,
+                    slug,
+                    body,
                     shouts_stat,
                     authors_stat,
                     followers_stat,
-                ] in session.execute(topics_query)
+                ) in session.execute(topics_query)
             ]
-            # shouts_query = (
-            #    session.query(Shout)
-            #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
-            #    .filter(ShoutReactionsFollower.shout == Shout.id)
-            #    .options(load_only(Shout.id))  # Exclude unnecessary columns
-            #    .all()
-            # )
-            # shouts = [shout.to_dict() for shout in shouts_query]
-            # communities = session.query(Community).all()
+
+            # Include other queries (e.g., shouts_query) if needed
 
     return {
         'topics': topics,
         'authors': authors,
-        # "shouts": shouts,
+        # Include other results (e.g., shouts) if needed
         'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
     }
 

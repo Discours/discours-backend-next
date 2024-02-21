@@ -9,7 +9,7 @@ from orm.author import Author, AuthorFollower, AuthorRating
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.follower import get_follows_by_user_id
+from resolvers.follower import query_follows
 from resolvers.stat import get_authors_from_query, add_author_stat_columns
 from services.auth import login_required
 from services.db import local_session
@@ -235,7 +235,7 @@ async def get_author_follows(
                 .first()
             )
         if user:
-            follows = await get_follows_by_user_id(user)
+            follows = query_follows(user)
             return follows
         else:
             raise ValueError('Author not found')
