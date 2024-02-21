@@ -7,7 +7,8 @@
         "description": "Checking if the app responds to the GET /",
         "path": "/",
         "attempts": 3,
-        "warn": true
+        "warn": true,
+        "initialDelay": 50
       }
     ]
   }
