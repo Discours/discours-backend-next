@@ -11,14 +11,10 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.author import add_author_stat_columns
+from resolvers.stat import add_author_stat_columns
 from resolvers.community import community_follow, community_unfollow
-from resolvers.topic import (
-    topic_follow,
-    topic_unfollow,
-    add_topic_stat_columns,
-    get_topics_from_query,
-)
+from resolvers.topic import topic_follow, topic_unfollow
+from resolvers.stat import add_topic_stat_columns, get_topics_from_query
 from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_follower

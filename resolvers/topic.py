@@ -1,53 +1,13 @@
 from sqlalchemy import and_, distinct, func, select
-from sqlalchemy.orm import aliased
 
 from orm.author import Author
-from orm.shout import ShoutAuthor, ShoutTopic
+from orm.shout import ShoutTopic
 from orm.topic import Topic, TopicFollower
+from resolvers.stat import add_topic_stat_columns, get_topics_from_query
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
-from services.viewed import ViewedStorage
 from services.logger import root_logger as logger
-
-
-def add_topic_stat_columns(q):
-    aliased_shout_author = aliased(ShoutAuthor)
-    aliased_topic_follower = aliased(TopicFollower)
-
-    q = (
-        q.outerjoin(ShoutTopic, Topic.id == ShoutTopic.topic)
-        .add_columns(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
-        .outerjoin(aliased_shout_author, ShoutTopic.shout == aliased_shout_author.shout)
-        .add_columns(
-            func.count(distinct(aliased_shout_author.author)).label('authors_stat')
-        )
-        .outerjoin(aliased_topic_follower)
-        .add_columns(
-            func.count(distinct(aliased_topic_follower.follower)).label(
-                'followers_stat'
-            )
-        )
-    )
-
-    q = q.group_by(Topic.id)
-
-    return q
-
-
-async def get_topics_from_query(q):
-    topics = []
-    with local_session() as session:
-        for [topic, shouts_stat, authors_stat, followers_stat] in session.execute(q):
-            topic.stat = {
-                'shouts': shouts_stat,
-                'authors': authors_stat,
-                'followers': followers_stat,
-                'viewed': await ViewedStorage.get_topic(topic.slug),
-            }
-            topics.append(topic)
-
-    return topics
 
 
 @query.field('get_topics_all')

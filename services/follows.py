@@ -4,12 +4,12 @@ import json
 
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.author import add_author_stat_columns, get_author_follows
-from resolvers.topic import add_topic_stat_columns
+from resolvers.stat import add_author_stat_columns, add_topic_stat_columns
+from resolvers.author import get_author_follows
 from services.logger import root_logger as logger
 from services.db import local_session
 from services.rediscache import redis
-from services.viewed import ViewedStorage
+# from services.viewed import ViewedStorage
 
 
 @event.listens_for(Author, 'after_insert')
@@ -94,7 +94,7 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
         ).first()
         author.stat = {
             'shouts': shouts_stat,
-            'viewed': await ViewedStorage.get_author(author.slug),
+            # 'viewed': await ViewedStorage.get_author(author.slug),
             'followers': followers_stat,
             'followings': followings_stat,
         }
@@ -122,14 +122,12 @@ async def handle_topic_follower_change(connection, topic_id, follower_id, is_ins
     q = select(Topic).filter(Topic.id == topic_id)
     q = add_topic_stat_columns(q)
     async with connection.begin() as conn:
-        [topic, shouts_stat, authors_stat, followers_stat] = await conn.execute(
-            q
-        ).first()
+        [topic, shouts_stat, authors_stat, followers_stat] = await conn.execute(q).first()
         topic.stat = {
             'shouts': shouts_stat,
             'authors': authors_stat,
             'followers': followers_stat,
-            'viewed': await ViewedStorage.get_topic(topic.slug),
+            # 'viewed': await ViewedStorage.get_topic(topic.slug),
         }
         follower = connection.execute(
             select(Author).filter(Author.id == follower_id)
@@ -162,14 +160,24 @@ class FollowsCached:
             q = select(Author)
             q = add_author_stat_columns(q)
             authors = session.execute(q)
-            for i in range(0, len(authors), BATCH_SIZE):
-                batch_authors = authors[i : i + BATCH_SIZE]
-                await asyncio.gather(
-                    *[
-                        FollowsCached.update_author_cache(author)
-                        for author in batch_authors
-                    ]
-                )
+            while True:
+                batch = authors.fetchmany(BATCH_SIZE)
+                if not batch:
+                    break
+                else:
+                    for [author, shouts_stat, followers_stat, followings_stat] in batch:
+                        await redis.execute('SET', f'user:{author.user}:author', json.dumps({
+                            'id': author.id,
+                            'name': author.name,
+                            'slug': author.slug,
+                            'pic': author.pic,
+                            'bio': author.bio,
+                            'stat': {
+                                'followings': followings_stat,
+                                'shouts': shouts_stat,
+                                'followers': followers_stat
+                            },
+                        }))
 
     @staticmethod
     async def update_author_cache(author: Author):
