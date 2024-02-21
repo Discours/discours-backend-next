@@ -161,7 +161,7 @@ class FollowsCached:
                         "slug": author.slug,
                         "pic": author.pic,
                     }
-                )
+                ),
             )
         follows = await get_author_follows(None, None, user=author.user)
         if isinstance(follows, dict):
