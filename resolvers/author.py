@@ -193,7 +193,7 @@ async def get_author(_, _info, slug="", author_id=None):
 async def get_author_by_user_id(user_id: str):
     redis_key = f"user:{user_id}:author"
     res = await redis.execute("HGET", redis_key)
-    if res:
+    if isinstance(res, dict) and res.get("id"):
         return res
 
     logger.info(f"getting author id for {user_id}")

@@ -19,12 +19,10 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
         follows = {
             "topics": [],
             "authors": [],
-            # "shouts": [],
             "communities": [
                 {"slug": "discours", "name": "Дискурс", "id": 1, "desc": ""}
             ],
         }
-    entity_type = "communitie" if entity_type == "community" else entity_type
     if is_insert:
         follows[f"{entity_type}s"].append(entity)
     else:
