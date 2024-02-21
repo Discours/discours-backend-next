@@ -98,19 +98,17 @@ def query_follows(user_id: str):
                 select(column('name'), column('id'), column('slug'), column('pic'), ).select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
-                .all()
             )
 
             topics_query = (
                 select(column('title'), column('id'), column('slug'), column('pic'), ).select_from(Author)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
-                .all()
             )
 
             # Convert query results to lists of dictionaries
-            authors = [author.to_dict() for author in authors_query]
-            topics = [topic.to_dict() for topic in topics_query]
+            authors = [author.to_dict() for author in session.execute(authors_query)]
+            topics = [topic.to_dict() for topic in session.execute(topics_query)]
             # shouts_query = (
             #    session.query(Shout)
             #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
