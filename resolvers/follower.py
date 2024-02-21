@@ -129,12 +129,7 @@ def query_follows(user_id: str):
                         'followings': followings_stat,
                     },
                 }
-                for [
-                    author,
-                    shouts_stat,
-                    followers_stat,
-                    followings_stat,
-                ] in session.execute(authors_query)
+                for [author, shouts_stat, followers_stat, followings_stat] in session.execute(authors_query)
             ]
             topics = [
                 {
