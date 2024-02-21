@@ -25,15 +25,21 @@ Base = declarative_base()
 # Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.info.setdefault(f'query_start_time:{statement}', time.time())
+    query_id = id(cursor)  # Уникальный идентификатор запроса
+    conn.info.setdefault(f'query_start_time:{query_id}', time.time())
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    total = time.time() - conn.info[f'query_start_time:{statement}']
-    del conn.info[f'query_start_time:{statement}']
-    stars = '*' * math.floor(total*1000)
-    if stars:
-        logger.debug(f'\n{statement}\n {stars} {total*1000} s\n')
+    query_id = id(cursor)  # Уникальный идентификатор запроса
+    if f'query_start_time:{query_id}' in conn.info:
+        total = time.time() - conn.info.get(f'query_start_time:{query_id}', time.time())
+        del conn.info[f'query_start_time:{query_id}']
+        stars = '*' * math.floor(total*1000)
+        if stars:
+            logger.debug(f'\n{statement}\n {stars} {total*1000} s\n')
+    else:
+        logger.error(f"Не удалось найти информацию о времени начала запроса с идентификатором {query_id}.")
+
 
 
 def local_session(src=""):
