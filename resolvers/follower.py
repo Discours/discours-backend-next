@@ -10,7 +10,6 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.author import add_author_stat_columns, get_authors_from_query
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import (
     topic_follow,
@@ -236,21 +235,6 @@ async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author
     )
 
     return await get_topics_from_query(q)
-
-
-@query.field("get_author_followers")
-async def get_author_followers(_, _info, slug) -> List[Author]:
-    q = select(Author)
-    q = add_author_stat_columns(q)
-
-    aliased_author = aliased(Author)
-    q = (
-        q.join(AuthorFollower, AuthorFollower.follower == Author.id)
-        .join(aliased_author, aliased_author.id == AuthorFollower.author)
-        .where(aliased_author.slug == slug)
-    )
-
-    return await get_authors_from_query(q)
 
 
 @query.field("get_shout_followers")

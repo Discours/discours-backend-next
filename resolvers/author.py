@@ -307,3 +307,18 @@ async def create_author(user_id: str, slug: str, name: str = ""):
         session.add(new_author)
         session.commit()
         logger.info(f"author created by webhook {new_author.dict()}")
+
+
+@query.field("get_author_followers")
+async def get_author_followers(_, _info, slug) -> List[Author]:
+    q = select(Author)
+    q = add_author_stat_columns(q)
+
+    aliased_author = aliased(Author)
+    q = (
+        q.join(AuthorFollower, AuthorFollower.follower == Author.id)
+        .join(aliased_author, aliased_author.id == AuthorFollower.author)
+        .where(aliased_author.slug == slug)
+    )
+
+    return await get_authors_from_query(q)

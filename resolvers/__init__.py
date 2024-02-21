@@ -1,6 +1,7 @@
 from resolvers.author import (
     get_author,
     get_author_follows,
+    get_author_followers,
     get_author_id,
     get_authors_all,
     load_authors_by,
@@ -14,7 +15,6 @@ from resolvers.follower import (
     unfollow,
     get_topic_followers,
     get_shout_followers,
-    get_author_followers,
 )
 from resolvers.reaction import (
     create_reaction,
