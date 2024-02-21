@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, column
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import and_
 
@@ -90,19 +90,19 @@ async def unfollow(_, info, what, slug):
 
 def query_follows(user_id: str):
     with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
+        aliased_author = aliased(Author)
+        author = session.query(aliased_author).filter(aliased_author.user == user_id).first()
         if isinstance(author, Author):
             author_id = author.id
-            aliased_author = aliased(Author)
             authors_query = (
-                session.query(aliased_author)
+                select(column('name'), column('id'), column('slug'), column('pic'), ).select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
-                .filter(AuthorFollower.author == aliased_author.id)
+                .filter(AuthorFollower.author == Author.id)
                 .all()
             )
 
             topics_query = (
-                session.query(Topic)
+                select(column('title'), column('id'), column('slug'), column('pic'), ).select_from(Author)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
                 .all()

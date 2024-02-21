@@ -47,7 +47,7 @@ def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     )
 
 
-async def update_follows_for_user(connection, user_id, entity_type, entity, is_insert):
+async def update_follows_for_user(connection, user_id, entity_type, entity: dict, is_insert):
     redis_key = f"user:{user_id}:follows"
     follows_str = await redis.get(redis_key)
     if follows_str:
@@ -61,12 +61,10 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
             ],
         }
     if is_insert:
-        follows[f"{entity_type}s"].append(entity.dict())
+        follows[f"{entity_type}s"].append(entity)
     else:
         # Remove the entity from follows
-        follows[f"{entity_type}s"] = [
-            e for e in follows[f"{entity_type}s"] if e["id"] != entity.id
-        ]
+        follows[f"{entity_type}s"] = [e for e in follows[f"{entity_type}s"] if e["id"] != entity['id']]
     await redis.execute("set", redis_key, json.dumps(follows))
 
 
@@ -88,7 +86,7 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
         ).first()
         if follower and author:
             await update_follows_for_user(
-                connection, follower.user, "author", author, is_insert
+                connection, follower.user, "author", author.dict(), is_insert
             )
 
 
@@ -110,7 +108,7 @@ async def handle_topic_follower_change(connection, topic_id, follower_id, is_ins
         ).first()
         if follower and topic:
             await update_follows_for_user(
-                connection, follower.user, "topic", topic, is_insert
+                connection, follower.user, "topic", topic.dict(), is_insert
             )
 
 
