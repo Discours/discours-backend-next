@@ -229,11 +229,12 @@ async def get_author_follows(
 ) -> List[Author]:
     with local_session() as session:
         if not user and (author_id or slug):
-            user = (
+            user_query_result = (
                 session.query(Author.user)
                 .where(or_(Author.id == author_id, Author.slug == slug))
                 .first()
             )
+            user = user_query_result[0] if user_query_result else None
         if user:
             follows = query_follows(user)
             return follows
