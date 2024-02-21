@@ -84,6 +84,8 @@ async def unfollow(_, info, what, slug):
 
 
 def query_follows(user_id: str):
+    topics = []
+    authors = []
     with local_session() as session:
         author_id = (
             session.query(Author.id).filter(Author.user == user_id).first()
