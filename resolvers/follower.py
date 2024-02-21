@@ -101,13 +101,21 @@ def query_follows(user_id: str):
                 .filter(TopicFollower.topic == Topic.id)
             )
 
+            shouts_query = (
+                session.query(Shout, ShoutReactionsFollower)
+                .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
+                .filter(ShoutReactionsFollower.shout == Shout.id)
+            )
+
             authors = set(session.execute(authors_query).scalars())
             topics = set(session.execute(topics_query).scalars())
+            shouts = set(session.execute(shouts_query).scalars())
             communities = session.query(Community).all()
 
     return {
         "topics": list(topics),
         "authors": list(authors),
+        "shouts": list(shouts),
         "communities": communities,
     }
 

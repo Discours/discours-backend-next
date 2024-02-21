@@ -248,7 +248,7 @@ async def get_author_follows(
     _, _info, slug="", user=None, author_id=None
 ) -> List[Author]:
     user_id = user
-    if author_id or slug:
+    if not user_id and author_id or slug:
         with local_session() as session:
             author = (
                 session.query(Author)
@@ -258,8 +258,9 @@ async def get_author_follows(
             user_id = author.user
 
     if user_id:
-        follows = await get_follows_by_user_id(user)
+        follows = await get_follows_by_user_id(user_id)
         return follows
+
     else:
         raise ValueError("Author not found")
 
