@@ -7,7 +7,7 @@ from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
 
-from services.follows import FollowsCached
+from services.follows import start_cached_follows
 from services.rediscache import redis
 from services.schema import resolvers
 from services.search import search_service
@@ -37,7 +37,7 @@ app = Starlette(
     on_startup=[
         redis.connect,
         ViewedStorage.init,
-        FollowsCached.worker,
+        start_cached_follows,
         search_service.info,
         # start_sentry,
         start,

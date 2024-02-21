@@ -119,17 +119,24 @@ class FollowsCached:
 
     @staticmethod
     async def update_cache():
+        BATCH_SIZE = 30  # Adjust batch size as needed
         with local_session() as session:
-            for author in session.query(Author).all():
-                if isinstance(author, Author):
-                    redis_key = f"user:{author.user}:author"
-                    author_dict = author.dict()
-                    if isinstance(author_dict, dict):
-                        await redis.execute("set", redis_key, json.dumps(author_dict))
-                    follows = await get_author_follows(None, None, user=author.user)
-                    if isinstance(follows, dict):
-                        redis_key = f"user:{author.user}:follows"
-                        await redis.execute("set", redis_key, json.dumps(follows))
+            authors = session.query(Author).all()
+            total_authors = len(authors)
+            for i in range(0, total_authors, BATCH_SIZE):
+                batch_authors = authors[i:i+BATCH_SIZE]
+                await asyncio.gather(*[FollowsCached.update_author_cache(author) for author in batch_authors])
+
+    @staticmethod
+    async def update_author_cache(author):
+        redis_key = f"user:{author.user}:author"
+        author_dict = author.dict()
+        if isinstance(author_dict, dict):
+            await redis.execute("set", redis_key, json.dumps(author_dict))
+        follows = await get_author_follows(None, None, user=author.user)
+        if isinstance(follows, dict):
+            redis_key = f"user:{author.user}:follows"
+            await redis.execute("set", redis_key, json.dumps(follows))
 
     @staticmethod
     async def worker():
@@ -146,3 +153,6 @@ class FollowsCached:
                 break
             except Exception as exc:
                 logger.error(exc)
+
+async def start_cached_follows():
+    await FollowsCached.worker()
