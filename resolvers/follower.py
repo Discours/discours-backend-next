@@ -107,8 +107,8 @@ def query_follows(user_id: str):
             )
 
             # Convert query results to lists of dictionaries
-            authors = [author.to_dict() for author in session.execute(authors_query)]
-            topics = [topic.to_dict() for topic in session.execute(topics_query)]
+            authors = [author.dict() for author in session.execute(authors_query)]
+            topics = [topic.dict() for topic in session.execute(topics_query)]
             # shouts_query = (
             #    session.query(Shout)
             #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
