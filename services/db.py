@@ -25,15 +25,20 @@ Base = declarative_base()
 # Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, "before_cursor_execute")
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.info.setdefault("query_start_time", []).append(time.time())
+    if "query_start_time" not in conn.info:
+        conn.info["query_start_time"] = []
+    conn.info["query_start_time"].append(time.time())
 
 
 @event.listens_for(Engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    total = time.time() - conn.info["query_start_time"].pop(-1)
-    stars = "*" * math.floor(total * 1000)
-    if stars:
-        logger.debug(f"{statement}\n{stars} {total*1000} s\n")
+    if "query_start_time" in conn.info and conn.info["query_start_time"]:
+        total = time.time() - conn.info["query_start_time"].pop()
+        stars = "*" * math.floor(total * 1000)
+        if stars:
+            logger.debug(f"{statement}\n{stars} {total*1000} s\n")
+    else:
+        logger.error("query_start_time is missing or empty.")
 
 
 def local_session(src=""):
