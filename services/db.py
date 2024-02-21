@@ -57,7 +57,7 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         elapsed = time.time() - conn._query_start_time
         del conn._query_start_time
         if elapsed > 0.2:  # Adjust threshold as needed
-            print(f"{'*' * math.floor(elapsed)} {elapsed:.3f} seconds to execute.")
+            logger.debug(f"{'*' * math.floor(elapsed)} {elapsed:.3f} seconds to execute.")
             # Profile the query if execution time exceeds the threshold
             profiler = profile_sqlalchemy_queries(threshold=0.2)(cursor.execute)
             profiler(statement, parameters)
