@@ -8,7 +8,7 @@
         "path": "/",
         "attempts": 3,
         "warn": true,
-        "initialDelay": 50
+        "initialDelay": 1
       }
     ]
   }
