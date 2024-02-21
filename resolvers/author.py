@@ -192,7 +192,7 @@ async def get_author(_, _info, slug="", author_id=None):
 
 async def get_author_by_user_id(user_id: str):
     redis_key = f"user:{user_id}:author"
-    res = await redis.execute("HGET", redis_key)
+    res = await redis.hget(redis_key)
     if isinstance(res, dict) and res.get("id"):
         logger.debug(f"got cached author: {res}")
         return res
@@ -200,7 +200,7 @@ async def get_author_by_user_id(user_id: str):
     logger.info(f"getting author id for {user_id}")
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
-    await redis.execute("HSET", redis_key, **author.dict())
+    await redis.hset(redis_key, **author.dict())
 
     return author
 

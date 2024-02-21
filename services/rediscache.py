@@ -21,6 +21,10 @@ class RedisCache:
         if self._client:
             try:
                 logger.debug(f"{command} {args} {kwargs}")
+                for arg in args:
+                    if isinstance(arg, dict):
+                        if arg.get('_sa_instance_state'):
+                            del arg['_sa_instance_state']
                 r = await self._client.execute_command(command, *args, **kwargs)
                 logger.debug(type(r))
                 logger.debug(r)
@@ -47,6 +51,13 @@ class RedisCache:
         if not self._client:
             return
         await self._client.publish(channel, data)
+
+    async def hset(self, hash_key: str, fields_values: dict):
+        return await self._client.hset(hash_key, mapping=fields_values)
+
+
+    async def hget(self, hash_key: str):
+        return await self._client.hget(hash_key)
 
 
 redis = RedisCache()

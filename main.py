@@ -7,6 +7,7 @@ from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
 
+from resolvers.author_events import update_cache, scheduled_cache_update
 from services.rediscache import redis
 from services.schema import resolvers
 from services.search import search_service
@@ -36,6 +37,8 @@ app = Starlette(
     on_startup=[
         redis.connect,
         ViewedStorage.init,
+        update_cache,
+        scheduled_cache_update,
         search_service.info,
         # start_sentry,
         start,
