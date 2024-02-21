@@ -37,8 +37,6 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         stars = '*' * math.floor(total*1000)
         if stars:
             logger.debug(f'\n{statement}\n {stars} {total*1000} s\n')
-    else:
-        logger.error(f"Не удалось найти информацию о времени начала запроса с идентификатором {query_id}.")
 
 
 
