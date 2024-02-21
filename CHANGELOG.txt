@@ -1,5 +1,6 @@
 [0.3.2]
 - redis cache for what author follows
+- graphql add query: get topic followers
 
 [0.3.1]
 - enabling sentry

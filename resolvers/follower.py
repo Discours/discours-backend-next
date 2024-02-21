@@ -1,5 +1,6 @@
 from typing import List
 
+from sqlalchemy import select, or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import and_
 
@@ -8,8 +9,9 @@ from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
+from resolvers.author import add_author_stat_columns, get_authors_from_query
 from resolvers.community import community_follow, community_unfollow
-from resolvers.topic import topic_follow, topic_unfollow
+from resolvers.topic import topic_follow, topic_unfollow, add_topic_stat_columns, get_topics_from_query
 from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_follower
@@ -121,42 +123,17 @@ def query_follows(user_id: str):
 
 
 async def get_follows_by_user_id(user_id: str):
-    redis_key = f"user:{user_id}:follows"
-    res = await redis.execute("HGET", redis_key)
-    if res:
-        return res
+    if user_id:
+        redis_key = f"user:{user_id}:follows"
+        res = await redis.execute("HGET", redis_key)
+        if res:
+            return res
 
-    logger.info(f"getting follows for {user_id}")
-    follows = query_follows(user_id)
-    await redis.execute("HSET", redis_key, follows)
+        logger.debug(f"getting follows for {user_id}")
+        follows = query_follows(user_id)
+        await redis.execute("HSET", redis_key, follows)
 
-    return follows
-
-
-@query.field("get_my_followed")
-@login_required
-async def get_my_followed(_, info):
-    user_id = info.context["user_id"]
-    return await get_follows_by_user_id(user_id)
-
-
-@query.field("get_shout_followers")
-def get_shout_followers(
-    _, _info, slug: str = "", shout_id: int | None = None
-) -> List[Author]:
-    followers = []
-    with local_session() as session:
-        shout = None
-        if slug:
-            shout = session.query(Shout).filter(Shout.slug == slug).first()
-        elif shout_id:
-            shout = session.query(Shout).filter(Shout.id == shout_id).first()
-        if shout:
-            reactions = session.query(Reaction).filter(Reaction.shout == shout.id).all()
-            for r in reactions:
-                followers.append(r.created_by)
-
-    return followers
+        return follows
 
 
 def reactions_follow(author_id, shout_id, auto=False):
@@ -238,3 +215,51 @@ def author_unfollow(follower_id, slug):
             session.commit()
             return True
     return False
+
+
+@query.field("get_topic_followers")
+async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
+    q = select(Author)
+    q = add_topic_stat_columns(q)
+
+    q = (
+        q.join(TopicFollower, TopicFollower.follower == Author.id)
+        .join(Topic, Topic.id == TopicFollower.topic)
+        .filter(or_(Topic.slug == slug, Topic.id == topic_id))
+    )
+
+    return await get_topics_from_query(q)
+
+
+@query.field("get_author_followers")
+async def get_author_followers(_, _info, slug) -> List[Author]:
+    q = select(Author)
+    q = add_author_stat_columns(q)
+
+    aliased_author = aliased(Author)
+    q = (
+        q.join(AuthorFollower, AuthorFollower.follower == Author.id)
+        .join(aliased_author, aliased_author.id == AuthorFollower.author)
+        .where(aliased_author.slug == slug)
+    )
+
+    return await get_authors_from_query(q)
+
+
+@query.field("get_shout_followers")
+def get_shout_followers(
+        _, _info, slug: str = "", shout_id: int | None = None
+) -> List[Author]:
+    followers = []
+    with local_session() as session:
+        shout = None
+        if slug:
+            shout = session.query(Shout).filter(Shout.slug == slug).first()
+        elif shout_id:
+            shout = session.query(Shout).filter(Shout.id == shout_id).first()
+        if shout:
+            reactions = session.query(Reaction).filter(Reaction.shout == shout.id).all()
+            for r in reactions:
+                followers.append(r.created_by)
+
+    return followers

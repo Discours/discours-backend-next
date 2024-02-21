@@ -265,21 +265,6 @@ async def get_author_follows(
         raise ValueError("Author not found")
 
 
-@query.field("get_author_followers")
-async def get_author_followers(_, _info, slug) -> List[Author]:
-    q = select(Author)
-    q = add_author_stat_columns(q)
-
-    aliased_author = aliased(Author)
-    q = (
-        q.join(AuthorFollower, AuthorFollower.follower == Author.id)
-        .join(aliased_author, aliased_author.id == AuthorFollower.author)
-        .where(aliased_author.slug == slug)
-    )
-
-    return await get_authors_from_query(q)
-
-
 @mutation.field("rate_author")
 @login_required
 async def rate_author(_, info, rated_slug, value):

@@ -1,7 +1,6 @@
 from resolvers.author import (
     get_author,
     get_author_follows,
-    get_author_followers,
     get_author_id,
     get_authors_all,
     load_authors_by,
@@ -10,7 +9,7 @@ from resolvers.author import (
 )
 from resolvers.community import get_communities_all, get_community
 from resolvers.editor import create_shout, delete_shout, update_shout
-from resolvers.follower import follow, get_my_followed, unfollow
+from resolvers.follower import follow, unfollow, get_topic_followers, get_shout_followers, get_author_followers
 from resolvers.reaction import (
     create_reaction,
     delete_reaction,
@@ -39,9 +38,8 @@ __all__ = [
     # author
     "get_author",
     "get_author_id",
-    "get_authors_all",
-    "get_author_followers",
     "get_author_follows",
+    "get_authors_all",
     "load_authors_by",
     "rate_author",
     "update_author",
@@ -65,7 +63,9 @@ __all__ = [
     # follower
     "follow",
     "unfollow",
-    "get_my_followed",
+    "get_topic_followers",
+    "get_shout_followers",
+    "get_author_followers",
     # editor
     "create_shout",
     "update_shout",
