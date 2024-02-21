@@ -98,8 +98,6 @@ def query_follows(user_id: str):
                 session.query(aliased_author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == aliased_author.id)
-                # .options(load_only(aliased_author.id))  # TODO: Exclude unnecessary columns
-                .dicts()
                 .all()
             )
 
@@ -107,23 +105,20 @@ def query_follows(user_id: str):
                 session.query(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
-                # .options(load_only(Topic.id))  # TODO: Exclude unnecessary columns
-                .dicts()
                 .all()
             )
 
             # Convert query results to lists of dictionaries
-            authors = set(authors_query)
-            topics = set(topics_query)
+            authors = [author.to_dict() for author in authors_query]
+            topics = [topic.to_dict() for topic in topics_query]
             # shouts_query = (
             #    session.query(Shout)
             #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
             #    .filter(ShoutReactionsFollower.shout == Shout.id)
             #    .options(load_only(Shout.id))  # Exclude unnecessary columns
-            #    .dicts()
             #    .all()
             # )
-            # shouts = list(shouts_query)
+            # shouts = [shout.to_dict() for shout in shouts_query]
             # communities = session.query(Community).all()
 
     return {
@@ -132,7 +127,6 @@ def query_follows(user_id: str):
         # "shouts": shouts,
         "communities": [{"id": 1, "name": "Дискурс", "slug": "discours"}],
     }
-
 
 
 async def get_follows_by_user_id(user_id: str):

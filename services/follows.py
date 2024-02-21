@@ -124,8 +124,13 @@ class FollowsCached:
             authors = session.query(Author).all()
             total_authors = len(authors)
             for i in range(0, total_authors, BATCH_SIZE):
-                batch_authors = authors[i:i+BATCH_SIZE]
-                await asyncio.gather(*[FollowsCached.update_author_cache(author) for author in batch_authors])
+                batch_authors = authors[i : i + BATCH_SIZE]
+                await asyncio.gather(
+                    *[
+                        FollowsCached.update_author_cache(author)
+                        for author in batch_authors
+                    ]
+                )
 
     @staticmethod
     async def update_author_cache(author):
@@ -153,6 +158,7 @@ class FollowsCached:
                 break
             except Exception as exc:
                 logger.error(exc)
+
 
 async def start_cached_follows():
     await FollowsCached.worker()
