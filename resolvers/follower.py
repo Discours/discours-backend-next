@@ -124,7 +124,7 @@ def query_follows(user_id: str):
         "topics": list(topics),
         "authors": list(authors),
         # "shouts": list(shouts),
-        "communities": {"id": 1, "name": "Дискурс", "slug": "discours"},
+        "communities": [{"id": 1, "name": "Дискурс", "slug": "discours"}],
     }
 
 
