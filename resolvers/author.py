@@ -1,3 +1,4 @@
+import json
 import time
 from typing import List
 
@@ -192,17 +193,19 @@ async def get_author(_, _info, slug="", author_id=None):
 
 async def get_author_by_user_id(user_id: str):
     redis_key = f"user:{user_id}:author"
-    res = await redis.hget(redis_key)
-    if isinstance(res, dict) and res.get("id"):
-        logger.debug(f"got cached author: {res}")
-        return res
+    res = await redis.execute('GET', redis_key)
+    if isinstance(res, str):
+        author = json.loads(res)
+        if author.get("id"):
+            logger.debug(f"got cached author: {author}")
+            return author
 
     logger.info(f"getting author id for {user_id}")
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
-    await redis.hset(redis_key, **author.dict())
-
-    return author
+    if author:
+        await redis.execute('set', redis_key, json.dumps(author.dict()))
+        return author
 
 
 @query.field("get_author_id")

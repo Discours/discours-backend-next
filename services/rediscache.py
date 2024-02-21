@@ -52,13 +52,6 @@ class RedisCache:
             return
         await self._client.publish(channel, data)
 
-    async def hset(self, hash_key: str, fields_values: dict):
-        return await self._client.hset(hash_key, mapping=fields_values)
-
-
-    async def hget(self, hash_key: str):
-        return await self._client.hget(hash_key)
-
 
 redis = RedisCache()
 

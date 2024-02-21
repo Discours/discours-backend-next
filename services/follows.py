@@ -1,37 +1,22 @@
 import asyncio
-from aiocron import crontab
 from sqlalchemy import select, event
+import json
 
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.author import add_author_stat_columns, get_author_follows
 from resolvers.topic import add_topic_stat_columns
+from services.logger import root_logger as logger
 from services.db import local_session
 from services.rediscache import redis
 from services.viewed import ViewedStorage
-
-
-async def update_cache():
-    with local_session() as session:
-        for author in session.query(Author).all():
-            redis_key = f"user:{author.user}:author"
-            await redis.hset(redis_key, **vars(author))
-            follows = await get_author_follows(None, None, user=author.user)
-            if isinstance(follows, dict):
-                redis_key = f"user:{author.user}:follows"
-                await redis.hset(redis_key, **follows)
-
-
-@crontab("*/10 * * * *", func=update_cache)
-async def scheduled_cache_update():
-    pass
 
 
 @event.listens_for(Author, "after_insert")
 @event.listens_for(Author, "after_update")
 def after_author_update(mapper, connection, target):
     redis_key = f"user:{target.user}:author"
-    asyncio.create_task(redis.hset(redis_key, **vars(target)))
+    asyncio.create_task(redis.execute('set', redis_key, json.dumps(vars(target))))
 
 
 @event.listens_for(TopicFollower, "after_insert")
@@ -64,8 +49,10 @@ def after_author_follower_delete(mapper, connection, target):
 
 async def update_follows_for_user(connection, user_id, entity_type, entity, is_insert):
     redis_key = f"user:{user_id}:follows"
-    follows = await redis.hget(redis_key)
-    if not follows:
+    follows_str = await redis.get(redis_key)
+    if follows_str:
+        follows = json.loads(follows_str)
+    else:
         follows = {
             "topics": [],
             "authors": [],
@@ -80,8 +67,7 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
         follows[f"{entity_type}s"] = [
             e for e in follows[f"{entity_type}s"] if e["id"] != entity.id
         ]
-
-    await redis.hset(redis_key, **vars(follows))
+    await redis.execute('set', redis_key, json.dumps(follows))
 
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
@@ -126,3 +112,40 @@ async def handle_topic_follower_change(connection, topic_id, follower_id, is_ins
             await update_follows_for_user(
                 connection, follower.user, "topic", topic, is_insert
             )
+
+
+class FollowsCached:
+    lock = asyncio.Lock()
+
+    @staticmethod
+    async def update_cache():
+        with local_session() as session:
+            for author in session.query(Author).all():
+                if isinstance(author, Author):
+                    redis_key = f"user:{author.user}:author"
+                    author_dict = author.dict()
+                    if isinstance(author_dict, dict):
+                        filtered_author_dict = {k: v for k, v in author_dict.items() if v is not None}
+                        await redis.execute('set', redis_key, json.dumps(filtered_author_dict))
+                    follows = await get_author_follows(None, None, user=author.user)
+                    if isinstance(follows, dict):
+                        filtered_follows = {k: v for k, v in follows.items() if v is not None}
+                        redis_key = f"user:{author.user}:follows"
+                        await redis.execute('set', redis_key, json.dumps(filtered_follows))
+
+
+    @staticmethod
+    async def worker():
+        """Асинхронная задача обновления"""
+        self = FollowsCached
+        while True:
+            try:
+                await self.update_cache()
+                await asyncio.sleep(10 * 60 * 60)
+            except asyncio.CancelledError:
+                # Handle cancellation due to SIGTERM
+                logger.info("Cancellation requested. Cleaning up...")
+                # Perform any necessary cleanup before exiting the loop
+                break
+            except Exception as exc:
+                logger.error(exc)

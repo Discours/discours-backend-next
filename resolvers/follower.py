@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from sqlalchemy import select, or_
@@ -131,13 +132,14 @@ def query_follows(user_id: str):
 async def get_follows_by_user_id(user_id: str):
     if user_id:
         redis_key = f"user:{user_id}:follows"
-        res = await redis.hget(redis_key)
-        if res:
-            return res
+        res = await redis.execute('GET', redis_key)
+        if isinstance(res, str):
+            follows = json.loads(res)
+            return follows
 
         logger.debug(f"getting follows for {user_id}")
         follows = query_follows(user_id)
-        await redis.hset(redis_key, **follows)
+        await redis.execute('SET', redis_key, json.dumps(follows))
 
         return follows
 
