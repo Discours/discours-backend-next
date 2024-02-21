@@ -98,10 +98,7 @@ def query_follows(user_id: str):
                     Author.id,
                     Author.slug,
                     Author.pic,
-                    Author.bio,
-                    Author.shouts_stat,
-                    Author.followers_stat,
-                    Author.followings_stat,
+                    Author.bio
                 ])
                 .select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
@@ -138,9 +135,6 @@ def query_follows(user_id: str):
                     Topic.id,
                     Topic.slug,
                     Topic.body,
-                    Topic.shouts_stat,
-                    Topic.authors_stat,
-                    Topic.followers_stat,
                 ])
                 .select_from(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
