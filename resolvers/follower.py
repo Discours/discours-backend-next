@@ -93,24 +93,17 @@ def query_follows(user_id: str):
         if isinstance(author, Author):
             author_id = author.id
             authors_query = (
-                select([
-                    Author.name,
-                    Author.id,
-                    Author.slug,
-                    Author.pic,
-                    Author.bio
-                ])
-                .select_from(Author)
+                select(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
             )
             authors = [
                 {
-                    'id': author_id,
-                    'name': name,
-                    'slug': slug,
-                    'pic': pic,
-                    'bio': bio,
+                    'id': author.id,
+                    'name': author.name,
+                    'slug': author.slug,
+                    'pic': author.pic,
+                    'bio': author.bio,
                     'stat': {
                         'shouts': shouts_stat,
                         'followers': followers_stat,
@@ -118,11 +111,7 @@ def query_follows(user_id: str):
                     },
                 }
                 for (
-                    name,
-                    author_id,
-                    slug,
-                    pic,
-                    bio,
+                    author,
                     shouts_stat,
                     followers_stat,
                     followings_stat,
@@ -130,22 +119,16 @@ def query_follows(user_id: str):
             ]
 
             topics_query = (
-                select([
-                    Topic.title,
-                    Topic.id,
-                    Topic.slug,
-                    Topic.body,
-                ])
-                .select_from(Topic)
+                select(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
             )
             topics = [
                 {
-                    'id': topic_id,
-                    'title': title,
-                    'slug': slug,
-                    'body': body,
+                    'id': topic.id,
+                    'title': topic.title,
+                    'slug': topic.slug,
+                    'body': topic.body,
                     'stat': {
                         'shouts': shouts_stat,
                         'authors': authors_stat,
@@ -153,17 +136,14 @@ def query_follows(user_id: str):
                     },
                 }
                 for (
-                    title,
-                    topic_id,
-                    slug,
-                    body,
+                    topic,
                     shouts_stat,
                     authors_stat,
                     followers_stat,
                 ) in session.execute(topics_query)
             ]
 
-            # Include other queries (e.g., shouts_query) if needed
+            # TODO: Include other queries (e.g., shouts_query) if needed
 
     return {
         'topics': topics,
