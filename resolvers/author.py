@@ -206,7 +206,7 @@ async def get_author_by_user_id(user_id: str):
 
 @query.field("get_author_id")
 async def get_author_id(_, _info, user: str):
-    return get_author_by_user_id(user)
+    return await get_author_by_user_id(user)
 
 
 @query.field("load_authors_by")
