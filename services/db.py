@@ -22,6 +22,7 @@ T = TypeVar("T")
 REGISTRY: Dict[str, type] = {}
 Base = declarative_base()
 
+
 def profile_sqlalchemy_queries(threshold=0.1):
     def decorator(fn):
         @wraps(fn)
@@ -30,11 +31,14 @@ def profile_sqlalchemy_queries(threshold=0.1):
             if elapsed is not None:
                 print(f"Query took {elapsed:.3f} seconds to execute.")
                 stats = stat_loader()
-                stats.sort_stats('cumulative')
+                stats.sort_stats("cumulative")
                 stats.print_stats()
             return result
+
         return wrapper
+
     return decorator
+
 
 def _profile(fn, threshold, *args, **kw):
     began = time.time()
@@ -46,22 +50,25 @@ def _profile(fn, threshold, *args, **kw):
     else:
         return None, None, result
 
+
 # Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, "before_cursor_execute")
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn._query_start_time = time.time()
 
+
 @event.listens_for(Engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    if hasattr(conn, '_query_start_time'):
+    if hasattr(conn, "_query_start_time"):
         elapsed = time.time() - conn._query_start_time
         del conn._query_start_time
         if elapsed > 0.2:  # Adjust threshold as needed
-            logger.debug(f"{'*' * math.floor(elapsed)} {elapsed:.3f} seconds to execute.")
+            logger.debug(
+                f"{'*' * math.floor(elapsed)} {elapsed:.3f} seconds to execute."
+            )
             # Profile the query if execution time exceeds the threshold
             profiler = profile_sqlalchemy_queries(threshold=0.2)(cursor.execute)
             profiler(statement, parameters)
-
 
 
 def local_session(src=""):

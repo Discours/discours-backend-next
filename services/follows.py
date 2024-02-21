@@ -14,34 +14,34 @@ from services.viewed import ViewedStorage
 
 @event.listens_for(Author, "after_insert")
 @event.listens_for(Author, "after_update")
-def after_author_update(mapper, connection, target):
+def after_author_update(mapper, connection, target: Author):
     redis_key = f"user:{target.user}:author"
-    asyncio.create_task(redis.execute("set", redis_key, json.dumps(vars(target))))
+    asyncio.create_task(redis.execute("set", redis_key, json.dumps(target.dict())))
 
 
 @event.listens_for(TopicFollower, "after_insert")
-def after_topic_follower_insert(mapper, connection, target):
+def after_topic_follower_insert(mapper, connection, target: TopicFollower):
     asyncio.create_task(
         handle_topic_follower_change(connection, target.topic, target.follower, True)
     )
 
 
 @event.listens_for(TopicFollower, "after_delete")
-def after_topic_follower_delete(mapper, connection, target):
+def after_topic_follower_delete(mapper, connection, target: TopicFollower):
     asyncio.create_task(
         handle_topic_follower_change(connection, target.topic, target.follower, False)
     )
 
 
 @event.listens_for(AuthorFollower, "after_insert")
-def after_author_follower_insert(mapper, connection, target):
+def after_author_follower_insert(mapper, connection, target: AuthorFollower):
     asyncio.create_task(
         handle_author_follower_change(connection, target.author, target.follower, True)
     )
 
 
 @event.listens_for(AuthorFollower, "after_delete")
-def after_author_follower_delete(mapper, connection, target):
+def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     asyncio.create_task(
         handle_author_follower_change(connection, target.author, target.follower, False)
     )
@@ -61,7 +61,7 @@ async def update_follows_for_user(connection, user_id, entity_type, entity, is_i
             ],
         }
     if is_insert:
-        follows[f"{entity_type}s"].append(entity)
+        follows[f"{entity_type}s"].append(entity.dict())
     else:
         # Remove the entity from follows
         follows[f"{entity_type}s"] = [
@@ -125,21 +125,11 @@ class FollowsCached:
                     redis_key = f"user:{author.user}:author"
                     author_dict = author.dict()
                     if isinstance(author_dict, dict):
-                        filtered_author_dict = {
-                            k: v for k, v in author_dict.items() if v is not None
-                        }
-                        await redis.execute(
-                            "set", redis_key, json.dumps(filtered_author_dict)
-                        )
+                        await redis.execute("set", redis_key, json.dumps(author_dict))
                     follows = await get_author_follows(None, None, user=author.user)
                     if isinstance(follows, dict):
-                        filtered_follows = {
-                            k: v for k, v in follows.items() if v is not None
-                        }
                         redis_key = f"user:{author.user}:follows"
-                        await redis.execute(
-                            "set", redis_key, json.dumps(filtered_follows)
-                        )
+                        await redis.execute("set", redis_key, json.dumps(follows))
 
     @staticmethod
     async def worker():
