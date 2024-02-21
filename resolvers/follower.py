@@ -89,44 +89,50 @@ async def unfollow(_, info, what, slug):
 
 
 def query_follows(user_id: str):
-    topics = set()
-    authors = set()
-    # communities = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if isinstance(author, Author):
             author_id = author.id
             aliased_author = aliased(Author)
             authors_query = (
-                session.query(aliased_author, AuthorFollower)
+                session.query(aliased_author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == aliased_author.id)
+                # .options(load_only(aliased_author.id))  # TODO: Exclude unnecessary columns
+                .dicts()
+                .all()
             )
 
             topics_query = (
-                session.query(Topic, TopicFollower)
+                session.query(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
+                # .options(load_only(Topic.id))  # TODO: Exclude unnecessary columns
+                .dicts()
+                .all()
             )
 
-            # NOTE: this loads separated paginating query
+            # Convert query results to lists of dictionaries
+            authors = set(authors_query)
+            topics = set(topics_query)
             # shouts_query = (
-            #    session.query(Shout, ShoutReactionsFollower)
+            #    session.query(Shout)
             #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
             #    .filter(ShoutReactionsFollower.shout == Shout.id)
+            #    .options(load_only(Shout.id))  # Exclude unnecessary columns
+            #    .dicts()
+            #    .all()
             # )
-
-            authors = set(session.execute(authors_query).scalars())
-            topics = set(session.execute(topics_query).scalars())
-            # shouts = set(session.execute(shouts_query).scalars())
+            # shouts = list(shouts_query)
             # communities = session.query(Community).all()
 
     return {
-        "topics": list(topics),
-        "authors": list(authors),
-        # "shouts": list(shouts),
+        "topics": topics,
+        "authors": authors,
+        # "shouts": shouts,
         "communities": [{"id": 1, "name": "Дискурс", "slug": "discours"}],
     }
+
 
 
 async def get_follows_by_user_id(user_id: str):
