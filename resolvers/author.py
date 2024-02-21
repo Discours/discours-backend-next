@@ -194,6 +194,7 @@ async def get_author_by_user_id(user_id: str):
     redis_key = f"user:{user_id}:author"
     res = await redis.execute("HGET", redis_key)
     if isinstance(res, dict) and res.get("id"):
+        logger.debug(f'got cached author: {res}')
         return res
 
     logger.info(f"getting author id for {user_id}")
