@@ -18,22 +18,22 @@ from services.logger import root_logger as logger
 
 
 def apply_filters(q, filters, author_id=None):
-    if filters.get("reacted") and author_id:
+    if filters.get('reacted') and author_id:
         q.join(Reaction, Reaction.created_by == author_id)
 
-    by_featured = filters.get("featured")
+    by_featured = filters.get('featured')
     if by_featured:
         q = q.filter(Shout.featured_at.is_not(None))
-    by_layouts = filters.get("layouts")
+    by_layouts = filters.get('layouts')
     if by_layouts:
         q = q.filter(Shout.layout.in_(by_layouts))
-    by_author = filters.get("author")
+    by_author = filters.get('author')
     if by_author:
         q = q.filter(Shout.authors.any(slug=by_author))
-    by_topic = filters.get("topic")
+    by_topic = filters.get('topic')
     if by_topic:
         q = q.filter(Shout.topics.any(slug=by_topic))
-    by_after = filters.get("after")
+    by_after = filters.get('after')
     if by_after:
         ts = int(by_after)
         q = q.filter(Shout.created_at > ts)
@@ -41,13 +41,10 @@ def apply_filters(q, filters, author_id=None):
     return q
 
 
-@query.field("get_shout")
+@query.field('get_shout')
 async def get_shout(_, _info, slug=None, shout_id=None):
     with local_session() as session:
-        q = select(Shout).options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
-        )
+        q = select(Shout).options(joinedload(Shout.authors), joinedload(Shout.topics))
         aliased_reaction = aliased(Reaction)
         q = add_stat_columns(q, aliased_reaction)
 
@@ -72,10 +69,10 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                 ] = results
 
                 shout.stat = {
-                    "viewed": await ViewedStorage.get_shout(shout.slug),
-                    "reacted": reacted_stat,
-                    "commented": commented_stat,
-                    "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                    'viewed': await ViewedStorage.get_shout(shout.slug),
+                    'reacted': reacted_stat,
+                    'commented': commented_stat,
+                    'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
                 }
 
                 for author_caption in (
@@ -102,11 +99,11 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                 return shout
         except Exception:
             raise HTTPException(
-                status_code=404, detail=f"shout {slug or shout_id} not found"
+                status_code=404, detail=f'shout {slug or shout_id} not found'
             )
 
 
-@query.field("load_shouts_by")
+@query.field('load_shouts_by')
 async def load_shouts_by(_, _info, options):
     """
     :param options: {
@@ -130,10 +127,7 @@ async def load_shouts_by(_, _info, options):
     # base
     q = (
         select(Shout)
-        .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
-        )
+        .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .where(and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None)))
     )
 
@@ -142,7 +136,7 @@ async def load_shouts_by(_, _info, options):
     q = add_stat_columns(q, aliased_reaction)
 
     # filters
-    filters = options.get("filters", {})
+    filters = options.get('filters', {})
     q = apply_filters(q, filters)
 
     # group
@@ -150,16 +144,16 @@ async def load_shouts_by(_, _info, options):
 
     # order
     order_by = options.get(
-        "order_by", Shout.featured_at if filters.get("featured") else Shout.published_at
+        'order_by', Shout.featured_at if filters.get('featured') else Shout.published_at
     )
     query_order_by = (
-        desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
+        desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
     )
     q = q.order_by(nulls_last(query_order_by))
 
     # limit offset
-    offset = options.get("offset", 0)
-    limit = options.get("limit", 10)
+    offset = options.get('offset', 0)
+    limit = options.get('limit', 10)
     q = q.limit(limit).offset(offset)
 
     shouts = []
@@ -188,27 +182,24 @@ async def load_shouts_by(_, _info, options):
             if main_topic:
                 shout.main_topic = main_topic[0]
             shout.stat = {
-                "viewed": await ViewedStorage.get_shout(shout.slug),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-                "rating": int(likes_stat) - int(dislikes_stat),
+                'viewed': await ViewedStorage.get_shout(shout.slug),
+                'reacted': reacted_stat,
+                'commented': commented_stat,
+                'rating': int(likes_stat) - int(dislikes_stat),
             }
             shouts.append(shout)
 
     return shouts
 
 
-@query.field("load_shouts_drafts")
+@query.field('load_shouts_drafts')
 @login_required
 async def load_shouts_drafts(_, info):
-    user_id = info.context["user_id"]
+    user_id = info.context['user_id']
 
     q = (
         select(Shout)
-        .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
-        )
+        .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .filter(and_(Shout.deleted_at.is_(None), Shout.published_at.is_(None)))
     )
 
@@ -239,10 +230,10 @@ async def load_shouts_drafts(_, info):
     return shouts
 
 
-@query.field("load_shouts_feed")
+@query.field('load_shouts_feed')
 @login_required
 async def load_shouts_feed(_, info, options):
-    user_id = info.context["user_id"]
+    user_id = info.context['user_id']
 
     shouts = []
     with local_session() as session:
@@ -267,10 +258,7 @@ async def load_shouts_feed(_, info, options):
 
             q = (
                 select(Shout)
-                .options(
-                    joinedload(Shout.authors),
-                    joinedload(Shout.topics),
-                )
+                .options(joinedload(Shout.authors), joinedload(Shout.topics))
                 .where(
                     and_(
                         Shout.published_at.is_not(None),
@@ -282,19 +270,19 @@ async def load_shouts_feed(_, info, options):
 
             aliased_reaction = aliased(Reaction)
             q = add_stat_columns(q, aliased_reaction)
-            filters = options.get("filters", {})
+            filters = options.get('filters', {})
             q = apply_filters(q, filters, reader.id)
 
             order_by = options.get(
-                "order_by",
-                Shout.featured_at if filters.get("featured") else Shout.published_at,
+                'order_by',
+                Shout.featured_at if filters.get('featured') else Shout.published_at,
             )
 
             query_order_by = (
-                desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
+                desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
             )
-            offset = options.get("offset", 0)
-            limit = options.get("limit", 10)
+            offset = options.get('offset', 0)
+            limit = options.get('limit', 10)
 
             q = (
                 q.group_by(Shout.id)
@@ -329,17 +317,17 @@ async def load_shouts_feed(_, info, options):
                 if main_topic:
                     shout.main_topic = main_topic[0]
                 shout.stat = {
-                    "viewed": await ViewedStorage.get_shout(shout.slug),
-                    "reacted": reacted_stat,
-                    "commented": commented_stat,
-                    "rating": likes_stat - dislikes_stat,
+                    'viewed': await ViewedStorage.get_shout(shout.slug),
+                    'reacted': reacted_stat,
+                    'commented': commented_stat,
+                    'rating': likes_stat - dislikes_stat,
                 }
                 shouts.append(shout)
 
     return shouts
 
 
-@query.field("load_shouts_search")
+@query.field('load_shouts_search')
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if isinstance(text, str) and len(text) > 2:
         results = await search_text(text, limit, offset)
@@ -349,14 +337,11 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
 
 @login_required
-@query.field("load_shouts_unrated")
+@query.field('load_shouts_unrated')
 async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = (
         select(Shout)
-        .options(
-            selectinload(Shout.authors),
-            selectinload(Shout.topics),
-        )
+        .options(selectinload(Shout.authors), selectinload(Shout.topics))
         .outerjoin(
             Reaction,
             and_(
@@ -367,7 +352,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
                 ),
             ),
         )
-        .outerjoin(Author, Author.user == bindparam("user_id"))
+        .outerjoin(Author, Author.user == bindparam('user_id'))
         .where(
             and_(
                 Shout.deleted_at.is_(None),
@@ -384,7 +369,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = add_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
-    user_id = info.context.get("user_id")
+    user_id = info.context.get('user_id')
     if user_id:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
@@ -404,20 +389,20 @@ async def get_shouts_from_query(q, author_id=None):
             likes_stat,
             dislikes_stat,
             last_comment,
-        ] in session.execute(q, {"author_id": author_id}).unique():
+        ] in session.execute(q, {'author_id': author_id}).unique():
             shouts.append(shout)
             shout.stat = {
-                "viewed": await ViewedStorage.get_shout(shout_slug=shout.slug),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                "last_comment": last_comment,
+                'viewed': await ViewedStorage.get_shout(shout_slug=shout.slug),
+                'reacted': reacted_stat,
+                'commented': commented_stat,
+                'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                'last_comment': last_comment,
             }
 
     return shouts
 
 
-@query.field("load_shouts_random_top")
+@query.field('load_shouts_random_top')
 async def load_shouts_random_top(_, _info, options):
     """
     :param _
@@ -440,7 +425,7 @@ async def load_shouts_random_top(_, _info, options):
         select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
     )
 
-    subquery = apply_filters(subquery, options.get("filters", {}))
+    subquery = apply_filters(subquery, options.get('filters', {}))
     subquery = subquery.group_by(Shout.id).order_by(
         desc(
             func.sum(
@@ -455,36 +440,33 @@ async def load_shouts_random_top(_, _info, options):
         )
     )
 
-    random_limit = options.get("random_limit")
+    random_limit = options.get('random_limit')
     if random_limit:
         subquery = subquery.limit(random_limit)
 
     q = (
         select(Shout)
-        .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
-        )
+        .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .where(Shout.id.in_(subquery))
     )
     aliased_reaction = aliased(Reaction)
     q = add_stat_columns(q, aliased_reaction)
 
-    limit = options.get("limit", 10)
+    limit = options.get('limit', 10)
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
 
     return await get_shouts_from_query(q)
 
 
-@query.field("load_shouts_random_topic")
+@query.field('load_shouts_random_topic')
 async def load_shouts_random_topic(_, info, limit: int = 10):
     topic = get_random_topic()
     if topic:
         shouts = fetch_shouts_by_topic(topic, limit)
         if shouts:
-            return {"topic": topic, "shouts": shouts}
+            return {'topic': topic, 'shouts': shouts}
     return {
-        "error": "failed to get random topic after few retries",
+        'error': 'failed to get random topic after few retries',
         shouts: [],
         topic: {},
     }
@@ -493,10 +475,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
 def fetch_shouts_by_topic(topic, limit):
     q = (
         select(Shout)
-        .options(
-            joinedload(Shout.authors),
-            joinedload(Shout.topics),
-        )
+        .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .filter(
             and_(
                 Shout.deleted_at.is_(None),

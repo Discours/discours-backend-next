@@ -14,11 +14,11 @@ from services.logger import root_logger as logger
 from settings import DB_URL
 
 # Создание региона кэша с TTL 300 секунд
-cache_region = make_region().configure("dogpile.cache.memory", expiration_time=300)
+cache_region = make_region().configure('dogpile.cache.memory', expiration_time=300)
 
 # Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
-T = TypeVar("T")
+T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
 Base = declarative_base()
 
@@ -29,9 +29,9 @@ def profile_sqlalchemy_queries(threshold=0.1):
         def wrapper(*args, **kw):
             elapsed, stat_loader, result = _profile(fn, threshold, *args, **kw)
             if elapsed is not None:
-                print(f"Query took {elapsed:.3f} seconds to execute.")
+                print(f'Query took {elapsed:.3f} seconds to execute.')
                 stats = stat_loader()
-                stats.sort_stats("cumulative")
+                stats.sort_stats('cumulative')
                 stats.print_stats()
             return result
 
@@ -52,14 +52,14 @@ def _profile(fn, threshold, *args, **kw):
 
 
 # Перехватчики для журнала запросов SQLAlchemy
-@event.listens_for(Engine, "before_cursor_execute")
+@event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn._query_start_time = time.time()
 
 
-@event.listens_for(Engine, "after_cursor_execute")
+@event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    if hasattr(conn, "_query_start_time"):
+    if hasattr(conn, '_query_start_time'):
         elapsed = time.time() - conn._query_start_time
         del conn._query_start_time
         if elapsed > 0.2:  # Adjust threshold as needed
@@ -71,7 +71,7 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
             profiler(statement, parameters)
 
 
-def local_session(src=""):
+def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)
 
 
@@ -82,7 +82,7 @@ class Base(declarative_base()):
     __init__: Callable
     __allow_unmapped__ = True
     __abstract__ = True
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True)
 
@@ -91,12 +91,12 @@ class Base(declarative_base()):
 
     def dict(self) -> Dict[str, Any]:
         column_names = self.__table__.columns.keys()
-        if "_sa_instance_state" in column_names:
-            column_names.remove("_sa_instance_state")
+        if '_sa_instance_state' in column_names:
+            column_names.remove('_sa_instance_state')
         try:
             return {c: getattr(self, c) for c in column_names}
         except Exception as e:
-            logger.error(f"Error occurred while converting object to dictionary: {e}")
+            logger.error(f'Error occurred while converting object to dictionary: {e}')
             return {}
 
     def update(self, values: Dict[str, Any]) -> None:

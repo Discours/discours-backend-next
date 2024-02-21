@@ -11,6 +11,7 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
+from resolvers.author import add_author_stat_columns
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import (
     topic_follow,
@@ -26,16 +27,16 @@ from services.logger import root_logger as logger
 from services.rediscache import redis
 
 
-@mutation.field("follow")
+@mutation.field('follow')
 @login_required
 async def follow(_, info, what, slug):
     try:
-        user_id = info.context["user_id"]
+        user_id = info.context['user_id']
         with local_session() as session:
             actor = session.query(Author).filter(Author.user == user_id).first()
             if actor:
                 follower_id = actor.id
-                if what == "AUTHOR":
+                if what == 'AUTHOR':
                     if author_follow(follower_id, slug):
                         author = (
                             session.query(Author.id).where(Author.slug == slug).one()
@@ -44,30 +45,30 @@ async def follow(_, info, what, slug):
                             session.query(Author).where(Author.id == follower_id).one()
                         )
                         await notify_follower(follower.dict(), author.id)
-                elif what == "TOPIC":
+                elif what == 'TOPIC':
                     topic_follow(follower_id, slug)
-                elif what == "COMMUNITY":
+                elif what == 'COMMUNITY':
                     community_follow(follower_id, slug)
-                elif what == "REACTIONS":
+                elif what == 'REACTIONS':
                     reactions_follow(follower_id, slug)
     except Exception as e:
         logger.debug(info, what, slug)
         logger.error(e)
-        return {"error": str(e)}
+        return {'error': str(e)}
 
     return {}
 
 
-@mutation.field("unfollow")
+@mutation.field('unfollow')
 @login_required
 async def unfollow(_, info, what, slug):
-    user_id = info.context["user_id"]
+    user_id = info.context['user_id']
     try:
         with local_session() as session:
             actor = session.query(Author).filter(Author.user == user_id).first()
             if actor:
                 follower_id = actor.id
-                if what == "AUTHOR":
+                if what == 'AUTHOR':
                     if author_unfollow(follower_id, slug):
                         author = (
                             session.query(Author.id).where(Author.slug == slug).one()
@@ -75,15 +76,15 @@ async def unfollow(_, info, what, slug):
                         follower = (
                             session.query(Author).where(Author.id == follower_id).one()
                         )
-                        await notify_follower(follower.dict(), author.id, "unfollow")
-                elif what == "TOPIC":
+                        await notify_follower(follower.dict(), author.id, 'unfollow')
+                elif what == 'TOPIC':
                     topic_unfollow(follower_id, slug)
-                elif what == "COMMUNITY":
+                elif what == 'COMMUNITY':
                     community_unfollow(follower_id, slug)
-                elif what == "REACTIONS":
+                elif what == 'REACTIONS':
                     reactions_unfollow(follower_id, slug)
     except Exception as e:
-        return {"error": str(e)}
+        return {'error': str(e)}
 
     return {}
 
@@ -97,22 +98,45 @@ def query_follows(user_id: str):
         if isinstance(author, Author):
             author_id = author.id
             authors_query = (
-                select(column("name"), column("id"), column("slug"), column("pic"))
+                select(column('name'), column('id'), column('slug'), column('pic'), column('bio'))
                 .select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
             )
+            authors_query = add_author_stat_columns(authors_query)
 
             topics_query = (
-                select(column("title"), column("id"), column("slug"), column("pic"))
+                select(column('title'), column('id'), column('slug'), column('body'))
                 .select_from(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
             )
+            topics_query = add_topic_stat_columns(topics_query)
 
             # Convert query results to lists of dictionaries
-            authors = [author.dict() for author in session.execute(authors_query)]
-            topics = [topic.dict() for topic in session.execute(topics_query)]
+            authors = [{
+                        'id': author.id,
+                        'name': author.name,
+                        'slug': author.slug,
+                        'pic': author.pic,
+                        'bio': author.bio,
+                        'stat': {
+                            'shouts': shouts_stat,
+                            'followers': followers_stat,
+                            'followings': followings_stat,
+                        }
+                    } for [author, shouts_stat, followers_stat, followings_stat] in session.execute(authors_query)]
+            topics = [{
+                        'id': topic.id,
+                        'title': topic.title,
+                        'slug': topic.slug,
+                        'body': topic.body,
+                        'stat': {
+                'shouts': shouts_stat,
+                'authors': authors_stat,
+                'followers': followers_stat,
+            }
+                    } for [topic, shouts_stat, authors_stat, followers_stat] in session.execute(topics_query)]
             # shouts_query = (
             #    session.query(Shout)
             #    .join(ShoutReactionsFollower, ShoutReactionsFollower.follower == author_id)
@@ -124,24 +148,24 @@ def query_follows(user_id: str):
             # communities = session.query(Community).all()
 
     return {
-        "topics": topics,
-        "authors": authors,
+        'topics': topics,
+        'authors': authors,
         # "shouts": shouts,
-        "communities": [{"id": 1, "name": "Дискурс", "slug": "discours"}],
+        'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
     }
 
 
 async def get_follows_by_user_id(user_id: str):
     if user_id:
-        redis_key = f"user:{user_id}:follows"
-        res = await redis.execute("GET", redis_key)
+        redis_key = f'user:{user_id}:follows'
+        res = await redis.execute('GET', redis_key)
         if isinstance(res, str):
             follows = json.loads(res)
             return follows
 
-        logger.debug(f"getting follows for {user_id}")
+        logger.debug(f'getting follows for {user_id}')
         follows = query_follows(user_id)
-        await redis.execute("SET", redis_key, json.dumps(follows))
+        await redis.execute('SET', redis_key, json.dumps(follows))
 
         return follows
 
@@ -227,7 +251,7 @@ def author_unfollow(follower_id, slug):
     return False
 
 
-@query.field("get_topic_followers")
+@query.field('get_topic_followers')
 async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
     q = select(Author)
     q = add_topic_stat_columns(q)
@@ -241,9 +265,9 @@ async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author
     return await get_topics_from_query(q)
 
 
-@query.field("get_shout_followers")
+@query.field('get_shout_followers')
 def get_shout_followers(
-    _, _info, slug: str = "", shout_id: int | None = None
+    _, _info, slug: str = '', shout_id: int | None = None
 ) -> List[Author]:
     followers = []
     with local_session() as session:

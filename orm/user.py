@@ -6,7 +6,7 @@ from services.db import Base
 
 
 class User(Base):
-    __tablename__ = "authorizer_users"
+    __tablename__ = 'authorizer_users'
 
     id = Column(String, primary_key=True, unique=True, nullable=False, default=None)
     key = Column(String)
@@ -24,7 +24,7 @@ class User(Base):
     # preferred_username = Column(String, nullable=False)
     picture = Column(String)
     revoked_timestamp = Column(Integer)
-    roles = Column(String, default="author, reader")
-    signup_methods = Column(String, default="magic_link_login")
+    roles = Column(String, default='author, reader')
+    signup_methods = Column(String, default='magic_link_login')
     created_at = Column(Integer, default=lambda: int(time.time()))
     updated_at = Column(Integer, default=lambda: int(time.time()))
