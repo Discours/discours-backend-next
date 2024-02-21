@@ -1,5 +1,4 @@
 import math
-import pstats
 import time
 from functools import wraps
 from sqlalchemy import event, Engine
@@ -23,34 +22,6 @@ REGISTRY: Dict[str, type] = {}
 Base = declarative_base()
 
 
-def profile_sqlalchemy_queries(threshold=0.1):
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kw):
-            elapsed, stat_loader, result = _profile(fn, threshold, *args, **kw)
-            if elapsed is not None:
-                print(f'Query took {elapsed:.3f} seconds to execute.')
-                stats = stat_loader()
-                stats.sort_stats('cumulative')
-                stats.print_stats()
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-def _profile(fn, threshold, *args, **kw):
-    began = time.time()
-    result = fn(*args, **kw)
-    ended = time.time()
-
-    if ended - began > threshold:
-        return ended - began, pstats.Stats, result
-    else:
-        return None, None, result
-
-
 # Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
@@ -64,11 +35,8 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         del conn._query_start_time
         if elapsed > 0.2:  # Adjust threshold as needed
             logger.debug(
-                f"{'*' * math.floor(elapsed)} {elapsed:.3f} seconds to execute."
+                f"\n{statement}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s"
             )
-            # Profile the query if execution time exceeds the threshold
-            profiler = profile_sqlalchemy_queries(threshold=0.2)(cursor.execute)
-            profiler(statement, parameters)
 
 
 def local_session(src=''):
