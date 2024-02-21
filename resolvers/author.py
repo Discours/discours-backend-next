@@ -21,18 +21,18 @@ from services.logger import root_logger as logger
 def add_author_stat_columns(q):
     shout_author_aliased = aliased(ShoutAuthor)
     q = q.outerjoin(shout_author_aliased).add_columns(
-        func.count(distinct(shout_author_aliased.shout)).label("shouts_stat")
+        func.count(distinct(shout_author_aliased.shout)).label('shouts_stat')
     )
 
     followers_table = aliased(AuthorFollower)
     q = q.outerjoin(followers_table, followers_table.author == Author.id).add_columns(
-        func.count(distinct(followers_table.follower)).label("followers_stat")
+        func.count(distinct(followers_table.follower)).label('followers_stat')
     )
 
     followings_table = aliased(AuthorFollower)
     q = q.outerjoin(
         followings_table, followings_table.follower == Author.id
-    ).add_columns(func.count(distinct(followers_table.author)).label("followings_stat"))
+    ).add_columns(func.count(distinct(followers_table.author)).label('followings_stat'))
 
     q = q.group_by(Author.id)
     return q
@@ -45,29 +45,29 @@ async def get_authors_from_query(q):
             q
         ):
             author.stat = {
-                "shouts": shouts_stat,
-                "viewed": await ViewedStorage.get_author(author.slug),
-                "followers": followers_stat,
-                "followings": followings_stat,
+                'shouts': shouts_stat,
+                'viewed': await ViewedStorage.get_author(author.slug),
+                'followers': followers_stat,
+                'followings': followings_stat,
             }
             authors.append(author)
     return authors
 
 
-@mutation.field("update_author")
+@mutation.field('update_author')
 @login_required
 async def update_author(_, info, profile):
-    user_id = info.context["user_id"]
+    user_id = info.context['user_id']
     with local_session() as session:
         author = session.query(Author).where(Author.user == user_id).first()
         Author.update(author, profile)
         session.add(author)
         session.commit()
-    return {"error": None, "author": author}
+    return {'error': None, 'author': author}
 
 
 # TODO: caching query
-@query.field("get_authors_all")
+@query.field('get_authors_all')
 async def get_authors_all(_, _info):
     authors = []
     with local_session() as session:
@@ -168,19 +168,19 @@ async def load_author_with_stats(q):
                 )
                 .count()
             )
-            author.stat["rating"] = likes_count - dislikes_count
-            author.stat["rating_shouts"] = count_author_shouts_rating(
+            author.stat['rating'] = likes_count - dislikes_count
+            author.stat['rating_shouts'] = count_author_shouts_rating(
                 session, author.id
             )
-            author.stat["rating_comments"] = count_author_comments_rating(
+            author.stat['rating_comments'] = count_author_comments_rating(
                 session, author.id
             )
-            author.stat["commented"] = comments_count
+            author.stat['commented'] = comments_count
             return author
 
 
-@query.field("get_author")
-async def get_author(_, _info, slug="", author_id=None):
+@query.field('get_author')
+async def get_author(_, _info, slug='', author_id=None):
     q = None
     if slug or author_id:
         if bool(slug):
@@ -192,64 +192,64 @@ async def get_author(_, _info, slug="", author_id=None):
 
 
 async def get_author_by_user_id(user_id: str):
-    redis_key = f"user:{user_id}:author"
-    res = await redis.execute("GET", redis_key)
+    redis_key = f'user:{user_id}:author'
+    res = await redis.execute('GET', redis_key)
     if isinstance(res, str):
         author = json.loads(res)
-        if author.get("id"):
-            logger.debug(f"got cached author: {author}")
+        if author.get('id'):
+            logger.debug(f'got cached author: {author}')
             return author
 
-    logger.info(f"getting author id for {user_id}")
+    logger.info(f'getting author id for {user_id}')
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
     if author:
         await redis.execute(
-            "set",
+            'set',
             redis_key,
             json.dumps(
                 {
-                    "id": author.id,
-                    "name": author.name,
-                    "slug": author.slug,
-                    "pic": author.pic,
+                    'id': author.id,
+                    'name': author.name,
+                    'slug': author.slug,
+                    'pic': author.pic,
                 }
             ),
         )
         return author
 
 
-@query.field("get_author_id")
+@query.field('get_author_id')
 async def get_author_id(_, _info, user: str):
     return await get_author_by_user_id(user)
 
 
-@query.field("load_authors_by")
+@query.field('load_authors_by')
 async def load_authors_by(_, _info, by, limit, offset):
     q = select(Author)
     q = add_author_stat_columns(q)
-    if by.get("slug"):
+    if by.get('slug'):
         q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
-    elif by.get("name"):
+    elif by.get('name'):
         q = q.filter(Author.name.ilike(f"%{by['name']}%"))
-    elif by.get("topic"):
+    elif by.get('topic'):
         q = (
             q.join(ShoutAuthor)
             .join(ShoutTopic)
             .join(Topic)
-            .where(Topic.slug == by["topic"])
+            .where(Topic.slug == by['topic'])
         )
 
-    if by.get("last_seen"):  # in unix time
-        before = int(time.time()) - by["last_seen"]
+    if by.get('last_seen'):  # in unix time
+        before = int(time.time()) - by['last_seen']
         q = q.filter(Author.last_seen > before)
-    elif by.get("created_at"):  # in unix time
-        before = int(time.time()) - by["created_at"]
+    elif by.get('created_at'):  # in unix time
+        before = int(time.time()) - by['created_at']
         q = q.filter(Author.created_at > before)
 
-    order = by.get("order")
-    if order == "followers" or order == "shouts":
-        q = q.order_by(desc(f"{order}_stat"))
+    order = by.get('order')
+    if order == 'followers' or order == 'shouts':
+        q = q.order_by(desc(f'{order}_stat'))
 
     q = q.limit(limit).offset(offset)
 
@@ -258,9 +258,9 @@ async def load_authors_by(_, _info, by, limit, offset):
     return authors
 
 
-@query.field("get_author_follows")
+@query.field('get_author_follows')
 async def get_author_follows(
-    _, _info, slug="", user=None, author_id=None
+    _, _info, slug='', user=None, author_id=None
 ) -> List[Author]:
     user_id = user
     if not user_id and author_id or slug:
@@ -277,13 +277,13 @@ async def get_author_follows(
         return follows
 
     else:
-        raise ValueError("Author not found")
+        raise ValueError('Author not found')
 
 
-@mutation.field("rate_author")
+@mutation.field('rate_author')
 @login_required
 async def rate_author(_, info, rated_slug, value):
-    user_id = info.context["user_id"]
+    user_id = info.context['user_id']
 
     with local_session() as session:
         rated_author = session.query(Author).filter(Author.slug == rated_slug).first()
@@ -312,19 +312,19 @@ async def rate_author(_, info, rated_slug, value):
                     session.add(rating)
                     session.commit()
                 except Exception as err:
-                    return {"error": err}
+                    return {'error': err}
     return {}
 
 
-async def create_author(user_id: str, slug: str, name: str = ""):
+async def create_author(user_id: str, slug: str, name: str = ''):
     with local_session() as session:
         new_author = Author(user=user_id, slug=slug, name=name)
         session.add(new_author)
         session.commit()
-        logger.info(f"author created by webhook {new_author.dict()}")
+        logger.info(f'author created by webhook {new_author.dict()}')
 
 
-@query.field("get_author_followers")
+@query.field('get_author_followers')
 async def get_author_followers(_, _info, slug) -> List[Author]:
     q = select(Author)
     q = add_author_stat_columns(q)

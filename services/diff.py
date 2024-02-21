@@ -29,19 +29,19 @@ def apply_diff(original, diff):
     The modified string.
     """
     result = []
-    pattern = re.compile(r"^(\+|-) ")
+    pattern = re.compile(r'^(\+|-) ')
 
     for line in diff:
         match = pattern.match(line)
         if match:
             op = match.group(1)
             content = line[2:]
-            if op == "+":
+            if op == '+':
                 result.append(content)
-            elif op == "-":
+            elif op == '-':
                 # Ignore deleted lines
                 pass
         else:
             result.append(line)
 
-    return " ".join(result)
+    return ' '.join(result)

@@ -11,44 +11,44 @@ from orm.topic import Topic
 
 
 class ShoutTopic(Base):
-    __tablename__ = "shout_topic"
+    __tablename__ = 'shout_topic'
 
     id = None  # type: ignore
-    shout = Column(ForeignKey("shout.id"), primary_key=True)
-    topic = Column(ForeignKey("topic.id"), primary_key=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
+    topic = Column(ForeignKey('topic.id'), primary_key=True)
     main = Column(Boolean, nullable=True)
 
 
 class ShoutReactionsFollower(Base):
-    __tablename__ = "shout_reactions_followers"
+    __tablename__ = 'shout_reactions_followers'
 
     id = None  # type: ignore
-    follower = Column(ForeignKey("author.id"), primary_key=True)
-    shout = Column(ForeignKey("shout.id"), primary_key=True)
+    follower = Column(ForeignKey('author.id'), primary_key=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
     auto = Column(Boolean, nullable=False, default=False)
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     deleted_at = Column(Integer, nullable=True)
 
 
 class ShoutAuthor(Base):
-    __tablename__ = "shout_author"
+    __tablename__ = 'shout_author'
 
     id = None  # type: ignore
-    shout = Column(ForeignKey("shout.id"), primary_key=True)
-    author = Column(ForeignKey("author.id"), primary_key=True)
-    caption = Column(String, nullable=True, default="")
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
+    author = Column(ForeignKey('author.id'), primary_key=True)
+    caption = Column(String, nullable=True, default='')
 
 
 class ShoutCommunity(Base):
-    __tablename__ = "shout_community"
+    __tablename__ = 'shout_community'
 
     id = None  # type: ignore
-    shout = Column(ForeignKey("shout.id"), primary_key=True)
-    community = Column(ForeignKey("community.id"), primary_key=True)
+    shout = Column(ForeignKey('shout.id'), primary_key=True)
+    community = Column(ForeignKey('community.id'), primary_key=True)
 
 
 class Shout(Base):
-    __tablename__ = "shout"
+    __tablename__ = 'shout'
 
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     updated_at = Column(Integer, nullable=True)
@@ -56,28 +56,28 @@ class Shout(Base):
     featured_at = Column(Integer, nullable=True)
     deleted_at = Column(Integer, nullable=True)
 
-    created_by = Column(ForeignKey("author.id"), nullable=False)
-    updated_by = Column(ForeignKey("author.id"), nullable=True)
-    deleted_by = Column(ForeignKey("author.id"), nullable=True)
+    created_by = Column(ForeignKey('author.id'), nullable=False)
+    updated_by = Column(ForeignKey('author.id'), nullable=True)
+    deleted_by = Column(ForeignKey('author.id'), nullable=True)
 
-    body = Column(String, nullable=False, comment="Body")
+    body = Column(String, nullable=False, comment='Body')
     slug = Column(String, unique=True)
-    cover = Column(String, nullable=True, comment="Cover image url")
-    cover_caption = Column(String, nullable=True, comment="Cover image alt caption")
+    cover = Column(String, nullable=True, comment='Cover image url')
+    cover_caption = Column(String, nullable=True, comment='Cover image alt caption')
     lead = Column(String, nullable=True)
     description = Column(String, nullable=True)
     title = Column(String, nullable=False)
     subtitle = Column(String, nullable=True)
-    layout = Column(String, nullable=False, default="article")
+    layout = Column(String, nullable=False, default='article')
     media = Column(JSON, nullable=True)
 
-    authors = relationship(Author, secondary="shout_author")
-    topics = relationship(Topic, secondary="shout_topic")
-    communities = relationship(Community, secondary="shout_community")
+    authors = relationship(Author, secondary='shout_author')
+    topics = relationship(Topic, secondary='shout_topic')
+    communities = relationship(Community, secondary='shout_community')
     reactions = relationship(Reaction)
 
-    lang = Column(String, nullable=False, default="ru", comment="Language")
-    version_of = Column(ForeignKey("shout.id"), nullable=True)
+    lang = Column(String, nullable=False, default='ru', comment='Language')
+    version_of = Column(ForeignKey('shout.id'), nullable=True)
     oid = Column(String, nullable=True)
 
     seo = Column(String, nullable=True)  # JSON
