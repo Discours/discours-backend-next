@@ -15,66 +15,72 @@ from services.db import local_session
 from services.notify import notify_follower
 from services.schema import mutation, query
 from services.logger import root_logger as logger
+from services.rediscache import redis
 
 
-@mutation.field('follow')
+@mutation.field("follow")
 @login_required
 async def follow(_, info, what, slug):
     try:
-        user_id = info.context['user_id']
+        user_id = info.context["user_id"]
         with local_session() as session:
             actor = session.query(Author).filter(Author.user == user_id).first()
             if actor:
                 follower_id = actor.id
-                if what == 'AUTHOR':
+                if what == "AUTHOR":
                     if author_follow(follower_id, slug):
-                        author = session.query(Author.id).where(Author.slug == slug).one()
-                        follower = session.query(Author).where(Author.id == follower_id).one()
+                        author = (
+                            session.query(Author.id).where(Author.slug == slug).one()
+                        )
+                        follower = (
+                            session.query(Author).where(Author.id == follower_id).one()
+                        )
                         await notify_follower(follower.dict(), author.id)
-                elif what == 'TOPIC':
+                elif what == "TOPIC":
                     topic_follow(follower_id, slug)
-                elif what == 'COMMUNITY':
+                elif what == "COMMUNITY":
                     community_follow(follower_id, slug)
-                elif what == 'REACTIONS':
+                elif what == "REACTIONS":
                     reactions_follow(follower_id, slug)
     except Exception as e:
         logger.debug(info, what, slug)
         logger.error(e)
-        return {'error': str(e)}
+        return {"error": str(e)}
 
     return {}
 
 
-@mutation.field('unfollow')
+@mutation.field("unfollow")
 @login_required
 async def unfollow(_, info, what, slug):
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
     try:
         with local_session() as session:
             actor = session.query(Author).filter(Author.user == user_id).first()
             if actor:
                 follower_id = actor.id
-                if what == 'AUTHOR':
+                if what == "AUTHOR":
                     if author_unfollow(follower_id, slug):
-                        author = session.query(Author.id).where(Author.slug == slug).one()
-                        follower = session.query(Author).where(Author.id == follower_id).one()
-                        await notify_follower(follower.dict(), author.id, 'unfollow')
-                elif what == 'TOPIC':
+                        author = (
+                            session.query(Author.id).where(Author.slug == slug).one()
+                        )
+                        follower = (
+                            session.query(Author).where(Author.id == follower_id).one()
+                        )
+                        await notify_follower(follower.dict(), author.id, "unfollow")
+                elif what == "TOPIC":
                     topic_unfollow(follower_id, slug)
-                elif what == 'COMMUNITY':
+                elif what == "COMMUNITY":
                     community_unfollow(follower_id, slug)
-                elif what == 'REACTIONS':
+                elif what == "REACTIONS":
                     reactions_unfollow(follower_id, slug)
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
     return {}
 
 
-@query.field('get_my_followed')
-@login_required
-async def get_my_followed(_, info):
-    user_id = info.context['user_id']
+def query_follows(user_id: str):
     topics = set()
     authors = set()
     communities = []
@@ -99,11 +105,37 @@ async def get_my_followed(_, info):
             topics = set(session.execute(topics_query).scalars())
             communities = session.query(Community).all()
 
-    return {'topics': list(topics), 'authors': list(authors), 'communities': communities}
+    return {
+        "topics": list(topics),
+        "authors": list(authors),
+        "communities": communities,
+    }
 
 
-@query.field('get_shout_followers')
-def get_shout_followers(_, _info, slug: str = '', shout_id: int | None = None) -> List[Author]:
+async def get_follows_by_user_id(user_id: str):
+    redis_key = f"user:{user_id}:follows"
+    res = await redis.execute("HGET", redis_key)
+    if res:
+        return res
+
+    logger.info(f"getting follows for {user_id}")
+    follows = query_follows(user_id)
+    await redis.execute("HSET", redis_key, follows)
+
+    return follows
+
+
+@query.field("get_my_followed")
+@login_required
+async def get_my_followed(_, info):
+    user_id = info.context["user_id"]
+    return await get_follows_by_user_id(user_id)
+
+
+@query.field("get_shout_followers")
+def get_shout_followers(
+    _, _info, slug: str = "", shout_id: int | None = None
+) -> List[Author]:
     followers = []
     with local_session() as session:
         shout = None
@@ -136,7 +168,9 @@ def reactions_follow(author_id, shout_id, auto=False):
             )
 
             if not following:
-                following = ShoutReactionsFollower(follower=author_id, shout=shout.id, auto=auto)
+                following = ShoutReactionsFollower(
+                    follower=author_id, shout=shout.id, auto=auto
+                )
                 session.add(following)
                 session.commit()
                 return True

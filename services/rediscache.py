@@ -4,7 +4,6 @@ from services.logger import root_logger as logger
 from settings import REDIS_URL
 
 
-
 class RedisCache:
     def __init__(self, uri=REDIS_URL):
         self._uri: str = uri
@@ -21,7 +20,7 @@ class RedisCache:
     async def execute(self, command, *args, **kwargs):
         if self._client:
             try:
-                logger.debug(f'{command} {args} {kwargs}')
+                logger.debug(f"{command} {args} {kwargs}")
                 r = await self._client.execute_command(command, *args, **kwargs)
                 logger.debug(type(r))
                 logger.debug(r)
@@ -52,4 +51,4 @@ class RedisCache:
 
 redis = RedisCache()
 
-__all__ = ['redis']
+__all__ = ["redis"]

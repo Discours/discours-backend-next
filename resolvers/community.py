@@ -14,10 +14,12 @@ def add_community_stat_columns(q):
     shout_community_aliased = aliased(ShoutCommunity)
 
     q = q.outerjoin(shout_community_aliased).add_columns(
-        func.count(distinct(shout_community_aliased.shout)).label('shouts_stat')
+        func.count(distinct(shout_community_aliased.shout)).label("shouts_stat")
     )
-    q = q.outerjoin(community_followers, community_followers.author == Author.id).add_columns(
-        func.count(distinct(community_followers.follower)).label('followers_stat')
+    q = q.outerjoin(
+        community_followers, community_followers.author == Author.id
+    ).add_columns(
+        func.count(distinct(community_followers.follower)).label("followers_stat")
     )
 
     q = q.group_by(Author.id)
@@ -30,33 +32,13 @@ def get_communities_from_query(q):
     with local_session() as session:
         for [c, shouts_stat, followers_stat] in session.execute(q):
             c.stat = {
-                'shouts': shouts_stat,
-                'followers': followers_stat,
+                "shouts": shouts_stat,
+                "followers": followers_stat,
                 # "commented": commented_stat,
             }
             ccc.append(c)
 
     return ccc
-
-
-SINGLE_COMMUNITY = True
-
-
-def followed_communities(follower_id):
-    if SINGLE_COMMUNITY:
-        with local_session() as session:
-            c = session.query(Community).first()
-            return [
-                c,
-            ]
-    else:
-        q = select(Community)
-        q = add_community_stat_columns(q)
-        q = q.join(CommunityAuthor, CommunityAuthor.community == Community.id).where(
-            CommunityAuthor.author == follower_id
-        )
-        # 3. Pass the query to the get_authors_from_query function and return the results
-        return get_communities_from_query(q)
 
 
 # for mutation.field("follow")
@@ -90,7 +72,7 @@ def community_unfollow(follower_id, slug):
     return False
 
 
-@query.field('get_communities_all')
+@query.field("get_communities_all")
 async def get_communities_all(_, _info):
     q = select(Author)
     q = add_community_stat_columns(q)
@@ -98,7 +80,7 @@ async def get_communities_all(_, _info):
     return get_communities_from_query(q)
 
 
-@query.field('get_community')
+@query.field("get_community")
 async def get_community(_, _info, slug):
     q = select(Community).where(Community.slug == slug)
     q = add_community_stat_columns(q)

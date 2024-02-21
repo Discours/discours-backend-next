@@ -22,9 +22,9 @@ def start_sentry():
             integrations=[
                 StarletteIntegration(),
                 AriadneIntegration(),
-                SqlalchemyIntegration()
-            ]
+                SqlalchemyIntegration(),
+            ],
         )
     except Exception as e:
-        print('[services.sentry] init error')
+        print("[services.sentry] init error")
         print(e)

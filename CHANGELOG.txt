@@ -1,3 +1,6 @@
+[0.3.2]
+- redis cache for what author follows
+
 [0.3.1]
 - enabling sentry
 - long query log report added

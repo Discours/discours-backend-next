@@ -7,7 +7,12 @@ from typing import Dict
 
 # ga
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
+from google.analytics.data_v1beta.types import (
+    DateRange,
+    Dimension,
+    Metric,
+    RunReportRequest,
+)
 
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
@@ -15,9 +20,9 @@ from orm.topic import Topic
 from services.db import local_session
 from services.logger import root_logger as logger
 
-GOOGLE_KEYFILE_PATH = os.environ.get('GOOGLE_KEYFILE_PATH', '/dump/google-service.json')
-GOOGLE_PROPERTY_ID = os.environ.get('GOOGLE_PROPERTY_ID', '')
-VIEWS_FILEPATH = '/dump/views.json'
+GOOGLE_KEYFILE_PATH = os.environ.get("GOOGLE_KEYFILE_PATH", "/dump/google-service.json")
+GOOGLE_PROPERTY_ID = os.environ.get("GOOGLE_PROPERTY_ID", "")
+VIEWS_FILEPATH = "/dump/views.json"
 
 
 class ViewedStorage:
@@ -37,30 +42,32 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
-            os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', GOOGLE_KEYFILE_PATH)
+            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", GOOGLE_KEYFILE_PATH)
             if GOOGLE_KEYFILE_PATH and os.path.isfile(GOOGLE_KEYFILE_PATH):
                 # Using a default constructor instructs the client to use the credentials
                 # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
                 self.analytics_client = BetaAnalyticsDataClient()
-                logger.info(' * Клиент Google Analytics успешно авторизован')
+                logger.info(" * Клиент Google Analytics успешно авторизован")
 
                 # Загрузка предварительно подсчитанных просмотров из файла JSON
                 self.load_precounted_views()
 
                 if os.path.exists(VIEWS_FILEPATH):
                     file_timestamp = os.path.getctime(VIEWS_FILEPATH)
-                    self.start_date = datetime.fromtimestamp(file_timestamp).strftime('%Y-%m-%d')
-                    now_date = datetime.now().strftime('%Y-%m-%d')
+                    self.start_date = datetime.fromtimestamp(file_timestamp).strftime(
+                        "%Y-%m-%d"
+                    )
+                    now_date = datetime.now().strftime("%Y-%m-%d")
 
                     if now_date == self.start_date:
-                        logger.info(' * Данные актуализованы!')
+                        logger.info(" * Данные актуализованы!")
                     else:
-                        logger.info(f' * Миграция проводилась: {self.start_date}')
+                        logger.info(f" * Миграция проводилась: {self.start_date}")
 
                 # Запуск фоновой задачи
                 asyncio.create_task(self.worker())
             else:
-                logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics')
+                logger.info(" * Пожалуйста, добавьте ключевой файл Google Analytics")
                 self.disabled = True
 
     @staticmethod
@@ -68,28 +75,32 @@ class ViewedStorage:
         """Загрузка предварительно подсчитанных просмотров из файла JSON"""
         self = ViewedStorage
         try:
-            with open(VIEWS_FILEPATH, 'r') as file:
+            with open(VIEWS_FILEPATH, "r") as file:
                 precounted_views = json.load(file)
                 self.views_by_shout.update(precounted_views)
-                logger.info(f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.')
+                logger.info(
+                    f" * {len(precounted_views)} публикаций с просмотрами успешно загружены."
+                )
         except Exception as e:
-            logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
+            logger.error(f"Ошибка загрузки предварительно подсчитанных просмотров: {e}")
 
     @staticmethod
     async def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
         self = ViewedStorage
-        logger.info(' ⎧ Обновление данных просмотров от Google Analytics ---')
+        logger.info(" ⎧ Обновление данных просмотров от Google Analytics ---")
         if not self.disabled:
             try:
                 start = time.time()
                 async with self.lock:
                     if self.analytics_client:
                         request = RunReportRequest(
-                            property=f'properties/{GOOGLE_PROPERTY_ID}',
-                            dimensions=[Dimension(name='pagePath')],
-                            metrics=[Metric(name='screenPageViews')],
-                            date_ranges=[DateRange(start_date=self.start_date, end_date='today')],
+                            property=f"properties/{GOOGLE_PROPERTY_ID}",
+                            dimensions=[Dimension(name="pagePath")],
+                            metrics=[Metric(name="screenPageViews")],
+                            date_ranges=[
+                                DateRange(start_date=self.start_date, end_date="today")
+                            ],
                         )
                         response = self.analytics_client.run_report(request)
                         if response and isinstance(response.rows, list):
@@ -102,21 +113,23 @@ class ViewedStorage:
                                 # Извлечение путей страниц из ответа Google Analytics
                                 if isinstance(row.dimension_values, list):
                                     page_path = row.dimension_values[0].value
-                                    slug = page_path.split('discours.io/')[-1]
+                                    slug = page_path.split("discours.io/")[-1]
                                     views_count = int(row.metric_values[0].value)
 
                                     # Обновление данных в хранилище
-                                    self.views_by_shout[slug] = self.views_by_shout.get(slug, 0)
+                                    self.views_by_shout[slug] = self.views_by_shout.get(
+                                        slug, 0
+                                    )
                                     self.views_by_shout[slug] += views_count
                                     self.update_topics(slug)
 
                                     # Запись путей страниц для логирования
                                     slugs.add(slug)
 
-                                logger.info(f' ⎪ Собрано страниц: {len(slugs)} ')
+                                logger.info(f" ⎪ Собрано страниц: {len(slugs)} ")
 
                         end = time.time()
-                        logger.info(' ⎪ Обновление страниц заняло %fs ' % (end - start))
+                        logger.info(" ⎪ Обновление страниц заняло %fs " % (end - start))
             except Exception as error:
                 logger.error(error)
 
@@ -165,12 +178,20 @@ class ViewedStorage:
 
             # Обновление тем и авторов с использованием вспомогательной функции
             for [_shout_topic, topic] in (
-                session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all()
+                session.query(ShoutTopic, Topic)
+                .join(Topic)
+                .join(Shout)
+                .where(Shout.slug == shout_slug)
+                .all()
             ):
                 update_groups(self.shouts_by_topic, topic.slug, shout_slug)
 
             for [_shout_topic, author] in (
-                session.query(ShoutAuthor, Author).join(Author).join(Shout).where(Shout.slug == shout_slug).all()
+                session.query(ShoutAuthor, Author)
+                .join(Author)
+                .join(Shout)
+                .where(Shout.slug == shout_slug)
+                .all()
             ):
                 update_groups(self.shouts_by_author, author.slug, shout_slug)
 
@@ -188,15 +209,18 @@ class ViewedStorage:
                 failed = 0
             except Exception as _exc:
                 failed += 1
-                logger.info(' - Обновление не удалось #%d, ожидание 10 секунд' % failed)
+                logger.info(" - Обновление не удалось #%d, ожидание 10 секунд" % failed)
                 if failed > 3:
-                    logger.info(' - Больше не пытаемся обновить')
+                    logger.info(" - Больше не пытаемся обновить")
                     break
             if failed == 0:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
-                logger.info(' ⎩ Следующее обновление: %s' % (t.split('T')[0] + ' ' + t.split('T')[1].split('.')[0]))
+                logger.info(
+                    " ⎩ Следующее обновление: %s"
+                    % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
+                )
                 await asyncio.sleep(self.period)
             else:
                 await asyncio.sleep(10)
-                logger.info(' - Попытка снова обновить данные')
+                logger.info(" - Попытка снова обновить данные")

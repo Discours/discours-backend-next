@@ -14,33 +14,32 @@ from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 
-import_module('resolvers')
-schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
+import_module("resolvers")
+schema = make_executable_schema(load_schema_from_path("schema/"), resolvers)
 
 
 async def start():
-    if MODE == 'development':
+    if MODE == "development":
         if not exists(DEV_SERVER_PID_FILE_NAME):
             # pid file management
-            with open(DEV_SERVER_PID_FILE_NAME, 'w', encoding='utf-8') as f:
+            with open(DEV_SERVER_PID_FILE_NAME, "w", encoding="utf-8") as f:
                 f.write(str(os.getpid()))
-    print(f'[main] process started in {MODE} mode')
+    print(f"[main] process started in {MODE} mode")
+
 
 # main starlette app object with ariadne mounted in root
 app = Starlette(
     routes=[
-        Route('/', GraphQL(schema, debug=True)),
-        Route('/new-author', WebhookEndpoint),
+        Route("/", GraphQL(schema, debug=True)),
+        Route("/new-author", WebhookEndpoint),
     ],
     on_startup=[
         redis.connect,
         ViewedStorage.init,
         search_service.info,
         # start_sentry,
-        start
+        start,
     ],
-    on_shutdown=[
-        redis.disconnect
-    ],
-    debug=True
+    on_shutdown=[redis.disconnect],
+    debug=True,
 )

@@ -179,3 +179,10 @@ type Invite {
   shout_id: Int!
   status: InviteStatus
 }
+
+type AuthorFollows {
+  topics: [Topic]
+  authors: [Author]
+  shouts: [Shout]
+  communities: [Community]
+}
