@@ -26,14 +26,13 @@ Base = declarative_base()
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.info.setdefault('query_start_time', []).append(time.time())
-    logger.debug(f"{statement}")
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     total = time.time() - conn.info['query_start_time'].pop(-1)
     stars = '*' * math.floor(total*1000)
     if stars:
-        logger.debug(f' {stars} {total*1000} s')
+        logger.debug(f'\n{statement}\n {stars} {total*1000} s')
 
 
 def local_session(src=""):
