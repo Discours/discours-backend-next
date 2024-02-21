@@ -14,9 +14,22 @@ from services.viewed import ViewedStorage
 
 @event.listens_for(Author, "after_insert")
 @event.listens_for(Author, "after_update")
-def after_author_update(mapper, connection, target: Author):
-    redis_key = f"user:{target.user}:author"
-    asyncio.create_task(redis.execute("set", redis_key, json.dumps(target.dict())))
+def after_author_update(mapper, connection, author: Author):
+    redis_key = f"user:{author.user}:author"
+    asyncio.create_task(
+        redis.execute(
+            "set",
+            redis_key,
+            json.dumps(
+                {
+                    "id": author.id,
+                    "name": author.name,
+                    "slug": author.slug,
+                    "pic": author.pic,
+                }
+            ),
+        )
+    )
 
 
 @event.listens_for(TopicFollower, "after_insert")
@@ -47,7 +60,9 @@ def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     )
 
 
-async def update_follows_for_user(connection, user_id, entity_type, entity: dict, is_insert):
+async def update_follows_for_user(
+    connection, user_id, entity_type, entity: dict, is_insert
+):
     redis_key = f"user:{user_id}:follows"
     follows_str = await redis.get(redis_key)
     if follows_str:
@@ -64,7 +79,9 @@ async def update_follows_for_user(connection, user_id, entity_type, entity: dict
         follows[f"{entity_type}s"].append(entity)
     else:
         # Remove the entity from follows
-        follows[f"{entity_type}s"] = [e for e in follows[f"{entity_type}s"] if e["id"] != entity['id']]
+        follows[f"{entity_type}s"] = [
+            e for e in follows[f"{entity_type}s"] if e["id"] != entity["id"]
+        ]
     await redis.execute("set", redis_key, json.dumps(follows))
 
 
@@ -131,11 +148,21 @@ class FollowsCached:
                 )
 
     @staticmethod
-    async def update_author_cache(author):
+    async def update_author_cache(author: Author):
         redis_key = f"user:{author.user}:author"
-        author_dict = author.dict()
-        if isinstance(author_dict, dict):
-            await redis.execute("set", redis_key, json.dumps(author_dict))
+        if isinstance(author, Author):
+            await redis.execute(
+                "set",
+                redis_key,
+                json.dumps(
+                    {
+                        "id": author.id,
+                        "name": author.name,
+                        "slug": author.slug,
+                        "pic": author.pic,
+                    }
+                )
+            )
         follows = await get_author_follows(None, None, user=author.user)
         if isinstance(follows, dict):
             redis_key = f"user:{author.user}:follows"

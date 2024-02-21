@@ -204,7 +204,18 @@ async def get_author_by_user_id(user_id: str):
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
     if author:
-        await redis.execute("set", redis_key, json.dumps(author.dict()))
+        await redis.execute(
+            "set",
+            redis_key,
+            json.dumps(
+                {
+                    "id": author.id,
+                    "name": author.name,
+                    "slug": author.slug,
+                    "pic": author.pic,
+                }
+            ),
+        )
         return author
 
 

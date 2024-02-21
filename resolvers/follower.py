@@ -91,17 +91,21 @@ async def unfollow(_, info, what, slug):
 def query_follows(user_id: str):
     with local_session() as session:
         aliased_author = aliased(Author)
-        author = session.query(aliased_author).filter(aliased_author.user == user_id).first()
+        author = (
+            session.query(aliased_author).filter(aliased_author.user == user_id).first()
+        )
         if isinstance(author, Author):
             author_id = author.id
             authors_query = (
-                select(column('name'), column('id'), column('slug'), column('pic'), ).select_from(Author)
+                select(column("name"), column("id"), column("slug"), column("pic"))
+                .select_from(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
             )
 
             topics_query = (
-                select(column('title'), column('id'), column('slug'), column('pic'), ).select_from(Author)
+                select(column("title"), column("id"), column("slug"), column("pic"))
+                .select_from(Topic)
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
             )
