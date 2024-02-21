@@ -1,4 +1,5 @@
 import asyncio
+
 from sqlalchemy import select, event
 import json
 
@@ -122,7 +123,9 @@ async def handle_topic_follower_change(connection, topic_id, follower_id, is_ins
     q = select(Topic).filter(Topic.id == topic_id)
     q = add_topic_stat_columns(q)
     async with connection.begin() as conn:
-        [topic, shouts_stat, authors_stat, followers_stat] = await conn.execute(q).first()
+        [topic, shouts_stat, authors_stat, followers_stat] = await conn.execute(
+            q
+        ).first()
         topic.stat = {
             'shouts': shouts_stat,
             'authors': authors_stat,
@@ -160,13 +163,16 @@ class FollowsCached:
             q = select(Author)
             q = add_author_stat_columns(q)
             authors = session.execute(q)
+            redis_updates = []  # Store Redis update tasks
+
             while True:
                 batch = authors.fetchmany(BATCH_SIZE)
                 if not batch:
                     break
                 else:
                     for [author, shouts_stat, followers_stat, followings_stat] in batch:
-                        await redis.execute('SET', f'user:{author.user}:author', json.dumps({
+                        redis_key = f'user:{author.user}:author'
+                        redis_data = {
                             'id': author.id,
                             'name': author.name,
                             'slug': author.slug,
@@ -175,9 +181,16 @@ class FollowsCached:
                             'stat': {
                                 'followings': followings_stat,
                                 'shouts': shouts_stat,
-                                'followers': followers_stat
+                                'followers': followers_stat,
                             },
-                        }))
+                        }
+                        # Add Redis update task to the list
+                        redis_updates.append(
+                            redis.execute('SET', redis_key, json.dumps(redis_data))
+                        )
+
+            # Execute Redis update tasks concurrently
+            await asyncio.gather(*redis_updates)
 
     @staticmethod
     async def update_author_cache(author: Author):
