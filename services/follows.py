@@ -77,7 +77,7 @@ async def update_follows_for_user(
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
     q = select(Author).filter(Author.id == author_id)
-    q = add_author_stat_columns(q, author_model=Author)
+    q = add_author_stat_columns(q)
     async with connection.begin() as conn:
         [author, shouts_stat, followers_stat, followings_stat] = await conn.execute(
             q

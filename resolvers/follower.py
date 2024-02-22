@@ -110,7 +110,7 @@ def query_follows(user_id: str):
                 .filter(TopicFollower.topic == Topic.id)
             )
 
-            authors_query = add_author_stat_columns(authors_query, author_model=aliased_author)
+            authors_query = add_author_stat_columns(authors_query)
             topics_query = add_topic_stat_columns(topics_query)
             authors = [
                 {
