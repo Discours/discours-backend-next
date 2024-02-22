@@ -12,7 +12,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.stat import add_topic_stat_columns, get_topics_from_query
+from resolvers.stat import add_topic_stat_columns, get_topics_from_query, add_author_stat_columns
 from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_follower
@@ -86,18 +86,18 @@ async def unfollow(_, info, what, slug):
 def query_follows(user_id: str):
     topics = []
     authors = []
-    author_id = None
     with local_session() as session:
         author = (
             session.query(Author).filter(Author.user == user_id).first()
         )
-        author_id = author.id
-        if isinstance(author_id, int):
+        if isinstance(author, Author):
+            author_id = author.id
             authors_query = (
                 select(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == Author.id)
             )
+            authors_query = add_author_stat_columns(authors_query)
             authors = [
                 {
                     'id': author_id,
