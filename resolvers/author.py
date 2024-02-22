@@ -133,12 +133,8 @@ async def load_author_with_stats(q):
                 .count()
             )
             author.stat['rating'] = likes_count - dislikes_count
-            author.stat['rating_shouts'] = count_author_shouts_rating(
-                session, author.id
-            )
-            author.stat['rating_comments'] = count_author_comments_rating(
-                session, author.id
-            )
+            author.stat['rating_shouts'] = count_author_shouts_rating(session, author.id)
+            author.stat['rating_comments'] = count_author_comments_rating(session, author.id)
             author.stat['commented'] = comments_count
             return author
 
@@ -168,19 +164,7 @@ async def get_author_by_user_id(user_id: str):
     q = select(Author).filter(Author.user == user_id)
     author = await load_author_with_stats(q)
     if author:
-        await redis.execute(
-            'set',
-            redis_key,
-            json.dumps(
-                {
-                    'id': author.id,
-                    'name': author.name,
-                    'slug': author.slug,
-                    'pic': author.pic,
-                    'bio': author.bio,
-                }
-            ),
-        )
+        update_author(author)
         return author
 
 

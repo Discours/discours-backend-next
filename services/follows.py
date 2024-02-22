@@ -9,24 +9,9 @@ from resolvers.stat import add_author_stat_columns, add_topic_stat_columns
 from services.rediscache import redis
 
 
-async def update_author(author):
+async def update_author(author: Author, ttl = 25 * 60 * 60):
     redis_key = f'user:{author.user}:author'
-
-    await redis.execute(
-        'SET',
-        redis_key,
-        json.dumps(
-            {
-                'id': author.id,
-                'name': author.name,
-                'slug': author.slug,
-                'pic': author.pic,
-                'bio': author.bio,
-                'stat': author.stat,
-            }
-        ),
-    )
-    await redis.execute('EXPIRE', redis_key, 25 * 60 * 60)
+    await redis.execute('SETEX', redis_key, ttl, json.dumps(author.dict()))
 
 
 @event.listens_for(Author, 'after_insert')
@@ -85,7 +70,7 @@ async def update_follows_for_user(
         follows[f'{entity_type}s'] = [
             e for e in follows[f'{entity_type}s'] if e['id'] != entity['id']
         ]
-    await redis.execute('set', redis_key, json.dumps(follows))
+    await redis.execute('SET', redis_key, json.dumps(follows))
 
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
