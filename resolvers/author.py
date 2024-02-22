@@ -98,7 +98,7 @@ def count_author_shouts_rating(session, author_id) -> int:
 
 
 async def load_author_with_stats(q):
-    q = add_author_stat_columns(q)
+    q = add_author_stat_columns(q, author_model=Author)
 
     result = await get_authors_from_query(q)
 
@@ -176,7 +176,7 @@ async def get_author_id(_, _info, user: str):
 @query.field('load_authors_by')
 async def load_authors_by(_, _info, by, limit, offset):
     q = select(Author)
-    q = add_author_stat_columns(q)
+    q = add_author_stat_columns(q, author_model=Author)
     if by.get('slug'):
         q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
     elif by.get('name'):
@@ -273,7 +273,7 @@ async def create_author(user_id: str, slug: str, name: str = ''):
 @query.field('get_author_followers')
 async def get_author_followers(_, _info, slug) -> List[Author]:
     q = select(Author)
-    q = add_author_stat_columns(q)
+    q = add_author_stat_columns(q, author_model=Author)
 
     aliased_author = aliased(Author)
     q = (

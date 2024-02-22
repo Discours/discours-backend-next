@@ -8,22 +8,22 @@ from services.db import local_session
 # from services.viewed import ViewedStorage
 
 
-def add_author_stat_columns(q, author_model = None):
+def add_author_stat_columns(q, author_model=None):
     aliased_author = author_model or aliased(Author)
     shout_author_aliased = aliased(ShoutAuthor)
     q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label('shouts_stat')
     )
 
+    authors_table = aliased(AuthorFollower)
+    q = q.outerjoin(
+        authors_table, authors_table.follower == aliased_author.id
+    ).add_columns(func.count(distinct(authors_table.author)).label('authors_stat'))
+
     followers_table = aliased(AuthorFollower)
     q = q.outerjoin(followers_table, followers_table.author == aliased_author.id).add_columns(
         func.count(distinct(followers_table.follower)).label('followers_stat')
     )
-
-    followings_table = aliased(AuthorFollower)
-    q = q.outerjoin(
-        followings_table, followings_table.follower == aliased_author.id
-    ).add_columns(func.count(distinct(followers_table.author)).label('followings_stat'))
 
     q = q.group_by(aliased_author.id)
     return q
@@ -32,13 +32,11 @@ def add_author_stat_columns(q, author_model = None):
 async def get_authors_from_query(q):
     authors = []
     with local_session() as session:
-        for [author, shouts_stat, followers_stat, followings_stat] in session.execute(
-            q
-        ):
+        for [author, shouts_stat, authors_stat, followers_stat] in session.execute(q):
             author.stat = {
                 'shouts': shouts_stat,
                 'followers': followers_stat,
-                'followings': followings_stat,
+                'followings': authors_stat,
                 # viewed
             }
             authors.append(author)
