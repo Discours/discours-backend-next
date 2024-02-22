@@ -1,19 +1,44 @@
 from sqlalchemy import func, distinct
+from sqlalchemy.orm import aliased
 
+from orm.topic import TopicFollower, Topic
 from services.db import local_session
-from orm.author import AuthorFollower
+from orm.author import AuthorFollower, Author
 from orm.shout import ShoutTopic, ShoutAuthor
 
 
-def add_stat_columns(q, author_alias, follower_model_alias):
-    shouts_stat_model = ShoutAuthor if isinstance(follower_model_alias, AuthorFollower) else ShoutTopic
-    q = q.outerjoin(shouts_stat_model).add_columns(func.count(distinct(shouts_stat_model.shout)).label('shouts_stat'))
-    q = q.outerjoin(
-        follower_model_alias, follower_model_alias.follower == author_alias.id
-    ).add_columns(func.count(distinct(follower_model_alias.author)).label('authors_stat'))
-    q = q.outerjoin(follower_model_alias, follower_model_alias.author == author_alias.id).add_columns(
-        func.count(distinct(follower_model_alias.follower)).label('followers_stat')
+def add_topic_stat_columns(q):
+    aliased_shout_author = aliased(ShoutAuthor)
+    aliased_topic_follower = aliased(TopicFollower)
+
+    q = (
+        q.outerjoin(ShoutTopic, Topic.id == ShoutTopic.topic)
+        .add_columns(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
+        .outerjoin(aliased_shout_author, ShoutTopic.shout == aliased_shout_author.shout)
+        .add_columns(func.count(distinct(aliased_shout_author.author)).label('authors_stat'))
+        .outerjoin(aliased_topic_follower)
+        .add_columns(func.count(distinct(aliased_topic_follower.follower)).label('followers_stat'))
     )
+
+    q = q.group_by(Topic.id)
+
+    return q
+
+
+def add_author_stat_columns(q):
+    aliased_author_followers = aliased(AuthorFollower)
+    aliased_author_authors = aliased(AuthorFollower)
+    q = (
+        q.outerjoin(ShoutAuthor, Author.id == ShoutAuthor.author)
+        .add_columns(func.count(distinct(ShoutAuthor.shout)).label('shouts_stat'))
+        .outerjoin(aliased_author_authors, AuthorFollower.follower == Author.id)
+        .add_columns(func.count(distinct(aliased_author_authors.author)).label('authors_stat'))
+        .outerjoin(aliased_author_followers)
+        .add_columns(func.count(distinct(aliased_author_followers.follower)).label('followers_stat'))
+    )
+
+    q = q.group_by(Author.id)
+
     return q
 
 
@@ -31,6 +56,11 @@ def unpack_stat(q):
     return records
 
 
-def get_with_stat(q, author_alias, follower_model_alias):
-    q = add_stat_columns(q, author_alias, follower_model_alias)
+def get_authors_with_stat(q):
+    q = add_author_stat_columns(q)
+    return unpack_stat(q)
+
+
+def get_topics_with_stat(q):
+    q = add_topic_stat_columns(q)
     return unpack_stat(q)

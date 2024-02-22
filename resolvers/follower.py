@@ -14,7 +14,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.stat import add_stat_columns, unpack_stat
+from resolvers.stat import get_topics_with_stat, get_authors_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.follows import DEFAULT_FOLLOWS
@@ -110,10 +110,8 @@ def query_follows(user_id: str):
                 .filter(TopicFollower.topic == Topic.id)
             )
 
-            authors_query = add_stat_columns(authors_query, aliased_author, AuthorFollower)
-            authors = unpack_stat(authors_query)
-            topics_query = add_stat_columns(topics_query, aliased_author, TopicFollower)
-            authors = unpack_stat(topics_query)
+            authors = get_authors_with_stat(authors_query)
+            topics = get_topics_with_stat(topics_query)
 
     return {
         'topics': topics,
@@ -226,10 +224,7 @@ def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
         .join(Topic, Topic.id == TopicFollower.topic)
         .filter(or_(Topic.slug == slug, Topic.id == topic_id))
     )
-    q = add_stat_columns(q, Author, TopicFollower)
-    q = q.group_by(Author.id)
-
-    return unpack_stat(q)
+    return get_authors_with_stat(q)
 
 
 @query.field('get_shout_followers')

@@ -3,7 +3,7 @@ from sqlalchemy import and_, distinct, func, select
 from orm.author import Author
 from orm.shout import ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_with_stat
+from resolvers.stat import get_topics_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
@@ -12,22 +12,17 @@ from services.logger import root_logger as logger
 
 @query.field('get_topics_all')
 def get_topics_all(_, _info):
-    q = select(Topic)
-    q = q.group_by(Topic.id)
-    topics = get_with_stat(q, Author, TopicFollower)
-    return topics
+    return get_topics_with_stat(select(Topic))
 
 
 @query.field('get_topics_by_community')
-async def get_topics_by_community(_, _info, community_id: int):
+def get_topics_by_community(_, _info, community_id: int):
     q = select(Topic).where(Topic.community == community_id)
-    q = q.group_by(Topic.id)
-    topics = await get_with_stat(q, Author, TopicFollower)
-    return topics
+    return get_topics_with_stat(q)
 
 
 @query.field('get_topics_by_author')
-async def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
+def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
     q = select(Topic)
     if author_id:
         q = q.join(Author).where(Author.id == author_id)
@@ -36,23 +31,21 @@ async def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
     elif user:
         q = q.join(Author).where(Author.user == user)
 
-    q = q.group_by(Topic.id)
-    topics = await get_with_stat(q, Author, TopicFollower)
-    return topics
+    return get_topics_with_stat(q)
 
 
 @query.field('get_topic')
-async def get_topic(_, _info, slug):
+def get_topic(_, _info, slug):
     q = select(Topic).filter(Topic.slug == slug)
     q = q.group_by(Topic.id)
-    topics = await get_with_stat(q, Author, TopicFollower)
+    topics = get_topics_with_stat(q)
     if topics:
         return topics[0]
 
 
 @mutation.field('create_topic')
 @login_required
-async def create_topic(_, _info, inp):
+def create_topic(_, _info, inp):
     with local_session() as session:
         # TODO: check user permissions to create topic for exact community
         # and actor is permitted to craete it
@@ -65,7 +58,7 @@ async def create_topic(_, _info, inp):
 
 @mutation.field('update_topic')
 @login_required
-async def update_topic(_, _info, inp):
+def update_topic(_, _info, inp):
     slug = inp['slug']
     with local_session() as session:
         topic = session.query(Topic).filter(Topic.slug == slug).first()
@@ -81,7 +74,7 @@ async def update_topic(_, _info, inp):
 
 @mutation.field('delete_topic')
 @login_required
-async def delete_topic(_, info, slug: str):
+def delete_topic(_, info, slug: str):
     user_id = info.context['user_id']
     with local_session() as session:
         t: Topic = session.query(Topic).filter(Topic.slug == slug).first()

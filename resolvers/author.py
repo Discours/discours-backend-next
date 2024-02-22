@@ -10,7 +10,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import query_follows
-from resolvers.stat import add_stat_columns, get_with_stat, unpack_stat
+from resolvers.stat import get_authors_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -98,7 +98,7 @@ def count_author_shouts_rating(session, author_id) -> int:
 
 
 def load_author_with_stats(q):
-    result = get_with_stat(q, Author, AuthorFollower)
+    result = get_authors_with_stat(q)
 
     if result:
         [author] = result
@@ -199,7 +199,7 @@ def load_authors_by(_, _info, by, limit, offset):
 
     q = q.limit(limit).offset(offset)
     q = q.group_by(Author.id)
-    authors = get_with_stat(q, Author, AuthorFollower)
+    authors = get_authors_with_stat(q)
 
     return authors
 
@@ -269,14 +269,10 @@ def create_author(user_id: str, slug: str, name: str = ''):
 
 @query.field('get_author_followers')
 def get_author_followers(_, _info, slug) -> List[Author]:
-    aliased_author = aliased(Author)
-    q = select(aliased_author)
-
+    q = select(Author)
     q = (
         q.join(AuthorFollower, AuthorFollower.follower == Author.id)
-        .join(aliased_author, aliased_author.id == AuthorFollower.author)
-        .where(aliased_author.slug == slug)
+        .join(Author, Author.id == AuthorFollower.author)
+        .where(Author.slug == slug)
     )
-    q = add_stat_columns(q, aliased_author, AuthorFollower)
-    q = q.group_by(aliased_author.id)
-    return unpack_stat(q)
+    return get_authors_with_stat(q)
