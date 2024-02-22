@@ -19,7 +19,7 @@ from services.viewed import ViewedStorage
 from services.logger import root_logger as logger
 
 
-def add_stat_columns(q, aliased_reaction):
+def add_reaction_stat_columns(q, aliased_reaction):
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label('reacted_stat'),
         func.sum(
@@ -229,7 +229,7 @@ async def update_reaction(_, info, reaction):
         with local_session() as session:
             reaction_query = select(Reaction).filter(Reaction.id == int(rid))
             aliased_reaction = aliased(Reaction)
-            reaction_query = add_stat_columns(reaction_query, aliased_reaction)
+            reaction_query = add_reaction_stat_columns(reaction_query, aliased_reaction)
             reaction_query = reaction_query.group_by(Reaction.id)
 
             try:
@@ -358,7 +358,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
 
     # calculate counters
     aliased_reaction = aliased(Reaction)
-    q = add_stat_columns(q, aliased_reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction)
 
     # filter
     q = apply_reaction_filters(by, q)
@@ -425,7 +425,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 .outerjoin(Author, Shout.authors.any(id=follower_id))
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
             )
-            q1 = add_stat_columns(q1, aliased(Reaction))
+            q1 = add_reaction_stat_columns(q1, aliased(Reaction))
             q1 = q1.filter(Author.id == follower_id).group_by(Shout.id)
 
             # Shouts where follower reacted
@@ -436,7 +436,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 .filter(Reaction.created_by == follower_id)
                 .group_by(Shout.id)
             )
-            q2 = add_stat_columns(q2, aliased(Reaction))
+            q2 = add_reaction_stat_columns(q2, aliased(Reaction))
 
             # Sort shouts by the `last_comment` field
             combined_query = (

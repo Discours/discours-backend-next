@@ -3,7 +3,7 @@ from sqlalchemy import and_, distinct, func, select
 from orm.author import Author
 from orm.shout import ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import add_topic_stat_columns, get_topics_from_query
+from resolvers.stat import get_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
@@ -11,33 +11,24 @@ from services.logger import root_logger as logger
 
 
 @query.field('get_topics_all')
-async def get_topics_all(_, _info):
+def get_topics_all(_, _info):
     q = select(Topic)
-    q = add_topic_stat_columns(q)
-
-    return await get_topics_from_query(q)
-
-
-async def topics_followed_by(author_id):
-    q = select(Topic, TopicFollower)
-    q = add_topic_stat_columns(q)
-    q = q.join(TopicFollower).where(TopicFollower.follower == author_id)
-
-    return await get_topics_from_query(q)
+    q = q.group_by(Topic.id)
+    topics = get_with_stat(q, Author, TopicFollower)
+    return topics
 
 
 @query.field('get_topics_by_community')
 async def get_topics_by_community(_, _info, community_id: int):
     q = select(Topic).where(Topic.community == community_id)
-    q = add_topic_stat_columns(q)
-
-    return await get_topics_from_query(q)
+    q = q.group_by(Topic.id)
+    topics = await get_with_stat(q, Author, TopicFollower)
+    return topics
 
 
 @query.field('get_topics_by_author')
 async def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
     q = select(Topic)
-    q = add_topic_stat_columns(q)
     if author_id:
         q = q.join(Author).where(Author.id == author_id)
     elif slug:
@@ -45,15 +36,16 @@ async def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
     elif user:
         q = q.join(Author).where(Author.user == user)
 
-    return await get_topics_from_query(q)
+    q = q.group_by(Topic.id)
+    topics = await get_with_stat(q, Author, TopicFollower)
+    return topics
 
 
 @query.field('get_topic')
 async def get_topic(_, _info, slug):
-    q = select(Topic).where(Topic.slug == slug)
-    q = add_topic_stat_columns(q)
-
-    topics = await get_topics_from_query(q)
+    q = select(Topic).filter(Topic.slug == slug)
+    q = q.group_by(Topic.id)
+    topics = await get_with_stat(q, Author, TopicFollower)
     if topics:
         return topics[0]
 

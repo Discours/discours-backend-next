@@ -5,7 +5,7 @@ import json
 
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import add_author_stat_columns, add_topic_stat_columns
+from resolvers.stat import get_with_stat
 from services.rediscache import redis
 
 
@@ -16,6 +16,7 @@ DEFAULT_FOLLOWS = {
         {'slug': 'discours', 'name': 'Дискурс', 'id': 1, 'desc': ''}
     ],
 }
+
 
 async def update_author(author: Author, ttl = 25 * 60 * 60):
     redis_key = f'user:{author.user}:author'
@@ -77,23 +78,15 @@ async def update_follows_for_user(
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
     q = select(Author).filter(Author.id == author_id)
-    q = add_author_stat_columns(q)
+    authors = get_with_stat(q, Author, AuthorFollower)
+    author = authors[0]
     async with connection.begin() as conn:
-        [author, shouts_stat, followers_stat, followings_stat] = await conn.execute(
-            q
-        ).first()
-        author.stat = {
-            'shouts': shouts_stat,
-            # 'viewed': await ViewedStorage.get_author(author.slug),
-            'followers': followers_stat,
-            'followings': followings_stat,
-        }
         follower = await conn.execute(
             select(Author).filter(Author.id == follower_id)
         ).first()
         if follower and author:
             await update_follows_for_user(
-                connection,
+                conn,
                 follower.user,
                 'author',
                 {
@@ -110,23 +103,14 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
 
 async def handle_topic_follower_change(connection, topic_id, follower_id, is_insert):
     q = select(Topic).filter(Topic.id == topic_id)
-    q = add_topic_stat_columns(q)
+    topics = get_with_stat(q, Author, TopicFollower)
+    topic = topics[0]
+
     async with connection.begin() as conn:
-        [topic, shouts_stat, authors_stat, followers_stat] = await conn.execute(
-            q
-        ).first()
-        topic.stat = {
-            'shouts': shouts_stat,
-            'authors': authors_stat,
-            'followers': followers_stat,
-            # 'viewed': await ViewedStorage.get_topic(topic.slug),
-        }
-        follower = connection.execute(
-            select(Author).filter(Author.id == follower_id)
-        ).first()
+        follower = conn.execute(select(Author).filter(Author.id == follower_id)).first()
         if follower and topic:
             await update_follows_for_user(
-                connection,
+                conn,
                 follower.user,
                 'topic',
                 {

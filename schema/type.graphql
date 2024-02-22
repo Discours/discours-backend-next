@@ -1,14 +1,6 @@
-type AuthorFollowings {
-  unread: Int
-  topics: [String]
-  authors: [String]
-  reactions: [Int]
-  communities: [String]
-}
-
 type AuthorStat {
   shouts: Int
-  followings: Int
+  authors: Int
   followers: Int
   rating: Int
   rating_shouts: Int

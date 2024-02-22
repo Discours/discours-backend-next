@@ -14,7 +14,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.stat import add_topic_stat_columns, get_topics_from_query, add_author_stat_columns
+from resolvers.stat import add_stat_columns, unpack_stat
 from services.auth import login_required
 from services.db import local_session
 from services.follows import DEFAULT_FOLLOWS
@@ -110,55 +110,14 @@ def query_follows(user_id: str):
                 .filter(TopicFollower.topic == Topic.id)
             )
 
-            authors_query = add_author_stat_columns(authors_query)
-            topics_query = add_topic_stat_columns(topics_query)
-            authors = [
-                {
-                    'id': author_id,
-                    'name': author.name,
-                    'slug': author.slug,
-                    'pic': author.pic,
-                    'bio': author.bio,
-                    'last_seen': author.last_seen or int(time.time()),
-                    'stat': {
-                        'shouts': shouts_stat,
-                        'followers': followers_stat,
-                        'followings': followings_stat,   # TODO: rename to authors to
-                        # TODO: use graphql to reserve universal type Stat { authors shouts followers views comments }
-                    },
-                }
-                for [
-                    author,
-                    shouts_stat,
-                    followers_stat,
-                    followings_stat,
-                ] in session.execute(authors_query)
-            ]
-
-            topics = [
-                {
-                    'id': topic.id,
-                    'title': topic.title,
-                    'slug': topic.slug,
-                    'body': topic.body,
-                    'stat': {
-                        'shouts': shouts_stat,
-                        'authors': authors_stat,
-                        'followers': followers_stat,
-                    },
-                }
-                for [
-                    topic,
-                    shouts_stat,
-                    authors_stat,
-                    followers_stat,
-                ] in session.execute(topics_query)
-            ]
+            authors_query = add_stat_columns(authors_query, aliased_author, AuthorFollower)
+            authors = unpack_stat(authors_query)
+            topics_query = add_stat_columns(topics_query, aliased_author, TopicFollower)
+            authors = unpack_stat(topics_query)
 
     return {
         'topics': topics,
         'authors': authors,
-        # Include other results (e.g., shouts) if needed
         'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
     }
 
@@ -260,17 +219,17 @@ def author_unfollow(follower_id, slug):
 
 
 @query.field('get_topic_followers')
-async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
+def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
     q = select(Author)
-    q = add_topic_stat_columns(q)
-
     q = (
         q.join(TopicFollower, TopicFollower.follower == Author.id)
         .join(Topic, Topic.id == TopicFollower.topic)
         .filter(or_(Topic.slug == slug, Topic.id == topic_id))
     )
+    q = add_stat_columns(q, Author, TopicFollower)
+    q = q.group_by(Author.id)
 
-    return await get_topics_from_query(q)
+    return unpack_stat(q)
 
 
 @query.field('get_shout_followers')

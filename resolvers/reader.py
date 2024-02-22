@@ -7,7 +7,7 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.reaction import add_stat_columns
+from resolvers.reaction import add_reaction_stat_columns
 from resolvers.topic import get_random_topic
 from services.auth import login_required
 from services.db import local_session
@@ -46,7 +46,7 @@ async def get_shout(_, _info, slug=None, shout_id=None):
     with local_session() as session:
         q = select(Shout).options(joinedload(Shout.authors), joinedload(Shout.topics))
         aliased_reaction = aliased(Reaction)
-        q = add_stat_columns(q, aliased_reaction)
+        q = add_reaction_stat_columns(q, aliased_reaction)
 
         if slug is not None:
             q = q.filter(Shout.slug == slug)
@@ -133,7 +133,7 @@ async def load_shouts_by(_, _info, options):
 
     # stats
     aliased_reaction = aliased(Reaction)
-    q = add_stat_columns(q, aliased_reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction)
 
     # filters
     filters = options.get('filters', {})
@@ -269,7 +269,7 @@ async def load_shouts_feed(_, info, options):
             )
 
             aliased_reaction = aliased(Reaction)
-            q = add_stat_columns(q, aliased_reaction)
+            q = add_reaction_stat_columns(q, aliased_reaction)
             filters = options.get('filters', {})
             q = apply_filters(q, filters, reader.id)
 
@@ -366,7 +366,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = q.having(func.count(distinct(Reaction.id)) <= 4)
 
     aliased_reaction = aliased(Reaction)
-    q = add_stat_columns(q, aliased_reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
     user_id = info.context.get('user_id')
@@ -450,7 +450,7 @@ async def load_shouts_random_top(_, _info, options):
         .where(Shout.id.in_(subquery))
     )
     aliased_reaction = aliased(Reaction)
-    q = add_stat_columns(q, aliased_reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction)
 
     limit = options.get('limit', 10)
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
@@ -486,7 +486,7 @@ def fetch_shouts_by_topic(topic, limit):
     )
 
     aliased_reaction = aliased(Reaction)
-    q = add_stat_columns(q, aliased_reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
 

@@ -10,7 +10,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import query_follows
-from resolvers.stat import get_authors_from_query, add_author_stat_columns
+from resolvers.stat import add_stat_columns, get_with_stat, unpack_stat
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -20,7 +20,7 @@ from services.logger import root_logger as logger
 
 @mutation.field('update_author')
 @login_required
-async def update_author(_, info, profile):
+def update_author(_, info, profile):
     user_id = info.context['user_id']
     with local_session() as session:
         author = session.query(Author).where(Author.user == user_id).first()
@@ -32,7 +32,7 @@ async def update_author(_, info, profile):
 
 # TODO: caching query
 @query.field('get_authors_all')
-async def get_authors_all(_, _info):
+def get_authors_all(_, _info):
     authors = []
     with local_session() as session:
         authors = session.query(Author).all()
@@ -97,10 +97,8 @@ def count_author_shouts_rating(session, author_id) -> int:
     return shouts_likes - shouts_dislikes
 
 
-async def load_author_with_stats(q):
-    q = add_author_stat_columns(q)
-
-    result = await get_authors_from_query(q)
+def load_author_with_stats(q):
+    result = get_with_stat(q, Author, AuthorFollower)
 
     if result:
         [author] = result
@@ -140,7 +138,7 @@ async def load_author_with_stats(q):
 
 
 @query.field('get_author')
-async def get_author(_, _info, slug='', author_id=None):
+def get_author(_, _info, slug='', author_id=None):
     q = None
     if slug or author_id:
         if bool(slug):
@@ -148,7 +146,7 @@ async def get_author(_, _info, slug='', author_id=None):
         if author_id:
             q = select(Author).where(Author.id == author_id)
 
-        return await load_author_with_stats(q)
+        return load_author_with_stats(q)
 
 
 async def get_author_by_user_id(user_id: str):
@@ -162,7 +160,7 @@ async def get_author_by_user_id(user_id: str):
 
     logger.info(f'getting author id for {user_id}')
     q = select(Author).filter(Author.user == user_id)
-    author = await load_author_with_stats(q)
+    author = load_author_with_stats(q)
     if author:
         update_author(author)
         return author
@@ -174,9 +172,8 @@ async def get_author_id(_, _info, user: str):
 
 
 @query.field('load_authors_by')
-async def load_authors_by(_, _info, by, limit, offset):
+def load_authors_by(_, _info, by, limit, offset):
     q = select(Author)
-    q = add_author_stat_columns(q)
     if by.get('slug'):
         q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
     elif by.get('name'):
@@ -201,14 +198,14 @@ async def load_authors_by(_, _info, by, limit, offset):
         q = q.order_by(desc(f'{order}_stat'))
 
     q = q.limit(limit).offset(offset)
-
-    authors = await get_authors_from_query(q)
+    q = q.group_by(Author.id)
+    authors = get_with_stat(q, Author, AuthorFollower)
 
     return authors
 
 
 @query.field('get_author_follows')
-async def get_author_follows(
+def get_author_follows(
     _, _info, slug='', user=None, author_id=None
 ) -> List[Author]:
     with local_session() as session:
@@ -228,7 +225,7 @@ async def get_author_follows(
 
 @mutation.field('rate_author')
 @login_required
-async def rate_author(_, info, rated_slug, value):
+def rate_author(_, info, rated_slug, value):
     user_id = info.context['user_id']
 
     with local_session() as session:
@@ -262,7 +259,7 @@ async def rate_author(_, info, rated_slug, value):
     return {}
 
 
-async def create_author(user_id: str, slug: str, name: str = ''):
+def create_author(user_id: str, slug: str, name: str = ''):
     with local_session() as session:
         new_author = Author(user=user_id, slug=slug, name=name)
         session.add(new_author)
@@ -271,15 +268,15 @@ async def create_author(user_id: str, slug: str, name: str = ''):
 
 
 @query.field('get_author_followers')
-async def get_author_followers(_, _info, slug) -> List[Author]:
-    q = select(Author)
-    q = add_author_stat_columns(q)
-
+def get_author_followers(_, _info, slug) -> List[Author]:
     aliased_author = aliased(Author)
+    q = select(aliased_author)
+
     q = (
         q.join(AuthorFollower, AuthorFollower.follower == Author.id)
         .join(aliased_author, aliased_author.id == AuthorFollower.author)
         .where(aliased_author.slug == slug)
     )
-
-    return await get_authors_from_query(q)
+    q = add_stat_columns(q, aliased_author, AuthorFollower)
+    q = q.group_by(aliased_author.id)
+    return unpack_stat(q)
