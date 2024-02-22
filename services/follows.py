@@ -5,7 +5,7 @@ import json
 
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_with_stat
+from resolvers.stat import get_authors_with_stat, get_topics_with_stat
 from services.rediscache import redis
 
 
@@ -78,7 +78,7 @@ async def update_follows_for_user(
 
 async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
     q = select(Author).filter(Author.id == author_id)
-    authors = get_with_stat(q, Author, AuthorFollower)
+    authors = get_authors_with_stat(q)
     author = authors[0]
     async with connection.begin() as conn:
         follower = await conn.execute(
@@ -103,7 +103,7 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
 
 async def handle_topic_follower_change(connection, topic_id, follower_id, is_insert):
     q = select(Topic).filter(Topic.id == topic_id)
-    topics = get_with_stat(q, Author, TopicFollower)
+    topics = get_topics_with_stat(q)
     topic = topics[0]
 
     async with connection.begin() as conn:
