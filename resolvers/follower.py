@@ -93,8 +93,10 @@ def query_follows(user_id: str):
         author = (
             session.query(Author).filter(Author.user == user_id).first()
         )
+
         if isinstance(author, Author):
             author_id = author.id
+            session.commit()
             authors_query = (
                 select(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
