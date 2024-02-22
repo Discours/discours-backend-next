@@ -1,4 +1,5 @@
 import json
+import time
 from typing import List
 
 from sqlalchemy import select, or_
@@ -15,6 +16,7 @@ from resolvers.topic import topic_follow, topic_unfollow
 from resolvers.stat import add_topic_stat_columns, get_topics_from_query, add_author_stat_columns
 from services.auth import login_required
 from services.db import local_session
+from services.follows import DEFAULT_FOLLOWS
 from services.notify import notify_follower
 from services.schema import mutation, query
 from services.logger import root_logger as logger
@@ -84,6 +86,7 @@ async def unfollow(_, info, what, slug):
 
 
 def query_follows(user_id: str):
+    logger.debug(f'query follows for {user_id} from database')
     topics = []
     authors = []
     with local_session() as session:
@@ -157,16 +160,16 @@ def query_follows(user_id: str):
 
 async def get_follows_by_user_id(user_id: str):
     if user_id:
-        redis_key = f'user:{user_id}:follows'
-        res = await redis.execute('GET', redis_key)
-        if isinstance(res, str):
-            follows = json.loads(res)
-            return follows
-
-        logger.debug(f'getting follows for {user_id}')
-        follows = query_follows(user_id)
-        await redis.execute('SET', redis_key, json.dumps(follows))
-
+        author = await redis.execute('GET', f'user:{user_id}:author')
+        follows = DEFAULT_FOLLOWS
+        day_old = int(time.time()) - author.get('last_seen', 0) > 24*60*60
+        if day_old:
+            follows = query_follows(user_id)
+        else:
+            logger.debug(f'getting follows for {user_id} from redis')
+            res = await redis.execute('GET', f'user:{user_id}:follows')
+            if isinstance(res, str):
+                follows = json.loads(res)
         return follows
 
 

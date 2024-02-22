@@ -9,6 +9,14 @@ from resolvers.stat import add_author_stat_columns, add_topic_stat_columns
 from services.rediscache import redis
 
 
+DEFAULT_FOLLOWS = {
+    'topics': [],
+    'authors': [],
+    'communities': [
+        {'slug': 'discours', 'name': 'Дискурс', 'id': 1, 'desc': ''}
+    ],
+}
+
 async def update_author(author: Author, ttl = 25 * 60 * 60):
     redis_key = f'user:{author.user}:author'
     await redis.execute('SETEX', redis_key, ttl, json.dumps(author.dict()))
@@ -56,13 +64,7 @@ async def update_follows_for_user(
     if follows_str:
         follows = json.loads(follows_str)
     else:
-        follows = {
-            'topics': [],
-            'authors': [],
-            'communities': [
-                {'slug': 'discours', 'name': 'Дискурс', 'id': 1, 'desc': ''}
-            ],
-        }
+        follows = DEFAULT_FOLLOWS
     if is_insert:
         follows[f'{entity_type}s'].append(entity)
     else:
