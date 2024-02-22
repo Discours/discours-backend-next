@@ -115,7 +115,10 @@ def login_required(f):
 
         try:
             req = info.context.get('request')
-            [user_id, user_roles] = await check_auth(req)
+            checked_result = await check_auth(req)
+            logger.debug(checked_result)
+            if checked_result and len(checked_result) > 1:
+                [user_id, user_roles] = checked_result
         except Exception as e:
             logger.error(f'Failed to authenticate user: {e}')
         if user_id:
