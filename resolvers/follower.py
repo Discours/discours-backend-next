@@ -86,11 +86,12 @@ async def unfollow(_, info, what, slug):
 def query_follows(user_id: str):
     topics = []
     authors = []
+    author_id = None
     with local_session() as session:
-        author_id = (
-            session.query(Author.id).filter(Author.user == user_id).first()
+        author = (
+            session.query(Author).filter(Author.user == user_id).first()
         )
-        session.commit()
+        author_id = author.id
         if isinstance(author_id, int):
             authors_query = (
                 select(Author)
@@ -99,7 +100,7 @@ def query_follows(user_id: str):
             )
             authors = [
                 {
-                    'id': author.id,
+                    'id': author_id,
                     'name': author.name,
                     'slug': author.slug,
                     'pic': author.pic,
