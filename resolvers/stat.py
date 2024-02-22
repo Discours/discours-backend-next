@@ -8,23 +8,24 @@ from services.db import local_session
 # from services.viewed import ViewedStorage
 
 
-def add_author_stat_columns(q):
+def add_author_stat_columns(q, author_model = None):
+    aliased_author = author_model or aliased(Author)
     shout_author_aliased = aliased(ShoutAuthor)
     q = q.outerjoin(shout_author_aliased).add_columns(
         func.count(distinct(shout_author_aliased.shout)).label('shouts_stat')
     )
 
     followers_table = aliased(AuthorFollower)
-    q = q.outerjoin(followers_table, followers_table.author == Author.id).add_columns(
+    q = q.outerjoin(followers_table, followers_table.author == aliased_author.id).add_columns(
         func.count(distinct(followers_table.follower)).label('followers_stat')
     )
 
     followings_table = aliased(AuthorFollower)
     q = q.outerjoin(
-        followings_table, followings_table.follower == Author.id
+        followings_table, followings_table.follower == aliased_author.id
     ).add_columns(func.count(distinct(followers_table.author)).label('followings_stat'))
 
-    q = q.group_by(Author.id)
+    q = q.group_by(aliased_author.id)
     return q
 
 
