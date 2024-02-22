@@ -95,17 +95,21 @@ def query_follows(user_id: str):
         if isinstance(author, Author):
             author_id = author.id
             aliased_author = aliased(Author)
+
             authors_query = (
                 session.query(aliased_author, AuthorFollower)
+                .select_from(aliased_author)  # явное указание FROM-запроса
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
                 .filter(AuthorFollower.author == aliased_author.id)
             )
 
             topics_query = (
                 session.query(Topic, TopicFollower)
+                .select_from(Topic)  # явное указание FROM-запроса
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
             )
+
             authors_query = add_author_stat_columns(authors_query)
             topics_query = add_topic_stat_columns(topics_query)
             authors = [
