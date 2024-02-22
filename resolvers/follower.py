@@ -91,18 +91,23 @@ def query_follows(user_id: str):
     topics = []
     authors = []
     with local_session() as session:
-        aliased_author = aliased(Author)
-        author = (
-            session.query(aliased_author).filter(aliased_author.user == user_id).first()
-        )
+        author = session.query(Author).filter(Author.user == user_id).first()
         if isinstance(author, Author):
             author_id = author.id
+            aliased_author = aliased(Author)
             authors_query = (
-                select(Author)
+                session.query(aliased_author, AuthorFollower)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
-                .filter(AuthorFollower.author == Author.id)
+                .filter(AuthorFollower.author == aliased_author.id)
+            )
+
+            topics_query = (
+                session.query(Topic, TopicFollower)
+                .join(TopicFollower, TopicFollower.follower == author_id)
+                .filter(TopicFollower.topic == Topic.id)
             )
             authors_query = add_author_stat_columns(authors_query)
+            topics_query = add_topic_stat_columns(topics_query)
             authors = [
                 {
                     'id': author_id,
@@ -110,10 +115,12 @@ def query_follows(user_id: str):
                     'slug': author.slug,
                     'pic': author.pic,
                     'bio': author.bio,
+                    'last_seen': author.last_seen or int(time.time()),
                     'stat': {
                         'shouts': shouts_stat,
                         'followers': followers_stat,
-                        'followings': followings_stat,
+                        'followings': followings_stat,   # TODO: rename to authors to
+                        # TODO: use graphql to reserve universal type Stat { authors shouts followers views comments }
                     },
                 }
                 for [
@@ -124,12 +131,6 @@ def query_follows(user_id: str):
                 ] in session.execute(authors_query)
             ]
 
-            topics_query = (
-                select(Topic)
-                .join(TopicFollower, TopicFollower.follower == author_id)
-                .filter(TopicFollower.topic == Topic.id)
-            )
-            topics_query = add_topic_stat_columns(topics_query)
             topics = [
                 {
                     'id': topic.id,
@@ -149,8 +150,6 @@ def query_follows(user_id: str):
                     followers_stat,
                 ] in session.execute(topics_query)
             ]
-
-            # TODO: Include other queries (e.g., shouts_query) if needed
 
     return {
         'topics': topics,
