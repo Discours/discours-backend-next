@@ -3,6 +3,7 @@ import time
 from typing import List
 
 from sqlalchemy import select, or_
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
@@ -90,13 +91,12 @@ def query_follows(user_id: str):
     topics = []
     authors = []
     with local_session() as session:
+        aliased_author = aliased(Author)
         author = (
-            session.query(Author).filter(Author.user == user_id).first()
+            session.query(aliased_author).filter(aliased_author.user == user_id).first()
         )
-
         if isinstance(author, Author):
             author_id = author.id
-            session.commit()
             authors_query = (
                 select(Author)
                 .join(AuthorFollower, AuthorFollower.follower == author_id)
