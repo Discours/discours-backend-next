@@ -124,6 +124,7 @@ def query_follows(user_id: str):
                 .join(TopicFollower, TopicFollower.follower == author_id)
                 .filter(TopicFollower.topic == Topic.id)
             )
+            topics_query = add_topic_stat_columns(topics_query)
             topics = [
                 {
                     'id': topic.id,
