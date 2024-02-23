@@ -105,6 +105,7 @@ def query_follows(user_id: str):
                     func.count(func.distinct(AuthorFollower.author)).label("authors_stat"),
                     func.count(func.distinct(AuthorFollower.follower)).label("followers_stat")
                 )
+                .select_from(aliased_author)
                 .filter(AuthorFollower.author == aliased_author.id)
                 .join(AuthorFollower, AuthorFollower.follower == aliased_author.id)
                 .outerjoin(ShoutAuthor, ShoutAuthor.author == author_id)
@@ -124,6 +125,7 @@ def query_follows(user_id: str):
                     func.count(func.distinct(ShoutAuthor.author)).label("authors_stat"),
                     func.count(func.distinct(TopicFollower.follower)).label("followers_stat")
                 )
+                .select_from(aliased_topic)
                 .join(TopicFollower, TopicFollower.topic == aliased_topic.id)
                 .outerjoin(ShoutTopic, aliased_topic.id == ShoutTopic.topic)
                 .outerjoin(aliased_shout_authors, ShoutTopic.shout == aliased_shout_authors.shout)
