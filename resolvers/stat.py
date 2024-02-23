@@ -43,7 +43,7 @@ def add_author_stat_columns(q):
     return q
 
 
-def unpack_stat(q):
+def execute_with_ministat(q):
     records = []
     with local_session() as session:
         for [entity, shouts_stat, authors_stat, followers_stat] in session.execute(q):
@@ -59,9 +59,9 @@ def unpack_stat(q):
 
 def get_authors_with_stat(q):
     q = add_author_stat_columns(q)
-    return unpack_stat(q)
+    return execute_with_ministat(q)
 
 
 def get_topics_with_stat(q):
     q = add_topic_stat_columns(q)
-    return unpack_stat(q)
+    return execute_with_ministat(q)

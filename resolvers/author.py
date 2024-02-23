@@ -10,7 +10,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import query_follows
-from resolvers.stat import get_authors_with_stat, unpack_stat
+from resolvers.stat import get_authors_with_stat, execute_with_ministat
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -295,4 +295,4 @@ def get_author_followers(_, _info, slug):
         .group_by(author_alias.id)
     )
 
-    return unpack_stat(q)
+    return execute_with_ministat(q)
