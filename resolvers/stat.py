@@ -164,7 +164,6 @@ def author_follows_authors(author_id: int):
 
     return authors
 
-
 def author_follows_topics(author_id: int):
     subquery_shout_topic = (
         select(
@@ -199,39 +198,33 @@ def author_follows_topics(author_id: int):
         .alias()
     )
 
-    subq_shout_topic_alias = alias(subquery_shout_topic)
-    subq_shout_topic_authors_alias = alias(
-        subquery_shout_topic_authors, name='subq_shout_topic_authors'
-    )
-    subq_topic_followers_alias = alias(
-        subquery_topic_followers, name='subq_topic_followers'
-    )
-
     topics_query = (
         select(
             [
                 Topic,
-                subq_shout_topic_alias.columns.shouts_stat,
-                subq_shout_topic_authors_alias.columns.authors_stat,
-                subq_topic_followers_alias.columns.followers_stat,
+                func.coalesce(subquery_shout_topic.columns.shouts_stat, 0).label('shouts_stat'),
+                func.coalesce(subquery_shout_topic_authors.columns.authors_stat, 0).label('authors_stat'),
+                func.coalesce(subquery_topic_followers.columns.followers_stat, 0).label('followers_stat'),
             ]
         )
         .select_from(Topic)
         .outerjoin(
-            subq_shout_topic_alias, Topic.id == subq_shout_topic_alias.columns.topic
+            subquery_shout_topic,
+            Topic.id == subquery_shout_topic.columns.topic,
         )
         .outerjoin(
-            subq_shout_topic_authors_alias,
-            Topic.id == subq_shout_topic_authors_alias.columns.topic,
+            subquery_shout_topic_authors,
+            Topic.id == subquery_shout_topic_authors.columns.topic,
         )
         .outerjoin(
-            subq_topic_followers_alias,
-            Topic.id == subq_topic_followers_alias.columns.topic,
+            subquery_topic_followers,
+            Topic.id == subquery_topic_followers.columns.topic,
         )
     )
 
     topics = execute_with_ministat(topics_query)
     return topics
+
 
 
 def query_follows(author_id: int):
