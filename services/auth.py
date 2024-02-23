@@ -43,13 +43,20 @@ def cache_auth_request(f):
         req = args[0]
         cache_key = auth_cache_key(req)
         result = region.get(cache_key)
-        if result is None:
+        if result is not None:  # Проверка наличия значения в кэше
+            logger.debug(f'CACHE found {cache_key}: {result}')
+            if isinstance(result, list) and len(result) == 2:  # Проверка формата значения
+                return result
+        try:
             [user_id, user_roles] = await f(*args, **kwargs)
             if user_id:
                 region.set(cache_key, [user_id, user_roles])
-        return result
-
+            return [user_id, user_roles]
+        except Exception as e:
+            logger.error(f'Error processing cache_auth_request: {e}')
+            return None  # Возвращение None в случае ошибки
     return decorated_function
+
 
 
 # Измененная функция проверки аутентификации с кэшированием
