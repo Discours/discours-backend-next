@@ -1,4 +1,4 @@
-from sqlalchemy import func, distinct
+from sqlalchemy import func, distinct, select
 from sqlalchemy.orm import aliased
 
 from orm.topic import TopicFollower, Topic
@@ -14,10 +14,10 @@ def add_topic_stat_columns(q):
     aliased_shout_topic = aliased(ShoutTopic)
 
     q = (
-        q.outerjoin(aliased_shout_topic, Topic.id == aliased_shout_topic.topic)
+        q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
         .add_columns(func.count(distinct(aliased_shout_topic.shout)).label("shouts_stat"))
         .outerjoin(aliased_shout_author, aliased_shout_topic.shout == aliased_shout_author.shout)
-        .add_columns(func.count(distinct(aliased_shout_author.user)).label("authors_stat"))
+        .add_columns(func.count(distinct(aliased_shout_author.author)).label("authors_stat"))
         .outerjoin(aliased_topic_follower)
         .add_columns(func.count(distinct(aliased_topic_follower.follower)).label("followers_stat"))
     )
@@ -71,13 +71,27 @@ def get_topics_with_stat(q):
 
 
 def author_follows_authors(author_id: int):
-    authors = []
-    return authors
+    aliased_author_authors = aliased(AuthorFollower, name="af")
+
+    q = (
+        select(Author)
+        .join(aliased_author_authors, Author.id == aliased_author_authors.author)
+        .filter(aliased_author_authors.follower == author_id)
+    )
+
+    q = add_author_stat_columns(q)
+    return execute_with_ministat(q)
 
 
 def author_follows_topics(author_id: int):
-    topics = []
-    return topics
+    q = (
+        select(Topic)
+        .join(TopicFollower, Topic.id == TopicFollower.topic)
+        .filter(TopicFollower.follower == author_id)
+    )
+
+    q = add_topic_stat_columns(q)
+    return execute_with_ministat(q)
 
 
 def query_follows(author_id: int):
