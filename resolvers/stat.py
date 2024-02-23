@@ -9,60 +9,39 @@ from services.logger import root_logger as logger
 
 
 def add_topic_stat_columns(q):
-    aliased_shout_authors = aliased(ShoutAuthor)
-    aliased_topic_followers = aliased(TopicFollower)
-    aliased_topic = aliased(Topic)
+    aliased_shout_author = aliased(ShoutAuthor)
+    aliased_topic_follower = aliased(TopicFollower)
+    aliased_shout_topic = aliased(ShoutTopic)
+
     q = (
-        q.outerjoin(ShoutTopic, aliased_topic.id == ShoutTopic.topic)
-        .add_columns(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
-        .outerjoin(
-            aliased_shout_authors, ShoutTopic.shout == aliased_shout_authors.shout
-        )
-        .add_columns(
-            func.count(distinct(aliased_shout_authors.author)).label('authors_stat')
-        )
-        .outerjoin(
-            aliased_topic_followers, aliased_topic.id == aliased_topic_followers.topic
-        )
-        .add_columns(
-            func.count(distinct(aliased_topic_followers.follower)).label(
-                'followers_stat'
-            )
-        )
+        q.outerjoin(aliased_shout_topic, Topic.id == aliased_shout_topic.topic)
+        .add_columns(func.count(distinct(aliased_shout_topic.shout)).label("shouts_stat"))
+        .outerjoin(aliased_shout_author, aliased_shout_topic.shout == aliased_shout_author.shout)
+        .add_columns(func.count(distinct(aliased_shout_author.user)).label("authors_stat"))
+        .outerjoin(aliased_topic_follower)
+        .add_columns(func.count(distinct(aliased_topic_follower.follower)).label("followers_stat"))
     )
 
-    q = q.group_by(aliased_topic.id)
+    q = q.group_by(Topic.id)
 
     return q
 
 
 def add_author_stat_columns(q):
-    aliased_author_authors = aliased(AuthorFollower, name='af_authors')
-    aliased_author_followers = aliased(
-        AuthorFollower, name='af_followers'
-    )  # Добавлен второй псевдоним
-    aliased_author = aliased(Author)
+    aliased_shout_author = aliased(ShoutAuthor)
+    aliased_author_authors = aliased(AuthorFollower)
+    aliased_author_followers = aliased(AuthorFollower)
+
     q = (
-        q.outerjoin(ShoutAuthor, aliased_author.id == ShoutAuthor.author)
-        .add_columns(func.count(distinct(ShoutAuthor.shout)).label('shouts_stat'))
-        .outerjoin(
-            aliased_author_authors, aliased_author_authors.follower == aliased_author.id
-        )
-        .add_columns(
-            func.count(distinct(aliased_author_authors.author)).label('authors_stat')
-        )
-        .outerjoin(
-            aliased_author_followers,
-            aliased_author_followers.author == aliased_author.id,
-        )  # Используется второй псевдоним
-        .add_columns(
-            func.count(distinct(aliased_author_followers.follower)).label(
-                'followers_stat'
-            )
-        )  # Используется второй псевдоним
+        q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
+        .add_columns(func.count(distinct(aliased_shout_author.shout)).label("shouts_stat"))
+        .outerjoin(aliased_author_authors, aliased_author_authors.follower == Author.id)
+        .add_columns(func.count(distinct(aliased_shout_author.user)).label("authors_stat"))
+        .outerjoin(aliased_author_followers, aliased_author_followers.author == Author.id)
+        .add_columns(func.count(distinct(aliased_author_followers.follower)).label("followers_stat"))
     )
 
-    q = q.group_by(aliased_author.id)
+    q = q.group_by(Author.id)
 
     return q
 
