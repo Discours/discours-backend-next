@@ -1,4 +1,4 @@
-from sqlalchemy import func, distinct, select
+from sqlalchemy import func, distinct, select, join
 from sqlalchemy.orm import aliased
 
 from orm.topic import TopicFollower, Topic
@@ -71,23 +71,21 @@ def get_topics_with_stat(q):
 
 
 def author_follows_authors(author_id: int):
-    aliased_author_authors = aliased(AuthorFollower, name="af")
-
+    af = aliased(AuthorFollower, name="af")
     q = (
-        select(Author)
-        .join(aliased_author_authors, Author.id == aliased_author_authors.author)
-        .filter(aliased_author_authors.follower == author_id)
+        select(Author).select_from(
+            join(Author, af, Author.id == af.author)
+        ).where(af.follower == author_id)
     )
-
     q = add_author_stat_columns(q)
     return execute_with_ministat(q)
 
 
 def author_follows_topics(author_id: int):
     q = (
-        select(Topic)
-        .join(TopicFollower, Topic.id == TopicFollower.topic)
-        .filter(TopicFollower.follower == author_id)
+        select(Topic).select_from(
+            join(Topic, TopicFollower, Topic.id == TopicFollower.topic)
+        ).where(TopicFollower.follower == author_id)
     )
 
     q = add_topic_stat_columns(q)
