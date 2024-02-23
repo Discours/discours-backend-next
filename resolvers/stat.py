@@ -26,8 +26,8 @@ def add_topic_stat_columns(q):
 
 
 def add_author_stat_columns(q):
-    aliased_author_authors = aliased(AuthorFollower)
-    aliased_author_followers = aliased(AuthorFollower)  # Добавлен второй псевдоним
+    aliased_author_authors = aliased(AuthorFollower, name='af_authors')
+    aliased_author_followers = aliased(AuthorFollower, name='af_followers')  # Добавлен второй псевдоним
     aliased_author = aliased(Author)
     q = (
         q.outerjoin(ShoutAuthor, aliased_author.id == ShoutAuthor.author)
