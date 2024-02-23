@@ -9,7 +9,6 @@ from starlette.routing import Route
 
 from services.rediscache import redis
 from services.schema import resolvers
-from services.search import search_service
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
@@ -36,7 +35,7 @@ app = Starlette(
     on_startup=[
         redis.connect,
         ViewedStorage.init,
-        search_service.info,
+        # search_service.info,
         # start_sentry,
         start,
     ],

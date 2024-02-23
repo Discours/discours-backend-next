@@ -12,12 +12,12 @@ def add_topic_stat_columns(q):
     aliased_topic_followers = aliased(TopicFollower)
     aliased_topic = aliased(Topic)
     q = (
-        q.outerjoin(ShoutTopic, aliased_topic.id == ShoutTopic.topic)
-        .add_columns(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
-        .outerjoin(aliased_shout_authors, ShoutTopic.shout == aliased_shout_authors.shout)
-        .add_columns(func.count(distinct(aliased_shout_authors.author)).label('authors_stat'))
-        .outerjoin(aliased_topic_followers, aliased_topic.id == aliased_topic_followers.topic)
-        .add_columns(func.count(distinct(aliased_topic_followers.follower)).label('followers_stat'))
+        q.outerjoin(ShoutTopic, aliased_topic.id == ShoutTopic.c.topic)
+        .add_columns(func.count(distinct(ShoutTopic.c.shout)).label('shouts_stat'))
+        .outerjoin(aliased_shout_authors, ShoutTopic.c.shout == aliased_shout_authors.c.shout)
+        .add_columns(func.count(distinct(aliased_shout_authors.c.author)).label('authors_stat'))
+        .outerjoin(aliased_topic_followers, aliased_topic.c.id == aliased_topic_followers.c.topic)
+        .add_columns(func.count(distinct(aliased_topic_followers.c.follower)).label('followers_stat'))
     )
 
     q = q.group_by(aliased_topic.id)
