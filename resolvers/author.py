@@ -299,19 +299,19 @@ def get_author_followers(_, _info, slug):
 
     q = (
         select(author_alias)
-        .join(alias_author_authors, alias_author_authors.follower_id == author_alias.id)
+        .join(alias_author_authors, alias_author_authors.follower == author_alias.id)
         .join(
-            alias_author_followers, alias_author_followers.author_id == author_alias.id
+            alias_author_followers, alias_author_followers.author == author_alias.id
         )
         .filter(author_alias.slug == slug)
         .add_columns(
             func.count(distinct(alias_shout_author.shout)).label('shouts_stat'),
-            func.count(distinct(alias_author_authors.author_id)).label('authors_stat'),
-            func.count(distinct(alias_author_follower_followers.follower_id)).label(
+            func.count(distinct(alias_author_authors.author)).label('authors_stat'),
+            func.count(distinct(alias_author_follower_followers.follower)).label(
                 'followers_stat'
             ),
         )
-        .outerjoin(alias_shout_author, author_alias.id == alias_shout_author.author_id)
+        .outerjoin(alias_shout_author, author_alias.id == alias_shout_author.author)
         .group_by(author_alias.id)
     )
 

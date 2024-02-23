@@ -191,11 +191,11 @@ def author_follows_topics(author_id: int):
     subquery_topic_followers = (
         select(
             [
-                TopicFollower.topic_id,
+                TopicFollower.topic,
                 func.count(distinct(TopicFollower.follower)).label('followers_stat'),
             ]
         )
-        .group_by(TopicFollower.topic_id)
+        .group_by(TopicFollower.topic)
         .alias()
     )
 

@@ -48,27 +48,27 @@ def test_query_follows():
     expected_queries = [
         mock_session.query(
             mock_Author.id,
-            mock_ShoutAuthor.author_id,
-            mock_AuthorFollower.author_id,
-            mock_AuthorFollower.follower_id,
+            mock_ShoutAuthor.author,
+            mock_AuthorFollower.author,
+            mock_AuthorFollower.follower,
         )
         .select_from(mock_Author)
-        .outerjoin(mock_ShoutAuthor, mock_Author.id == mock_ShoutAuthor.author_id)
-        .outerjoin(mock_AuthorFollower, mock_Author.id == mock_AuthorFollower.author_id)
+        .outerjoin(mock_ShoutAuthor, mock_Author.id == mock_ShoutAuthor.author)
+        .outerjoin(mock_AuthorFollower, mock_Author.id == mock_AuthorFollower.author)
         .outerjoin(
-            mock_AuthorFollower, mock_Author.id == mock_AuthorFollower.follower_id
+            mock_AuthorFollower, mock_Author.id == mock_AuthorFollower.follower
         )
         .all,
         mock_session.query(
             mock_Topic.id,
-            mock_ShoutTopic.topic_id,
-            mock_ShoutTopic.topic_id,
-            mock_TopicFollower.topic_id,
+            mock_ShoutTopic.topic,
+            mock_ShoutTopic.topic,
+            mock_TopicFollower.topic,
         )
         .select_from(mock_Topic)
-        .outerjoin(mock_ShoutTopic, mock_Topic.id == mock_ShoutTopic.topic_id)
-        .outerjoin(mock_ShoutTopic, mock_Topic.id == mock_ShoutTopic.topic_id)
-        .outerjoin(mock_TopicFollower, mock_Topic.id == mock_TopicFollower.topic_id)
+        .outerjoin(mock_ShoutTopic, mock_Topic.id == mock_ShoutTopic.topic)
+        .outerjoin(mock_ShoutTopic, mock_Topic.id == mock_ShoutTopic.topic)
+        .outerjoin(mock_TopicFollower, mock_Topic.id == mock_TopicFollower.topic)
         .all,
     ]
     mock_session.query.assert_has_calls(expected_queries)

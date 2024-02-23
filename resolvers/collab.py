@@ -19,7 +19,7 @@ async def accept_invite(_, info, invite_id: int):
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
             if (
                 invite
-                and invite.author_id is author.id
+                and invite.author_d is author.id
                 and invite.status is InviteStatus.PENDING.value
             ):
                 # Add the user to the shout authors
