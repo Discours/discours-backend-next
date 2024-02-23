@@ -19,20 +19,19 @@ cache_region = make_region().configure('dogpile.cache.memory', expiration_time=3
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
-Base = declarative_base()
 
 
 # Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn._query_start_time = time.time()
+    conn.query_start_time = time.time()
 
 
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     if hasattr(conn, '_query_start_time'):
-        elapsed = time.time() - conn._query_start_time
-        del conn._query_start_time
+        elapsed = time.time() - conn.query_start_time
+        del conn.query_start_time
         if elapsed > 0.9:  # Adjust threshold as needed
             logger.debug(
                 f"\n{statement}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s"

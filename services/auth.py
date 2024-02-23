@@ -22,7 +22,7 @@ async def request_data(gql, headers=None):
                     return data
     except Exception as e:
         # Handling and logging exceptions during authentication check
-        logger.error(f'[services.auth] request_data error: {e}')
+        logger.error(f'request_data error: {e}')
         return None
 
 
@@ -60,7 +60,7 @@ async def check_auth(req):
 
 
 async def add_user_role(user_id):
-    logger.info(f'[services.auth] add author role for user_id: {user_id}')
+    logger.info(f'add author role for user_id: {user_id}')
     query_name = '_update_user'
     operation = 'UpdateUserRoles'
     headers = {
