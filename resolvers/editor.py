@@ -39,7 +39,7 @@ async def get_shouts_drafts(_, info):
 
 @mutation.field('create_shout')
 @login_required
-async def create_shout(_, info, inp):
+def create_shout(_, info, inp):
     user_id = info.context['user_id']
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
@@ -170,6 +170,17 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         author = session.query(Author).filter(Author.user == user_id).first()
         current_time = int(time.time())
         shout_id = shout_id or shout_input.get('id')
+        slug = shout_input.get('slug')
+        if slug:
+            shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
+            if shout_by_id and slug != shout_by_id.slug:
+                same_slug_shout = session.query(Shout).filter(Shout.slug == shout_input.get('slug')).first()
+                c = 1
+                while same_slug_shout is not None:
+                    same_slug_shout = session.query(Shout).filter(Shout.slug == shout_input.get('slug')).first()
+                    c += 1
+                    slug += f'-{c}'
+                shout_input['slug'] = slug
         if isinstance(author, Author) and isinstance(shout_id, int):
             shout = (
                 session.query(Shout)
