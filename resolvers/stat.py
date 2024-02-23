@@ -32,9 +32,9 @@ def add_author_stat_columns(q):
     q = (
         q.outerjoin(ShoutAuthor, aliased_author.id == ShoutAuthor.author)
         .add_columns(func.count(distinct(ShoutAuthor.shout)).label('shouts_stat'))
-        .outerjoin(aliased_author_authors, AuthorFollower.follower == aliased_author.id)
+        .outerjoin(aliased_author_authors, aliased_author_authors.follower == aliased_author.id)
         .add_columns(func.count(distinct(aliased_author_authors.author)).label('authors_stat'))
-        .outerjoin(aliased_author_followers, AuthorFollower.author == aliased_author.id)  # Используется второй псевдоним
+        .outerjoin(aliased_author_followers, aliased_author_followers.author == aliased_author.id)  # Используется второй псевдоним
         .add_columns(func.count(distinct(aliased_author_followers.follower)).label('followers_stat'))  # Используется второй псевдоним
     )
 
