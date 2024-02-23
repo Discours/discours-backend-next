@@ -13,11 +13,11 @@ def add_topic_stat_columns(q):
     aliased_topic = aliased(Topic)
     q = (
         q.outerjoin(ShoutTopic, aliased_topic.id == ShoutTopic.topic)
-        .add_columns(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
+        .with_entities(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
         .outerjoin(aliased_shout_authors, ShoutTopic.shout == aliased_shout_authors.shout)
-        .add_columns(func.count(distinct(aliased_shout_authors.author)).label('authors_stat'))
+        .with_entities(func.count(distinct(aliased_shout_authors.author)).label('authors_stat'))
         .outerjoin(aliased_topic_followers, aliased_topic.id == aliased_topic_followers.topic)
-        .add_columns(func.count(distinct(aliased_topic_followers.follower)).label('followers_stat'))
+        .with_entities(func.count(distinct(aliased_topic_followers.follower)).label('followers_stat'))
     )
 
     q = q.group_by(aliased_topic.id)
@@ -27,15 +27,15 @@ def add_topic_stat_columns(q):
 
 def add_author_stat_columns(q):
     aliased_author_authors = aliased(AuthorFollower, name='af_authors')
-    aliased_author_followers = aliased(AuthorFollower, name='af_followers')  # Добавлен второй псевдоним
+    aliased_author_followers = aliased(AuthorFollower, name='af_followers')
     aliased_author = aliased(Author)
     q = (
         q.outerjoin(ShoutAuthor, aliased_author.id == ShoutAuthor.author)
-        .add_columns(func.count(distinct(ShoutAuthor.shout)).label('shouts_stat'))
+        .with_entities(func.count(distinct(ShoutAuthor.shout)).label('shouts_stat'))
         .outerjoin(aliased_author_authors, AuthorFollower.follower == aliased_author.id)
-        .add_columns(func.count(distinct(aliased_author_authors.author)).label('authors_stat'))
-        .outerjoin(aliased_author_followers, AuthorFollower.author == aliased_author.id)  # Используется второй псевдоним
-        .add_columns(func.count(distinct(aliased_author_followers.follower)).label('followers_stat'))  # Используется второй псевдоним
+        .with_entities(func.count(distinct(aliased_author_authors.author)).label('authors_stat'))
+        .outerjoin(aliased_author_followers, AuthorFollower.author == aliased_author.id)
+        .with_entities(func.count(distinct(aliased_author_followers.follower)).label('followers_stat'))
     )
 
     q = q.group_by(aliased_author.id)
@@ -46,13 +46,13 @@ def add_author_stat_columns(q):
 def execute_with_ministat(q):
     records = []
     with local_session() as session:
-        for [entity, shouts_stat, authors_stat, followers_stat] in session.execute(q):
-            entity.stat = {
+        for [r, shouts_stat, authors_stat, followers_stat] in session.execute(q):
+            r.stat = {
                 'shouts': shouts_stat,
                 'authors': authors_stat,
                 'followers': followers_stat
             }
-            records.append(entity)
+            records.append(r)
 
     return records
 
