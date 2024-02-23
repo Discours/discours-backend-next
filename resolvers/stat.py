@@ -1,4 +1,4 @@
-from sqlalchemy import func, select, distinct, alias
+from sqlalchemy import func, distinct
 from sqlalchemy.orm import aliased
 
 from orm.topic import TopicFollower, Topic
@@ -92,138 +92,12 @@ def get_topics_with_stat(q):
 
 
 def author_follows_authors(author_id: int):
-    aliased_shout_authors = aliased(ShoutAuthor)
-    subquery_shout_author = (
-        select(
-            [
-                aliased_shout_authors.author,
-                func.count(distinct(aliased_shout_authors.shout)).label('shouts_stat'),
-            ]
-        )
-        .group_by(aliased_shout_authors.author)
-        .where(aliased_shout_authors.author == author_id)
-        .alias()
-    )
-    alias_author_authors = aliased(AuthorFollower)
-    subquery_author_authors = (
-        select(
-            [
-                alias_author_authors.author,
-                func.count(distinct(alias_author_authors.author)).label('authors_stat'),
-            ]
-        )
-        .group_by(alias_author_authors.author)
-        .where(alias_author_authors.follower == author_id)
-        .alias()
-    )
-
-    alias_author_followers = aliased(AuthorFollower)
-    subquery_author_followers = (
-        select(
-            [
-                alias_author_followers.follower,
-                func.count(distinct(alias_author_followers.follower)).label('followers_stat'),
-            ]
-        )
-        .group_by(alias_author_followers.follower)
-        .where(alias_author_followers.author == author_id)
-        .alias()
-    )
-
-    subq_shout_author_alias = alias(subquery_shout_author)
-    subq_author_followers_alias = alias(
-        subquery_author_authors, name='subq_author_followers'
-    )
-    subq_author_authors_alias = alias(
-        subquery_author_followers, name='subq_author_authors'
-    )
-
-    authors_query = (
-        select(
-            [
-                Author,
-                subq_shout_author_alias.shouts_stat,
-                subq_author_authors_alias.authors_stat,
-                subq_author_followers_alias.followers_stat,
-            ]
-        )
-        .select_from(Author)
-        .outerjoin(
-            subq_shout_author_alias, Author.id == subq_shout_author_alias.author
-        )
-        .outerjoin(
-            subq_author_authors_alias, Author.id == subq_author_followers_alias.author
-        )
-        .outerjoin(
-            subq_author_followers_alias,
-            Author.id == subq_author_followers_alias.follower,
-        )
-    )
-
-    authors = execute_with_ministat(authors_query)
-
+    authors = []
     return authors
 
 
 def author_follows_topics(author_id: int):
-    subquery_shout_topic = (
-        select(
-            [
-                ShoutTopic.topic,
-                func.count(distinct(ShoutTopic.shout)).label('shouts_stat'),
-            ]
-        )
-        .group_by(ShoutTopic.topic)
-        .alias()
-    )
-
-    subquery_shout_topic_authors = (
-        select(
-            [
-                ShoutTopic.topic,
-                func.count(distinct(ShoutTopic.author)).label('authors_stat'),
-            ]
-        )
-        .group_by(ShoutTopic.topic)
-        .alias()
-    )
-
-    subquery_topic_followers = (
-        select(
-            [
-                TopicFollower.topic,
-                func.count(distinct(TopicFollower.follower)).label('followers_stat'),
-            ]
-        )
-        .group_by(TopicFollower.topic)
-        .alias()
-    )
-
-    topics_query = (
-        select(
-            [
-                Topic,
-                subquery_shout_topic.columns.shouts_stat,
-                subquery_shout_topic_authors.columns.authors_stat,
-                subquery_topic_followers.columns.followers_stat,
-            ]
-        )
-        .select_from(Topic)
-        .outerjoin(
-            subquery_shout_topic,
-            Topic.id == subquery_shout_topic.c.topic,
-            )
-        .outerjoin(
-            subquery_shout_topic_authors,
-            Topic.id == subquery_shout_topic_authors.c.topic,
-            )
-        .outerjoin(
-            subquery_topic_followers,
-            Topic.id == subquery_topic_followers.c.topic,
-            )
-    )
-
-    topics = execute_with_ministat(topics_query)
+    topics = []
     return topics
 
 
