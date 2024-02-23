@@ -2,7 +2,7 @@ import json
 import time
 from typing import List
 
-from sqlalchemy import and_, desc, select, or_
+from sqlalchemy import and_, desc, select, or_, distinct, func
 from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower, AuthorRating
@@ -10,7 +10,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import query_follows
-from resolvers.stat import get_authors_with_stat
+from resolvers.stat import get_authors_with_stat, unpack_stat
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -268,11 +268,31 @@ def create_author(user_id: str, slug: str, name: str = ''):
 
 
 @query.field('get_author_followers')
-def get_author_followers(_, _info, slug) -> List[Author]:
-    q = select(Author)
+def get_author_followers(_, _info, slug):
+    author_alias = aliased(Author)
+    author_follower_alias = aliased(AuthorFollower)
+    shout_author_alias = aliased(ShoutAuthor)
+
     q = (
-        q.join(AuthorFollower, AuthorFollower.follower == Author.id)
-        .join(Author, Author.id == AuthorFollower.author)
-        .where(Author.slug == slug)
+        select(author_alias)
+        .join(author_follower_alias, author_follower_alias.author == author_alias.id)
+        .join(Author, Author.id == author_follower_alias.follower)
+        .filter(author_alias.slug == slug)
+        .add_columns(
+            func.count(distinct(shout_author_alias.shout)).label('shouts_stat'),
+            func.count(distinct(author_follower_alias.author)).label('authors_stat'),
+            func.count(distinct(author_follower_alias.follower)).label('followers_stat')
+        )
+        .outerjoin(shout_author_alias, author_alias.id == shout_author_alias.author)
+        .outerjoin(
+            aliased(AuthorFollower, name="author_follower_1"),
+            author_follower_alias.follower == author_alias.id
+        )
+        .outerjoin(
+            aliased(AuthorFollower, name="author_follower_2"),
+            author_follower_alias.author == author_alias.id
+        )
+        .group_by(author_alias.id)
     )
-    return get_authors_with_stat(q)
+
+    return unpack_stat(q)
