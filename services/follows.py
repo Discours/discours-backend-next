@@ -12,13 +12,11 @@ from services.rediscache import redis
 DEFAULT_FOLLOWS = {
     'topics': [],
     'authors': [],
-    'communities': [
-        {'slug': 'discours', 'name': 'Дискурс', 'id': 1, 'desc': ''}
-    ],
+    'communities': [{'slug': 'discours', 'name': 'Дискурс', 'id': 1, 'desc': ''}],
 }
 
 
-async def update_author(author: Author, ttl = 25 * 60 * 60):
+async def update_author(author: Author, ttl=25 * 60 * 60):
     redis_key = f'user:{author.user}:author'
     await redis.execute('SETEX', redis_key, ttl, json.dumps(author.dict()))
 

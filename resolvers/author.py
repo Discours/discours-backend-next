@@ -1,6 +1,5 @@
 import json
 import time
-from typing import List
 
 from sqlalchemy import and_, desc, select, or_, distinct, func
 from sqlalchemy.orm import aliased
@@ -131,8 +130,12 @@ def load_author_with_stats(q):
                 .count()
             )
             author.stat['rating'] = likes_count - dislikes_count
-            author.stat['rating_shouts'] = count_author_shouts_rating(session, author.id)
-            author.stat['rating_comments'] = count_author_comments_rating(session, author.id)
+            author.stat['rating_shouts'] = count_author_shouts_rating(
+                session, author.id
+            )
+            author.stat['rating_comments'] = count_author_comments_rating(
+                session, author.id
+            )
             author.stat['commented'] = comments_count
             return author
 
@@ -205,9 +208,7 @@ def load_authors_by(_, _info, by, limit, offset):
 
 
 @query.field('get_author_follows')
-def get_author_follows(
-    _, _info, slug='', user=None, author_id=None
-) -> List[Author]:
+def get_author_follows(_, _info, slug='', user=None, author_id=None):
     with local_session() as session:
         if not user and (author_id or slug):
             user_query_result = (
@@ -270,28 +271,26 @@ def create_author(user_id: str, slug: str, name: str = ''):
 @query.field('get_author_followers')
 def get_author_followers(_, _info, slug):
     author_alias = aliased(Author)
-    author_follower_alias = aliased(AuthorFollower)
-    shout_author_alias = aliased(ShoutAuthor)
+    alias_author_followers = aliased(AuthorFollower)
+    alias_author_authors = aliased(AuthorFollower)
+    alias_author_follower_followers = aliased(AuthorFollower)
+    alias_shout_author = aliased(ShoutAuthor)
 
     q = (
         select(author_alias)
-        .join(author_follower_alias, author_follower_alias.author == author_alias.id)
-        .join(Author, Author.id == author_follower_alias.follower)
+        .join(alias_author_authors, alias_author_authors.follower_id == author_alias.id)
+        .join(
+            alias_author_followers, alias_author_followers.author_id == author_alias.id
+        )
         .filter(author_alias.slug == slug)
         .add_columns(
-            func.count(distinct(shout_author_alias.shout)).label('shouts_stat'),
-            func.count(distinct(author_follower_alias.author)).label('authors_stat'),
-            func.count(distinct(author_follower_alias.follower)).label('followers_stat')
+            func.count(distinct(alias_shout_author.shout)).label('shouts_stat'),
+            func.count(distinct(alias_author_authors.author_id)).label('authors_stat'),
+            func.count(distinct(alias_author_follower_followers.follower_id)).label(
+                'followers_stat'
+            ),
         )
-        .outerjoin(shout_author_alias, author_alias.id == shout_author_alias.author)
-        .outerjoin(
-            aliased(AuthorFollower, name="author_follower_1"),
-            author_follower_alias.follower == author_alias.id
-        )
-        .outerjoin(
-            aliased(AuthorFollower, name="author_follower_2"),
-            author_follower_alias.author == author_alias.id
-        )
+        .outerjoin(alias_shout_author, author_alias.id == alias_shout_author.author_id)
         .group_by(author_alias.id)
     )
 

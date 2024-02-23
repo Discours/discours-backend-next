@@ -60,10 +60,18 @@ def create_shout(_, info, inp):
                 'published_at': None,
                 'created_at': current_time,  # Set created_at as Unix timestamp
             }
-            same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get('slug')).first()
+            same_slug_shout = (
+                session.query(Shout)
+                .filter(Shout.slug == shout_dict.get('slug'))
+                .first()
+            )
             c = 1
             while same_slug_shout is not None:
-                same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get('slug')).first()
+                same_slug_shout = (
+                    session.query(Shout)
+                    .filter(Shout.slug == shout_dict.get('slug'))
+                    .first()
+                )
                 c += 1
                 shout_dict['slug'] += f'-{c}'
             new_shout = Shout(**shout_dict)
@@ -174,10 +182,18 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         if slug:
             shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
             if shout_by_id and slug != shout_by_id.slug:
-                same_slug_shout = session.query(Shout).filter(Shout.slug == shout_input.get('slug')).first()
+                same_slug_shout = (
+                    session.query(Shout)
+                    .filter(Shout.slug == shout_input.get('slug'))
+                    .first()
+                )
                 c = 1
                 while same_slug_shout is not None:
-                    same_slug_shout = session.query(Shout).filter(Shout.slug == shout_input.get('slug')).first()
+                    same_slug_shout = (
+                        session.query(Shout)
+                        .filter(Shout.slug == shout_input.get('slug'))
+                        .first()
+                    )
                     c += 1
                     slug += f'-{c}'
                 shout_input['slug'] = slug

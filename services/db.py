@@ -33,9 +33,7 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         elapsed = time.time() - conn.query_start_time
         del conn.query_start_time
         if elapsed > 0.9:  # Adjust threshold as needed
-            logger.debug(
-                f"\n{statement}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s"
-            )
+            logger.debug(f"\n{statement}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s")
 
 
 def local_session(src=''):

@@ -2,19 +2,18 @@ import json
 import time
 from typing import List
 
-from sqlalchemy import select, or_, func
-from sqlalchemy.orm import aliased
+from sqlalchemy import select, or_
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
 
 # from orm.community import Community
 from orm.reaction import Reaction
-from orm.shout import Shout, ShoutReactionsFollower, ShoutAuthor, ShoutTopic
+from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.stat import get_authors_with_stat
+from resolvers.stat import get_authors_with_stat, query_follows
 from services.auth import login_required
 from services.db import local_session
 from services.follows import DEFAULT_FOLLOWS
@@ -86,66 +85,11 @@ async def unfollow(_, info, what, slug):
     return {}
 
 
-def query_follows(user_id: str):
-    logger.debug(f'query follows for {user_id} from database')
-    topics = []
-    authors = []
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if isinstance(author, Author):
-            author_id = author.id
-            aliased_author = aliased(Author)
-            aliased_author_followers = aliased(AuthorFollower)
-            aliased_author_authors = aliased(AuthorFollower)
-
-            authors = (
-                session.query(
-                    aliased_author,
-                    func.count(func.distinct(ShoutAuthor.shout)).label("shouts_stat"),
-                    func.count(func.distinct(AuthorFollower.author)).label("authors_stat"),
-                    func.count(func.distinct(AuthorFollower.follower)).label("followers_stat")
-                )
-                .select_from(aliased_author)
-                .filter(AuthorFollower.author == aliased_author.id)
-                .join(AuthorFollower, AuthorFollower.follower == aliased_author.id)
-                .outerjoin(ShoutAuthor, ShoutAuthor.author == author_id)
-                .outerjoin(aliased_author_authors, AuthorFollower.follower == author_id)
-                .outerjoin(aliased_author_followers, AuthorFollower.author == author_id)
-                .group_by(aliased_author.id)
-                .all()
-            )
-
-            aliased_shout_authors = aliased(ShoutAuthor)
-            aliased_topic_followers = aliased(TopicFollower)
-            aliased_topic = aliased(Topic)
-            topics = (
-                session.query(
-                    aliased_topic,
-                    func.count(func.distinct(ShoutTopic.shout)).label("shouts_stat"),
-                    func.count(func.distinct(ShoutAuthor.author)).label("authors_stat"),
-                    func.count(func.distinct(TopicFollower.follower)).label("followers_stat")
-                )
-                .select_from(aliased_topic)
-                .join(TopicFollower, TopicFollower.topic == aliased_topic.id)
-                .outerjoin(ShoutTopic, aliased_topic.id == ShoutTopic.topic)
-                .outerjoin(aliased_shout_authors, ShoutTopic.shout == aliased_shout_authors.shout)
-                .outerjoin(aliased_topic_followers, aliased_topic_followers.topic == aliased_topic.id)
-                .group_by(aliased_topic.id)
-                .all()
-            )
-
-    return {
-        'topics': topics,
-        'authors': authors,
-        'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
-    }
-
-
 async def get_follows_by_user_id(user_id: str):
     if user_id:
         author = await redis.execute('GET', f'user:{user_id}:author')
         follows = DEFAULT_FOLLOWS
-        day_old = int(time.time()) - author.get('last_seen', 0) > 24*60*60
+        day_old = int(time.time()) - author.get('last_seen', 0) > 24 * 60 * 60
         if day_old:
             follows = query_follows(user_id)
         else:

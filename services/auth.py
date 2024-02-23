@@ -34,12 +34,7 @@ async def check_auth(req):
         logger.debug(f'{token}')
         query_name = 'validate_jwt_token'
         operation = 'ValidateToken'
-        variables = {
-            'params': {
-                'token_type': 'access_token',
-                'token': token,
-            }
-        }
+        variables = {'params': {'token_type': 'access_token', 'token': token}}
 
         gql = {
             'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{'
