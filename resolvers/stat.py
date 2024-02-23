@@ -103,7 +103,7 @@ def query_follows(author_id: int):
         .alias()
     )
 
-    subquery_author_followers = (
+    subquery_author_authors = (
         select(
             [
                 AuthorFollower.author,
@@ -129,7 +129,7 @@ def query_follows(author_id: int):
 
     subq_shout_author_alias = alias(subquery_shout_author)
     subq_author_followers_alias = alias(
-        subquery_author_followers, name='subq_author_followers'
+        subquery_author_authors, name='subq_author_followers'
     )
     subq_author_authors_alias = alias(
         subquery_author_followers, name='subq_author_authors'
@@ -139,21 +139,21 @@ def query_follows(author_id: int):
         select(
             [
                 Author.id,
-                subq_shout_author_alias.c.shouts_stat,
-                subq_author_authors_alias.c.authors_stat,
-                subq_author_followers_alias.c.followers_stat,
+                subq_shout_author_alias.shouts_stat,
+                subq_author_authors_alias.authors_stat,
+                subq_author_followers_alias.followers_stat,
             ]
         )
         .select_from(Author)
         .outerjoin(
-            subq_shout_author_alias, Author.id == subq_shout_author_alias.c.author
+            subq_shout_author_alias, Author.id == subq_shout_author_alias.author
         )
         .outerjoin(
-            subq_author_authors_alias, Author.id == subq_author_followers_alias.c.author
+            subq_author_authors_alias, Author.id == subq_author_followers_alias.author
         )
         .outerjoin(
             subq_author_followers_alias,
-            Author.id == subq_author_followers_alias.c.follower,
+            Author.id == subq_author_followers_alias.follower,
         )
     )
 
@@ -211,15 +211,15 @@ def query_follows(author_id: int):
         )
         .select_from(Topic)
         .outerjoin(
-            subq_shout_topic_alias, Topic.id == subq_shout_topic_alias.columns.topic_id
+            subq_shout_topic_alias, Topic.id == subq_shout_topic_alias.columns.topic
         )
         .outerjoin(
             subq_shout_topic_authors_alias,
-            Topic.id == subq_shout_topic_authors_alias.columns.topic_id,
+            Topic.id == subq_shout_topic_authors_alias.columns.topic,
         )
         .outerjoin(
             subq_topic_followers_alias,
-            Topic.id == subq_topic_followers_alias.columns.topic_id,
+            Topic.id == subq_topic_followers_alias.columns.topic,
         )
     )
 
