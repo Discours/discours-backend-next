@@ -164,6 +164,7 @@ def author_follows_authors(author_id: int):
 
     return authors
 
+
 def author_follows_topics(author_id: int):
     subquery_shout_topic = (
         select(
@@ -202,29 +203,28 @@ def author_follows_topics(author_id: int):
         select(
             [
                 Topic,
-                func.coalesce(subquery_shout_topic.columns.shouts_stat, 0).label('shouts_stat'),
-                func.coalesce(subquery_shout_topic_authors.columns.authors_stat, 0).label('authors_stat'),
-                func.coalesce(subquery_topic_followers.columns.followers_stat, 0).label('followers_stat'),
+                subquery_shout_topic.columns.shouts_stat,
+                subquery_shout_topic_authors.columns.authors_stat,
+                subquery_topic_followers.columns.followers_stat,
             ]
         )
         .select_from(Topic)
         .outerjoin(
             subquery_shout_topic,
-            Topic.id == subquery_shout_topic.columns.topic,
-        )
+            Topic.id == subquery_shout_topic.c.topic,
+            )
         .outerjoin(
             subquery_shout_topic_authors,
-            Topic.id == subquery_shout_topic_authors.columns.topic,
-        )
+            Topic.id == subquery_shout_topic_authors.c.topic,
+            )
         .outerjoin(
             subquery_topic_followers,
-            Topic.id == subquery_topic_followers.columns.topic,
-        )
+            Topic.id == subquery_topic_followers.c.topic,
+            )
     )
 
     topics = execute_with_ministat(topics_query)
     return topics
-
 
 
 def query_follows(author_id: int):
