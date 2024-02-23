@@ -37,7 +37,6 @@ def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
 @query.field('get_topic')
 def get_topic(_, _info, slug):
     q = select(Topic).filter(Topic.slug == slug)
-    q = q.group_by(Topic.id)
     topics = get_topics_with_stat(q)
     if topics:
         return topics[0]
