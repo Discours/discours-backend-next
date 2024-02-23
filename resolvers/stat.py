@@ -36,7 +36,7 @@ def add_author_stat_columns(q):
         q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
         .add_columns(func.count(distinct(aliased_shout_author.shout)).label("shouts_stat"))
         .outerjoin(aliased_author_authors, aliased_author_authors.follower == Author.id)
-        .add_columns(func.count(distinct(aliased_shout_author.user)).label("authors_stat"))
+        .add_columns(func.count(distinct(aliased_shout_author.author)).label("authors_stat"))
         .outerjoin(aliased_author_followers, aliased_author_followers.author == Author.id)
         .add_columns(func.count(distinct(aliased_author_followers.follower)).label("followers_stat"))
     )
