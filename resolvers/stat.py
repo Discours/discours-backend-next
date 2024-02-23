@@ -16,7 +16,7 @@ def add_topic_stat_columns(q):
         .add_columns(func.count(distinct(ShoutTopic.shout)).label('shouts_stat'))
         .outerjoin(aliased_shout_authors, ShoutTopic.shout == aliased_shout_authors.shout)
         .add_columns(func.count(distinct(aliased_shout_authors.author)).label('authors_stat'))
-        .outerjoin(aliased_topic_followers, aliased_topic_followers.topic == aliased_topic.id)
+        .outerjoin(aliased_topic_followers, aliased_topic.id == aliased_topic_followers.topic)
         .add_columns(func.count(distinct(aliased_topic_followers.follower)).label('followers_stat'))
     )
 
