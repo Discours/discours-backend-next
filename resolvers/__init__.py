@@ -1,6 +1,8 @@
 from resolvers.author import (
     get_author,
     get_author_follows,
+    get_author_follows_topics,
+    get_author_follows_authors,
     get_author_followers,
     get_author_id,
     get_authors_all,
@@ -45,6 +47,8 @@ __all__ = [
     'get_author',
     'get_author_id',
     'get_author_follows',
+    'get_author_follows_topics',
+    'get_author_follows_authors',
     'get_authors_all',
     'load_authors_by',
     'rate_author',

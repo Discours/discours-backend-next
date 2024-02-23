@@ -9,7 +9,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import query_follows
-from resolvers.stat import get_authors_with_stat, execute_with_ministat
+from resolvers.stat import get_authors_with_stat, execute_with_ministat, author_follows_authors, author_follows_topics
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -210,15 +210,36 @@ def load_authors_by(_, _info, by, limit, offset):
 @query.field('get_author_follows')
 def get_author_follows(_, _info, slug='', user=None, author_id=None):
     with local_session() as session:
-        if not user and (author_id or slug):
-            user_query_result = (
-                session.query(Author.user)
-                .where(or_(Author.id == author_id, Author.slug == slug))
-                .first()
-            )
-            user = user_query_result[0] if user_query_result else None
-        if user:
-            follows = query_follows(user)
+        if user or slug:
+            author_id_result = session.query(Author.id).filter(or_(Author.user == user, Author.slug == slug)).first()
+            author_id = author_id_result[0] if author_id_result else None
+        if author_id:
+            follows = query_follows(author_id)
+            return follows
+        else:
+            raise ValueError('Author not found')
+
+@query.field('get_author_follows_topics')
+def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
+    with local_session() as session:
+        if user or slug:
+            author_id_result = session.query(Author.id).filter(or_(Author.user == user, Author.slug == slug)).first()
+            author_id = author_id_result[0] if author_id_result else None
+        if author_id:
+            follows = author_follows_authors(author_id)
+            return follows
+        else:
+            raise ValueError('Author not found')
+
+
+@query.field('get_author_follows_authors')
+def get_author_follows_authors(_, _info, slug='', user=None, author_id=None):
+    with local_session() as session:
+        if user or slug:
+            author_id_result = session.query(Author.id).filter(or_(Author.user == user, Author.slug == slug)).first()
+            author_id = author_id_result[0] if author_id_result else None
+        if author_id:
+            follows = author_follows_topics(author_id)
             return follows
         else:
             raise ValueError('Author not found')

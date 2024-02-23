@@ -91,7 +91,8 @@ async def get_follows_by_user_id(user_id: str):
         follows = DEFAULT_FOLLOWS
         day_old = int(time.time()) - author.get('last_seen', 0) > 24 * 60 * 60
         if day_old:
-            follows = query_follows(user_id)
+            author_id = json.loads(str(author)).get('id')
+            follows = query_follows(author_id)
         else:
             logger.debug(f'getting follows for {user_id} from redis')
             res = await redis.execute('GET', f'user:{user_id}:follows')

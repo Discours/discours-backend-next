@@ -5,6 +5,7 @@ from orm.topic import TopicFollower, Topic
 from services.db import local_session
 from orm.author import AuthorFollower, Author
 from orm.shout import ShoutTopic, ShoutAuthor
+from services.logger import root_logger as logger
 
 
 def add_topic_stat_columns(q):
@@ -90,40 +91,42 @@ def get_topics_with_stat(q):
     return execute_with_ministat(q)
 
 
-def query_follows(author_id: int):
+def author_follows_authors(author_id: int):
+    aliased_shout_authors = aliased(ShoutAuthor)
     subquery_shout_author = (
         select(
             [
-                ShoutAuthor.author,
-                func.count(distinct(ShoutAuthor.shout)).label('shouts_stat'),
+                aliased_shout_authors.author,
+                func.count(distinct(aliased_shout_authors.shout)).label('shouts_stat'),
             ]
         )
-        .group_by(ShoutAuthor.author)
-        .where(ShoutAuthor.author == author_id)
+        .group_by(aliased_shout_authors.author)
+        .where(aliased_shout_authors.author == author_id)
         .alias()
     )
-
+    alias_author_authors = aliased(AuthorFollower)
     subquery_author_authors = (
         select(
             [
-                AuthorFollower.author,
-                func.count(distinct(AuthorFollower.author)).label('authors_stat'),
+                alias_author_authors.author,
+                func.count(distinct(alias_author_authors.author)).label('authors_stat'),
             ]
         )
-        .group_by(AuthorFollower.author)
-        .where(AuthorFollower.author == author_id)
+        .group_by(alias_author_authors.author)
+        .where(alias_author_authors.follower == author_id)
         .alias()
     )
 
+    alias_author_followers = aliased(AuthorFollower)
     subquery_author_followers = (
         select(
             [
-                AuthorFollower.follower,
-                func.count(distinct(AuthorFollower.follower)).label('followers_stat'),
+                alias_author_followers.follower,
+                func.count(distinct(alias_author_followers.follower)).label('followers_stat'),
             ]
         )
-        .group_by(AuthorFollower.follower)
-        .where(AuthorFollower.follower == author_id)
+        .group_by(alias_author_followers.follower)
+        .where(alias_author_followers.author == author_id)
         .alias()
     )
 
@@ -138,7 +141,7 @@ def query_follows(author_id: int):
     authors_query = (
         select(
             [
-                Author.id,
+                Author,
                 subq_shout_author_alias.shouts_stat,
                 subq_author_authors_alias.authors_stat,
                 subq_author_followers_alias.followers_stat,
@@ -159,6 +162,10 @@ def query_follows(author_id: int):
 
     authors = execute_with_ministat(authors_query)
 
+    return authors
+
+
+def author_follows_topics(author_id: int):
     subquery_shout_topic = (
         select(
             [
@@ -203,7 +210,7 @@ def query_follows(author_id: int):
     topics_query = (
         select(
             [
-                Topic.id,
+                Topic,
                 subq_shout_topic_alias.columns.shouts_stat,
                 subq_shout_topic_authors_alias.columns.authors_stat,
                 subq_topic_followers_alias.columns.followers_stat,
@@ -224,9 +231,18 @@ def query_follows(author_id: int):
     )
 
     topics = execute_with_ministat(topics_query)
+    return topics
 
-    return {
-        'topics': topics,
-        'authors': authors,
-        'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
-    }
+
+def query_follows(author_id: int):
+    try:
+        topics = author_follows_topics(author_id)
+        authors = author_follows_authors(author_id)
+        return {
+            'topics': topics,
+            'authors': authors,
+            'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
+        }
+    except Exception as e:
+        logger.exception(f"An error occurred while executing query_follows: {e}")
+        raise Exception("An error occurred while executing query_follows") from e
