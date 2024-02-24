@@ -5,23 +5,26 @@ from sqlalchemy import event, Engine
 from typing import Any, Callable, Dict, TypeVar
 
 from dogpile.cache import make_region
-from sqlalchemy import Column, Integer, create_engine
+from sqlalchemy import exc, Column, Integer, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
 from services.logger import root_logger as logger
 from settings import DB_URL
 import warnings
-from sqlalchemy import exc
+import traceback
 
 
 # Функция для вывода полного трейсбека при предупреждениях
 def warning_with_traceback(message, category, filename, lineno, line=None):
-    import traceback
+    tb = traceback.format_stack()
+    tb_str = ''.join(tb)
+    return f'{message} ({filename}, {lineno}): {category.__name__}\n{tb_str}'
 
-    log = warnings._formatwarnmsg(message, category, filename, lineno, line)
-    log += ''.join(traceback.format_stack())
-    return log
+
+# Установка функции вывода трейсбека для предупреждений SQLAlchemy
+warnings.formatwarning = warning_with_traceback
+warnings.simplefilter('always', exc.SAWarning)
 
 
 # Установка функции вывода трейсбека для предупреждений SQLAlchemy
