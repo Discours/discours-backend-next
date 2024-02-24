@@ -16,7 +16,7 @@ from resolvers.topic import topic_follow, topic_unfollow
 from resolvers.stat import get_authors_with_stat, query_follows
 from services.auth import login_required
 from services.db import local_session
-from services.follows import DEFAULT_FOLLOWS
+from services.event_listeners import DEFAULT_FOLLOWS
 from services.notify import notify_follower
 from services.schema import mutation, query
 from services.logger import root_logger as logger

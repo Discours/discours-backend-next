@@ -1,9 +1,11 @@
 import asyncio
 
-from sqlalchemy import select, event
+from sqlalchemy import select, event, or_, exists, and_
 import json
 
 from orm.author import Author, AuthorFollower
+from orm.reaction import Reaction
+from orm.shout import ShoutAuthor, Shout
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_authors_with_stat, get_topics_with_stat
 from services.rediscache import redis
@@ -20,6 +22,61 @@ async def update_author_cache(author: Author, ttl=25 * 60 * 60):
     payload = json.dumps(author.dict())
     await redis.execute('SETEX', f'user:{author.user}:author', ttl, payload)
     await redis.execute('SETEX', f'id:{author.user}:author', ttl, payload)
+
+
+@event.listens_for(Shout, 'after_insert')
+@event.listens_for(Shout, 'after_update')
+def after_shouts_update(mapper, connection, shout: Shout):
+    # Создаем подзапрос для проверки наличия авторов в списке shout.authors
+    subquery = (
+        select(1)
+        .where(or_(
+            Author.id == int(shout.created_by),
+            and_(
+                Shout.id == shout.id,
+                ShoutAuthor.shout == Shout.id,
+                ShoutAuthor.author == Author.id
+            )
+        ))
+    )
+
+    # Основной запрос с использованием объединения и подзапроса exists
+    authors_query = (
+        select(Author)
+        .join(ShoutAuthor, Author.id == int(ShoutAuthor.author))
+        .where(ShoutAuthor.shout == int(shout.id))
+        .union(
+            select(Author)
+            .where(exists(subquery))
+        )
+    )
+    authors = get_authors_with_stat(authors_query, ratings=True)
+    for author in authors:
+        asyncio.create_task(update_author_cache(author))
+
+
+@event.listens_for(Reaction, 'after_insert')
+def after_reaction_insert(mapper, connection, reaction: Reaction):
+    author_subquery = (
+        select(Author)
+        .where(Author.id == int(reaction.created_by))
+    )
+    replied_author_subquery = (
+        select(Author)
+        .join(Reaction, Author.id == int(Reaction.created_by))
+        .where(Reaction.id == int(reaction.reply_to))
+    )
+
+    author_query = author_subquery.union(replied_author_subquery)
+    authors = get_authors_with_stat(author_query, ratings=True)
+
+    for author in authors:
+        asyncio.create_task(update_author_cache(author))
+
+    shout = connection.execute(select(Shout).where(Shout.id == int(reaction.shout))).first()
+    if shout:
+        after_shouts_update(mapper, connection, shout)
+
 
 
 @event.listens_for(Author, 'after_insert')
