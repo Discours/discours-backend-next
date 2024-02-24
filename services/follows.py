@@ -16,18 +16,16 @@ DEFAULT_FOLLOWS = {
 }
 
 
-async def update_author(author: Author, ttl=25 * 60 * 60):
+async def update_author_cache(author: Author, ttl=25 * 60 * 60):
     payload = json.dumps(author.dict())
-    redis_key = f'user:{author.user}:author'
-    await redis.execute('SETEX', redis_key, ttl, payload)
-    redis_key = f'author:{author.id}:author'
-    await redis.execute('SETEX', redis_key, ttl, payload)
+    await redis.execute('SETEX', f'user:{author.user}:author', ttl, payload)
+    await redis.execute('SETEX', f'id:{author.user}:author', ttl, payload)
 
 
 @event.listens_for(Author, 'after_insert')
 @event.listens_for(Author, 'after_update')
 def after_author_update(mapper, connection, author: Author):
-    asyncio.create_task(update_author(author))
+    asyncio.create_task(update_author_cache(author))
 
 
 @event.listens_for(TopicFollower, 'after_insert')

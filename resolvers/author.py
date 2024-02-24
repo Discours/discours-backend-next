@@ -95,46 +95,6 @@ def count_author_shouts_rating(session, author_id) -> int:
     return shouts_likes - shouts_dislikes
 
 
-def load_author_ratings(author):
-    with local_session() as session:
-        comments_count = (
-            session.query(Reaction)
-            .filter(
-                and_(
-                    Reaction.created_by == author.id,
-                    Reaction.kind == ReactionKind.COMMENT.value,
-                    Reaction.deleted_at.is_(None),
-                )
-            )
-            .count()
-        )
-        likes_count = (
-            session.query(AuthorRating)
-            .filter(
-                and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True))
-            )
-            .count()
-        )
-        dislikes_count = (
-            session.query(AuthorRating)
-            .filter(
-                and_(
-                    AuthorRating.author == author.id, AuthorRating.plus.is_not(True)
-                )
-            )
-            .count()
-        )
-        author.stat['rating'] = likes_count - dislikes_count
-        author.stat['rating_shouts'] = count_author_shouts_rating(
-            session, author.id
-        )
-        author.stat['rating_comments'] = count_author_comments_rating(
-            session, author.id
-        )
-        author.stat['commented'] = comments_count
-        return author
-
-
 @query.field('get_author')
 def get_author(_, _info, slug='', author_id=None):
     q = None
@@ -146,14 +106,13 @@ def get_author(_, _info, slug='', author_id=None):
             if author_id:
                 q = select(Author).where(Author.id == int(author_id))
 
-        [author, ] = get_authors_with_stat(q)
-        author = load_author_ratings(author)
+        [author, ] = get_authors_with_stat(q, ratings=True)
     except Exception as exc:
         logger.error(exc)
     return author
 
 
-async def get_author_by_user_id(user_id: str):
+async def get_author_by_user_id(user_id: str, ratings=False):
     redis_key = f'user:{user_id}:author'
     author = None
     try:
@@ -167,9 +126,7 @@ async def get_author_by_user_id(user_id: str):
         logger.info(f'getting author id for {user_id}')
         q = select(Author).filter(Author.user == user_id)
 
-        [author, ] = get_authors_with_stat(q)
-        author = load_author_ratings(author)
-        update_author(author)
+        [author, ] = get_authors_with_stat(q, ratings)
     except Exception as exc:
         logger.error(exc)
     return author
@@ -177,7 +134,7 @@ async def get_author_by_user_id(user_id: str):
 
 @query.field('get_author_id')
 async def get_author_id(_, _info, user: str):
-    return await get_author_by_user_id(user)
+    return await get_author_by_user_id(user, ratings=True)
 
 
 @query.field('load_authors_by')
@@ -207,7 +164,7 @@ def load_authors_by(_, _info, by, limit, offset):
         q = q.order_by(desc(f'{order}_stat'))
 
     q = q.limit(limit).offset(offset)
-    q = q.group_by(Author.id)
+
     authors = get_authors_with_stat(q)
 
     return authors

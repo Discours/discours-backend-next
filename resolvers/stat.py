@@ -1,10 +1,15 @@
-from sqlalchemy import func, distinct, select, join
+import asyncio
+
+from sqlalchemy import func, distinct, select, join, and_
 from sqlalchemy.orm import aliased
 
+from orm.reaction import Reaction, ReactionKind
 from orm.topic import TopicFollower, Topic
+from resolvers.author import count_author_shouts_rating, count_author_comments_rating
 from services.db import local_session
-from orm.author import AuthorFollower, Author
+from orm.author import AuthorFollower, Author, AuthorRating
 from orm.shout import ShoutTopic, ShoutAuthor
+from services.follows import update_author_cache
 from services.logger import root_logger as logger
 
 
@@ -46,6 +51,46 @@ def add_author_stat_columns(q):
     return q
 
 
+def load_author_ratings(author: Author):
+    with local_session() as session:
+        comments_count = (
+            session.query(Reaction)
+            .filter(
+                and_(
+                    Reaction.created_by == author.id,
+                    Reaction.kind == ReactionKind.COMMENT.value,
+                    Reaction.deleted_at.is_(None),
+                    )
+            )
+            .count()
+        )
+        likes_count = (
+            session.query(AuthorRating)
+            .filter(
+                and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True))
+            )
+            .count()
+        )
+        dislikes_count = (
+            session.query(AuthorRating)
+            .filter(
+                and_(
+                    AuthorRating.author == author.id, AuthorRating.plus.is_not(True)
+                )
+            )
+            .count()
+        )
+        author.stat['rating'] = likes_count - dislikes_count
+        author.stat['rating_shouts'] = count_author_shouts_rating(
+            session, author.id
+        )
+        author.stat['rating_comments'] = count_author_comments_rating(
+            session, author.id
+        )
+        author.stat['commented'] = comments_count
+        return author
+
+
 def execute_with_ministat(q):
     records = []
     with local_session() as session:
@@ -60,9 +105,16 @@ def execute_with_ministat(q):
     return records
 
 
-def get_authors_with_stat(q):
+def get_authors_with_stat(q, ratings=False):
     q = add_author_stat_columns(q)
-    return execute_with_ministat(q)
+    authors = execute_with_ministat(q)
+    if ratings:
+        authors_with_ratings = []
+        for author in authors:
+            authors_with_ratings.append(load_author_ratings(author))
+            _ = asyncio.create_task(update_author_cache(author))
+            return authors_with_ratings
+    return authors
 
 
 def get_topics_with_stat(q):
