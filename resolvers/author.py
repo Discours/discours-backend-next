@@ -214,7 +214,7 @@ def get_author_followers(_, _info, slug: str):
                 'followers_stat'
             ),
         )
-        .outerjoin(alias_shout_author, author_alias.id == int(alias_shout_author.author))
+        .outerjoin(alias_shout_author, author_alias.id == alias_shout_author.author)
         .group_by(author_alias.id)
     )
 

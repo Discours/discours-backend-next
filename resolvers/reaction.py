@@ -223,10 +223,10 @@ async def update_reaction(_, info, reaction):
     user_id = info.context.get('user_id')
     roles = info.context.get('roles')
     rid = reaction.get('id')
-    if rid and user_id and roles:
+    if rid and isinstance(rid, int) and user_id and roles:
         del reaction['id']
         with local_session() as session:
-            reaction_query = select(Reaction).filter(Reaction.id == int(rid))
+            reaction_query = select(Reaction).filter(Reaction.id == rid)
             aliased_reaction = aliased(Reaction)
             reaction_query = add_reaction_stat_columns(reaction_query, aliased_reaction)
             reaction_query = reaction_query.group_by(Reaction.id)
