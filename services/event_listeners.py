@@ -28,16 +28,15 @@ async def update_author_cache(author: Author, ttl=25 * 60 * 60):
 @event.listens_for(Shout, 'after_update')
 def after_shouts_update(mapper, connection, shout: Shout):
     # Создаем подзапрос для проверки наличия авторов в списке shout.authors
-    subquery = (
-        select(1)
-        .where(or_(
+    subquery = select(1).where(
+        or_(
             Author.id == shout.created_by,
             and_(
                 Shout.id == shout.id,
                 ShoutAuthor.shout == Shout.id,
-                ShoutAuthor.author == Author.id
-            )
-        ))
+                ShoutAuthor.author == Author.id,
+            ),
+        )
     )
 
     # Основной запрос с использованием объединения и подзапроса exists
@@ -45,10 +44,7 @@ def after_shouts_update(mapper, connection, shout: Shout):
         select(Author)
         .join(ShoutAuthor, Author.id == ShoutAuthor.author)
         .where(ShoutAuthor.shout == shout.id)
-        .union(
-            select(Author)
-            .where(exists(subquery))
-        )
+        .union(select(Author).where(exists(subquery)))
     )
     authors = get_authors_with_stat(authors_query, ratings=True)
     for author in authors:
@@ -57,10 +53,7 @@ def after_shouts_update(mapper, connection, shout: Shout):
 
 @event.listens_for(Reaction, 'after_insert')
 def after_reaction_insert(mapper, connection, reaction: Reaction):
-    author_subquery = (
-        select(Author)
-        .where(Author.id == reaction.created_by)
-    )
+    author_subquery = select(Author).where(Author.id == reaction.created_by)
     replied_author_subquery = (
         select(Author)
         .join(Reaction, Author.id == Reaction.created_by)
@@ -112,7 +105,9 @@ def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     )
 
 
-async def update_follows_for_user(connection, user_id, entity_type, entity: dict, is_insert):
+async def update_follows_for_user(
+    connection, user_id, entity_type, entity: dict, is_insert
+):
     redis_key = f'user:{user_id}:follows'
     follows_str = await redis.get(redis_key)
     if follows_str:
@@ -123,13 +118,17 @@ async def update_follows_for_user(connection, user_id, entity_type, entity: dict
         follows[f'{entity_type}s'].append(entity)
     else:
         # Remove the entity from follows
-        follows[f'{entity_type}s'] = [e for e in follows[f'{entity_type}s'] if e['id'] != entity['id']]
+        follows[f'{entity_type}s'] = [
+            e for e in follows[f'{entity_type}s'] if e['id'] != entity['id']
+        ]
     await redis.execute('SET', redis_key, json.dumps(follows))
 
 
-async def handle_author_follower_change(connection, author_id: int, follower_id: int, is_insert: bool):
+async def handle_author_follower_change(
+    connection, author_id: int, follower_id: int, is_insert: bool
+):
     author_query = select(Author).filter(Author.id == author_id)
-    [author, ] = get_authors_with_stat(author_query, ratings=True)
+    [author] = get_authors_with_stat(author_query, ratings=True)
     follower_query = select(Author).filter(Author.id == follower_id)
     follower = get_authors_with_stat(follower_query, ratings=True)
     if follower and author:
@@ -151,7 +150,9 @@ async def handle_author_follower_change(connection, author_id: int, follower_id:
         )
 
 
-async def handle_topic_follower_change(connection, topic_id: int, follower_id: int, is_insert: bool):
+async def handle_topic_follower_change(
+    connection, topic_id: int, follower_id: int, is_insert: bool
+):
     q = select(Topic).filter(Topic.id == topic_id)
     topics = get_topics_with_stat(q)
     topic = topics[0]

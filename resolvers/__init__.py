@@ -7,9 +7,9 @@ from resolvers.author import (
     get_author_id,
     get_authors_all,
     load_authors_by,
-    rate_author,
     update_author,
 )
+from resolvers.rating import rate_author
 from resolvers.community import get_communities_all, get_community
 from resolvers.editor import create_shout, delete_shout, update_shout
 from resolvers.follower import (

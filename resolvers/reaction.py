@@ -57,7 +57,7 @@ def check_to_feature(session, approver_id, reaction):
     """set shout to public if publicated approvers amount > 4"""
     if not reaction.reply_to and is_positive(reaction.kind):
         if is_featured_author(session, approver_id):
-            approvers = [approver_id, ]
+            approvers = [approver_id]
             # now count how many approvers are voted already
             reacted_readers = (
                 session.query(Reaction).where(Reaction.shout == reaction.shout).all()
@@ -148,6 +148,40 @@ async def _create_reaction(session, shout, author, reaction):
     return rdict
 
 
+def check_rating(reaction: dict, shout_id: int, session, author: Author):
+    kind = reaction.get('kind')
+    opposite_kind = (
+        ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
+    )
+
+    q = select(Reaction).filter(
+        and_(
+            Reaction.shout == shout_id,
+            Reaction.created_by == author.id,
+            Reaction.kind.in_(RATING_REACTIONS),
+        )
+    )
+    reply_to = reaction.get('reply_to')
+    if reply_to and isinstance(reply_to, int):
+        q = q.filter(Reaction.reply_to == reply_to)
+    rating_reactions = session.execute(q).all()
+    same_rating = filter(
+        lambda r: r.created_by == author.id and r.kind == opposite_kind,
+        rating_reactions,
+    )
+    opposite_rating = filter(
+        lambda r: r.created_by == author.id and r.kind == opposite_kind,
+        rating_reactions,
+    )
+    if same_rating:
+        return {'error': "You can't rate the same thing twice"}
+    elif opposite_rating:
+        return {'error': 'Remove opposite vote first'}
+    elif filter(lambda r: r.created_by == author.id, rating_reactions):
+        return {'error': "You can't rate your own thing"}
+    return
+
+
 @mutation.field('create_reaction')
 @login_required
 async def create_reaction(_, info, reaction):
@@ -174,37 +208,9 @@ async def create_reaction(_, info, reaction):
                     return {'error': 'cannot create reaction without a kind'}
 
                 if kind in RATING_REACTIONS:
-                    opposite_kind = (
-                        ReactionKind.DISLIKE.value
-                        if is_positive(kind)
-                        else ReactionKind.LIKE.value
-                    )
-
-                    q = select(Reaction).filter(
-                        and_(
-                            Reaction.shout == shout_id,
-                            Reaction.created_by == author.id,
-                            Reaction.kind.in_(RATING_REACTIONS),
-                        )
-                    )
-                    reply_to = reaction.get('reply_to')
-                    if reply_to and isinstance(reply_to, int):
-                        q = q.filter(Reaction.reply_to == reply_to)
-                    rating_reactions = session.execute(q).all()
-                    same_rating = filter(
-                        lambda r: r.created_by == author.id and r.kind == opposite_kind,
-                        rating_reactions,
-                    )
-                    opposite_rating = filter(
-                        lambda r: r.created_by == author.id and r.kind == opposite_kind,
-                        rating_reactions,
-                    )
-                    if same_rating:
-                        return {'error': "You can't rate the same thing twice"}
-                    elif opposite_rating:
-                        return {'error': 'Remove opposite vote first'}
-                    elif filter(lambda r: r.created_by == author.id, rating_reactions):
-                        return {'error': "You can't rate your own thing"}
+                    result = check_rating(reaction, shout_id, session, author)
+                    if result:
+                        return result
 
                 rdict = await _create_reaction(session, shout, author, reaction)
                 return {'reaction': rdict}
