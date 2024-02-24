@@ -103,7 +103,7 @@ def author_follows_authors(author_id: int):
     af = aliased(AuthorFollower, name='af')
     q = (
         select(Author)
-        .select_from(join(Author, af, Author.id == int(af.author)))
+        .select_from(join(Author, af, Author.id == af.author))
         .where(af.follower == author_id)
     )
     q = add_author_stat_columns(q)
