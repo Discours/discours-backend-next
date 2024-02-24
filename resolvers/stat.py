@@ -1,5 +1,3 @@
-import asyncio
-
 from sqlalchemy import func, distinct, select, join, and_
 from sqlalchemy.orm import aliased
 
@@ -8,7 +6,6 @@ from orm.topic import TopicFollower, Topic
 from services.db import local_session
 from orm.author import AuthorFollower, Author, AuthorRating
 from orm.shout import ShoutTopic, ShoutAuthor, Shout
-from services.follows import update_author_cache
 from services.logger import root_logger as logger
 
 
@@ -169,7 +166,6 @@ def get_authors_with_stat(q, ratings=False):
         authors_with_ratings = []
         for author in authors:
             authors_with_ratings.append(load_author_ratings(author))
-            _ = asyncio.create_task(update_author_cache(author))
             return authors_with_ratings
     return authors
 

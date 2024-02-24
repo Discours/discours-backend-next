@@ -56,9 +56,7 @@ def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     )
 
 
-async def update_follows_for_user(
-    connection, user_id, entity_type, entity: dict, is_insert
-):
+async def update_follows_for_user(connection, user_id, entity_type, entity: dict, is_insert):
     redis_key = f'user:{user_id}:follows'
     follows_str = await redis.get(redis_key)
     if follows_str:
@@ -69,55 +67,52 @@ async def update_follows_for_user(
         follows[f'{entity_type}s'].append(entity)
     else:
         # Remove the entity from follows
-        follows[f'{entity_type}s'] = [
-            e for e in follows[f'{entity_type}s'] if e['id'] != entity['id']
-        ]
+        follows[f'{entity_type}s'] = [e for e in follows[f'{entity_type}s'] if e['id'] != entity['id']]
     await redis.execute('SET', redis_key, json.dumps(follows))
 
 
 async def handle_author_follower_change(connection, author_id: int, follower_id: int, is_insert: bool):
-    q = select(Author).filter(Author.id == author_id)
-    authors = get_authors_with_stat(q)
-    author = authors[0]
-    async with connection.begin() as conn:
-        follower = await conn.execute(
-            select(Author).filter(Author.id == follower_id)
-        ).first()
-        if follower and author:
-            await update_follows_for_user(
-                conn,
-                follower.user,
-                'author',
-                {
-                    'id': author.id,
-                    'name': author.name,
-                    'slug': author.slug,
-                    'pic': author.pic,
-                    'bio': author.bio,
-                    'stat': author.stat,
-                },
-                is_insert,
-            )
+    author_query = select(Author).filter(Author.id == author_id)
+    [author, ] = get_authors_with_stat(author_query, ratings=True)
+    follower_query = select(Author).filter(Author.id == follower_id)
+    follower = get_authors_with_stat(follower_query, ratings=True)
+    if follower and author:
+        _ = asyncio.create_task(update_author_cache(author))
+        _ = asyncio.create_task(update_author_cache(follower))
+        await update_follows_for_user(
+            connection,
+            follower.user,
+            'author',
+            {
+                'id': author.id,
+                'name': author.name,
+                'slug': author.slug,
+                'pic': author.pic,
+                'bio': author.bio,
+                'stat': author.stat,
+            },
+            is_insert,
+        )
 
 
 async def handle_topic_follower_change(connection, topic_id: int, follower_id: int, is_insert: bool):
     q = select(Topic).filter(Topic.id == topic_id)
     topics = get_topics_with_stat(q)
     topic = topics[0]
-
-    async with connection.begin() as conn:
-        follower = conn.execute(select(Author).filter(Author.id == follower_id)).first()
-        if follower and topic:
-            await update_follows_for_user(
-                conn,
-                follower.user,
-                'topic',
-                {
-                    'id': topic.id,
-                    'title': topic.title,
-                    'slug': topic.slug,
-                    'body': topic.body,
-                    'stat': topic.stat,
-                },
-                is_insert,
-            )
+    follower_query = select(Author).filter(Author.id == follower_id)
+    follower = get_authors_with_stat(follower_query, ratings=True)
+    if follower and topic:
+        _ = asyncio.create_task(update_author_cache(follower))
+        await update_follows_for_user(
+            connection,
+            follower.user,
+            'topic',
+            {
+                'id': topic.id,
+                'title': topic.title,
+                'slug': topic.slug,
+                'body': topic.body,
+                'stat': topic.stat,
+            },
+            is_insert,
+        )
