@@ -5,10 +5,9 @@ from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
 from orm.topic import TopicFollower, Topic
-from resolvers.author import count_author_shouts_rating, count_author_comments_rating
 from services.db import local_session
 from orm.author import AuthorFollower, Author, AuthorRating
-from orm.shout import ShoutTopic, ShoutAuthor
+from orm.shout import ShoutTopic, ShoutAuthor, Shout
 from services.follows import update_author_cache
 from services.logger import root_logger as logger
 
@@ -49,6 +48,64 @@ def add_author_stat_columns(q):
     q = q.group_by(Author.id)
 
     return q
+
+
+def count_author_comments_rating(session, author_id) -> int:
+    replied_alias = aliased(Reaction)
+    replies_likes = (
+        session.query(replied_alias)
+        .join(Reaction, replied_alias.id == Reaction.reply_to)
+        .where(
+            and_(
+                replied_alias.created_by == author_id,
+                replied_alias.kind == ReactionKind.COMMENT.value,
+            )
+        )
+        .filter(replied_alias.kind == ReactionKind.LIKE.value)
+        .count()
+    ) or 0
+    replies_dislikes = (
+        session.query(replied_alias)
+        .join(Reaction, replied_alias.id == Reaction.reply_to)
+        .where(
+            and_(
+                replied_alias.created_by == author_id,
+                replied_alias.kind == ReactionKind.COMMENT.value,
+            )
+        )
+        .filter(replied_alias.kind == ReactionKind.DISLIKE.value)
+        .count()
+    ) or 0
+
+    return replies_likes - replies_dislikes
+
+
+def count_author_shouts_rating(session, author_id) -> int:
+    shouts_likes = (
+        session.query(Reaction, Shout)
+        .join(Shout, Shout.id == Reaction.shout)
+        .filter(
+            and_(
+                Shout.authors.any(id=author_id),
+                Reaction.kind == ReactionKind.LIKE.value,
+            )
+        )
+        .count()
+        or 0
+    )
+    shouts_dislikes = (
+        session.query(Reaction, Shout)
+        .join(Shout, Shout.id == Reaction.shout)
+        .filter(
+            and_(
+                Shout.authors.any(id=author_id),
+                Reaction.kind == ReactionKind.DISLIKE.value,
+            )
+        )
+        .count()
+        or 0
+    )
+    return shouts_likes - shouts_dislikes
 
 
 def load_author_ratings(author: Author):
