@@ -65,7 +65,7 @@ class ViewedStorage:
                         logger.info(f' * Миграция проводилась: {self.start_date}')
 
                 # Запуск фоновой задачи
-                asyncio.create_task(self.worker())
+                _task = asyncio.create_task(self.worker())
             else:
                 logger.info(' * Пожалуйста, добавьте ключевой файл Google Analytics')
                 self.disabled = True
@@ -84,6 +84,7 @@ class ViewedStorage:
         except Exception as e:
             logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
 
+    # noinspection PyTypeChecker
     @staticmethod
     async def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""

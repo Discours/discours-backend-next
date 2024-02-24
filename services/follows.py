@@ -77,7 +77,7 @@ async def update_follows_for_user(
     await redis.execute('SET', redis_key, json.dumps(follows))
 
 
-async def handle_author_follower_change(connection, author_id, follower_id, is_insert):
+async def handle_author_follower_change(connection, author_id: int, follower_id: int, is_insert: bool):
     q = select(Author).filter(Author.id == author_id)
     authors = get_authors_with_stat(q)
     author = authors[0]
@@ -102,7 +102,7 @@ async def handle_author_follower_change(connection, author_id, follower_id, is_i
             )
 
 
-async def handle_topic_follower_change(connection, topic_id, follower_id, is_insert):
+async def handle_topic_follower_change(connection, topic_id: int, follower_id: int, is_insert: bool):
     q = select(Topic).filter(Topic.id == topic_id)
     topics = get_topics_with_stat(q)
     topic = topics[0]

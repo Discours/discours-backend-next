@@ -23,17 +23,17 @@ def add_reaction_stat_columns(q, aliased_reaction):
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label('reacted_stat'),
         func.sum(
-            case((aliased_reaction.kind == ReactionKind.COMMENT.value, 1), else_=0)
+            case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)
         ).label('comments_stat'),
         func.sum(
-            case((aliased_reaction.kind == ReactionKind.LIKE.value, 1), else_=0)
+            case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)
         ).label('likes_stat'),
         func.sum(
-            case((aliased_reaction.kind == ReactionKind.DISLIKE.value, 1), else_=0)
+            case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)
         ).label('dislikes_stat'),
         func.max(
             case(
-                (aliased_reaction.kind != ReactionKind.COMMENT.value, None),
+                (aliased_reaction.kind != str(ReactionKind.COMMENT.value), None),
                 else_=aliased_reaction.created_at,
             )
         ).label('last_comment'),
@@ -57,8 +57,7 @@ def check_to_feature(session, approver_id, reaction):
     """set shout to public if publicated approvers amount > 4"""
     if not reaction.reply_to and is_positive(reaction.kind):
         if is_featured_author(session, approver_id):
-            approvers = []
-            approvers.append(approver_id)
+            approvers = [approver_id, ]
             # now count how many approvers are voted already
             reacted_readers = (
                 session.query(Reaction).where(Reaction.shout == reaction.shout).all()
@@ -189,7 +188,7 @@ async def create_reaction(_, info, reaction):
                         )
                     )
                     reply_to = reaction.get('reply_to')
-                    if reply_to:
+                    if reply_to and isinstance(reply_to, int):
                         q = q.filter(Reaction.reply_to == reply_to)
                     rating_reactions = session.execute(q).all()
                     same_rating = filter(
@@ -352,8 +351,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
 
     q = (
         select(Reaction, Author, Shout)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
+        .join(Author, Reaction.created_by == int(Author.id))
+        .join(Shout, Reaction.shout == int(Shout.id))
     )
 
     # calculate counters
@@ -431,7 +430,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             # Shouts where follower reacted
             q2 = (
                 select(Shout)
-                .join(Reaction, Reaction.shout_id == Shout.id)
+                .join(Reaction, Reaction.shout_id == int(Shout.id))
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
                 .filter(Reaction.created_by == follower_id)
                 .group_by(Shout.id)
@@ -442,24 +441,24 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             combined_query = (
                 union(q1, q2).order_by(desc('last_comment')).limit(limit).offset(offset)
             )
+
             results = session.execute(combined_query).scalars()
-            with local_session() as session:
-                for [
-                    shout,
-                    reacted_stat,
-                    commented_stat,
-                    likes_stat,
-                    dislikes_stat,
-                    last_comment,
-                ] in results:
-                    shout.stat = {
-                        'viewed': await ViewedStorage.get_shout(shout.slug),
-                        'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                        'reacted': reacted_stat,
-                        'commented': commented_stat,
-                        'last_comment': last_comment,
-                    }
-                    shouts.append(shout)
+            for [
+                shout,
+                reacted_stat,
+                commented_stat,
+                likes_stat,
+                dislikes_stat,
+                last_comment,
+            ] in results:
+                shout.stat = {
+                    'viewed': await ViewedStorage.get_shout(shout.slug),
+                    'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                    'reacted': reacted_stat,
+                    'commented': commented_stat,
+                    'last_comment': last_comment,
+                }
+                shouts.append(shout)
 
     return shouts
 

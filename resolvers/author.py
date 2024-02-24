@@ -32,10 +32,9 @@ def update_author(_, info, profile):
 # TODO: caching query
 @query.field('get_authors_all')
 def get_authors_all(_, _info):
-    authors = []
     with local_session() as session:
         authors = session.query(Author).all()
-    return authors
+        return authors
 
 
 def count_author_comments_rating(session, author_id) -> int:
@@ -96,77 +95,84 @@ def count_author_shouts_rating(session, author_id) -> int:
     return shouts_likes - shouts_dislikes
 
 
-def load_author_with_stats(q):
-    result = get_authors_with_stat(q)
-
-    if result:
-        [author] = result
-        with local_session() as session:
-            comments_count = (
-                session.query(Reaction)
-                .filter(
-                    and_(
-                        Reaction.created_by == author.id,
-                        Reaction.kind == ReactionKind.COMMENT.value,
-                        Reaction.deleted_at.is_(None),
-                    )
+def load_author_ratings(author):
+    with local_session() as session:
+        comments_count = (
+            session.query(Reaction)
+            .filter(
+                and_(
+                    Reaction.created_by == author.id,
+                    Reaction.kind == ReactionKind.COMMENT.value,
+                    Reaction.deleted_at.is_(None),
                 )
-                .count()
             )
-            likes_count = (
-                session.query(AuthorRating)
-                .filter(
-                    and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True))
+            .count()
+        )
+        likes_count = (
+            session.query(AuthorRating)
+            .filter(
+                and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True))
+            )
+            .count()
+        )
+        dislikes_count = (
+            session.query(AuthorRating)
+            .filter(
+                and_(
+                    AuthorRating.author == author.id, AuthorRating.plus.is_not(True)
                 )
-                .count()
             )
-            dislikes_count = (
-                session.query(AuthorRating)
-                .filter(
-                    and_(
-                        AuthorRating.author == author.id, AuthorRating.plus.is_not(True)
-                    )
-                )
-                .count()
-            )
-            author.stat['rating'] = likes_count - dislikes_count
-            author.stat['rating_shouts'] = count_author_shouts_rating(
-                session, author.id
-            )
-            author.stat['rating_comments'] = count_author_comments_rating(
-                session, author.id
-            )
-            author.stat['commented'] = comments_count
-            return author
+            .count()
+        )
+        author.stat['rating'] = likes_count - dislikes_count
+        author.stat['rating_shouts'] = count_author_shouts_rating(
+            session, author.id
+        )
+        author.stat['rating_comments'] = count_author_comments_rating(
+            session, author.id
+        )
+        author.stat['commented'] = comments_count
+        return author
 
 
 @query.field('get_author')
 def get_author(_, _info, slug='', author_id=None):
     q = None
-    if slug or author_id:
-        if bool(slug):
-            q = select(Author).where(Author.slug == slug)
-        if author_id:
-            q = select(Author).where(Author.id == author_id)
+    author = None
+    try:
+        if slug or author_id:
+            if bool(slug):
+                q = select(Author).where(Author.slug == slug)
+            if author_id:
+                q = select(Author).where(Author.id == int(author_id))
 
-        return load_author_with_stats(q)
+        [author, ] = get_authors_with_stat(q)
+        author = load_author_ratings(author)
+    except Exception as exc:
+        logger.error(exc)
+    return author
 
 
 async def get_author_by_user_id(user_id: str):
     redis_key = f'user:{user_id}:author'
-    res = await redis.execute('GET', redis_key)
-    if isinstance(res, str):
-        author = json.loads(res)
-        if author.get('id'):
-            logger.debug(f'got cached author: {author}')
-            return author
+    author = None
+    try:
+        res = await redis.execute('GET', redis_key)
+        if isinstance(res, str):
+            author = json.loads(res)
+            if author.get('id'):
+                logger.debug(f'got cached author: {author}')
+                return author
 
-    logger.info(f'getting author id for {user_id}')
-    q = select(Author).filter(Author.user == user_id)
-    author = load_author_with_stats(q)
-    if author:
+        logger.info(f'getting author id for {user_id}')
+        q = select(Author).filter(Author.user == user_id)
+
+        [author, ] = get_authors_with_stat(q)
+        author = load_author_ratings(author)
         update_author(author)
-        return author
+    except Exception as exc:
+        logger.error(exc)
+    return author
 
 
 @query.field('get_author_id')
@@ -186,7 +192,7 @@ def load_authors_by(_, _info, by, limit, offset):
             q.join(ShoutAuthor)
             .join(ShoutTopic)
             .join(Topic)
-            .where(Topic.slug == by['topic'])
+            .where(Topic.slug == str(by['topic']))
         )
 
     if by.get('last_seen'):  # in unix time
@@ -218,6 +224,7 @@ def get_author_follows(_, _info, slug='', user=None, author_id=None):
             return follows
         else:
             raise ValueError('Author not found')
+
 
 @query.field('get_author_follows_topics')
 def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
@@ -290,7 +297,7 @@ def create_author(user_id: str, slug: str, name: str = ''):
 
 
 @query.field('get_author_followers')
-def get_author_followers(_, _info, slug):
+def get_author_followers(_, _info, slug: str):
     author_alias = aliased(Author)
     alias_author_followers = aliased(AuthorFollower)
     alias_author_authors = aliased(AuthorFollower)
@@ -299,9 +306,9 @@ def get_author_followers(_, _info, slug):
 
     q = (
         select(author_alias)
-        .join(alias_author_authors, alias_author_authors.follower == author_alias.id)
+        .join(alias_author_authors, alias_author_authors.follower == int(author_alias.id))
         .join(
-            alias_author_followers, alias_author_followers.author == author_alias.id
+            alias_author_followers, alias_author_followers.author == int(author_alias.id)
         )
         .filter(author_alias.slug == slug)
         .add_columns(
@@ -311,7 +318,7 @@ def get_author_followers(_, _info, slug):
                 'followers_stat'
             ),
         )
-        .outerjoin(alias_shout_author, author_alias.id == alias_shout_author.author)
+        .outerjoin(alias_shout_author, author_alias.id == int(alias_shout_author.author))
         .group_by(author_alias.id)
     )
 

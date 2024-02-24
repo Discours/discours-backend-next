@@ -74,7 +74,7 @@ def author_follows_authors(author_id: int):
     af = aliased(AuthorFollower, name="af")
     q = (
         select(Author).select_from(
-            join(Author, af, Author.id == af.author)
+            join(Author, af, Author.id == int(af.author))
         ).where(af.follower == author_id)
     )
     q = add_author_stat_columns(q)
@@ -84,7 +84,7 @@ def author_follows_authors(author_id: int):
 def author_follows_topics(author_id: int):
     q = (
         select(Topic).select_from(
-            join(Topic, TopicFollower, Topic.id == TopicFollower.topic)
+            join(Topic, TopicFollower, Topic.id == int(TopicFollower.topic))
         ).where(TopicFollower.follower == author_id)
     )
 

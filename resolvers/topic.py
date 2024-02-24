@@ -22,7 +22,7 @@ def get_topics_by_community(_, _info, community_id: int):
 
 
 @query.field('get_topics_by_author')
-def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
+def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
     q = select(Topic)
     if author_id:
         q = q.join(Author).where(Author.id == author_id)
@@ -35,7 +35,7 @@ def get_topics_by_author(_, _info, author_id=None, slug='', user=''):
 
 
 @query.field('get_topic')
-def get_topic(_, _info, slug):
+def get_topic(_, _info, slug: str):
     q = select(Topic).filter(Topic.slug == slug)
     topics = get_topics_with_stat(q)
     if topics:

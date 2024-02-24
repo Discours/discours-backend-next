@@ -22,11 +22,13 @@ REGISTRY: Dict[str, type] = {}
 
 
 # Перехватчики для журнала запросов SQLAlchemy
+# noinspection PyUnusedLocal
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.query_start_time = time.time()
 
 
+# noinspection PyUnusedLocal
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     if hasattr(conn, '_query_start_time'):
@@ -36,6 +38,7 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
             logger.debug(f"\n{statement}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s")
 
 
+# noinspection PyUnusedLocal
 def local_session(src=''):
     return Session(bind=engine, expire_on_commit=False)
 

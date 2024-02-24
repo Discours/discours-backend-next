@@ -14,6 +14,7 @@ class TopicFollower(Base):
     created_at = Column(Integer, nullable=False, default=int(time.time()))
     auto = Column(Boolean, nullable=False, default=False)
 
+
 class Topic(Base):
     __tablename__ = 'topic'
 

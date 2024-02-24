@@ -207,7 +207,7 @@ async def load_shouts_drafts(_, info):
     with local_session() as session:
         reader = session.query(Author).filter(Author.user == user_id).first()
         if isinstance(reader, Author):
-            q = q.filter(Shout.created_by == reader.id)
+            q = q.filter(Shout.created_by == int(reader.id))
             q = q.group_by(Shout.id)
             for [shout] in session.execute(q).unique():
                 main_topic = (
@@ -240,16 +240,16 @@ async def load_shouts_feed(_, info, options):
         reader = session.query(Author).filter(Author.user == user_id).first()
         if reader:
             reader_followed_authors = select(AuthorFollower.author).where(
-                AuthorFollower.follower == reader.id
+                AuthorFollower.follower == int(reader.id)
             )
             reader_followed_topics = select(TopicFollower.topic).where(
-                TopicFollower.follower == reader.id
+                TopicFollower.follower == int(reader.id)
             )
 
             subquery = (
                 select(Shout.id)
-                .where(Shout.id == ShoutAuthor.shout)
-                .where(Shout.id == ShoutTopic.shout)
+                .where(Shout.id == int(ShoutAuthor.shout))
+                .where(Shout.id == int(ShoutTopic.shout))
                 .where(
                     (ShoutAuthor.author.in_(reader_followed_authors))
                     | (ShoutTopic.topic.in_(reader_followed_topics))
@@ -430,10 +430,10 @@ async def load_shouts_random_top(_, _info, options):
         desc(
             func.sum(
                 case(
-                    (Reaction.kind == ReactionKind.LIKE.value, 1),
-                    (Reaction.kind == ReactionKind.AGREE.value, 1),
-                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    (Reaction.kind == ReactionKind.DISAGREE.value, -1),
+                    (Reaction.kind == str(ReactionKind.LIKE.value), 1),
+                    (Reaction.kind == str(ReactionKind.AGREE.value), 1),
+                    (Reaction.kind == str(ReactionKind.DISLIKE.value), -1),
+                    (Reaction.kind == str(ReactionKind.DISAGREE.value), -1),
                     else_=0,
                 )
             )
@@ -467,8 +467,8 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
             return {'topic': topic, 'shouts': shouts}
     return {
         'error': 'failed to get random topic after few retries',
-        shouts: [],
-        topic: {},
+        'shouts': [],
+        'topic': {},
     }
 
 

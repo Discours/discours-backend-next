@@ -81,7 +81,7 @@ async def get_communities_all(_, _info):
 
 
 @query.field('get_community')
-async def get_community(_, _info, slug):
+async def get_community(_, _info, slug: str):
     q = select(Community).where(Community.slug == slug)
     q = add_community_stat_columns(q)
 
