@@ -31,7 +31,7 @@ def after_shouts_update(mapper, connection, shout: Shout):
     subquery = (
         select(1)
         .where(or_(
-            Author.id == int(shout.created_by),
+            Author.id == shout.created_by,
             and_(
                 Shout.id == shout.id,
                 ShoutAuthor.shout == Shout.id,
@@ -43,8 +43,8 @@ def after_shouts_update(mapper, connection, shout: Shout):
     # Основной запрос с использованием объединения и подзапроса exists
     authors_query = (
         select(Author)
-        .join(ShoutAuthor, Author.id == int(ShoutAuthor.author))
-        .where(ShoutAuthor.shout == int(shout.id))
+        .join(ShoutAuthor, Author.id == ShoutAuthor.author)
+        .where(ShoutAuthor.shout == shout.id)
         .union(
             select(Author)
             .where(exists(subquery))
@@ -59,12 +59,12 @@ def after_shouts_update(mapper, connection, shout: Shout):
 def after_reaction_insert(mapper, connection, reaction: Reaction):
     author_subquery = (
         select(Author)
-        .where(Author.id == int(reaction.created_by))
+        .where(Author.id == reaction.created_by)
     )
     replied_author_subquery = (
         select(Author)
-        .join(Reaction, Author.id == int(Reaction.created_by))
-        .where(Reaction.id == int(reaction.reply_to))
+        .join(Reaction, Author.id == Reaction.created_by)
+        .where(Reaction.id == reaction.reply_to)
     )
 
     author_query = author_subquery.union(replied_author_subquery)
@@ -73,10 +73,9 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
     for author in authors:
         asyncio.create_task(update_author_cache(author))
 
-    shout = connection.execute(select(Shout).where(Shout.id == int(reaction.shout))).first()
+    shout = connection.execute(select(Shout).where(Shout.id == reaction.shout)).first()
     if shout:
         after_shouts_update(mapper, connection, shout)
-
 
 
 @event.listens_for(Author, 'after_insert')

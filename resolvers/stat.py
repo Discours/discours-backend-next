@@ -189,7 +189,7 @@ def author_follows_authors(author_id: int):
 def author_follows_topics(author_id: int):
     q = (
         select(Topic).select_from(
-            join(Topic, TopicFollower, Topic.id == int(TopicFollower.topic))
+            join(Topic, TopicFollower, Topic.id == TopicFollower.topic)
         ).where(TopicFollower.follower == author_id)
     )
 

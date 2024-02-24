@@ -351,8 +351,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
 
     q = (
         select(Reaction, Author, Shout)
-        .join(Author, Reaction.created_by == int(Author.id))
-        .join(Shout, Reaction.shout == int(Shout.id))
+        .join(Author, Reaction.created_by == Author.id)
+        .join(Shout, Reaction.shout == Shout.id)
     )
 
     # calculate counters
@@ -430,7 +430,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             # Shouts where follower reacted
             q2 = (
                 select(Shout)
-                .join(Reaction, Reaction.shout_id == int(Shout.id))
+                .join(Reaction, Reaction.shout_id == Shout.id)
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
                 .filter(Reaction.created_by == follower_id)
                 .group_by(Shout.id)

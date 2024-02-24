@@ -186,8 +186,8 @@ def author_unfollow(follower_id, slug):
 def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
     q = select(Author)
     q = (
-        q.join(TopicFollower, TopicFollower.follower == int(Author.id))
-        .join(Topic, Topic.id == int(TopicFollower.topic))
+        q.join(TopicFollower, TopicFollower.follower == Author.id)
+        .join(Topic, Topic.id == TopicFollower.topic)
         .filter(or_(Topic.slug == slug, Topic.id == topic_id))
     )
     return get_authors_with_stat(q)

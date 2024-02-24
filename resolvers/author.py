@@ -45,7 +45,7 @@ def get_author(_, _info, slug='', author_id=None):
             if bool(slug):
                 q = select(Author).where(Author.slug == slug)
             if author_id:
-                q = select(Author).where(Author.id == int(author_id))
+                q = select(Author).where(Author.id == author_id)
 
         [author, ] = get_authors_with_stat(q, ratings=True)
     except Exception as exc:
@@ -204,10 +204,8 @@ def get_author_followers(_, _info, slug: str):
 
     q = (
         select(author_alias)
-        .join(alias_author_authors, alias_author_authors.follower == int(author_alias.id))
-        .join(
-            alias_author_followers, alias_author_followers.author == int(author_alias.id)
-        )
+        .join(alias_author_authors, alias_author_authors.follower == author_alias.id)
+        .join(alias_author_followers, alias_author_followers.author == author_alias.id)
         .filter(author_alias.slug == slug)
         .add_columns(
             func.count(distinct(alias_shout_author.shout)).label('shouts_stat'),
