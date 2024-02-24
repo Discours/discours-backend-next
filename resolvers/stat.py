@@ -1,4 +1,3 @@
-
 from sqlalchemy import func, distinct, select, join
 from sqlalchemy.orm import aliased
 
@@ -132,5 +131,6 @@ def query_follows(author_id: int):
         }
     except Exception as e:
         import traceback
+
         logger.debug(traceback.format_exc())
         raise Exception(e)

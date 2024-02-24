@@ -11,6 +11,22 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
 from services.logger import root_logger as logger
 from settings import DB_URL
+import warnings
+from sqlalchemy import exc
+
+
+# Функция для вывода полного трейсбека при предупреждениях
+def warning_with_traceback(message, category, filename, lineno, line=None):
+    import traceback
+
+    log = warnings._formatwarnmsg(message, category, filename, lineno, line)
+    log += ''.join(traceback.format_stack())
+    return log
+
+
+# Установка функции вывода трейсбека для предупреждений SQLAlchemy
+warnings.showwarning = warning_with_traceback
+warnings.simplefilter('always', exc.SAWarning)
 
 # Создание региона кэша с TTL 300 секунд
 cache_region = make_region().configure('dogpile.cache.memory', expiration_time=300)
