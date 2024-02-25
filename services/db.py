@@ -111,19 +111,23 @@ def cache_method(cache_key: str):
 
     return decorator
 
-
-author_fts_index_name = 'author_full_text_idx'
 inspector = inspect(engine)
-authors_indexes = inspector.get_indexes('authors')
-author_fts_index_exists = any(
-    index['name'] == author_fts_index_name for index in authors_indexes
-)
-if not author_fts_index_exists:
-    with local_session() as session:
-        session.bind.execute(
-            """
-                CREATE INDEX {index_name} ON author
-                USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
-            """.format(index_name=author_fts_index_name)
-        )
-    logger.info('Full text index created successfully.')
+
+def create_fts_index(table_name, fts_index_name):
+    logger.info(f'Full text index for {table_name}...')
+    authors_indexes = inspector.get_indexes(table_name)
+    author_fts_index_exists = any(
+        index['name'] == fts_index_name for index in authors_indexes
+    )
+    if not author_fts_index_exists:
+        with local_session() as session:
+            session.bind.execute(
+                """
+                    CREATE INDEX {index_name} ON {author_table_name}
+                    USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
+                """.format(index_name=fts_index_name, author_table_name=table_name)
+            )
+        logger.info('Full text index created successfully.')
+
+
+create_fts_index('author', 'author_fts_idx')
