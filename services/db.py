@@ -122,7 +122,7 @@ if not author_fts_index_exists:
     with local_session() as session:
         session.bind.execute(
             """
-                CREATE INDEX {index_name} ON authors
+                CREATE INDEX {index_name} ON author
                 USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
             """.format(index_name=author_fts_index_name)
         )
