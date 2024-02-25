@@ -1,14 +1,14 @@
 import math
 import time
-from functools import wraps
-from sqlalchemy import event, Engine, inspect, text
+
 from typing import Any, Callable, Dict, TypeVar
 
-from dogpile.cache import make_region
-from sqlalchemy import exc, Column, Integer, create_engine
+from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
+from sqlalchemy_searchable import make_searchable
+
 from services.logger import root_logger as logger
 from settings import DB_URL
 import warnings
@@ -31,17 +31,14 @@ warnings.simplefilter('always', exc.SAWarning)
 warnings.showwarning = warning_with_traceback
 warnings.simplefilter('always', exc.SAWarning)
 
-# Создание региона кэша с TTL 300 секунд
-cache_region = make_region().configure('dogpile.cache.memory', expiration_time=300)
-
 # Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
+inspector = inspect(engine)
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
 
 
 # Перехватчики для журнала запросов SQLAlchemy
-# noinspection PyUnusedLocal
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.query_start_time = time.time()
@@ -92,54 +89,4 @@ class Base(declarative_base()):
                 setattr(self, key, value)
 
 
-# Декоратор для кэширования методов
-def cache_method(cache_key: str):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Генерация ключа для кэширования
-            key = cache_key.format(*args, **kwargs)
-            # Получение значения из кэша
-            result = cache_region.get(key)
-            if result is None:
-                # Если значение отсутствует в кэше, вызываем функцию и кэшируем результат
-                result = f(*args, **kwargs)
-                cache_region.set(key, result)
-            return result
-
-        return decorated_function
-
-    return decorator
-
-
-inspector = inspect(engine)
-
-
-def add_pg_trgm_extension_if_not_exists():
-    with local_session() as session:
-        result = session.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm';"))
-        if not result.scalar():
-            session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
-            print("pg_trgm extension added successfully.")
-        else:
-            print("pg_trgm extension already exists.")
-
-
-def create_fts_index(table_name, fts_index_name):
-    add_pg_trgm_extension_if_not_exists()
-    logger.info(f'Full text index for {table_name}...')
-    authors_indexes = inspector.get_indexes(table_name)
-    author_fts_index_exists = any(
-        index['name'] == fts_index_name for index in authors_indexes
-    )
-    if not author_fts_index_exists:
-        with local_session() as session:
-            q = text("""
-                    CREATE INDEX {index_name} ON {author_table_name}
-                    USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
-                """.format(index_name=fts_index_name, author_table_name=table_name))
-            session.execute(q)
-        logger.info('Full text index created successfully.')
-
-
-create_fts_index('author', 'author_fts_idx')
+make_searchable(Base.metadata)

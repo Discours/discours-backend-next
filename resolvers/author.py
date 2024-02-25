@@ -1,8 +1,9 @@
 import json
 import time
 
-from sqlalchemy import desc, select, or_, and_, func
+from sqlalchemy import desc, select, or_, and_
 from sqlalchemy.orm import aliased
+from sqlalchemy_searchable import search
 
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
@@ -212,9 +213,5 @@ def get_author_followers(_, _info, slug: str):
 
 @query.field('search_authors')
 def search_authors(_, info, text: str):
-    v1 = func.to_tsquery('russian', text)
-    v2 = func.to_tsvector(
-        'russian', Author.name or ' ' or Author.bio or ' ' or Author.about
-    )
-    q = select(Author).filter(v2.match(v1))
+    q = search(select(Author), text)
     return get_with_stat(q)

@@ -1,6 +1,8 @@
 import time
 
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy_utils import TSVectorType
+
 from services.db import Base
 
 
@@ -38,3 +40,5 @@ class Author(Base):
     last_seen = Column(Integer, nullable=False, default=lambda: int(time.time()))
     updated_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     deleted_at = Column(Integer, nullable=True, comment='Deleted at')
+
+    search_vector = Column(TSVectorType("name", "slug", "bio", "about"))
