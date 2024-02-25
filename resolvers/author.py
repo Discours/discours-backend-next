@@ -126,7 +126,9 @@ def get_author_follows(_, _info, slug='', user=None, author_id=None):
             return {
                 'topics': topics,
                 'authors': authors,
-                'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}],
+                'communities': [
+                    {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
+                ],
             }
         else:
             raise ValueError('Author not found')

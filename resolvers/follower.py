@@ -98,7 +98,9 @@ async def get_follows_by_user_id(user_id: str):
                 follows = {
                     'topics': topics,
                     'authors': authors,
-                    'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}],
+                    'communities': [
+                        {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
+                    ],
                 }
         else:
             logger.debug(f'getting follows for {user_id} from redis')

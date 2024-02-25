@@ -1,11 +1,11 @@
-from sqlalchemy import func, distinct, select, join
+from sqlalchemy import func, distinct, select, join, and_, case, true
 from sqlalchemy.orm import aliased
 
+from orm.reaction import Reaction, ReactionKind
 from orm.topic import TopicFollower, Topic
-from resolvers.rating import load_author_ratings
 from services.db import local_session
-from orm.author import AuthorFollower, Author
-from orm.shout import ShoutTopic, ShoutAuthor
+from orm.author import AuthorFollower, Author, AuthorRating
+from orm.shout import ShoutTopic, ShoutAuthor, Shout
 from services.logger import root_logger as logger
 
 
@@ -68,19 +68,85 @@ def add_author_stat_columns(q):
     return q
 
 
+def add_author_ratings(q):
+    ratings_subquery = (
+        select(
+            [
+                Author.id,
+                func.count()
+                .filter(
+                    and_(
+                        Reaction.created_by == Author.id,
+                        Reaction.kind == ReactionKind.COMMENT.value,
+                        Reaction.deleted_at.is_(None),
+                    )
+                )
+                .label('comments_count'),
+                func.sum(case([(AuthorRating.plus == true(), 1)], else_=0)).label(
+                    'likes_count'
+                ),
+                func.sum(case([(AuthorRating.plus != true(), 1)], else_=0)).label(
+                    'dislikes_count'
+                ),
+                func.sum(
+                    case(
+                        [
+                            (
+                                and_(
+                                    Reaction.kind == ReactionKind.LIKE.value,
+                                    Shout.authors.any(id=Author.id),
+                                ),
+                                1,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label('shouts_likes'),
+                func.sum(
+                    case(
+                        [
+                            (
+                                and_(
+                                    Reaction.kind == ReactionKind.DISLIKE.value,
+                                    Shout.authors.any(id=Author.id),
+                                ),
+                                1,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label('shouts_dislikes'),
+            ]
+        )
+        .select_from(Author)
+        .join(AuthorRating, AuthorRating.author == Author.id)
+        .outerjoin(Shout, Shout.authors.any(id=Author.id))
+        .filter(Reaction.deleted_at.is_(None))
+        .group_by(Author.id)
+        .alias('ratings_subquery')
+    )
+
+    return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
+
+
 def get_with_stat(q):
-    q = add_author_stat_columns(q)
+    is_author = f'{q}'.lower().startswith('select author')
+    is_topic = f'{q}'.lower().startswith('select topic')
+    if is_author:
+        q = add_author_stat_columns(q)
+        q = add_author_ratings(q)
+    elif is_topic:
+        q = add_topic_stat_columns(q)
     records = []
     logger.debug(f'{q}'.replace('\n', ' '))
     with local_session() as session:
-        for [entity, shouts_stat, authors_stat, followers_stat] in session.execute(q):
-            entity.stat = {
-                'shouts': shouts_stat,
-                'authors': authors_stat,
-                'followers': followers_stat,
-            }
-            if f'{q}'.startswith('SELECT author'):
-                load_author_ratings(session, entity)
+        for cols in session.execute(q):
+            entity = cols[0]
+            entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
+            if is_author:
+                entity.stat['comments'] = cols[4]
+                entity.stat['rating'] = cols[5] - cols[6]
+                entity.stat['rating_shouts'] = cols[7] - cols[8]
             records.append(entity)
 
     return records
