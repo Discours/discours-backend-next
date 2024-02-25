@@ -79,7 +79,7 @@ def get_with_stat(q):
                 'authors': authors_stat,
                 'followers': followers_stat,
             }
-            if q.startswith('SELECT author'):
+            if f'{q}'.startswith('SELECT author'):
                 load_author_ratings(session, entity)
             records.append(entity)
 
