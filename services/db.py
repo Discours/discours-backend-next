@@ -14,45 +14,12 @@ from settings import DB_URL
 import warnings
 import traceback
 
-
-# Функция для вывода полного трейсбека при предупреждениях
-def warning_with_traceback(message, category, filename, lineno, line=None):
-    tb = traceback.format_stack()
-    tb_str = ''.join(tb)
-    return f'{message} ({filename}, {lineno}): {category.__name__}\n{tb_str}'
-
-
-# Установка функции вывода трейсбека для предупреждений SQLAlchemy
-warnings.formatwarning = warning_with_traceback
-warnings.simplefilter('always', exc.SAWarning)
-
-
-# Установка функции вывода трейсбека для предупреждений SQLAlchemy
-warnings.showwarning = warning_with_traceback
-warnings.simplefilter('always', exc.SAWarning)
-
 # Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
 inspector = inspect(engine)
 configure_mappers()
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
-
-
-# Перехватчики для журнала запросов SQLAlchemy
-@event.listens_for(Engine, 'before_cursor_execute')
-def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.query_start_time = time.time()
-
-
-# noinspection PyUnusedLocal
-@event.listens_for(Engine, 'after_cursor_execute')
-def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    if hasattr(conn, '_query_start_time'):
-        elapsed = time.time() - conn.query_start_time
-        conn.query_start_time = None
-        query = f'{statement}'.replace('\n', ' ')
-        logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
 
 
 # noinspection PyUnusedLocal
@@ -92,3 +59,31 @@ class Base(declarative_base()):
 
 make_searchable(Base.metadata)
 Base.metadata.create_all(engine)
+
+
+# Функция для вывода полного трейсбека при предупреждениях
+def warning_with_traceback(message: Warning | str, category, filename: str, lineno: int, file=None, line=None):
+    tb = traceback.format_stack()
+    tb_str = ''.join(tb)
+    return f'{message} ({filename}, {lineno}): {category.__name__}\n{tb_str}'
+
+
+# Установка функции вывода трейсбека для предупреждений SQLAlchemy
+warnings.showwarning = warning_with_traceback
+warnings.simplefilter('always', exc.SAWarning)
+
+
+# Перехватчики для журнала запросов SQLAlchemy
+@event.listens_for(Engine, 'before_cursor_execute')
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.query_start_time = time.time()
+
+
+# noinspection PyUnusedLocal
+@event.listens_for(Engine, 'after_cursor_execute')
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    if hasattr(conn, '_query_start_time'):
+        elapsed = time.time() - conn.query_start_time
+        conn.query_start_time = None
+        query = f'{statement}'.replace('\n', ' ')
+        logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")

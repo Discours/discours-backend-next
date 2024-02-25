@@ -45,13 +45,14 @@ async def get_author(_, _info, slug='', author_id=None):
         if slug:
             with local_session() as session:
                 aliased_author = aliased(Author)
-                q = select(aliased_author).filter(Author.slug == slug)
+                q = select(aliased_author).filter(aliased_author.slug == slug)
                 [author] = session.execute(q)
                 author_id = aliased_author.id
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
         if not cache:
-            q = select(Author).where(Author.id == author_id)
+            aliased_author = aliased(Author)
+            q = select(aliased_author).where(aliased_author.id == author_id)
             [author] = get_with_stat(q)
             if author:
                 await update_author_cache(author)
@@ -219,6 +220,6 @@ def get_author_followers(_, _info, slug: str):
 
 
 @query.field('search_authors')
-def search_authors(_, info, text: str):
-    q = search(select(Author), text)
+def search_authors(_, info, t: str):
+    q = search(select(Author), t)
     return get_with_stat(q)

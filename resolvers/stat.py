@@ -50,7 +50,7 @@ def add_author_stat_columns(q):
         )
         .outerjoin(aliased_author_authors, aliased_author_authors.follower == Author.id)
         .add_columns(
-            func.count(distinct(aliased_shout_author.author)).label('authors_stat')
+            func.count(distinct(aliased_author_authors.author)).label('authors_stat')
         )
         .outerjoin(
             aliased_author_followers, aliased_author_followers.author == Author.id
