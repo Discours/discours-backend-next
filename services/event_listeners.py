@@ -14,7 +14,7 @@ from services.rediscache import redis
 DEFAULT_FOLLOWS = {
     'topics': [],
     'authors': [],
-    'communities': [{'slug': 'discours', 'name': 'Дискурс', 'id': 1, 'pic': ''}],
+    'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}],
 }
 
 

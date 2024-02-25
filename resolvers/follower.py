@@ -13,7 +13,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.stat import get_with_stat, query_follows
+from resolvers.stat import get_with_stat, author_follows_topics, author_follows_authors
 from services.auth import login_required
 from services.db import local_session
 from services.event_listeners import DEFAULT_FOLLOWS
@@ -92,7 +92,14 @@ async def get_follows_by_user_id(user_id: str):
         day_old = int(time.time()) - author.get('last_seen', 0) > 24 * 60 * 60
         if day_old:
             author_id = json.loads(str(author)).get('id')
-            follows = query_follows(author_id)
+            if author_id:
+                topics = author_follows_topics(author_id)
+                authors = author_follows_authors(author_id)
+                follows = {
+                    'topics': topics,
+                    'authors': authors,
+                    'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}],
+                }
         else:
             logger.debug(f'getting follows for {user_id} from redis')
             res = await redis.execute('GET', f'user:{user_id}:follows')
