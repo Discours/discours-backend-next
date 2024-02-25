@@ -3,11 +3,11 @@ import time
 
 from typing import Any, Callable, Dict, TypeVar
 
-from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine
+from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine, configure_mappers
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
-from sqlalchemy_searchable import make_searchable, configure_mappers
+from sqlalchemy_searchable import make_searchable
 
 from services.logger import root_logger as logger
 from settings import DB_URL
