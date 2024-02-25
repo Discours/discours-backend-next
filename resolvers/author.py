@@ -8,6 +8,7 @@ from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat, author_follows_authors, author_follows_topics
+from services.event_listeners import update_author_cache
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -36,7 +37,7 @@ def get_authors_all(_, _info):
 
 
 @query.field('get_author')
-def get_author(_, _info, slug='', author_id=None):
+async def get_author(_, _info, slug='', author_id=None):
     q = None
     author = None
     try:
@@ -47,6 +48,8 @@ def get_author(_, _info, slug='', author_id=None):
                 q = select(Author).where(Author.id == author_id)
 
         [author] = get_with_stat(q)
+        if author:
+            await update_author_cache(author)
     except Exception as exc:
         logger.error(exc)
     return author
@@ -67,6 +70,8 @@ async def get_author_by_user_id(user_id: str):
         q = select(Author).filter(Author.user == user_id)
 
         [author] = get_with_stat(q)
+        if author:
+            await update_author_cache(author)
     except Exception as exc:
         logger.error(exc)
     return author
