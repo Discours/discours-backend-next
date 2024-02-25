@@ -41,4 +41,4 @@ class Author(Base):
     updated_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     deleted_at = Column(Integer, nullable=True, comment='Deleted at')
 
-    search_vector = Column(TSVectorType("name", "slug", "bio", "about"))
+    search_vector = Column(TSVectorType("name", "slug", "bio", "about", regconfig="pg_catalog.russian"))
