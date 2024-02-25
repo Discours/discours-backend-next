@@ -55,7 +55,7 @@ async def get_author(_, _info, slug='', author_id=None):
             q = select(aliased_author).where(aliased_author.id == author_id)
             [author] = get_with_stat(q)
             if author:
-                await update_author_cache(author)
+                await update_author_cache(author.dict())
         else:
             author = json.loads(cache)
     except Exception as exc:
@@ -79,7 +79,7 @@ async def get_author_by_user_id(user_id: str):
 
         [author] = get_with_stat(q)
         if author:
-            await update_author_cache(author)
+            await update_author_cache(author.dict())
     except Exception as exc:
         logger.error(exc)
     return author
