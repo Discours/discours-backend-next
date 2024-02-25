@@ -44,9 +44,10 @@ async def get_author(_, _info, slug='', author_id=None):
     try:
         if slug:
             with local_session() as session:
-                q = select(Author).filter(Author.slug == slug)
+                aliased_author = aliased(Author)
+                q = select(aliased_author).filter(Author.slug == slug)
                 [author] = session.execute(q)
-                author_id = author.id
+                author_id = aliased_author.id
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
         if not cache:
