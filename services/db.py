@@ -1,7 +1,7 @@
 import math
 import time
 from functools import wraps
-from sqlalchemy import event, Engine
+from sqlalchemy import event, Engine, inspect
 from typing import Any, Callable, Dict, TypeVar
 
 from dogpile.cache import make_region
@@ -110,3 +110,20 @@ def cache_method(cache_key: str):
         return decorated_function
 
     return decorator
+
+
+author_fts_index_name = 'author_full_text_idx'
+inspector = inspect(engine)
+authors_indexes = inspector.get_indexes('authors')
+author_fts_index_exists = any(
+    index['name'] == author_fts_index_name for index in authors_indexes
+)
+if not author_fts_index_exists:
+    with local_session() as session:
+        session.bind.execute(
+            """
+                CREATE INDEX {index_name} ON authors
+                USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
+            """.format(index_name=author_fts_index_name)
+        )
+    logger.info('Full text index created successfully.')

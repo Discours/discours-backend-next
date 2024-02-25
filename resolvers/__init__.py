@@ -8,6 +8,7 @@ from resolvers.author import (
     get_authors_all,
     load_authors_by,
     update_author,
+    search_authors,
 )
 from resolvers.rating import rate_author
 from resolvers.community import get_communities_all, get_community
@@ -53,6 +54,7 @@ __all__ = [
     'load_authors_by',
     'rate_author',
     'update_author',
+    'search_authors',
     # community
     'get_community',
     'get_communities_all',

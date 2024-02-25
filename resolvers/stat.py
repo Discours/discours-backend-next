@@ -6,7 +6,6 @@ from orm.topic import TopicFollower, Topic
 from services.db import local_session
 from orm.author import AuthorFollower, Author, AuthorRating
 from orm.shout import ShoutTopic, ShoutAuthor, Shout
-from services.logger import root_logger as logger
 
 
 def add_topic_stat_columns(q):
@@ -71,18 +70,50 @@ def add_author_stat_columns(q):
 def add_author_ratings(q):
     aliased_author = aliased(Author)
     ratings_subquery = (
-        select([
-            aliased_author.id.label('author_id'),
-            func.count().filter(and_(
-                Reaction.created_by == aliased_author.id,
-                Reaction.kind == ReactionKind.COMMENT.value,
-                Reaction.deleted_at.is_(None),
-                )).label('comments_count'),
-            func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
-            func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
-            func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value, Shout.authors.any(id=aliased_author.id)), 1), else_=0)).label('shouts_likes'),
-            func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=aliased_author.id)), 1), else_=0)).label('shouts_dislikes')
-        ])
+        select(
+            [
+                aliased_author.id.label('author_id'),
+                func.count()
+                .filter(
+                    and_(
+                        Reaction.created_by == aliased_author.id,
+                        Reaction.kind == ReactionKind.COMMENT.value,
+                        Reaction.deleted_at.is_(None),
+                    )
+                )
+                .label('comments_count'),
+                func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label(
+                    'likes_count'
+                ),
+                func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label(
+                    'dislikes_count'
+                ),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Reaction.kind == ReactionKind.LIKE.value,
+                                Shout.authors.any(id=aliased_author.id),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label('shouts_likes'),
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Reaction.kind == ReactionKind.DISLIKE.value,
+                                Shout.authors.any(id=aliased_author.id),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label('shouts_dislikes'),
+            ]
+        )
         .select_from(aliased_author)
         .join(AuthorRating, cast(AuthorRating.author, Integer) == aliased_author.id)
         .outerjoin(Shout, Shout.authors.any(id=aliased_author.id))
@@ -103,7 +134,7 @@ def get_with_stat(q):
     elif is_topic:
         q = add_topic_stat_columns(q)
     records = []
-    logger.debug(f'{q}'.replace('\n', ' '))
+    # logger.debug(f'{q}'.replace('\n', ' '))
     with local_session() as session:
         for cols in session.execute(q):
             entity = cols[0]

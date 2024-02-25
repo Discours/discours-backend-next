@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import desc, select, or_, and_
+from sqlalchemy import desc, select, or_, and_, func
 from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower
@@ -28,7 +28,6 @@ def update_author(_, info, profile):
     return {'error': None, 'author': author}
 
 
-# TODO: caching query
 @query.field('get_authors_all')
 def get_authors_all(_, _info):
     with local_session() as session:
@@ -209,3 +208,13 @@ def get_author_followers(_, _info, slug: str):
     except Exception as exc:
         logger.error(exc)
         return []
+
+
+@query.field('search_authors')
+def search_authors(_, info, text: str):
+    v1 = func.to_tsquery('russian', text)
+    v2 = func.to_tsvector(
+        'russian', Author.name or ' ' or Author.bio or ' ' or Author.about
+    )
+    q = select(Author).filter(v2.match(v1))
+    return get_with_stat(q)
