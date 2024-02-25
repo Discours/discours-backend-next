@@ -36,7 +36,7 @@ def add_reaction_stat_columns(q, aliased_reaction):
                 (aliased_reaction.kind != str(ReactionKind.COMMENT.value), None),
                 else_=aliased_reaction.created_at,
             )
-        ).label('last_comment'),
+        ).label('last_comment_stat'),
     )
 
     return q
@@ -445,7 +445,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
 
             # Sort shouts by the `last_comment` field
             combined_query = (
-                union(q1, q2).order_by(desc('last_comment')).limit(limit).offset(offset)
+                union(q1, q2).order_by(desc('last_comment_stat')).limit(limit).offset(offset)
             )
 
             results = session.execute(combined_query).scalars()

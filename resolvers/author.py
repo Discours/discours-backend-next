@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import desc, select, or_, and_
+from sqlalchemy import select, or_, and_, text
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -106,8 +106,8 @@ def load_authors_by(_, _info, by, limit, offset):
         q = q.filter(Author.created_at > before)
 
     order = by.get('order')
-    if order == 'followers' or order == 'shouts':
-        q = q.order_by(desc(f'{order}_stat'))
+    if order in ['likes', 'shouts', 'followers']:
+        q = q.order_by(text(f'{order}_stat'))
 
     q = q.limit(limit).offset(offset)
 
