@@ -1,19 +1,13 @@
 import json
 import time
 
-from sqlalchemy import desc, select, or_, distinct, func
+from sqlalchemy import desc, select, or_, and_
 from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.follower import query_follows
-from resolvers.stat import (
-    get_authors_with_stat,
-    execute_with_ministat,
-    author_follows_authors,
-    author_follows_topics,
-)
+from resolvers.stat import get_with_stat, author_follows_authors, author_follows_topics
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -52,13 +46,13 @@ def get_author(_, _info, slug='', author_id=None):
             if author_id:
                 q = select(Author).where(Author.id == author_id)
 
-        [author] = get_authors_with_stat(q, ratings=True)
+        [author] = get_with_stat(q)
     except Exception as exc:
         logger.error(exc)
     return author
 
 
-async def get_author_by_user_id(user_id: str, ratings=False):
+async def get_author_by_user_id(user_id: str):
     redis_key = f'user:{user_id}:author'
     author = None
     try:
@@ -72,7 +66,7 @@ async def get_author_by_user_id(user_id: str, ratings=False):
         logger.info(f'getting author id for {user_id}')
         q = select(Author).filter(Author.user == user_id)
 
-        [author] = get_authors_with_stat(q, ratings)
+        [author] = get_with_stat(q)
     except Exception as exc:
         logger.error(exc)
     return author
@@ -80,7 +74,7 @@ async def get_author_by_user_id(user_id: str, ratings=False):
 
 @query.field('get_author_id')
 async def get_author_id(_, _info, user: str):
-    return await get_author_by_user_id(user, ratings=True)
+    return await get_author_by_user_id(user)
 
 
 @query.field('load_authors_by')
@@ -111,7 +105,7 @@ def load_authors_by(_, _info, by, limit, offset):
 
     q = q.limit(limit).offset(offset)
 
-    authors = get_authors_with_stat(q, ratings=False)
+    authors = get_with_stat(q)
 
     return authors
 
@@ -127,8 +121,13 @@ def get_author_follows(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
-            follows = query_follows(author_id)
-            return follows
+            topics = author_follows_topics(author_id)
+            authors = author_follows_authors(author_id)
+            return {
+                'topics': topics,
+                'authors': authors,
+                'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
+            }
         else:
             raise ValueError('Author not found')
 
@@ -144,7 +143,7 @@ def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
-            follows = author_follows_authors(author_id)
+            follows = author_follows_topics(author_id)
             return follows
         else:
             raise ValueError('Author not found')
@@ -161,7 +160,7 @@ def get_author_follows_authors(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
-            follows = author_follows_topics(author_id)
+            follows = author_follows_authors(author_id)
             return follows
         else:
             raise ValueError('Author not found')
@@ -177,26 +176,25 @@ def create_author(user_id: str, slug: str, name: str = ''):
 
 @query.field('get_author_followers')
 def get_author_followers(_, _info, slug: str):
-    author_alias = aliased(Author)
-    alias_author_followers = aliased(AuthorFollower)
-    alias_author_authors = aliased(AuthorFollower)
-    alias_author_follower_followers = aliased(AuthorFollower)
-    alias_shout_author = aliased(ShoutAuthor)
+    try:
+        with local_session() as session:
+            author_id_result = (
+                session.query(Author.id).filter(Author.slug == slug).first()
+            )
+            author_id = author_id_result[0] if author_id_result else None
 
-    q = (
-        select(author_alias)
-        .join(alias_author_authors, alias_author_authors.follower == author_alias.id)
-        .join(alias_author_followers, alias_author_followers.author == author_alias.id)
-        .filter(author_alias.slug == slug)
-        .add_columns(
-            func.count(distinct(alias_shout_author.shout)).label('shouts_stat'),
-            func.count(distinct(alias_author_authors.author)).label('authors_stat'),
-            func.count(distinct(alias_author_follower_followers.follower)).label(
-                'followers_stat'
-            ),
-        )
-        .outerjoin(alias_shout_author, author_alias.id == alias_shout_author.author)
-        .group_by(author_alias.id)
-    )
+            author_alias = aliased(Author)
+            author_follower_alias = aliased(AuthorFollower, name='af')
 
-    return execute_with_ministat(q)
+            q = select(author_alias).join(
+                author_follower_alias,
+                and_(
+                    author_follower_alias.author == author_id,
+                    author_follower_alias.follower == author_alias.id,
+                ),
+            )
+
+            return get_with_stat(q)
+    except Exception as exc:
+        logger.error(exc)
+        return []

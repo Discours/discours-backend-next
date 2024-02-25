@@ -7,7 +7,7 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import ShoutAuthor, Shout
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_authors_with_stat, get_topics_with_stat
+from resolvers.stat import get_with_stat
 from services.rediscache import redis
 
 
@@ -46,7 +46,7 @@ def after_shouts_update(mapper, connection, shout: Shout):
         .where(ShoutAuthor.shout == shout.id)
         .union(select(Author).where(exists(subquery)))
     )
-    authors = get_authors_with_stat(authors_query, ratings=True)
+    authors = get_with_stat(authors_query)
     for author in authors:
         asyncio.create_task(update_author_cache(author))
 
@@ -61,7 +61,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
     )
 
     author_query = author_subquery.union(replied_author_subquery)
-    authors = get_authors_with_stat(author_query, ratings=True)
+    authors = get_with_stat(author_query)
 
     for author in authors:
         asyncio.create_task(update_author_cache(author))
@@ -128,9 +128,9 @@ async def handle_author_follower_change(
     connection, author_id: int, follower_id: int, is_insert: bool
 ):
     author_query = select(Author).filter(Author.id == author_id)
-    [author] = get_authors_with_stat(author_query, ratings=True)
+    [author] = get_with_stat(author_query)
     follower_query = select(Author).filter(Author.id == follower_id)
-    follower = get_authors_with_stat(follower_query, ratings=True)
+    follower = get_with_stat(follower_query)
     if follower and author:
         _ = asyncio.create_task(update_author_cache(author))
         _ = asyncio.create_task(update_author_cache(follower))
@@ -154,10 +154,10 @@ async def handle_topic_follower_change(
     connection, topic_id: int, follower_id: int, is_insert: bool
 ):
     q = select(Topic).filter(Topic.id == topic_id)
-    topics = get_topics_with_stat(q)
+    topics = get_with_stat(q)
     topic = topics[0]
     follower_query = select(Author).filter(Author.id == follower_id)
-    follower = get_authors_with_stat(follower_query, ratings=True)
+    follower = get_with_stat(follower_query)
     if follower and topic:
         _ = asyncio.create_task(update_author_cache(follower))
         await update_follows_for_user(

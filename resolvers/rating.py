@@ -103,36 +103,31 @@ def count_author_shouts_rating(session, author_id) -> int:
     return shouts_likes - shouts_dislikes
 
 
-def load_author_ratings(author: Author):
-    with local_session() as session:
-        comments_count = (
-            session.query(Reaction)
-            .filter(
-                and_(
-                    Reaction.created_by == author.id,
-                    Reaction.kind == ReactionKind.COMMENT.value,
-                    Reaction.deleted_at.is_(None),
-                )
+def load_author_ratings(session, author: Author):
+    comments_count = (
+        session.query(Reaction)
+        .filter(
+            and_(
+                Reaction.created_by == author.id,
+                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.deleted_at.is_(None),
             )
-            .count()
         )
-        likes_count = (
-            session.query(AuthorRating)
-            .filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True)))
-            .count()
-        )
-        dislikes_count = (
-            session.query(AuthorRating)
-            .filter(
-                and_(AuthorRating.author == author.id, AuthorRating.plus.is_not(True))
-            )
-            .count()
-        )
-        author.stat = author.stat if isinstance(author.stat, dict) else {}
-        author.stat['rating'] = likes_count - dislikes_count
-        author.stat['rating_shouts'] = count_author_shouts_rating(session, author.id)
-        author.stat['rating_comments'] = count_author_comments_rating(
-            session, author.id
-        )
-        author.stat['commented'] = comments_count
-        return author
+        .count()
+    )
+    likes_count = (
+        session.query(AuthorRating)
+        .filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True)))
+        .count()
+    )
+    dislikes_count = (
+        session.query(AuthorRating)
+        .filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_not(True)))
+        .count()
+    )
+    author.stat = author.stat if isinstance(author.stat, dict) else {}
+    author.stat['rating'] = likes_count - dislikes_count
+    author.stat['rating_shouts'] = count_author_shouts_rating(session, author.id)
+    author.stat['rating_comments'] = count_author_comments_rating(session, author.id)
+    author.stat['commented'] = comments_count
+    return author

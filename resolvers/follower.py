@@ -13,7 +13,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_follow, topic_unfollow
-from resolvers.stat import get_authors_with_stat, query_follows
+from resolvers.stat import get_with_stat, query_follows
 from services.auth import login_required
 from services.db import local_session
 from services.event_listeners import DEFAULT_FOLLOWS
@@ -190,7 +190,7 @@ def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
         .join(Topic, Topic.id == TopicFollower.topic)
         .filter(or_(Topic.slug == slug, Topic.id == topic_id))
     )
-    return get_authors_with_stat(q)
+    return get_with_stat(q)
 
 
 @query.field('get_shout_followers')

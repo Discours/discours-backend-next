@@ -3,7 +3,7 @@ from sqlalchemy import and_, distinct, func, select
 from orm.author import Author
 from orm.shout import ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_topics_with_stat
+from resolvers.stat import get_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
@@ -12,13 +12,13 @@ from services.logger import root_logger as logger
 
 @query.field('get_topics_all')
 def get_topics_all(_, _info):
-    return get_topics_with_stat(select(Topic))
+    return get_with_stat(select(Topic))
 
 
 @query.field('get_topics_by_community')
 def get_topics_by_community(_, _info, community_id: int):
     q = select(Topic).where(Topic.community == community_id)
-    return get_topics_with_stat(q)
+    return get_with_stat(q)
 
 
 @query.field('get_topics_by_author')
@@ -31,13 +31,13 @@ def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
     elif user:
         q = q.join(Author).where(Author.user == user)
 
-    return get_topics_with_stat(q)
+    return get_with_stat(q)
 
 
 @query.field('get_topic')
 def get_topic(_, _info, slug: str):
     q = select(Topic).filter(Topic.slug == slug)
-    topics = get_topics_with_stat(q)
+    topics = get_with_stat(q)
     if topics:
         return topics[0]
 

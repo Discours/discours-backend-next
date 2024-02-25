@@ -68,9 +68,10 @@ def add_author_stat_columns(q):
     return q
 
 
-def execute_with_ministat(q):
+def get_with_stat(q):
+    q = add_author_stat_columns(q)
     records = []
-    logger.debug(f'execute with ministat: {q}')
+    logger.debug(q.replace('\n', ' '))
     with local_session() as session:
         for [entity, shouts_stat, authors_stat, followers_stat] in session.execute(q):
             entity.stat = {
@@ -78,25 +79,11 @@ def execute_with_ministat(q):
                 'authors': authors_stat,
                 'followers': followers_stat,
             }
+            if q.startswith('SELECT author'):
+                load_author_ratings(session, entity)
             records.append(entity)
 
     return records
-
-
-def get_authors_with_stat(q, ratings=False):
-    q = add_author_stat_columns(q)
-    authors = execute_with_ministat(q)
-    if ratings:
-        authors_with_ratings = []
-        for author in authors:
-            authors_with_ratings.append(load_author_ratings(author))
-            return authors_with_ratings
-    return authors
-
-
-def get_topics_with_stat(q):
-    q = add_topic_stat_columns(q)
-    return execute_with_ministat(q)
 
 
 def author_follows_authors(author_id: int):
@@ -106,8 +93,7 @@ def author_follows_authors(author_id: int):
         .select_from(join(Author, af, Author.id == af.author))
         .where(af.follower == author_id)
     )
-    q = add_author_stat_columns(q)
-    return execute_with_ministat(q)
+    return get_with_stat(q)
 
 
 def author_follows_topics(author_id: int):
@@ -116,22 +102,4 @@ def author_follows_topics(author_id: int):
         .select_from(join(Topic, TopicFollower, Topic.id == TopicFollower.topic))
         .where(TopicFollower.follower == author_id)
     )
-
-    q = add_topic_stat_columns(q)
-    return execute_with_ministat(q)
-
-
-def query_follows(author_id: int):
-    try:
-        topics = author_follows_topics(author_id)
-        authors = author_follows_authors(author_id)
-        return {
-            'topics': topics,
-            'authors': authors,
-            'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours'}],
-        }
-    except Exception as e:
-        import traceback
-
-        logger.debug(traceback.format_exc())
-        raise Exception(e)
+    return get_with_stat(q)
