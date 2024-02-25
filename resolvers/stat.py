@@ -1,4 +1,4 @@
-from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer, literal
+from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
@@ -77,18 +77,17 @@ def add_author_stat_columns(q):
                 'followers_stat'
             )
         )
-        # FIXME: author.stat.comments
-        #.outerjoin(aliased_reaction)
-        .add_columns(
-            literal('0')
-            #func.count(distinct(aliased_reaction.id)).filter(
-            #    and_(
-            #        aliased_reaction.created_by == Author.id,
-            #        aliased_reaction.kind == ReactionKind.COMMENT.value,
-            #        aliased_reaction.deleted_at.is_(None),
-            #        )
-            ).label('comments_count')
-        )
+        # .add_columns(literal('0')).label('comments_count')
+    )
+
+    # FIXME: author.stat.comments
+    #.outerjoin(aliased_reaction)
+        #func.count(distinct(aliased_reaction.id)).filter(
+        #    and_(
+        #        aliased_reaction.created_by == Author.id,
+        #        aliased_reaction.kind == ReactionKind.COMMENT.value,
+        #        aliased_reaction.deleted_at.is_(None),
+        #        )
 
     q = q.group_by(Author.id)
 
@@ -168,7 +167,7 @@ def get_with_stat(q):
             entity = cols[0]
             entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
             if is_author:
-                entity.stat['comments'] = cols[4]
+                entity.stat['comments'] = 0 # FIXME: cols[4]
                 # entity.stat['rating'] = cols[5] - cols[6]
                 # entity.stat['rating_shouts'] = cols[7] - cols[8]
                 pass
