@@ -20,6 +20,10 @@ inspector = inspect(engine)
 configure_mappers()
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
+FILTERED_FIELDS = [
+    '_sa_instance_state',
+    'search_vector'
+]
 
 
 # noinspection PyUnusedLocal
@@ -42,9 +46,7 @@ class Base(declarative_base()):
         REGISTRY[cls.__name__] = cls
 
     def dict(self) -> Dict[str, Any]:
-        column_names = self.__table__.columns.keys()
-        if '_sa_instance_state' in column_names:
-            column_names.remove('_sa_instance_state')
+        column_names = filter(lambda x: x not in FILTERED_FIELDS, self.__table__.columns.keys())
         try:
             return {c: getattr(self, c) for c in column_names}
         except Exception as e:

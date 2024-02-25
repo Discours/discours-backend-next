@@ -18,8 +18,8 @@ DEFAULT_FOLLOWS = {
 }
 
 
-async def update_author_cache(author: Author, ttl=25 * 60 * 60):
-    payload = json.dumps(author.dict())
+async def update_author_cache(author: dict, ttl=25 * 60 * 60):
+    payload = json.dumps(author)
     await redis.execute('SETEX', f'user:{author.user}:author', ttl, payload)
     await redis.execute('SETEX', f'id:{author.id}:author', ttl, payload)
 
@@ -48,7 +48,7 @@ def after_shouts_update(mapper, connection, shout: Shout):
     )
     authors = get_with_stat(authors_query)
     for author in authors:
-        asyncio.create_task(update_author_cache(author))
+        asyncio.create_task(update_author_cache(author.dict()))
 
 
 @event.listens_for(Reaction, 'after_insert')
@@ -64,7 +64,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
     authors = get_with_stat(author_query)
 
     for author in authors:
-        asyncio.create_task(update_author_cache(author))
+        asyncio.create_task(update_author_cache(author.author()))
 
     shout = connection.execute(select(Shout).where(Shout.id == reaction.shout)).first()
     if shout:
@@ -74,7 +74,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
 @event.listens_for(Author, 'after_insert')
 @event.listens_for(Author, 'after_update')
 def after_author_update(mapper, connection, author: Author):
-    asyncio.create_task(update_author_cache(author))
+    asyncio.create_task(update_author_cache(author.dict()))
 
 
 @event.listens_for(TopicFollower, 'after_insert')
@@ -132,8 +132,8 @@ async def handle_author_follower_change(
     follower_query = select(Author).filter(Author.id == follower_id)
     follower = get_with_stat(follower_query)
     if follower and author:
-        _ = asyncio.create_task(update_author_cache(author))
-        _ = asyncio.create_task(update_author_cache(follower))
+        _ = asyncio.create_task(update_author_cache(author.dict()))
+        _ = asyncio.create_task(update_author_cache(follower.dict()))
         await update_follows_for_user(
             connection,
             follower.user,
@@ -159,7 +159,7 @@ async def handle_topic_follower_change(
     follower_query = select(Author).filter(Author.id == follower_id)
     follower = get_with_stat(follower_query)
     if follower and topic:
-        _ = asyncio.create_task(update_author_cache(follower))
+        _ = asyncio.create_task(update_author_cache(follower.dict()))
         await update_follows_for_user(
             connection,
             follower.user,
