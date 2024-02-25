@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text
+from sqlalchemy import select, or_, and_, text, desc
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -107,7 +107,7 @@ def load_authors_by(_, _info, by, limit, offset):
 
     order = by.get('order')
     if order in ['likes', 'shouts', 'followers']:
-        q = q.order_by(text(f'{order}_stat'))
+        q = q.order_by(desc(text(f'{order}_stat')))
 
     q = q.limit(limit).offset(offset)
 

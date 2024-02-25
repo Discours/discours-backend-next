@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from sqlalchemy import and_, case, desc, func, select
+from sqlalchemy import and_, case, desc, func, select, text
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
@@ -373,7 +373,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
-    q = q.order_by(desc('created_at'))
+    q = q.order_by(desc(text('created_at')))
 
     # pagination
     q = q.limit(limit).offset(offset)
@@ -445,7 +445,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
 
             # Sort shouts by the `last_comment` field
             combined_query = (
-                union(q1, q2).order_by(desc('last_comment_stat')).limit(limit).offset(offset)
+                union(q1, q2).order_by(desc(text('last_comment_stat'))).limit(limit).offset(offset)
             )
 
             results = session.execute(combined_query).scalars()

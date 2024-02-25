@@ -146,7 +146,7 @@ async def load_shouts_by(_, _info, options):
     order_by = Shout.featured_at if filters.get('featured') else Shout.published_at
     order_str = options.get('order_by')
     if order_str in ['likes', 'shouts', 'followers', 'comments', 'last_comment']:
-        q = q.order_by(text(f'{order_str}_stat'))
+        q = q.order_by(desc(text(f'{order_str}_stat')))
     query_order_by = (
         desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
     )
