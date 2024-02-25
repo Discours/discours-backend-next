@@ -111,7 +111,9 @@ def cache_method(cache_key: str):
 
     return decorator
 
+
 inspector = inspect(engine)
+
 
 def create_fts_index(table_name, fts_index_name):
     logger.info(f'Full text index for {table_name}...')
