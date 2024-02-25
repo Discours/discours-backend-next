@@ -52,7 +52,7 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     if hasattr(conn, '_query_start_time'):
         elapsed = time.time() - conn.query_start_time
-        del conn.query_start_time
+        conn.query_start_time = None
         query = f'{statement}'.replace('\n', ' ')
         logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
 

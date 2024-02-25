@@ -53,6 +53,7 @@ def get_author(_, _info, slug='', author_id=None):
 
 
 async def get_author_by_user_id(user_id: str):
+    logger.info(f'getting author id for {user_id}')
     redis_key = f'user:{user_id}:author'
     author = None
     try:
@@ -63,7 +64,6 @@ async def get_author_by_user_id(user_id: str):
                 logger.debug(f'got cached author: {author}')
                 return author
 
-        logger.info(f'getting author id for {user_id}')
         q = select(Author).filter(Author.user == user_id)
 
         [author] = get_with_stat(q)
@@ -79,6 +79,7 @@ async def get_author_id(_, _info, user: str):
 
 @query.field('load_authors_by')
 def load_authors_by(_, _info, by, limit, offset):
+    logger.debug(f'loading authors by {by}')
     q = select(Author)
     if by.get('slug'):
         q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
@@ -121,6 +122,7 @@ def get_author_follows(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
+            logger.debug(f'getting {author_id} follows')
             topics = author_follows_topics(author_id)
             authors = author_follows_authors(author_id)
             return {
@@ -145,6 +147,7 @@ def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
+            logger.debug(f'getting {author_id} follows topics')
             follows = author_follows_topics(author_id)
             return follows
         else:
@@ -162,6 +165,7 @@ def get_author_follows_authors(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
+            logger.debug(f'getting {author_id} follows authors')
             follows = author_follows_authors(author_id)
             return follows
         else:
@@ -178,6 +182,7 @@ def create_author(user_id: str, slug: str, name: str = ''):
 
 @query.field('get_author_followers')
 def get_author_followers(_, _info, slug: str):
+    logger.debug(f'getting followers for @{slug}')
     try:
         with local_session() as session:
             author_id_result = (
