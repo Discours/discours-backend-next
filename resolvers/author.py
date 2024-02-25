@@ -42,22 +42,24 @@ async def get_author(_, _info, slug='', author_id=None):
     author = None
     cache = None
     try:
+
         if slug:
             with local_session() as session:
                 aliased_author = aliased(Author)
                 q = select(aliased_author).filter(aliased_author.slug == slug)
                 [author] = session.execute(q)
                 author_id = aliased_author.id
+
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
-        if not cache:
+            author = json.loads(cache)
+
+        if not author:
             aliased_author = aliased(Author)
             q = select(aliased_author).where(aliased_author.id == author_id)
             [author] = get_with_stat(q)
             if author:
                 await update_author_cache(author.dict())
-        else:
-            author = json.loads(cache)
     except Exception as exc:
         logger.error(exc)
     return author
