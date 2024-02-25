@@ -1,7 +1,7 @@
 import math
 import time
 from functools import wraps
-from sqlalchemy import event, Engine, inspect
+from sqlalchemy import event, Engine, inspect, text
 from typing import Any, Callable, Dict, TypeVar
 
 from dogpile.cache import make_region
@@ -123,12 +123,11 @@ def create_fts_index(table_name, fts_index_name):
     )
     if not author_fts_index_exists:
         with local_session() as session:
-            session.execute(
-                """
+            q = text("""
                     CREATE INDEX {index_name} ON {author_table_name}
                     USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
-                """.format(index_name=fts_index_name, author_table_name=table_name)
-            )
+                """.format(index_name=fts_index_name, author_table_name=table_name))
+            session.execute(q)
         logger.info('Full text index created successfully.')
 
 
