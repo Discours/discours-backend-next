@@ -35,13 +35,14 @@ def after_shouts_update(mapper, connection, shout: Shout):
                 Shout.id == shout.id,
                 ShoutAuthor.shout == Shout.id,
                 ShoutAuthor.author == Author.id,
-            ),
-        )
+                ),
+            )
     )
 
     # Основной запрос с использованием объединения и подзапроса exists
     authors_query = (
         select(Author)
+        .select_from(Author)
         .join(ShoutAuthor, Author.id == ShoutAuthor.author)
         .where(ShoutAuthor.shout == shout.id)
         .union(select(Author).where(exists(subquery)))
@@ -56,6 +57,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
     author_subquery = select(Author).where(Author.id == reaction.created_by)
     replied_author_subquery = (
         select(Author)
+        .select_from(Author)
         .join(Reaction, Author.id == Reaction.created_by)
         .where(Reaction.id == reaction.reply_to)
     )

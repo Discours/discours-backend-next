@@ -34,7 +34,7 @@ class WebhookEndpoint(HTTPEndpoint):
                                 )
                                 if author:
                                     slug = slug + '-' + user_id.split('-').pop()
-                                await create_author(user_id, slug, name)
+                                create_author(user_id, slug, name)
 
             return JSONResponse({'status': 'success'})
         except Exception as e:

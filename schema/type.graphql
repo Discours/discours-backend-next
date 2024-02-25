@@ -5,7 +5,7 @@ type AuthorStat {
   rating: Int
   rating_shouts: Int
   rating_comments: Int
-  commented: Int
+  comments: Int
   viewed: Int
 }
 
@@ -123,7 +123,7 @@ type TopicStat {
   shouts: Int!
   followers: Int!
   authors: Int!
-  viewed: Int
+  comments: Int
 }
 
 type Topic {

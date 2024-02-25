@@ -81,8 +81,7 @@ def create_shout(_, info, inp):
             # NOTE: requesting new shout back
             shout = session.query(Shout).where(Shout.slug == slug).first()
             if shout:
-                shout_dict = shout.dict()
-                sa = ShoutAuthor(shout=shout.id, author=author.id)
+                sa = ShoutAuthor(shout=shout.id, author=author.id, auto=True)
                 session.add(sa)
 
                 topics = (
@@ -93,6 +92,8 @@ def create_shout(_, info, inp):
                 for topic in topics:
                     t = ShoutTopic(topic=topic.id, shout=shout.id)
                     session.add(t)
+
+                session.commit()
 
                 reactions_follow(author.id, shout.id, True)
 

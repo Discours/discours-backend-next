@@ -60,7 +60,7 @@ class Base(declarative_base()):
 
 
 make_searchable(Base.metadata)
-Base.metadata.create_all(engine)
+Base.metadata.create_all(bind=engine)
 
 
 # Функция для вывода полного трейсбека при предупреждениях

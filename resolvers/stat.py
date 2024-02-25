@@ -43,15 +43,19 @@ def add_author_stat_columns(q):
     aliased_author_authors = aliased(AuthorFollower)
     aliased_author_followers = aliased(AuthorFollower)
 
+    aliased_reaction = aliased(Reaction)
+
     q = (
         q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
         .add_columns(
             func.count(distinct(aliased_shout_author.shout)).label('shouts_stat')
         )
+
         .outerjoin(aliased_author_authors, aliased_author_authors.follower == Author.id)
         .add_columns(
             func.count(distinct(aliased_author_authors.author)).label('authors_stat')
         )
+
         .outerjoin(
             aliased_author_followers, aliased_author_followers.author == Author.id
         )
@@ -59,6 +63,18 @@ def add_author_stat_columns(q):
             func.count(distinct(aliased_author_followers.follower)).label(
                 'followers_stat'
             )
+        )
+
+        .outerjoin(aliased_reaction)
+        .add_columns(
+            func.count(distinct(aliased_reaction.id)).filter(
+                and_(
+                    aliased_reaction.created_by == Author.id,
+                    aliased_reaction.kind == ReactionKind.COMMENT.value,
+                    aliased_reaction.deleted_at.is_(None),
+                    )
+            )
+            .label('comments_count')
         )
     )
 
@@ -138,9 +154,9 @@ def get_with_stat(q):
     with local_session() as session:
         for cols in session.execute(q):
             entity = cols[0]
-            entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
+            entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3], 'comments': cols[4]}
             if is_author:
-                # entity.stat['comments'] = cols[4]
+                # entity.stat[
                 # entity.stat['rating'] = cols[5] - cols[6]
                 # entity.stat['rating_shouts'] = cols[7] - cols[8]
                 pass
