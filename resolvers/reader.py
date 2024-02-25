@@ -1,4 +1,4 @@
-from sqlalchemy import bindparam, distinct, or_
+from sqlalchemy import bindparam, distinct, or_, text
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 from starlette.exceptions import HTTPException
@@ -143,9 +143,10 @@ async def load_shouts_by(_, _info, options):
     q = q.group_by(Shout.id)
 
     # order
-    order_by = options.get(
-        'order_by', Shout.featured_at if filters.get('featured') else Shout.published_at
-    )
+    order_by = Shout.featured_at if filters.get('featured') else Shout.published_at
+    order_by_str = options.get('order_by')
+    if order_by_str:
+        order_by = text(order_by_str)
     query_order_by = (
         desc(order_by) if options.get('order_by_desc', True) else asc(order_by)
     )
