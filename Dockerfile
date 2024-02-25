@@ -8,12 +8,12 @@ RUN apk update && \
 # Set working directory
 WORKDIR /app
 
-# Copy just the dependency manifests first
-COPY poetry.lock pyproject.toml /app/
-
 # Install dependencies
 RUN poetry config virtualenvs.create false && \
     poetry install --no-dev
+
+# Copy just the dependency manifests first
+COPY poetry.lock pyproject.toml /app/
 
 # Copy the rest of the application
 COPY . /app
