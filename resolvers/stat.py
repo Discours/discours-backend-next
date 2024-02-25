@@ -69,40 +69,34 @@ def add_author_stat_columns(q):
 
 
 def add_author_ratings(q):
+    aliased_author = aliased(Author)
     ratings_subquery = (
         select([
-            Author.id,
-            func.count().filter(
-                and_(
-                    Reaction.created_by == Author.id,
-                    Reaction.kind == ReactionKind.COMMENT.value,
-                    Reaction.deleted_at.is_(None),
-                )
-            ).label('comments_count'),
-            func.sum(
-                case((AuthorRating.plus == true(), 1), else_=0)
-            ).label('likes_count'),
-            func.sum(
-                case((AuthorRating.plus != true(), 1), else_=0)
-            ).label('dislikes_count'),
-            func.sum(
-                case((and_(Reaction.kind == ReactionKind.LIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)
-            ).label('shouts_likes'),
-            func.sum(
-                case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)
-            ).label('shouts_dislikes')
+            aliased_author.id.label('author_id'),
+            func.count().filter(and_(
+                Reaction.created_by == aliased_author.id,
+                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.deleted_at.is_(None),
+                )).label('comments_count'),
+            func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
+            func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value, Shout.authors.any(id=aliased_author.id)), 1), else_=0)).label('shouts_likes'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=aliased_author.id)), 1), else_=0)).label('shouts_dislikes')
         ])
-        .select_from(Author)
-        .join(AuthorRating, AuthorRating.author == Author.id)
-        .outerjoin(Shout, Shout.authors.any(id=Author.id))
+        .select_from(aliased_author)
+        .join(AuthorRating, AuthorRating.author == aliased_author.id)
+        .outerjoin(Shout, Shout.authors.any(id=aliased_author.id))
         .filter(
             Reaction.deleted_at.is_(None)
         )
-        .group_by(Author.id)
+        .group_by(aliased_author.id)
         .alias('ratings_subquery')
     )
 
-    return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
+    q = q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
+
+    return q
+
 
 
 def get_with_stat(q):

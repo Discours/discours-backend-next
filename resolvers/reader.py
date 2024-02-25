@@ -431,9 +431,7 @@ async def load_shouts_random_top(_, _info, options):
             func.sum(
                 case(
                     (Reaction.kind == str(ReactionKind.LIKE.value), 1),
-                    (Reaction.kind == str(ReactionKind.AGREE.value), 1),
                     (Reaction.kind == str(ReactionKind.DISLIKE.value), -1),
-                    (Reaction.kind == str(ReactionKind.DISAGREE.value), -1),
                     else_=0,
                 )
             )
