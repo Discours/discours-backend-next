@@ -31,6 +31,19 @@ def add_topic_stat_columns(q):
                 'followers_stat'
             )
         )
+
+        # TODO: topic.stat.comments
+        # .outerjoin(aliased_reaction)
+        # .add_columns(
+        #     func.count(distinct(aliased_reaction.id)).filter(
+        #         and_(
+        #             aliased_reaction.created_by == Author.id,
+        #             aliased_reaction.kind == ReactionKind.COMMENT.value,
+        #             aliased_reaction.deleted_at.is_(None),
+        #             )
+        #     )
+        #     .label('comments_count')
+        # )
     )
 
     q = q.group_by(Topic.id)
@@ -146,7 +159,7 @@ def get_with_stat(q):
     is_topic = f'{q}'.lower().startswith('select topic')
     if is_author:
         q = add_author_stat_columns(q)
-        # q = add_author_ratings(q)
+        # q = add_author_ratings(q)  # TODO: move rating to cols down there
     elif is_topic:
         q = add_topic_stat_columns(q)
     records = []
@@ -154,9 +167,9 @@ def get_with_stat(q):
     with local_session() as session:
         for cols in session.execute(q):
             entity = cols[0]
-            entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3], 'comments': cols[4]}
+            entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
             if is_author:
-                # entity.stat[
+                entity.stat['comments'] = cols[4]
                 # entity.stat['rating'] = cols[5] - cols[6]
                 # entity.stat['rating_shouts'] = cols[7] - cols[8]
                 pass
