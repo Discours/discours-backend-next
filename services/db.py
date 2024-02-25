@@ -115,7 +115,18 @@ def cache_method(cache_key: str):
 inspector = inspect(engine)
 
 
+def add_pg_trgm_extension_if_not_exists():
+    with local_session() as session:
+        result = session.execute("SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm';")
+        if not result.scalar():
+            session.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+            print("pg_trgm extension added successfully.")
+        else:
+            print("pg_trgm extension already exists.")
+
+
 def create_fts_index(table_name, fts_index_name):
+    add_pg_trgm_extension_if_not_exists()
     logger.info(f'Full text index for {table_name}...')
     authors_indexes = inspector.get_indexes(table_name)
     author_fts_index_exists = any(
