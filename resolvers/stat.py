@@ -71,7 +71,7 @@ def add_author_stat_columns(q):
 def get_with_stat(q):
     q = add_author_stat_columns(q)
     records = []
-    logger.debug(q.replace('\n', ' '))
+    logger.debug(f'{q}'.replace('\n', ' '))
     with local_session() as session:
         for [entity, shouts_stat, authors_stat, followers_stat] in session.execute(q):
             entity.stat = {
