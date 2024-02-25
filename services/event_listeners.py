@@ -21,7 +21,7 @@ DEFAULT_FOLLOWS = {
 async def update_author_cache(author: Author, ttl=25 * 60 * 60):
     payload = json.dumps(author.dict())
     await redis.execute('SETEX', f'user:{author.user}:author', ttl, payload)
-    await redis.execute('SETEX', f'id:{author.user}:author', ttl, payload)
+    await redis.execute('SETEX', f'id:{author.id}:author', ttl, payload)
 
 
 @event.listens_for(Shout, 'after_insert')
