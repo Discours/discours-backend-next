@@ -111,7 +111,7 @@ def load_authors_by(_, _info, by, limit, offset):
 
     q = q.limit(limit).offset(offset)
 
-    authors = get_authors_with_stat(q)
+    authors = get_authors_with_stat(q, ratings=True)
 
     return authors
 
