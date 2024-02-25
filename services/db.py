@@ -53,8 +53,8 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
     if hasattr(conn, '_query_start_time'):
         elapsed = time.time() - conn.query_start_time
         del conn.query_start_time
-        if elapsed > 0.9:  # Adjust threshold as needed
-            logger.debug(f"\n{statement}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s")
+        query = f'{statement}'.replace('\n', ' ')
+        logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
 
 
 # noinspection PyUnusedLocal
