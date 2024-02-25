@@ -7,7 +7,7 @@ from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engi
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.schema import Table
-from sqlalchemy_searchable import make_searchable
+from sqlalchemy_searchable import make_searchable, configure_mappers
 
 from services.logger import root_logger as logger
 from settings import DB_URL
@@ -34,6 +34,7 @@ warnings.simplefilter('always', exc.SAWarning)
 # Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
 inspector = inspect(engine)
+configure_mappers()
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
 
