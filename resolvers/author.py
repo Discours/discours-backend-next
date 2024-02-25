@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc
+from sqlalchemy import select, or_, and_, text, desc, cast, Integer
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -45,18 +45,16 @@ async def get_author(_, _info, slug='', author_id=None):
 
         if slug:
             with local_session() as session:
-                aliased_author = aliased(Author)
-                q = select(aliased_author).filter(aliased_author.slug == slug)
+                q = select(Author).filter(Author.slug == slug)
                 [author] = session.execute(q)
-                author_id = aliased_author.id
+                author_id = cast(Author.id, Integer)
 
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
             author = json.loads(cache)
 
         if not author:
-            aliased_author = aliased(Author)
-            q = select(aliased_author).where(aliased_author.id == author_id)
+            q = select(Author).where(Author.id == author_id)
             [author] = get_with_stat(q)
             if author:
                 await update_author_cache(author.dict())
