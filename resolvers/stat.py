@@ -70,58 +70,24 @@ def add_author_stat_columns(q):
 
 def add_author_ratings(q):
     ratings_subquery = (
-        select(
-            [
-                Author.id,
-                func.count()
-                .filter(
-                    and_(
-                        Reaction.created_by == Author.id,
-                        Reaction.kind == ReactionKind.COMMENT.value,
-                        Reaction.deleted_at.is_(None),
-                    )
-                )
-                .label('comments_count'),
-                func.sum(case([(AuthorRating.plus == true(), 1)], else_=0)).label(
-                    'likes_count'
-                ),
-                func.sum(case([(AuthorRating.plus != true(), 1)], else_=0)).label(
-                    'dislikes_count'
-                ),
-                func.sum(
-                    case(
-                        [
-                            (
-                                and_(
-                                    Reaction.kind == ReactionKind.LIKE.value,
-                                    Shout.authors.any(id=Author.id),
-                                ),
-                                1,
-                            )
-                        ],
-                        else_=0,
-                    )
-                ).label('shouts_likes'),
-                func.sum(
-                    case(
-                        [
-                            (
-                                and_(
-                                    Reaction.kind == ReactionKind.DISLIKE.value,
-                                    Shout.authors.any(id=Author.id),
-                                ),
-                                1,
-                            )
-                        ],
-                        else_=0,
-                    )
-                ).label('shouts_dislikes'),
-            ]
-        )
+        select([
+            Author.id,
+            func.count().filter(and_(
+                Reaction.created_by == Author.id,
+                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.deleted_at.is_(None),
+                )).label('comments_count'),
+            func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
+            func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)).label('shouts_likes'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)).label('shouts_dislikes')
+        ])
         .select_from(Author)
         .join(AuthorRating, AuthorRating.author == Author.id)
         .outerjoin(Shout, Shout.authors.any(id=Author.id))
-        .filter(Reaction.deleted_at.is_(None))
+        .filter(
+            Reaction.deleted_at.is_(None)
+        )
         .group_by(Author.id)
         .alias('ratings_subquery')
     )
