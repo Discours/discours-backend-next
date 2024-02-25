@@ -121,7 +121,7 @@ def create_fts_index(table_name, fts_index_name):
     )
     if not author_fts_index_exists:
         with local_session() as session:
-            session.bind.execute(
+            session.execute(
                 """
                     CREATE INDEX {index_name} ON {author_table_name}
                     USING gin(to_tsvector('russian', COALESCE(name,'') || ' ' || COALESCE(bio,'') || ' ' || COALESCE(about,'')));
