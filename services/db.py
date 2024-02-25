@@ -3,9 +3,9 @@ import time
 
 from typing import Any, Callable, Dict, TypeVar
 
-from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine, configure_mappers
+from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
 from sqlalchemy_searchable import make_searchable
 
