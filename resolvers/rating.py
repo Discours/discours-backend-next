@@ -128,6 +128,7 @@ def load_author_ratings(author: Author):
             )
             .count()
         )
+        author.stat = author.stat if isinstance(author.stat, dict) else {}
         author.stat['rating'] = likes_count - dislikes_count
         author.stat['rating_shouts'] = count_author_shouts_rating(session, author.id)
         author.stat['rating_comments'] = count_author_comments_rating(

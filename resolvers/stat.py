@@ -70,6 +70,7 @@ def add_author_stat_columns(q):
 
 def execute_with_ministat(q):
     records = []
+    logger.debug(f'execute with ministat: {q}')
     with local_session() as session:
         for [entity, shouts_stat, authors_stat, followers_stat] in session.execute(q):
             entity.stat = {
