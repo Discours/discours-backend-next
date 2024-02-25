@@ -445,7 +445,10 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
 
             # Sort shouts by the `last_comment` field
             combined_query = (
-                union(q1, q2).order_by(desc(text('last_comment_stat'))).limit(limit).offset(offset)
+                union(q1, q2)
+                .order_by(desc(text('last_comment_stat')))
+                .limit(limit)
+                .offset(offset)
             )
 
             results = session.execute(combined_query).scalars()
