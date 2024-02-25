@@ -220,6 +220,6 @@ def get_author_followers(_, _info, slug: str):
 
 
 @query.field('search_authors')
-def search_authors(_, info, t: str):
-    q = search(select(Author), t)
+def search_authors(_, info, what: str):
+    q = search(select(Author), what)
     return get_with_stat(q)
