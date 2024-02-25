@@ -1,4 +1,4 @@
-from sqlalchemy import func, distinct, select, join, and_, case, true
+from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
@@ -84,19 +84,14 @@ def add_author_ratings(q):
             func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=aliased_author.id)), 1), else_=0)).label('shouts_dislikes')
         ])
         .select_from(aliased_author)
-        .join(AuthorRating, AuthorRating.author == aliased_author.id)
+        .join(AuthorRating, cast(AuthorRating.author, Integer) == aliased_author.id)
         .outerjoin(Shout, Shout.authors.any(id=aliased_author.id))
-        .filter(
-            Reaction.deleted_at.is_(None)
-        )
+        .filter(Reaction.deleted_at.is_(None))
         .group_by(aliased_author.id)
         .alias('ratings_subquery')
     )
 
-    q = q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
-
-    return q
-
+    return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
 
 
 def get_with_stat(q):
@@ -104,7 +99,7 @@ def get_with_stat(q):
     is_topic = f'{q}'.lower().startswith('select topic')
     if is_author:
         q = add_author_stat_columns(q)
-        q = add_author_ratings(q)
+        # q = add_author_ratings(q)
     elif is_topic:
         q = add_topic_stat_columns(q)
     records = []
@@ -114,9 +109,10 @@ def get_with_stat(q):
             entity = cols[0]
             entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
             if is_author:
-                entity.stat['comments'] = cols[4]
-                entity.stat['rating'] = cols[5] - cols[6]
-                entity.stat['rating_shouts'] = cols[7] - cols[8]
+                # entity.stat['comments'] = cols[4]
+                # entity.stat['rating'] = cols[5] - cols[6]
+                # entity.stat['rating_shouts'] = cols[7] - cols[8]
+                pass
             records.append(entity)
 
     return records
