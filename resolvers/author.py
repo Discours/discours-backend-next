@@ -185,19 +185,18 @@ def get_author_followers(_, _info, slug: str):
     logger.debug(f'getting followers for @{slug}')
     try:
         with local_session() as session:
+            author_alias = aliased(Author)
             author_id_result = (
-                session.query(Author.id).filter(Author.slug == slug).first()
+                session.query(author_alias.id).filter(author_alias.slug == slug).first()
             )
             author_id = author_id_result[0] if author_id_result else None
 
-            author_alias = aliased(Author)
             author_follower_alias = aliased(AuthorFollower, name='af')
-
-            q = select(author_alias).join(
+            q = select(Author).join(
                 author_follower_alias,
                 and_(
                     author_follower_alias.author == author_id,
-                    author_follower_alias.follower == author_alias.id,
+                    author_follower_alias.follower == Author.id,
                 ),
             )
 
