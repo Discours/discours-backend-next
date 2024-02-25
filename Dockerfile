@@ -49,7 +49,7 @@ RUN apk update && \
 # The --mount will mount the buildx cache directory to where
 # Poetry and Pip store their cache so that they can re-use it
 RUN --mount=type=cache,target=/root/.cache \
-    curl -sSL https://install.python-poetry.org | python3 -
+    curl -sSL https://install.python-poetry.org | python -
 
 # copy project requirement files here to ensure they will be cached.
 WORKDIR $PYSETUP_PATH
@@ -57,7 +57,7 @@ COPY poetry.lock pyproject.toml ./
 
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN --mount=type=cache,target=/root/.cache \
-    poetry install --without=dev
+    poetry install --only main
 
 
 ################################
@@ -66,7 +66,7 @@ RUN --mount=type=cache,target=/root/.cache \
 FROM python-base
 
 COPY --from=builder $PYSETUP_PATH $PYSETUP_PATH
-COPY ./app /app/
+COPY . /app
 
 WORKDIR /app
 
