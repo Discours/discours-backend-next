@@ -117,9 +117,9 @@ inspector = inspect(engine)
 
 def add_pg_trgm_extension_if_not_exists():
     with local_session() as session:
-        result = session.execute("SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm';")
+        result = session.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm';"))
         if not result.scalar():
-            session.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+            session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
             print("pg_trgm extension added successfully.")
         else:
             print("pg_trgm extension already exists.")
