@@ -38,9 +38,7 @@ def get_authors_all(_, _info):
 
 @query.field('get_author')
 async def get_author(_, _info, slug='', author_id=None):
-    q = None
     author = None
-    cache = None
     try:
 
         if slug:
@@ -52,12 +50,11 @@ async def get_author(_, _info, slug='', author_id=None):
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
             author = json.loads(cache)
-
-        if not author:
-            q = select(Author).where(Author.id == author_id)
-            [author] = get_with_stat(q)
-            if author:
-                await update_author_cache(author.dict())
+            if not author:
+                q = select(Author).where(Author.id == author_id)
+                [author] = get_with_stat(q)
+                if author:
+                    await update_author_cache(author.dict())
     except Exception as exc:
         logger.error(exc)
     return author
