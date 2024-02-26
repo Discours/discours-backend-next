@@ -3,7 +3,7 @@ import time
 
 from typing import Any, Callable, Dict, TypeVar
 
-from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine
+from sqlalchemy import exc, event, Engine, inspect, Column, Integer, create_engine, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
@@ -48,7 +48,15 @@ class Base(declarative_base()):
     def dict(self) -> Dict[str, Any]:
         column_names = filter(lambda x: x not in FILTERED_FIELDS, self.__table__.columns.keys())
         try:
-            return {c: getattr(self, c) for c in column_names}
+            data = {}
+            for c in column_names:
+                value = getattr(self, c)
+                if isinstance(value, JSON):
+                    # Cast JSON column to string
+                    data[c] = str(value)
+                else:
+                    data[c] = value
+            return data
         except Exception as e:
             logger.error(f'Error occurred while converting object to dictionary: {e}')
             return {}
