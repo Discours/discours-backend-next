@@ -1,4 +1,4 @@
-from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer, literal
+from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
@@ -55,7 +55,7 @@ def add_author_stat_columns(q):
     aliased_shout_author = aliased(ShoutAuthor)
     aliased_author_authors = aliased(AuthorFollower)
     aliased_author_followers = aliased(AuthorFollower)
-    aliased_reaction = aliased(Reaction)
+    # aliased_reaction = aliased(Reaction)
 
     q = (
         q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
@@ -76,19 +76,19 @@ def add_author_stat_columns(q):
                 'followers_stat'
             )
         )
-        .outerjoin(
-            aliased_reaction,
-            and_(
-                aliased_reaction.created_by == Author.id,
-                aliased_reaction.kind == ReactionKind.COMMENT.value,
-                aliased_reaction.deleted_at.is_(None),
-                ),
-        )
-        .add_columns(
-            literal('0').label('comments_stat')
-        )
     )
-    # func.count(distinct(aliased_reaction.id))
+
+    # .outerjoin(
+    #    aliased_reaction,
+    #    and_(
+    #        aliased_reaction.created_by == Author.id,
+    #        aliased_reaction.kind == ReactionKind.COMMENT.value,
+    #        aliased_reaction.deleted_at.is_(None),
+    #        ),
+    #)
+    #.add_columns(
+    # func.count(distinct(aliased_reaction.id)).label('comments_stat')
+    #)
     q = q.group_by(Author.id)
 
     return q
