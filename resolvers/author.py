@@ -19,7 +19,7 @@ from services.logger import root_logger as logger
 
 @mutation.field('update_author')
 @login_required
-def update_author(_, info, profile):
+async def update_author(_, info, profile):
     user_id = info.context['user_id']
     with local_session() as session:
         author = session.query(Author).where(Author.user == user_id).first()

@@ -57,7 +57,7 @@ def create_topic(_, _info, inp):
 
 @mutation.field('update_topic')
 @login_required
-def update_topic(_, _info, inp):
+async def update_topic(_, _info, inp):
     slug = inp['slug']
     with local_session() as session:
         topic = session.query(Topic).filter(Topic.slug == slug).first()
@@ -73,7 +73,7 @@ def update_topic(_, _info, inp):
 
 @mutation.field('delete_topic')
 @login_required
-def delete_topic(_, info, slug: str):
+async def delete_topic(_, info, slug: str):
     user_id = info.context['user_id']
     with local_session() as session:
         t: Topic = session.query(Topic).filter(Topic.slug == slug).first()
@@ -97,7 +97,8 @@ def topic_follow(follower_id, slug):
             topic = session.query(Topic).where(Topic.slug == slug).one()
             _following = TopicFollower(topic=topic.id, follower=follower_id)
             return True
-    except Exception as _exc:
+    except Exception as exc:
+        logger.error(exc)
         return False
 
 

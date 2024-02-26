@@ -11,7 +11,7 @@ from services.schema import mutation
 
 @mutation.field('rate_author')
 @login_required
-def rate_author(_, info, rated_slug, value):
+async def rate_author(_, info, rated_slug, value):
     user_id = info.context['user_id']
 
     with local_session() as session:
