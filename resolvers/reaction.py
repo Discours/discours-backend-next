@@ -373,7 +373,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
-    q = q.distinct()
+    # q = q.distinct()  # FIXME
+    # ERROR: psycopg2.errors.UndefinedFunction) could not identify an equality operator for type json
     q = q.order_by(desc(Reaction.created_at))
 
     # pagination
