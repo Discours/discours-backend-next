@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc, cast, Integer
+from sqlalchemy import select, or_, and_, text, desc
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -40,24 +40,25 @@ def get_authors_all(_, _info):
 async def get_author(_, _info, slug='', author_id=None):
     author = None
     try:
-
         if slug:
-            with local_session() as session:
-                q = select(Author).filter(Author.slug == slug)
-                [author] = session.execute(q)
-                author_id = cast(Author.id, Integer)
+            q = select(Author).select_from(Author).filter(Author.slug == slug)
+            [author] = get_with_stat(q)
+            if author:
+                author_id = author.id
 
-        if bool(author_id):
+        if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
-            author = json.loads(cache) if cache else get_with_stat(select(Author).where(Author.id == author_id)).first()
+            q = select(Author).where(Author.id == author_id)
+            author = json.loads(cache) if cache else get_with_stat(q)[0]
             if author:
                 await update_author_cache(author.dict())
+                return author
     except Exception as exc:
         import traceback
 
         traceback.print_exc()
         logger.error(exc)
-    return author or {"slug": "anonymous", "id": 1, "name": "Аноним", "bio": "Неизвестно кто"}
+    return {"slug": "anonymous", "id": 1, "name": "Аноним", "bio": "Неизвестно кто"}
 
 
 async def get_author_by_user_id(user_id: str):
