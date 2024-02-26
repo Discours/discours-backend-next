@@ -57,7 +57,7 @@ async def get_author(_, _info, slug='', author_id=None):
 
         traceback.print_exc()
         logger.error(exc)
-    return author
+    return author or {"slug": "anonymous", "id": 1, "name": "Аноним", "bio": "Неизвестно кто"}
 
 
 async def get_author_by_user_id(user_id: str):
