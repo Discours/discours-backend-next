@@ -81,7 +81,7 @@ def create_shout(_, info, inp):
             # NOTE: requesting new shout back
             shout = session.query(Shout).where(Shout.slug == slug).first()
             if shout:
-                sa = ShoutAuthor(shout=shout.id, author=author.id, auto=True)
+                sa = ShoutAuthor(shout=shout.id, author=author.id)
                 session.add(sa)
 
                 topics = (
