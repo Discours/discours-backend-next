@@ -373,6 +373,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
+    q = q.distinct()
     q = q.order_by(desc(text('created_at')))
 
     # pagination
