@@ -1,7 +1,12 @@
 import redis.asyncio as aredis
 
-from services.logger import root_logger as logger
+import logging
 from settings import REDIS_URL
+
+
+# Set redis logging level to suppress DEBUG messages
+logger = logging.getLogger('redis')
+logger.setLevel(logging.WARNING)
 
 
 class RedisCache:
