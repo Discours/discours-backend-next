@@ -100,7 +100,7 @@ def create_shout(_, info, inp):
                 # notifier
                 # await notify_shout(shout_dict, 'create')
 
-                return {'shout': shout.dict()}
+                return {'shout': shout}
 
     return {'error': 'cant create shout'}
 
