@@ -1,6 +1,6 @@
 from functools import wraps
 import httpx
-
+from starlette.exceptions import HTTPException
 
 from settings import ADMIN_SECRET, AUTH_URL
 from services.logger import root_logger as logger
@@ -45,6 +45,7 @@ async def check_auth(req):
         }
         data = await request_data(gql)
         if data:
+            logger.debug(data)
             user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
             user_id = user_data.get('sub')
             user_roles = user_data.get('allowed_roles')
@@ -82,7 +83,9 @@ def login_required(f):
             logger.info(f' got {user_id} roles: {user_roles}')
             context['user_id'] = user_id.strip()
             context['roles'] = user_roles
-        return await f(*args, **kwargs)
+            return await f(*args, **kwargs)
+        else:
+            raise HTTPException(status_code=401, detail='Unauthorized')
 
     return decorated_function
 
@@ -95,6 +98,8 @@ def auth_request(f):
         if user_id:
             req['user_id'] = user_id.strip()
             req['roles'] = user_roles
-        return await f(*args, **kwargs)
+            return await f(*args, **kwargs)
+        else:
+            raise HTTPException(status_code=401, detail='Unauthorized')
 
     return decorated_function
