@@ -29,22 +29,22 @@ async def update_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60)
     try:
         payload = json.dumps(follows)
         await redis.execute('SETEX', f'author:{author_id}:follows-topics', ttl, payload)
-    except Exception as exc:
-        logger.error(exc)
+    except Exception:
         import traceback
 
-        traceback.print_exc()
+        exc = traceback.format_exc()
+        logger.error(exc)
 
 
 async def update_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60):
     try:
         payload = json.dumps(follows)
         await redis.execute('SETEX', f'author:{author_id}:follows-authors', ttl, payload)
-    except Exception as exc:
-        logger.error(exc)
+    except Exception:
         import traceback
 
-        traceback.print_exc()
+        exc = traceback.format_exc()
+        logger.error(exc)
 
 
 @event.listens_for(Shout, 'after_insert')

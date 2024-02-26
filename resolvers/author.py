@@ -122,7 +122,7 @@ def load_authors_by(_, _info, by, limit, offset):
 
 
 @query.field('get_author_follows')
-def get_author_follows(_, _info, slug='', user=None, author_id=None):
+async def get_author_follows(_, _info, slug='', user=None, author_id=None):
     with local_session() as session:
         if user or slug:
             author_id_result = (
@@ -132,9 +132,11 @@ def get_author_follows(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
-            logger.debug(f'getting {author_id} follows')
-            topics = author_follows_topics(author_id)
-            authors = author_follows_authors(author_id)
+            logger.debug(f'getting {author_id} follows authors')
+            cached = await redis.execute(f'id:{author_id}:follows-authors')
+            topics = json.loads(cached) if cached else author_follows_topics(author_id)
+            cached = await redis.execute(f'id:{author_id}:follows-topics')
+            authors = json.loads(cached) if cached else author_follows_authors(author_id)
             return {
                 'topics': topics,
                 'authors': authors,
@@ -147,7 +149,7 @@ def get_author_follows(_, _info, slug='', user=None, author_id=None):
 
 
 @query.field('get_author_follows_topics')
-def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
+async def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
     with local_session() as session:
         if user or slug:
             author_id_result = (
@@ -158,14 +160,18 @@ def get_author_follows_topics(_, _info, slug='', user=None, author_id=None):
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
             logger.debug(f'getting {author_id} follows topics')
-            follows = author_follows_topics(author_id)
-            return follows
+            rkey = f'id:{author_id}:follows-topics'
+            cached = await redis.execute(rkey)
+            topics = json.loads(cached) if cached else author_follows_topics(author_id)
+            if not cached:
+                await redis.execute('SETEX', rkey, json.dumps(topics), 24*60*60)
+            return topics
         else:
             raise ValueError('Author not found')
 
 
 @query.field('get_author_follows_authors')
-def get_author_follows_authors(_, _info, slug='', user=None, author_id=None):
+async def get_author_follows_authors(_, _info, slug='', user=None, author_id=None):
     with local_session() as session:
         if user or slug:
             author_id_result = (
@@ -176,8 +182,12 @@ def get_author_follows_authors(_, _info, slug='', user=None, author_id=None):
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
             logger.debug(f'getting {author_id} follows authors')
-            follows = author_follows_authors(author_id)
-            return follows
+            rkey = f'id:{author_id}:follows-authors'
+            cached = await redis.execute(rkey)
+            authors = json.loads(cached) if cached else author_follows_authors(author_id)
+            if not cached:
+                await redis.execute('SETEX', rkey, json.dumps(authors), 24*60*60)
+            return authors
         else:
             raise ValueError('Author not found')
 
