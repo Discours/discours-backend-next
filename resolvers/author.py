@@ -47,7 +47,7 @@ async def get_author(_, _info, slug='', author_id=None):
                 [author] = session.execute(q)
                 author_id = cast(Author.id, Integer)
 
-        if author_id:
+        if bool(author_id):
             cache = await redis.execute('GET', f'id:{author_id}:author')
             author = json.loads(cache) if cache else get_with_stat(select(Author).where(Author.id == author_id)).first()
             if author:

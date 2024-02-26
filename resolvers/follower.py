@@ -12,11 +12,11 @@ from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
-from resolvers.topic import topic_follow, topic_unfollow
+from resolvers.topic import topic_unfollow
 from resolvers.stat import get_with_stat, author_follows_topics, author_follows_authors
 from services.auth import login_required
 from services.db import local_session
-from services.event_listeners import DEFAULT_FOLLOWS
+from services.event_listeners import DEFAULT_FOLLOWS, update_follows_for_author
 from services.notify import notify_follower
 from services.schema import mutation, query
 from services.logger import root_logger as logger
@@ -29,24 +29,23 @@ async def follow(_, info, what, slug):
     try:
         user_id = info.context['user_id']
         with local_session() as session:
-            actor = session.query(Author).filter(Author.user == user_id).first()
-            if actor:
-                follower_id = actor.id
+            follower = session.query(Author).filter(Author.user == user_id).first()
+            if follower:
                 if what == 'AUTHOR':
-                    if author_follow(follower_id, slug):
-                        author = (
-                            session.query(Author.id).where(Author.slug == slug).one()
-                        )
-                        follower = (
-                            session.query(Author).where(Author.id == follower_id).one()
-                        )
-                        await notify_follower(follower.dict(), author.id)
+                    if author_unfollow(follower.id, slug):
+                        author = session.query(Author).where(Author.slug == slug).first()
+                        if author:
+                            await update_follows_for_author(session, follower, 'author', author, True)
+                            await notify_follower(follower.dict(), author.id, 'unfollow')
                 elif what == 'TOPIC':
-                    topic_follow(follower_id, slug)
+                    topic = session.query(Topic).where(Topic.slug == slug).first()
+                    if topic:
+                        await update_follows_for_author(session, follower, 'topic', topic, True)
+                    topic_unfollow(follower.id, slug)
                 elif what == 'COMMUNITY':
-                    community_follow(follower_id, slug)
+                    community_follow(follower.id, slug)
                 elif what == 'REACTIONS':
-                    reactions_follow(follower_id, slug)
+                    reactions_follow(follower.id, slug)
     except Exception as e:
         logger.debug(info, what, slug)
         logger.error(e)
@@ -61,24 +60,23 @@ async def unfollow(_, info, what, slug):
     user_id = info.context['user_id']
     try:
         with local_session() as session:
-            actor = session.query(Author).filter(Author.user == user_id).first()
-            if actor:
-                follower_id = actor.id
+            follower = session.query(Author).filter(Author.user == user_id).first()
+            if follower:
                 if what == 'AUTHOR':
-                    if author_unfollow(follower_id, slug):
-                        author = (
-                            session.query(Author.id).where(Author.slug == slug).one()
-                        )
-                        follower = (
-                            session.query(Author).where(Author.id == follower_id).one()
-                        )
-                        await notify_follower(follower.dict(), author.id, 'unfollow')
+                    if author_unfollow(follower.id, slug):
+                        author = session.query(Author).where(Author.slug == slug).first()
+                        if author:
+                            await update_follows_for_author(session, follower, 'author', author, False)
+                            await notify_follower(follower.dict(), author.id, 'unfollow')
                 elif what == 'TOPIC':
-                    topic_unfollow(follower_id, slug)
+                    topic = session.query(Topic).where(Topic.slug == slug).first()
+                    if topic:
+                        await update_follows_for_author(session, follower, 'topic', topic, False)
+                    topic_unfollow(follower.id, slug)
                 elif what == 'COMMUNITY':
-                    community_unfollow(follower_id, slug)
+                    community_unfollow(follower.id, slug)
                 elif what == 'REACTIONS':
-                    reactions_unfollow(follower_id, slug)
+                    reactions_unfollow(follower.id, slug)
     except Exception as e:
         return {'error': str(e)}
 

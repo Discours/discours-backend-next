@@ -24,6 +24,26 @@ async def update_author_cache(author: dict, ttl=25 * 60 * 60):
     await redis.execute('SETEX', f'id:{author.get("id")}:author', ttl, payload)
 
 
+async def update_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
+    try:
+        payload = json.dumps(follows)
+        await redis.execute('SETEX', f'author:{author_id}:follows-topics', ttl, payload)
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+
+
+async def update_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60):
+    try:
+        payload = json.dumps(follows)
+        await redis.execute('SETEX', f'author:{author_id}:follows-authors', ttl, payload)
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+
+
 @event.listens_for(Shout, 'after_insert')
 @event.listens_for(Shout, 'after_update')
 def after_shouts_update(mapper, connection, shout: Shout):
@@ -107,15 +127,13 @@ def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     )
 
 
-async def update_follows_for_user(
-    connection, user_id, entity_type, entity: dict, is_insert
+async def update_follows_for_author(
+    connection, follower, entity_type, entity: dict, is_insert
 ):
-    redis_key = f'user:{user_id}:follows'
+    ttl = 25 * 60 * 60
+    redis_key = f'id:{follower.id}:follows-{entity_type}s'
     follows_str = await redis.get(redis_key)
-    if follows_str:
-        follows = json.loads(follows_str)
-    else:
-        follows = DEFAULT_FOLLOWS
+    follows = json.loads(follows_str) if follows_str else []
     if is_insert:
         follows[f'{entity_type}s'].append(entity)
     else:
@@ -123,7 +141,7 @@ async def update_follows_for_user(
         follows[f'{entity_type}s'] = [
             e for e in follows[f'{entity_type}s'] if e['id'] != entity['id']
         ]
-    await redis.execute('SET', redis_key, json.dumps(follows))
+    await redis.execute('SETEX', redis_key, ttl, json.dumps(follows))
 
 
 async def handle_author_follower_change(
@@ -135,10 +153,16 @@ async def handle_author_follower_change(
     follower = get_with_stat(follower_query)
     if follower and author:
         _ = asyncio.create_task(update_author_cache(author.dict()))
+        follows_authors = await redis.execute('GET', f'author:{follower_id}:follows-authors')
+        if follows_authors:
+            follows_authors = json.loads(follows_authors)
+            if not any(x.get('id') == author.id for x in follows_authors):
+                follows_authors.append(author.dict())
+        _ = asyncio.create_task(update_follows_authors_cache(follows_authors, follower_id))
         _ = asyncio.create_task(update_author_cache(follower.dict()))
-        await update_follows_for_user(
+        await update_follows_for_author(
             connection,
-            follower.user,
+            follower,
             'author',
             {
                 'id': author.id,
@@ -162,9 +186,15 @@ async def handle_topic_follower_change(
     follower = get_with_stat(follower_query)
     if follower and topic:
         _ = asyncio.create_task(update_author_cache(follower.dict()))
-        await update_follows_for_user(
+        follows_topics = await redis.execute('GET', f'author:{follower_id}:follows-topics')
+        if follows_topics:
+            follows_topics = json.loads(follows_topics)
+            if not any(x.get('id') == topic.id for x in follows_topics):
+                follows_topics.append(topic)
+        _ = asyncio.create_task(update_follows_topics_cache(follows_topics, follower_id))
+        await update_follows_for_author(
             connection,
-            follower.user,
+            follower,
             'topic',
             {
                 'id': topic.id,
