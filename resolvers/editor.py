@@ -40,69 +40,70 @@ async def get_shouts_drafts(_, info):
 @mutation.field('create_shout')
 @login_required
 def create_shout(_, info, inp):
-    user_id = info.context['user_id']
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if isinstance(author, Author):
-            current_time = int(time.time())
-            slug = inp.get('slug') or f'draft-{current_time}'
-            shout_dict = {
-                'title': inp.get('title', ''),
-                'subtitle': inp.get('subtitle', ''),
-                'lead': inp.get('lead', ''),
-                'description': inp.get('description', ''),
-                'body': inp.get('body', ''),
-                'layout': inp.get('layout', 'article'),
-                'created_by': author.id,
-                'authors': [],
-                'slug': slug,
-                'topics': inp.get('topics', []),
-                'published_at': None,
-                'created_at': current_time,  # Set created_at as Unix timestamp
-            }
-            same_slug_shout = (
-                session.query(Shout)
-                .filter(Shout.slug == shout_dict.get('slug'))
-                .first()
-            )
-            c = 1
-            while same_slug_shout is not None:
+    user_id = info.context.get('user_id')
+    if user_id:
+        with local_session() as session:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            if isinstance(author, Author):
+                current_time = int(time.time())
+                slug = inp.get('slug') or f'draft-{current_time}'
+                shout_dict = {
+                    'title': inp.get('title', ''),
+                    'subtitle': inp.get('subtitle', ''),
+                    'lead': inp.get('lead', ''),
+                    'description': inp.get('description', ''),
+                    'body': inp.get('body', ''),
+                    'layout': inp.get('layout', 'article'),
+                    'created_by': author.id,
+                    'authors': [],
+                    'slug': slug,
+                    'topics': inp.get('topics', []),
+                    'published_at': None,
+                    'created_at': current_time,  # Set created_at as Unix timestamp
+                }
                 same_slug_shout = (
                     session.query(Shout)
                     .filter(Shout.slug == shout_dict.get('slug'))
                     .first()
                 )
-                c += 1
-                shout_dict['slug'] += f'-{c}'
-            new_shout = Shout(**shout_dict)
-            session.add(new_shout)
-            session.commit()
-
-            # NOTE: requesting new shout back
-            shout = session.query(Shout).where(Shout.slug == slug).first()
-            if shout:
-                sa = ShoutAuthor(shout=shout.id, author=author.id)
-                session.add(sa)
-
-                topics = (
-                    session.query(Topic)
-                    .filter(Topic.slug.in_(inp.get('topics', [])))
-                    .all()
-                )
-                for topic in topics:
-                    t = ShoutTopic(topic=topic.id, shout=shout.id)
-                    session.add(t)
-
+                c = 1
+                while same_slug_shout is not None:
+                    same_slug_shout = (
+                        session.query(Shout)
+                        .filter(Shout.slug == shout_dict.get('slug'))
+                        .first()
+                    )
+                    c += 1
+                    shout_dict['slug'] += f'-{c}'
+                new_shout = Shout(**shout_dict)
+                session.add(new_shout)
                 session.commit()
 
-                reactions_follow(author.id, shout.id, True)
+                # NOTE: requesting new shout back
+                shout = session.query(Shout).where(Shout.slug == slug).first()
+                if shout:
+                    sa = ShoutAuthor(shout=shout.id, author=author.id)
+                    session.add(sa)
 
-                # notifier
-                # await notify_shout(shout_dict, 'create')
+                    topics = (
+                        session.query(Topic)
+                        .filter(Topic.slug.in_(inp.get('topics', [])))
+                        .all()
+                    )
+                    for topic in topics:
+                        t = ShoutTopic(topic=topic.id, shout=shout.id)
+                        session.add(t)
 
-                return {'shout': shout}
+                    session.commit()
 
-    return {'error': 'cant create shout'}
+                    reactions_follow(author.id, shout.id, True)
+
+                    # notifier
+                    # await notify_shout(shout_dict, 'create')
+
+                    return {'shout': shout}
+
+    return {'error': 'cant create shout' if user_id else 'unauthorized'}
 
 
 def patch_main_topic(session, main_topic, shout):
