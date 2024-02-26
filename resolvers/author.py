@@ -53,10 +53,9 @@ async def get_author(_, _info, slug='', author_id=None):
             if author:
                 await update_author_cache(author.dict())
                 return author
-    except Exception as exc:
+    except Exception:
         import traceback
-
-        traceback.print_exc()
+        exc = traceback.format_exc()
         logger.error(exc)
     return {"slug": "anonymous", "id": 1, "name": "Аноним", "bio": "Неизвестно кто"}
 
@@ -136,15 +135,17 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=None):
             rkey = f'id:{author_id}:follows-authors'
             logger.debug(f'getting {author_id} follows authors')
             cached = await redis.execute('GET', rkey)
-            topics = json.loads(cached) if cached else author_follows_topics(author_id)
+            authors = json.loads(cached) if cached else author_follows_authors(author_id)
             if not cached:
-                await redis.execute('SETEX', rkey, json.dumps(topics), 24*60*60)
+                prepared = [author.dict() for author in authors]
+                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
 
             rkey = f'id:{author_id}:follows-topics'
             cached = await redis.execute('GET', rkey)
-            authors = json.loads(cached) if cached else author_follows_authors(author_id)
+            topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
-                await redis.execute('SETEX', rkey, json.dumps(authors), 24*60*60)
+                prepared = [topic.dict() for topic in topics]
+                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
             return {
                 'topics': topics,
                 'authors': authors,
@@ -172,7 +173,8 @@ async def get_author_follows_topics(_, _info, slug='', user=None, author_id=None
             cached = await redis.execute('GET', rkey)
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
-                await redis.execute('SETEX', rkey, json.dumps(topics), 24*60*60)
+                prepared = [topic.dict() for topic in topics]
+                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
             return topics
         else:
             raise ValueError('Author not found')
@@ -194,7 +196,8 @@ async def get_author_follows_authors(_, _info, slug='', user=None, author_id=Non
             cached = await redis.execute('GET', rkey)
             authors = json.loads(cached) if cached else author_follows_authors(author_id)
             if not cached:
-                await redis.execute('SETEX', rkey, json.dumps(authors), 24*60*60)
+                prepared = [author.dict() for author in authors]
+                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
             return authors
         else:
             raise ValueError('Author not found')
