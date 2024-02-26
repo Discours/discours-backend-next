@@ -89,7 +89,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
     authors = get_with_stat(author_query)
 
     for author in authors:
-        asyncio.create_task(update_author_cache(author.author()))
+        asyncio.create_task(update_author_cache(author.dict()))
 
     shout = connection.execute(select(Shout).select_from(Shout).where(Shout.id == reaction.shout)).first()
     if shout:

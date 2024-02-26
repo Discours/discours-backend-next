@@ -49,10 +49,10 @@ async def get_author(_, _info, slug='', author_id=None):
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
             q = select(Author).where(Author.id == author_id)
-            author = json.loads(cache) if cache else get_with_stat(q)[0]
+            author_dict = json.loads(cache) if cache else get_with_stat(q)[0].dict()
             if author:
-                await update_author_cache(author.dict())
-                return author
+                await update_author_cache(author_dict)
+                return author_dict
     except Exception:
         import traceback
         exc = traceback.format_exc()
