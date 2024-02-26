@@ -1,6 +1,6 @@
 import asyncio
 
-from sqlalchemy import select, event, or_, exists, and_
+from sqlalchemy import select, event
 import json
 
 from orm.author import Author, AuthorFollower
@@ -50,29 +50,20 @@ async def update_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60
 @event.listens_for(Shout, 'after_insert')
 @event.listens_for(Shout, 'after_update')
 def after_shouts_update(mapper, connection, shout: Shout):
-    # Создаем подзапрос для проверки наличия авторов в списке shout.authors
-    subquery = select(1).where(
-        or_(
-            Author.id == shout.created_by,
-            and_(
-                Shout.id == shout.id,
-                ShoutAuthor.shout == Shout.id,
-                ShoutAuthor.author == Author.id,
-                ),
-            )
-    )
-
-    # Основной запрос с использованием объединения и подзапроса exists
+    # Main query to get authors associated with the shout through ShoutAuthor
     authors_query = (
         select(Author)
-        .select_from(Author)
-        .join(ShoutAuthor, Author.id == ShoutAuthor.author)
-        .where(ShoutAuthor.shout == shout.id)
-        .union(select(Author).where(exists(subquery)))
+        .select_from(ShoutAuthor)  # Select from ShoutAuthor
+        .join(Author, Author.id == ShoutAuthor.author)  # Join with Author
+        .where(ShoutAuthor.shout == shout.id)  # Filter by shout.id
     )
+
+    # Execute the query
     authors = get_with_stat(authors_query)
+
     for author in authors:
         asyncio.create_task(update_author_cache(author.dict()))
+
 
 
 @event.listens_for(Reaction, 'after_insert')
