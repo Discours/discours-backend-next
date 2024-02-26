@@ -359,6 +359,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         select(Reaction, Author, Shout)
         .join(Author, Reaction.created_by == Author.id)
         .join(Shout, Reaction.shout == Shout.id)
+        .distinct()  # Применяем DISTINCT здесь
     )
 
     # calculate counters
@@ -373,14 +374,12 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
-    # q = q.distinct()  # FIXME
-    # ERROR: psycopg2.errors.UndefinedFunction) could not identify an equality operator for type json
     q = q.order_by(desc(Reaction.created_at))
 
     # pagination
     q = q.limit(limit).offset(offset)
 
-    reactions = set()
+    reactions = []
     with local_session() as session:
         result_rows = session.execute(q)
         for [
@@ -400,7 +399,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
             }
-            reactions.add(reaction)
+            reactions.append(reaction)  # Используем список для хранения реакций
 
         # sort if by stat is present
         stat_sort = by.get('stat')
