@@ -132,11 +132,18 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=None):
             )
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
+            rkey = f'id:{author_id}:follows-authors'
             logger.debug(f'getting {author_id} follows authors')
-            cached = await redis.execute(f'id:{author_id}:follows-authors')
+            cached = await redis.execute('GET', rkey)
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
-            cached = await redis.execute(f'id:{author_id}:follows-topics')
+            if not cached:
+                await redis.execute('SETEX', rkey, json.dumps(topics), 24*60*60)
+
+            rkey = f'id:{author_id}:follows-topics'
+            cached = await redis.execute('GET', rkey)
             authors = json.loads(cached) if cached else author_follows_authors(author_id)
+            if not cached:
+                await redis.execute('SETEX', rkey, json.dumps(authors), 24*60*60)
             return {
                 'topics': topics,
                 'authors': authors,
@@ -161,7 +168,7 @@ async def get_author_follows_topics(_, _info, slug='', user=None, author_id=None
         if author_id:
             logger.debug(f'getting {author_id} follows topics')
             rkey = f'id:{author_id}:follows-topics'
-            cached = await redis.execute(rkey)
+            cached = await redis.execute('GET', rkey)
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 await redis.execute('SETEX', rkey, json.dumps(topics), 24*60*60)
@@ -183,7 +190,7 @@ async def get_author_follows_authors(_, _info, slug='', user=None, author_id=Non
         if author_id:
             logger.debug(f'getting {author_id} follows authors')
             rkey = f'id:{author_id}:follows-authors'
-            cached = await redis.execute(rkey)
+            cached = await redis.execute('GET', rkey)
             authors = json.loads(cached) if cached else author_follows_authors(author_id)
             if not cached:
                 await redis.execute('SETEX', rkey, json.dumps(authors), 24*60*60)
