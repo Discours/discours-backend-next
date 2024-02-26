@@ -1,3 +1,4 @@
+import json
 import math
 import time
 
@@ -52,8 +53,8 @@ class Base(declarative_base()):
             for c in column_names:
                 value = getattr(self, c)
                 if isinstance(value, JSON):
-                    # Cast JSON column to string
-                    data[c] = str(value)
+                    # save JSON column as dict
+                    data[c] = json.loads(str(value))
                 else:
                     data[c] = value
             return data
