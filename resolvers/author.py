@@ -114,6 +114,7 @@ def load_authors_by(_, _info, by, limit, offset):
     if order in ['likes', 'shouts', 'followers']:
         q = q.order_by(desc(text(f'{order}_stat')))
 
+    q = q.distinct()
     q = q.limit(limit).offset(offset)
 
     authors = get_with_stat(q)

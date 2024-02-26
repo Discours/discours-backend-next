@@ -454,7 +454,9 @@ async def load_shouts_random_top(_, _info, options):
     limit = options.get('limit', 10)
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit)
 
-    return await get_shouts_from_query(q)
+    shouts = await get_shouts_from_query(q)
+
+    return shouts
 
 
 @query.field('load_shouts_random_topic')
