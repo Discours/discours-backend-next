@@ -356,7 +356,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     """
 
     q = (
-        select([Reaction, Author, Shout])
+        select(Reaction, Author, Shout)
+        .select_from(Reaction)
         .join(Author, Reaction.created_by == Author.id)
         .join(Shout, Reaction.shout == Shout.id)
     )
