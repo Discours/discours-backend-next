@@ -1,4 +1,4 @@
-from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer
+from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer, literal
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
@@ -85,10 +85,10 @@ def add_author_stat_columns(q):
                 ),
         )
         .add_columns(
-            func.count(distinct(aliased_reaction.id)).label('comments_stat')
+            literal('0').label('comments_stat')
         )
     )
-
+    # func.count(distinct(aliased_reaction.id))
     q = q.group_by(Author.id)
 
     return q
