@@ -374,7 +374,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
 
     # order by
     q = q.distinct()
-    q = q.order_by(desc(text('created_at')))
+    q = q.order_by(desc(Reaction.created_at))
 
     # pagination
     q = q.limit(limit).offset(offset)
