@@ -85,10 +85,10 @@ def add_author_stat_columns(q):
     #        aliased_reaction.kind == ReactionKind.COMMENT.value,
     #        aliased_reaction.deleted_at.is_(None),
     #        ),
-    #)
-    #.add_columns(
+    # )
+    # .add_columns(
     # func.count(distinct(aliased_reaction.id)).label('comments_stat')
-    #)
+    # )
     q = q.group_by(Author.id)
 
     return q
