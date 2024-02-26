@@ -138,14 +138,14 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=None):
             authors = json.loads(cached) if cached else author_follows_authors(author_id)
             if not cached:
                 prepared = [author.dict() for author in authors]
-                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
+                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
 
             rkey = f'id:{author_id}:follows-topics'
             cached = await redis.execute('GET', rkey)
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 prepared = [topic.dict() for topic in topics]
-                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
+                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
             return {
                 'topics': topics,
                 'authors': authors,
@@ -174,7 +174,7 @@ async def get_author_follows_topics(_, _info, slug='', user=None, author_id=None
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 prepared = [topic.dict() for topic in topics]
-                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
+                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
             return topics
         else:
             raise ValueError('Author not found')
@@ -197,7 +197,7 @@ async def get_author_follows_authors(_, _info, slug='', user=None, author_id=Non
             authors = json.loads(cached) if cached else author_follows_authors(author_id)
             if not cached:
                 prepared = [author.dict() for author in authors]
-                await redis.execute('SETEX', rkey, json.dumps(prepared), 24*60*60)
+                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
             return authors
         else:
             raise ValueError('Author not found')
