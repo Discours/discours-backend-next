@@ -9,6 +9,7 @@ from orm.shout import ShoutAuthor, Shout
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
 from services.rediscache import redis
+from services.logger import root_logger as logger
 
 
 DEFAULT_FOLLOWS = {
@@ -28,7 +29,8 @@ async def update_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60)
     try:
         payload = json.dumps(follows)
         await redis.execute('SETEX', f'author:{author_id}:follows-topics', ttl, payload)
-    except Exception:
+    except Exception as exc:
+        logger.error(exc)
         import traceback
 
         traceback.print_exc()
@@ -38,7 +40,8 @@ async def update_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60
     try:
         payload = json.dumps(follows)
         await redis.execute('SETEX', f'author:{author_id}:follows-authors', ttl, payload)
-    except Exception:
+    except Exception as exc:
+        logger.error(exc)
         import traceback
 
         traceback.print_exc()
@@ -88,7 +91,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
     for author in authors:
         asyncio.create_task(update_author_cache(author.author()))
 
-    shout = connection.execute(select(Shout).where(Shout.id == reaction.shout)).first()
+    shout = connection.execute(select(Shout).select_from(Shout).where(Shout.id == reaction.shout)).first()
     if shout:
         after_shouts_update(mapper, connection, shout)
 
