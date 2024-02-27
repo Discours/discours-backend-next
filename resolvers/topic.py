@@ -44,7 +44,7 @@ def get_topic(_, _info, slug: str):
 
 @mutation.field('create_topic')
 @login_required
-def create_topic(_, _info, inp):
+async def create_topic(_, _info, inp):
     with local_session() as session:
         # TODO: check user permissions to create topic for exact community
         # and actor is permitted to craete it
