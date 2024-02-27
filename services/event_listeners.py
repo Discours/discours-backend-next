@@ -58,11 +58,8 @@ def after_shouts_update(mapper, connection, shout: Shout):
         .where(ShoutAuthor.shout == shout.id)  # Filter by shout.id
     )
 
-    # Execute the query
-    authors = get_with_stat(authors_query)
-
-    for author in authors:
-        asyncio.create_task(update_author_cache(author.dict()))
+    for author_with_stat in get_with_stat(authors_query):
+        asyncio.create_task(update_author_cache(author_with_stat.dict()))
 
 
 @event.listens_for(Reaction, 'after_insert')
@@ -86,10 +83,9 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
             )
             .select_from(replied_author_subquery.subquery())
         )
-        authors = get_with_stat(author_query)
 
-        for author in authors:
-            asyncio.create_task(update_author_cache(author.dict()))
+        for author_with_stat in get_with_stat(author_query):
+            asyncio.create_task(update_author_cache(author_with_stat.dict()))
 
         shout = connection.execute(select(Shout).select_from(Shout).where(Shout.id == reaction.shout)).first()
         if shout:
@@ -101,7 +97,9 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
 @event.listens_for(Author, 'after_insert')
 @event.listens_for(Author, 'after_update')
 def after_author_update(mapper, connection, author: Author):
-    asyncio.create_task(update_author_cache(author.dict()))
+    q = select(Author).where(Author.id == author.id)
+    [author_with_stat] = get_with_stat(q)
+    asyncio.create_task(update_author_cache(author_with_stat.dict()))
 
 
 @event.listens_for(TopicFollower, 'after_insert')
