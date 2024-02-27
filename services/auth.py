@@ -10,7 +10,8 @@ trace_logger = logging.getLogger('_trace')
 trace_logger.setLevel(logging.INFO)
 
 httpx_logger = logging.getLogger('httpx')
-trace_logger.setLevel(logging.INFO)
+httpx_logger.setLevel(logging.INFO)
+
 
 async def request_data(gql, headers=None):
     if headers is None:
