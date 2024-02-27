@@ -1,6 +1,6 @@
 import asyncio
 
-from sqlalchemy import select, event, cast, String
+from sqlalchemy import select, event
 import json
 
 from orm.author import Author, AuthorFollower
@@ -77,11 +77,12 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
 
         author_query = select(
             author_subquery.subquery().c.id,
-            cast(author_subquery.subquery().c.links, String).label('links')
+            author_subquery.subquery().c.slug,
+            author_subquery.subquery().c.created_at,
+            author_subquery.subquery().c.name,
         ).select_from(author_subquery.subquery()).union(
             select(
                 replied_author_subquery.subquery().c.id,
-                cast(replied_author_subquery.subquery().c.links, String).label('links'),
             )
             .select_from(replied_author_subquery.subquery())
         )
