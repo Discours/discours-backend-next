@@ -225,6 +225,7 @@ async def get_author_followers(_, _info, slug: str):
             author = author_id_result[0] if author_id_result else None
             author_id = cast(author.id, Integer)
             cached = await redis.execute('GET', f'id:{author_id}:followers')
+            results = []
             if not cached:
                 author_follower_alias = aliased(AuthorFollower, name='af')
                 q = select(Author).join(
@@ -234,7 +235,8 @@ async def get_author_followers(_, _info, slug: str):
                         author_follower_alias.follower == Author.id,
                     ),
                 )
-            return json.loads(cached) if cached else get_with_stat(q)
+                results = get_with_stat(q)
+            return json.loads(cached) if cached else results
     except Exception as exc:
         import traceback
         logger.error(exc)
