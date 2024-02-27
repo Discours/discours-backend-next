@@ -167,7 +167,7 @@ def get_with_stat(q):
             entity = cols[0]
             entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
             if is_author:
-                entity.stat['comments'] = 0 # FIXME: cols[4]
+                entity.stat['comments'] = 0  # FIXME: cols[4]
                 # entity.stat['rating'] = cols[5] - cols[6]
                 # entity.stat['rating_shouts'] = cols[7] - cols[8]
                 pass

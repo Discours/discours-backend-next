@@ -1,6 +1,6 @@
 import asyncio
 
-from sqlalchemy import select, event
+from sqlalchemy import select, event, cast, String
 import json
 
 from orm.author import Author, AuthorFollower
@@ -65,27 +65,36 @@ def after_shouts_update(mapper, connection, shout: Shout):
         asyncio.create_task(update_author_cache(author.dict()))
 
 
-
 @event.listens_for(Reaction, 'after_insert')
 def after_reaction_insert(mapper, connection, reaction: Reaction):
-    author_subquery = select(Author).where(Author.id == reaction.created_by)
-    replied_author_subquery = (
-        select(Author)
-        .join(Reaction, Author.id == Reaction.created_by)
-        .where(Reaction.id == reaction.reply_to)
-    )
+    try:
+        author_subquery = select(Author).where(Author.id == reaction.created_by)
+        replied_author_subquery = (
+            select(Author)
+            .join(Reaction, Author.id == Reaction.created_by)
+            .where(Reaction.id == reaction.reply_to)
+        )
 
-    author_query = select(author_subquery.subquery()).select_from(author_subquery.subquery()).union(
-        select(replied_author_subquery.subquery()).select_from(replied_author_subquery.subquery())
-    )
-    authors = get_with_stat(author_query)
+        author_query = select(
+            author_subquery.subquery().c.id,
+            cast(author_subquery.subquery().c.links, String).label('links')
+        ).select_from(author_subquery.subquery()).union(
+            select(
+                replied_author_subquery.subquery().c.id,
+                cast(replied_author_subquery.subquery().c.links, String).label('links'),
+            )
+            .select_from(replied_author_subquery.subquery())
+        )
+        authors = get_with_stat(author_query)
 
-    for author in authors:
-        asyncio.create_task(update_author_cache(author.dict()))
+        for author in authors:
+            asyncio.create_task(update_author_cache(author.dict()))
 
-    shout = connection.execute(select(Shout).select_from(Shout).where(Shout.id == reaction.shout)).first()
-    if shout:
-        after_shouts_update(mapper, connection, shout)
+        shout = connection.execute(select(Shout).select_from(Shout).where(Shout.id == reaction.shout)).first()
+        if shout:
+            after_shouts_update(mapper, connection, shout)
+    except Exception as exc:
+        logger.error(exc)
 
 
 @event.listens_for(Author, 'after_insert')
