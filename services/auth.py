@@ -38,8 +38,8 @@ async def check_auth(req):
 
         gql = {
             'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{'
-            + f'{query_name}(params: $params) {{ is_valid claims }} '
-            + '}',
+                     + f'{query_name}(params: $params) {{ is_valid claims }} '
+                     + '}',
             'variables': variables,
             'operationName': operation,
         }
@@ -47,9 +47,9 @@ async def check_auth(req):
         if data:
             logger.debug(data)
             user_data = data.get('data', {}).get(query_name, {}).get('claims', {})
-            user_id = user_data.get('sub')
-            user_roles = user_data.get('allowed_roles')
-    return [user_id, user_roles]
+            user_id = user_data.get('sub', '')
+            user_roles = user_data.get('allowed_roles', [])
+    return user_id, user_roles
 
 
 async def add_user_role(user_id):
