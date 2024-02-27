@@ -236,7 +236,9 @@ async def get_author_followers(_, _info, slug: str):
                 )
             return json.loads(cached) if cached else get_with_stat(q)
     except Exception as exc:
+        import traceback
         logger.error(exc)
+        logger.error(traceback.format_exc())
         return []
 
 
