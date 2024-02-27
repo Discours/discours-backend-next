@@ -16,10 +16,11 @@ secondary_colors = {
     'asctime': {'DEBUG': 'cyan'},
     'process': {'DEBUG': 'purple'},
     'module': {'DEBUG': 'light_black,bg_blue'},
+    'funcName': {'DEBUG': 'light_white,bg_blue'},  # Add this line
 }
 
 # Define the log format string
-fmt_string = '%(log_color)s%(levelname)s: %(log_color)s[%(module)s]%(reset)s %(white)s%(message)s'
+fmt_string = '%(log_color)s%(levelname)s: %(log_color)s[%(module)s.%(funcName)s]%(reset)s %(white)s%(message)s'
 
 # Define formatting configuration
 fmt_config = {
@@ -28,7 +29,6 @@ fmt_config = {
     'style': '%',
     'reset': True,
 }
-
 
 class MultilineColoredFormatter(colorlog.ColoredFormatter):
     def format(self, record):
@@ -46,14 +46,12 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
             # If not multiline or no message, use the default formatting
             return super().format(record)
 
-
 # Create a MultilineColoredFormatter object for colorized logging
 formatter = MultilineColoredFormatter(fmt_string, **fmt_config)
 
 # Create a stream handler for logging output
 stream = logging.StreamHandler()
 stream.setFormatter(formatter)
-
 
 def get_colorful_logger(name='main'):
     # Create and configure the logger
@@ -62,7 +60,6 @@ def get_colorful_logger(name='main'):
     logger.addHandler(stream)
 
     return logger
-
 
 # Set up the root logger with the same formatting
 root_logger = logging.getLogger()

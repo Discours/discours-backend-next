@@ -177,7 +177,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         user_id = info.context.get('user_id')
         if not user_id:
             return {"error": "unauthorized"}
-        roles = info.context.get('roles')
+        roles = info.context.get('roles', [])
         shout_input = shout_input or {}
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
