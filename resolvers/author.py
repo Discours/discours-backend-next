@@ -219,20 +219,21 @@ async def get_author_followers(_, _info, slug: str):
     try:
         with local_session() as session:
             author_alias = aliased(Author)
-            author_id = session.query(author_alias.id).filter(author_alias.slug == slug).first()
-            cached = await redis.execute('GET', f'id:{author_id}:followers')
-            results = []
-            if not cached:
-                author_follower_alias = aliased(AuthorFollower, name='af')
-                q = select(Author).join(
-                    author_follower_alias,
-                    and_(
-                        author_follower_alias.author == author_id,
-                        author_follower_alias.follower == Author.id,
-                    ),
-                )
-                results = get_with_stat(q)
-            return json.loads(cached) if cached else results
+            author_id = session.query(author_alias.id).filter(author_alias.slug == slug).scalar()
+            if author_id:
+                cached = await redis.execute('GET', f'id:{author_id}:followers')
+                results = []
+                if not cached:
+                    author_follower_alias = aliased(AuthorFollower, name='af')
+                    q = select(Author).join(
+                        author_follower_alias,
+                        and_(
+                            author_follower_alias.author == author_id,
+                            author_follower_alias.follower == Author.id,
+                        )
+                    )
+                    results = get_with_stat(q)
+                return json.loads(cached) if cached else results
     except Exception as exc:
         import traceback
         logger.error(exc)
