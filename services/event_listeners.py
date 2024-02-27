@@ -68,7 +68,7 @@ def after_shouts_update(mapper, connection, shout: Shout):
 
 @event.listens_for(Reaction, 'after_insert')
 def after_reaction_insert(mapper, connection, reaction: Reaction):
-    author_subquery = select(Author).where(Author.id == reaction.created_by)
+    author_subquery = select(Author).select_from(Author).where(Author.id == reaction.created_by)
     replied_author_subquery = (
         select(Author)
         .select_from(Author)
