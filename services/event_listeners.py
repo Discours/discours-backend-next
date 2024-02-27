@@ -68,15 +68,16 @@ def after_shouts_update(mapper, connection, shout: Shout):
 
 @event.listens_for(Reaction, 'after_insert')
 def after_reaction_insert(mapper, connection, reaction: Reaction):
-    author_subquery = select(Author).select_from(Author).where(Author.id == reaction.created_by)
+    author_subquery = select(Author).where(Author.id == reaction.created_by)
     replied_author_subquery = (
         select(Author)
-        .select_from(Author)
         .join(Reaction, Author.id == Reaction.created_by)
         .where(Reaction.id == reaction.reply_to)
     )
 
-    author_query = author_subquery.union(replied_author_subquery)
+    author_query = select(author_subquery).select_from(author_subquery.subquery()).union(
+        select(replied_author_subquery).select_from(replied_author_subquery.subquery())
+    )
     authors = get_with_stat(author_query)
 
     for author in authors:
