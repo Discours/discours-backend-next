@@ -39,7 +39,7 @@ async def get_shouts_drafts(_, info):
 
 @mutation.field('create_shout')
 @login_required
-def create_shout(_, info, inp):
+async def create_shout(_, info, inp):
     user_id = info.context.get('user_id')
     if user_id:
         with local_session() as session:
