@@ -3,10 +3,12 @@ import httpx
 import logging
 from starlette.exceptions import HTTPException
 
+from services.logger import root_logger as logger
 from settings import ADMIN_SECRET, AUTH_URL
 
-logger = logging.getLogger('[author]')
-logger.setLevel(logging.DEBUG)
+trace_logger = logging.getLogger('_trace')
+trace_logger.setLevel(logging.INFO)
+
 
 async def request_data(gql, headers=None):
     if headers is None:
