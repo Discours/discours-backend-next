@@ -250,30 +250,31 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
 @mutation.field('delete_shout')
 @login_required
 async def delete_shout(_, info, shout_id):
-    user_id = info.context['user_id']
-    roles = info.context['roles']
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        shout = session.query(Shout).filter(Shout.id == shout_id).first()
-        if not shout:
-            return {'error': 'invalid shout id'}
-        if author and shout:
-            if (
-                shout.created_by is not author.id
-                and author.id not in shout.authors
-                and 'editor' not in roles
-            ):
-                return {'error': 'access denied'}
+    user_id = info.context.get('user_id')
+    roles = info.context.get('roles')
+    if user_id:
+        with local_session() as session:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            shout = session.query(Shout).filter(Shout.id == shout_id).first()
+            if not shout:
+                return {'error': 'invalid shout id'}
+            if author and shout:
+                if (
+                    shout.created_by is not author.id
+                    and author.id not in shout.authors
+                    and 'editor' not in roles
+                ):
+                    return {'error': 'access denied'}
 
-            for author_id in shout.authors:
-                reactions_unfollow(author_id, shout_id)
+                for author_id in shout.authors:
+                    reactions_unfollow(author_id, shout_id)
 
-            shout_dict = shout.dict()
-            shout_dict['deleted_at'] = int(time.time())
-            Shout.update(shout, shout_dict)
-            session.add(shout)
-            session.commit()
-            await notify_shout(shout_dict, 'delete')
+                shout_dict = shout.dict()
+                shout_dict['deleted_at'] = int(time.time())
+                Shout.update(shout, shout_dict)
+                session.add(shout)
+                session.commit()
+                await notify_shout(shout_dict, 'delete')
 
     return {}
 
