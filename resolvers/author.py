@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc, cast, Integer
+from sqlalchemy import select, or_, and_, text, desc
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -219,11 +219,7 @@ async def get_author_followers(_, _info, slug: str):
     try:
         with local_session() as session:
             author_alias = aliased(Author)
-            author_id_result = (
-                session.query(author_alias).filter(author_alias.slug == slug).first()
-            )
-            author = author_id_result[0] if author_id_result else None
-            author_id = cast(author.id, Integer)
+            author_id = session.query(author_alias).filter(author_alias.slug == slug).first()
             cached = await redis.execute('GET', f'id:{author_id}:followers')
             results = []
             if not cached:
