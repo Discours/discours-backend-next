@@ -29,7 +29,7 @@ async def request_data(gql, headers=None):
     except Exception as e:
         # Handling and logging exceptions during authentication check
         logger.error(f'request_data error: {e}')
-        return None
+    return None
 
 
 async def check_auth(req):
@@ -92,7 +92,7 @@ def login_required(f):
                 logger.info(f' got {user_id} roles: {user_roles}')
                 context['user_id'] = user_id.strip()
                 context['roles'] = user_roles
-                return await f(*args, **kwargs)
+        return await f(*args, **kwargs)
 
     return decorated_function
 
@@ -108,7 +108,7 @@ def auth_request(f):
                 logger.info(f' got {user_id} roles: {user_roles}')
                 req['user_id'] = user_id.strip()
                 req['roles'] = user_roles
-                return await f(*args, **kwargs)
+            return await f(*args, **kwargs)
         else:
             raise HTTPException(status_code=401, detail='Unauthorized')
 
