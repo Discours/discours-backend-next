@@ -173,77 +173,85 @@ def patch_topics(session, shout, topics_input):
 @mutation.field('update_shout')
 @login_required
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
-    user_id = info.context['user_id']
-    roles = info.context['roles']
-    shout_input = shout_input or {}
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        current_time = int(time.time())
-        shout_id = shout_id or shout_input.get('id')
-        slug = shout_input.get('slug')
-        if slug:
-            shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
-            if shout_by_id and slug != shout_by_id.slug:
-                same_slug_shout = (
-                    session.query(Shout)
-                    .filter(Shout.slug == shout_input.get('slug'))
-                    .first()
-                )
-                c = 1
-                while same_slug_shout is not None:
+    try:
+        user_id = info.context.get('user_id')
+        if not user_id:
+            return {"error": "unauthorized"}
+        roles = info.context.get('roles')
+        shout_input = shout_input or {}
+        with local_session() as session:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            current_time = int(time.time())
+            shout_id = shout_id or shout_input.get('id')
+            slug = shout_input.get('slug')
+            if slug:
+
+                shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
+                if shout_by_id and slug != shout_by_id.slug:
                     same_slug_shout = (
                         session.query(Shout)
                         .filter(Shout.slug == shout_input.get('slug'))
                         .first()
                     )
-                    c += 1
-                    slug += f'-{c}'
-                shout_input['slug'] = slug
-        if isinstance(author, Author) and isinstance(shout_id, int):
-            shout = (
-                session.query(Shout)
-                .options(joinedload(Shout.authors), joinedload(Shout.topics))
-                .filter(Shout.id == shout_id)
-                .first()
-            )
+                    c = 1
+                    while same_slug_shout is not None:
+                        same_slug_shout = (
+                            session.query(Shout)
+                            .filter(Shout.slug == shout_input.get('slug'))
+                            .first()
+                        )
+                        c += 1
+                        slug += f'-{c}'
+                    shout_input['slug'] = slug
 
-            if not shout:
-                return {'error': 'shout not found'}
-            if (
-                shout.created_by is not author.id
-                and author.id not in shout.authors
-                and 'editor' not in roles
-            ):
-                return {'error': 'access denied'}
+            if isinstance(author, Author) and isinstance(shout_id, int):
+                shout = (
+                    session.query(Shout)
+                    .options(joinedload(Shout.authors), joinedload(Shout.topics))
+                    .filter(Shout.id == shout_id)
+                    .first()
+                )
 
-            # topics patch
-            topics_input = shout_input.get('topics')
-            if topics_input:
-                patch_topics(session, shout, topics_input)
-                del shout_input['topics']
+                if not shout:
+                    return {'error': 'shout not found'}
+                if (
+                    shout.created_by is not author.id
+                    and author.id not in shout.authors
+                    and 'editor' not in roles
+                ):
+                    return {'error': 'access denied'}
 
-            # main topic
-            main_topic = shout_input.get('main_topic')
-            if main_topic:
-                patch_main_topic(session, main_topic, shout)
+                # topics patch
+                topics_input = shout_input.get('topics')
+                if topics_input:
+                    patch_topics(session, shout, topics_input)
+                    del shout_input['topics']
 
-            shout_input['updated_at'] = current_time
-            shout_input['published_at'] = current_time if publish else None
-            Shout.update(shout, shout_input)
-            session.add(shout)
-            session.commit()
+                # main topic
+                main_topic = shout_input.get('main_topic')
+                if main_topic:
+                    patch_main_topic(session, main_topic, shout)
 
-            shout_dict = shout.dict()
+                shout_input['updated_at'] = current_time
+                shout_input['published_at'] = current_time if publish else None
+                Shout.update(shout, shout_input)
+                session.add(shout)
+                session.commit()
 
-            if not publish:
-                await notify_shout(shout_dict, 'update')
-            else:
-                await notify_shout(shout_dict, 'published')
-                # search service indexing
-                search_service.index(shout)
+                shout_dict = shout.dict()
 
-            return {'shout': shout_dict}
-    logger.debug(f' cannot update with data: {shout_input}')
+                if not publish:
+                    await notify_shout(shout_dict, 'update')
+                else:
+                    await notify_shout(shout_dict, 'published')
+                    # search service indexing
+                    search_service.index(shout)
+
+                return {'shout': shout_dict}
+    except Exception as exc:
+        logger.error(exc)
+        logger.error(f' cannot update with data: {shout_input}')
+
     return {'error': 'cant update shout'}
 
 
