@@ -75,8 +75,8 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
         .where(Reaction.id == reaction.reply_to)
     )
 
-    author_query = select(author_subquery).select_from(author_subquery.subquery()).union(
-        select(replied_author_subquery).select_from(replied_author_subquery.subquery())
+    author_query = select(author_subquery.subquery()).select_from(author_subquery.subquery()).union(
+        select(replied_author_subquery.subquery()).select_from(replied_author_subquery.subquery())
     )
     authors = get_with_stat(author_query)
 
