@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc
+from sqlalchemy import select, or_, and_, text, desc, cast, Integer
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -9,7 +9,7 @@ from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat, author_follows_authors, author_follows_topics
-from services.event_listeners import update_author_cache
+from services.cache import update_author_cache
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -214,26 +214,27 @@ def create_author(user_id: str, slug: str, name: str = ''):
 
 
 @query.field('get_author_followers')
-def get_author_followers(_, _info, slug: str):
+async def get_author_followers(_, _info, slug: str):
     logger.debug(f'getting followers for @{slug}')
     try:
         with local_session() as session:
             author_alias = aliased(Author)
             author_id_result = (
-                session.query(author_alias.id).filter(author_alias.slug == slug).first()
+                session.query(author_alias).filter(author_alias.slug == slug).first()
             )
-            author_id = author_id_result[0] if author_id_result else None
-
-            author_follower_alias = aliased(AuthorFollower, name='af')
-            q = select(Author).join(
-                author_follower_alias,
-                and_(
-                    author_follower_alias.author == author_id,
-                    author_follower_alias.follower == Author.id,
-                ),
-            )
-
-            return get_with_stat(q)
+            author = author_id_result[0] if author_id_result else None
+            author_id = cast(author.id, Integer)
+            cached = await redis.execute('GET', f'id:{author_id}:followers')
+            if not cached:
+                author_follower_alias = aliased(AuthorFollower, name='af')
+                q = select(Author).join(
+                    author_follower_alias,
+                    and_(
+                        author_follower_alias.author == author_id,
+                        author_follower_alias.follower == Author.id,
+                    ),
+                )
+            return json.loads(cached) if cached else get_with_stat(q)
     except Exception as exc:
         logger.error(exc)
         return []
