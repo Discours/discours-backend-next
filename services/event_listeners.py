@@ -141,9 +141,9 @@ async def update_follows_for_author(
 async def handle_author_follower_change(
     connection, author_id: int, follower_id: int, is_insert: bool
 ):
-    author_query = select(Author).filter(Author.id == author_id)
+    author_query = select(Author).select_from(Author).filter(Author.id == author_id)
     [author] = get_with_stat(author_query)
-    follower_query = select(Author).filter(Author.id == follower_id)
+    follower_query = select(Author).select_from(Author).filter(Author.id == follower_id)
     follower = get_with_stat(follower_query)
     if follower and author:
         _ = asyncio.create_task(update_author_cache(author.dict()))
