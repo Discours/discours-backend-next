@@ -461,11 +461,11 @@ async def load_shouts_random_top(_, _info, options):
 
 @query.field('load_shouts_random_topic')
 async def load_shouts_random_topic(_, info, limit: int = 10):
-    random_topic_subquery = random_topic_query(1)
+    random_topic_subquery = random_topic_query(1).subquery()
     q = (
-        select(Shout, Topic)
-        .join(Shout.topics)
-        .join(random_topic_subquery, Topic.id == random_topic_subquery.c.id)
+        select(Topic, Shout)
+        .select_from(Topic)
+        .join(Shout, Shout.topics.any(Topic.id == random_topic_subquery.c.id))
         .options(joinedload(Shout.authors))
         .filter(
             and_(
