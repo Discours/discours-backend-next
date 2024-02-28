@@ -8,7 +8,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.reaction import add_reaction_stat_columns
-from resolvers.topic import get_random_topic
+from resolvers.topic import random_topic_query
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
@@ -461,36 +461,32 @@ async def load_shouts_random_top(_, _info, options):
 
 @query.field('load_shouts_random_topic')
 async def load_shouts_random_topic(_, info, limit: int = 10):
-    topic = get_random_topic()
-    if topic:
-        shouts = fetch_shouts_by_topic(topic, limit)
-        if shouts:
-            return {'topic': topic, 'shouts': shouts}
-    return {
-        'error': 'failed to get random topic after few retries',
-        'shouts': [],
-        'topic': {},
-    }
-
-
-def fetch_shouts_by_topic(topic, limit):
+    random_topic_subquery = random_topic_query(1)
     q = (
-        select(Shout)
-        .options(joinedload(Shout.authors), joinedload(Shout.topics))
+        select(Shout, Topic)
+        .join(Shout.topics)
+        .join(random_topic_subquery, Topic.id == random_topic_subquery.id)
+        .options(joinedload(Shout.authors))
         .filter(
             and_(
                 Shout.deleted_at.is_(None),
                 Shout.featured_at.is_not(None),
-                Shout.topics.any(slug=topic.slug),
+                Shout.topics.any(slug=Topic.slug),
             )
         )
     )
 
     aliased_reaction = aliased(Reaction)
     q = add_reaction_stat_columns(q, aliased_reaction)
-
     q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
+    result = local_session().execute(q)
 
-    shouts = get_shouts_from_query(q)
+    if result:
+        topic, shouts = result[0]
+        return {'topic': topic, 'shouts': shouts}
 
-    return shouts
+    return {
+        'error': 'failed to get random topic after few retries',
+        'shouts': [],
+        'topic': None
+    }
