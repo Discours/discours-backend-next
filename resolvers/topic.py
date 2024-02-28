@@ -122,7 +122,11 @@ def topic_unfollow(follower_id, slug):
 
 @query.field('get_topics_random')
 def get_topics_random(_, _info, amount=12):
-    q = random_topic_query(amount)
+    q = select(Topic)
+    q = q.join(ShoutTopic)
+    q = q.group_by(Topic.id)
+    q = q.having(func.count(distinct(ShoutTopic.shout)) > 2)
+    q = q.order_by(func.random()).limit(amount)
 
     topics = []
     with local_session() as session:
@@ -130,12 +134,3 @@ def get_topics_random(_, _info, amount=12):
             topics.append(topic)
 
     return topics
-
-
-def random_topic_query(amount: int):
-    q = select(Topic)
-    q = q.join(ShoutTopic)
-    q = q.group_by(Topic.id)
-    q = q.having(func.count(distinct(ShoutTopic.shout)) > 2)
-    q = q.order_by(func.random()).limit(amount)
-    return q
