@@ -465,7 +465,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
     q = (
         select(Shout, Topic)
         .join(Shout.topics)
-        .join(random_topic_subquery, Topic.id == random_topic_subquery.id)
+        .join(random_topic_subquery, Topic.id == random_topic_subquery.c.id)
         .options(joinedload(Shout.authors))
         .filter(
             and_(
