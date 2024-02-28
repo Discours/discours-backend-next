@@ -478,7 +478,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
 
     aliased_reaction = aliased(Reaction)
     q = add_reaction_stat_columns(q, aliased_reaction)
-    q = q.group_by(Shout.id).order_by(desc(Shout.created_at)).limit(limit)
+    q = q.group_by(Shout.id, Topic.slug).order_by(desc(Shout.created_at)).limit(limit)
     result = local_session().execute(q)
 
     if result:
