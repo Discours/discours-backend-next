@@ -357,7 +357,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     aliased_reaction = aliased(Reaction)
     q = (
         select(aliased_reaction, Author, Shout)
-        .select_from(Reaction)
+        .select_from(aliased_reaction)
         .join(Author, aliased_reaction.created_by == Author.id)
         .join(Shout, aliased_reaction.shout == Shout.id)
     )
