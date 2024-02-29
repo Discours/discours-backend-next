@@ -96,21 +96,22 @@ class SearchService:
 
     async def check_index(self):
         if self.client:
+            logger.debug(f' Проверяем индекс {self.index_name}...')
             if not self.client.indices.exists(index=self.index_name):
-                logger.debug(f' Новый индекс {self.index_name}')
                 self.create_index()
                 self.client.indices.put_mapping(
                     index=self.index_name, body=expected_mapping
                 )
             else:
-                logger.debug(f' Существующий индекс {self.index_name}')
+                logger.debug(f' найден существующий индекс {self.index_name}')
                 # Check if the mapping is correct, and recreate the index if needed
                 mapping = self.client.indices.get_mapping(index=self.index_name)
+                logger.debug(f' найдена структура индексации: {mapping}')
                 if mapping != expected_mapping:
+                    logger.warn(' требуется другая структура индексации: пересоздаём')
                     await self.recreate_index()
 
     async def recreate_index(self):
-        logger.debug(' Пересоздание индексов...')
         async with asyncio.Lock():
             self.delete_index()
             await self.check_index()
