@@ -46,6 +46,10 @@ index_settings = {
 
 expected_mapping = index_settings['mappings']
 
+# Create an event loop
+search_loop = asyncio.get_event_loop()
+
+
 class SearchService:
     def __init__(self, index_name='search_index'):
         self.index_name = index_name
@@ -65,7 +69,9 @@ class SearchService:
                     # ca_certs = ca_certs_path
                 )
                 logger.info(' Клиент OpenSearch.org подключен')
-                asyncio.create_task(self.check_index())
+
+                # Create a task and run it in the event loop
+                search_loop.create_task(self.check_index())
             except Exception as exc:
                 logger.error(f' {exc}')
                 self.client = None
@@ -133,7 +139,9 @@ class SearchService:
             await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results))
         return []
 
+
 search_service = SearchService()
+
 
 async def search_text(text: str, limit: int = 50, offset: int = 0):
     payload = []
