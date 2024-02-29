@@ -2,6 +2,7 @@ import time
 
 from sqlalchemy import and_, select, desc
 from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.functions import coalesce
 
 from orm.author import Author
 from orm.rating import is_negative, is_positive
@@ -31,7 +32,7 @@ async def get_shouts_drafts(_, info):
                 .options(joinedload(Shout.authors), joinedload(Shout.topics))
                 .filter(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
                 .filter(Shout.published_at.is_(None))
-                .order_by(desc(Shout.created_at))
+                .order_by(desc(coalesce(Shout.updated_at, Shout.created_at)))
                 .group_by(Shout.id)
             )
             shouts = [shout for [shout] in session.execute(q).unique()]
