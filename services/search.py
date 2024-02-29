@@ -106,11 +106,15 @@ class SearchService:
             else:
                 logger.debug(f' найден существующий индекс {self.index_name}')
                 # Check if the mapping is correct, and recreate the index if needed
-                mapping = self.client.indices.get_mapping(index=self.index_name)
-                logger.debug(f' найдена структура индексации: {mapping}')
-                if mapping != expected_mapping:
-                    logger.warn(' требуется другая структура индексации: пересоздаём')
-                    await self.recreate_index()
+                result = self.client.indices.get_mapping(index=self.index_name)
+                if isinstance(result, str):
+                    result = json.loads(result)
+                if isinstance(result, dict):
+                    mapping = result.get('mapping')
+                    if mapping and mapping != expected_mapping:
+                        logger.debug(f' найдена структура индексации: {mapping}')
+                        logger.warn(' требуется другая структура индексации, переиндексация')
+                        await self.recreate_index()
 
     async def recreate_index(self):
         async with self.lock:
