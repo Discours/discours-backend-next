@@ -96,16 +96,16 @@ class SearchService:
         if self.client:
             if self.lock.acquire(blocking=False):
                 try:
-                    logger.debug(f' Создаём новый индекс: {self.index_name} ')
-                    self.client.indices.create(
-                        index=self.index_name, body=index_settings
-                    )
-                    self.client.indices.close(index=self.index_name)
-                    self.client.indices.open(index=self.index_name)
+                    logger.debug(f'Recreating index: {self.index_name}')
+                    self.delete_index()
+                    self.check_index()
+                    logger.debug(f'Index {self.index_name} recreated')
+                except Exception as e:
+                    logger.debug(f'Error recreating index: {str(e)}')
                 finally:
                     self.lock.release()
             else:
-                logger.debug(' ..')
+                logger.debug('Unable to acquire lock to recreate index')
 
     def put_mapping(self):
         if self.client:
