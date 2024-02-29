@@ -244,7 +244,11 @@ async def get_author_followers(_, _info, slug: str):
                     )
                     results = get_with_stat(q)
                     _ = asyncio.create_task(update_author_followers_cache(author_id, results))
-                return json.loads(cached) if cached else results
+                    logger.debug(f'@{slug} cache updated with {len(results)} followers')
+                    return results
+                else:
+                    logger.debug(f'@{slug} got followers cached today')
+                    return json.loads(cached)
     except Exception as exc:
         import traceback
         logger.error(exc)
