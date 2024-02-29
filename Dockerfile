@@ -2,7 +2,7 @@ FROM python:alpine
 
 # Update package lists and install necessary dependencies
 RUN apk update && \
-    apk add --no-cache build-base icu-data-full curl python3-dev musl-dev postgresql-dev postgresql-client && \
+    apk add --no-cache build-base icu-data-full curl python3-dev musl-dev && \
     curl -sSL https://install.python-poetry.org | python
 
 # Set working directory

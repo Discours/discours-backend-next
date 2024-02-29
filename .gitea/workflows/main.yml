@@ -17,9 +17,18 @@ jobs:
         id: branch_name
         run: echo "::set-output name=branch::$(echo ${GITHUB_REF##*/})"
 
-      - name: Push to dokku
+      - name: Push to dokku for main branch
+        if: github.ref == 'refs/heads/main'
         uses: dokku/github-action@master
         with:
-          branch: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'main' || 'dev' }}
-          git_remote_url: ${{ github.ref == 'refs/heads/dev' && 'ssh://dokku@v2.discours.io:22/core' || 'ssh://dokku@staging.discours.io:22/core' }}
+          branch: 'main'
+          git_remote_url: 'ssh://dokku@v2.discours.io:22/discoursio-api'
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Push to dokku for dev branch
+        if: github.ref == 'refs/heads/dev'
+        uses: dokku/github-action@master
+        with:
+          branch: 'dev'
+          git_remote_url: 'ssh://dokku@staging.discours.io:22/core'
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
