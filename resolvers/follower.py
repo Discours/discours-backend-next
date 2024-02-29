@@ -26,6 +26,7 @@ from services.rediscache import redis
 @mutation.field('follow')
 @login_required
 async def follow(_, info, what, slug):
+    follows = None
     try:
         user_id = info.context['user_id']
         follower_query = select(Author).select_from(Author).filter(Author.user == user_id)
@@ -36,14 +37,14 @@ async def follow(_, info, what, slug):
                     author_query = select(Author).select_from(Author).where(Author.slug == slug)
                     [author] = get_with_stat(author_query)
                     if author:
-                        await update_follows_for_author(follower, 'author', author, True)
+                        follows = await update_follows_for_author(follower, 'author', author, True)
                         await update_followers_for_author(follower, author, True)
                         await notify_follower(follower.dict(), author.id, 'unfollow')
             elif what == 'TOPIC':
                 topic_query = select(Topic).where(Topic.slug == slug)
                 [topic] = get_with_stat(topic_query)
                 if topic:
-                    await update_follows_for_author(follower, 'topic', topic, True)
+                    follows = await update_follows_for_author(follower, 'topic', topic, True)
                 topic_unfollow(follower.id, slug)
             elif what == 'COMMUNITY':
                 community_follow(follower.id, slug)
@@ -52,7 +53,7 @@ async def follow(_, info, what, slug):
     except Exception as e:
         logger.debug(info, what, slug)
         logger.error(e)
-        return {'error': str(e)}
+        return {'error': str(e), f'{what}s': follows}
 
     return {}
 
@@ -60,8 +61,9 @@ async def follow(_, info, what, slug):
 @mutation.field('unfollow')
 @login_required
 async def unfollow(_, info, what, slug):
-    user_id = info.context['user_id']
+    follows = None
     try:
+        user_id = info.context.get('user_id')
         follower_query = select(Author).filter(Author.user == user_id)
         [follower] = get_with_stat(follower_query)
         if follower:
@@ -71,20 +73,20 @@ async def unfollow(_, info, what, slug):
                     [author] = get_with_stat(author_query)
                     if author:
                         await update_follows_for_author(follower, 'author', author, False)
-                        await update_followers_for_author(follower, author, False)
+                        follows = await update_followers_for_author(follower, author, False)
                         await notify_follower(follower.dict(), author.id, 'unfollow')
             elif what == 'TOPIC':
                 topic_query = select(Topic).where(Topic.slug == slug)
                 [topic] = get_with_stat(topic_query)
                 if topic:
-                    await update_follows_for_author(follower, 'topic', topic, False)
+                    follows = await update_follows_for_author(follower, 'topic', topic, False)
                 topic_unfollow(follower.id, slug)
             elif what == 'COMMUNITY':
                 community_unfollow(follower.id, slug)
             elif what == 'REACTIONS':
                 reactions_unfollow(follower.id, slug)
     except Exception as e:
-        return {'error': str(e)}
+        return {'error': str(e), f'{what}s': follows}
 
     return {}
 

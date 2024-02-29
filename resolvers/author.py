@@ -10,7 +10,7 @@ from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat, author_follows_authors, author_follows_topics
-from services.cache import update_author_cache, update_author_followers_cache
+from services.cache import set_author_cache, update_author_followers_cache
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -59,7 +59,7 @@ async def get_author(_, _info, slug='', author_id=None):
                 author_dict = author.dict()
             logger.debug(f'author to be stored: {author_dict}')
             if author:
-                await update_author_cache(author_dict)
+                await set_author_cache(author_dict)
                 return author_dict
     except Exception as exc:
         import traceback
@@ -88,7 +88,7 @@ async def get_author_by_user_id(user_id: str):
 
         [author] = get_with_stat(q)
         if author:
-            await update_author_cache(author.dict())
+            await set_author_cache(author.dict())
     except Exception as exc:
         logger.error(exc)
     return author
