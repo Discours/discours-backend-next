@@ -1,9 +1,9 @@
 import json
-# import math
-# import time
+import math
+import time
 
 from typing import Any, Callable, Dict, TypeVar
-# from sqlalchemy import exc, event, Engine,
+from sqlalchemy import exc, event, Engine
 from sqlalchemy import inspect, Column, Integer, create_engine, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
@@ -12,7 +12,7 @@ from sqlalchemy_searchable import make_searchable
 
 from services.logger import root_logger as logger
 from settings import DB_URL
-# import warnings
+import warnings
 import traceback
 
 # Подключение к базе данных SQLAlchemy
@@ -83,21 +83,21 @@ def warning_with_traceback(message: Warning | str, category, filename: str, line
 
 
 # Установка функции вывода трейсбека для предупреждений SQLAlchemy
-# warnings.showwarning = warning_with_traceback
-# warnings.simplefilter('always', exc.SAWarning)
+warnings.showwarning = warning_with_traceback
+warnings.simplefilter('always', exc.SAWarning)
 
 
 # Перехватчики для журнала запросов SQLAlchemy
-# @event.listens_for(Engine, 'before_cursor_execute')
-# def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-#    conn.query_start_time = time.time()
+@event.listens_for(Engine, 'before_cursor_execute')
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.query_start_time = time.time()
 
 
 # noinspection PyUnusedLocal
-# @event.listens_for(Engine, 'after_cursor_execute')
-# def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-#    if hasattr(conn, '_query_start_time'):
-#        elapsed = time.time() - conn.query_start_time
-#        conn.query_start_time = None
-#        query = f'{statement}'.replace('\n', ' ')
-#        logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
+@event.listens_for(Engine, 'after_cursor_execute')
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    if hasattr(conn, '_query_start_time'):
+        elapsed = time.time() - conn.query_start_time
+        conn.query_start_time = None
+        query = f'{statement}'.replace('\n', ' ')
+        logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
