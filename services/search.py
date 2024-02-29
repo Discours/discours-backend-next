@@ -1,5 +1,6 @@
 import json
 import os
+from multiprocessing import Manager
 import threading
 
 from opensearchpy import OpenSearch
@@ -38,8 +39,9 @@ index_settings = {
         'properties': {
             'body': {'type': 'text', 'analyzer': 'ru'},
             'title': {'type': 'text', 'analyzer': 'ru'},
-            'lead': {'type': 'text', 'analyzer': 'ru'},
             'subtitle': {'type': 'text', 'analyzer': 'ru'},
+            'lead': {'type': 'text', 'analyzer': 'ru'},
+            # 'author': {'type': 'text'},
         }
     },
 }
@@ -50,10 +52,12 @@ expected_mapping = index_settings['mappings']
 class SearchService:
     def __init__(self, index_name='search_index'):
         self.index_name = index_name
+        self.manager = Manager()
         self.client = None
 
         # Используем менеджер для создания Lock и Value
         self.lock = threading.Lock()
+        self.initialized_flag = self.manager.Value('i', 0)
 
         # Only initialize the instance if it's not already initialized
         if not self.initialized_flag.value and ELASTIC_HOST:
