@@ -195,13 +195,13 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                     )
                     c = 1
                     while same_slug_shout is not None:
-                        same_slug_shout = (
-                            session.query(Shout)
-                            .filter(Shout.slug == shout_input.get('slug'))
-                            .first()
-                        )
                         c += 1
                         slug += f'-{c}'
+                        same_slug_shout = (
+                            session.query(Shout)
+                            .filter(Shout.slug == slug)  # Use the updated slug value here
+                            .first()
+                        )
                     shout_input['slug'] = slug
 
             if isinstance(author, Author) and isinstance(shout_id, int):
