@@ -138,7 +138,7 @@ def after_author_follower_delete(mapper, connection, target: AuthorFollower):
 
 async def update_follows_for_author(follower: Author, entity_type: str, entity: dict, is_insert: bool):
     ttl = 25 * 60 * 60
-    redis_key = f'id:{follower.id}:follows-{entity_type}s'
+    redis_key = f'author:{follower.id}:follows-{entity_type}s'
     follows_str = await redis.get(redis_key)
     follows = json.loads(follows_str) if follows_str else []
     if is_insert:
@@ -151,7 +151,7 @@ async def update_follows_for_author(follower: Author, entity_type: str, entity: 
 
 async def update_followers_for_author(follower: Author, author: Author, is_insert: bool):
     ttl = 25 * 60 * 60
-    redis_key = f'id:{author.id}:followers'
+    redis_key = f'author:{author.id}:followers'
     followers_str = await redis.get(redis_key)
     followers = json.loads(followers_str) if followers_str else []
     if is_insert:
