@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from sqlalchemy import and_, case, desc, func, select, text
+from sqlalchemy import and_, case, desc, func, select, text, asc
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
@@ -348,7 +348,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         :search - to search by reactions' body
         :comment - true if body.length > 0
         :after - amount of time ago
-        :sort - a fieldname to sort desc by default
+        :sort - a fieldname to sort desc by default, 'like' | 'dislike' | 'rating'
     }
     :param limit: int amount of shouts
     :param offset: int offset in this order
@@ -374,7 +374,10 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
-    q = q.order_by(desc(Reaction.created_at))
+    order_stat = by.get('sort', '')  # 'like' | 'dislike' | 'rating'
+    order_fn = asc if order_stat.startswith('-') else desc
+    order_field = Reaction.created_at if not order_stat else f'{order_stat}s_stat'
+    q = q.order_by(order_fn(order_field))
 
     # pagination
     q = q.limit(limit).offset(offset)
@@ -400,13 +403,6 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
                 'commented': commented_stat,
             }
             reactions.add(reaction)  # Используем список для хранения реакций
-
-        # sort
-        reactions = sorted(
-            list(reactions),
-            key=lambda r: r.stat.get(by.get('stat')) or r.created_at,
-            reverse=by.get('stat', '').startswith('-'),
-        )
 
     return reactions
 
