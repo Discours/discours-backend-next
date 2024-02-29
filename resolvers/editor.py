@@ -217,8 +217,8 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 if not shout:
                     return {'error': 'shout not found'}
                 if (
-                    shout.created_by is not author.id
-                    and author.id not in shout.authors
+                    shout.created_by != author.id
+                    and not shout.authors.contains(author.id)
                     and 'editor' not in roles
                 ):
                     return {'error': 'access denied'}
