@@ -82,30 +82,26 @@ class SearchService:
         else:
             logger.info(' * Задайте переменные среды для подключения к серверу поиска')
 
-    async def delete_index(self):
+    def delete_index(self):
         if self.client:
             logger.debug(f' Удаляем индекс {self.index_name}')
-            await self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
+            self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
-    async def create_index(self):
+    def create_index(self):
         if self.client:
             logger.debug(f'Создается индекс: {self.index_name}')
-            await self.delete_index()
-            await self.client.indices.create(index=self.index_name, body=index_settings)
+            self.delete_index()
+            self.client.indices.create(index=self.index_name, body=index_settings)
             logger.debug(f'Индекс {self.index_name} создан')
-
-    async def put_mapping(self):
-        if self.client:
-            logger.debug(f' Разметка индекации {self.index_name}')
-            await self.client.indices.put_mapping(
-                index=self.index_name, body=expected_mapping
-            )
 
     async def check_index(self):
         if self.client:
             if not self.client.indices.exists(index=self.index_name):
-                await self.create_index()
-                await self.put_mapping()
+                self.create_index()
+                logger.debug(f' Разметка индекации {self.index_name}')
+                self.client.indices.put_mapping(
+                    index=self.index_name, body=expected_mapping
+                )
             else:
                 # Check if the mapping is correct, and recreate the index if needed
                 mapping = self.client.indices.get_mapping(index=self.index_name)
@@ -114,7 +110,7 @@ class SearchService:
 
     async def recreate_index(self):
         async with asyncio.Lock():
-            await self.delete_index()
+            self.delete_index()
             await self.check_index()
 
     def index(self, shout):
