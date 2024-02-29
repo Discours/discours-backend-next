@@ -1,6 +1,7 @@
 import json
 import os
 from multiprocessing import Manager
+import threading
 
 from opensearchpy import OpenSearch
 
@@ -53,7 +54,7 @@ class SearchService:
         self.client = None
 
         # Используем менеджер для создания Lock и Value
-        self.lock = self.manager.Lock()
+        self.lock = threading.Lock()
         self.initialized_flag = self.manager.Value('i', 0)
 
         # Only initialize the instance if it's not already initialized
