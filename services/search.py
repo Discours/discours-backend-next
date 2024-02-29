@@ -134,7 +134,7 @@ class SearchService:
             finally:
                 self.lock.release()
         else:
-            logger.debug(' ..')
+            logger.debug(' cant reindex at the moment')
 
     def index(self, shout):
         if self.client:
