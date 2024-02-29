@@ -218,7 +218,7 @@ class ViewedStorage:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
                 logger.info(
-                    ' ⎩ Следующее обновление: %s'
+                    '       ⎩ Следующее обновление: %s'
                     % (t.split('T')[0] + ' ' + t.split('T')[1].split('.')[0])
                 )
                 await asyncio.sleep(self.period)
