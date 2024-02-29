@@ -125,7 +125,7 @@ class SearchService:
         logger.debug(f' Ищем: {text}')
         search_body = {'query': {'match': {'_all': text}}}
         if self.client:
-            search_response = await self.client.search(
+            search_response = self.client.search(
                 index=self.index_name, body=search_body, size=limit, from_=offset
             )
             hits = search_response['hits']['hits']
