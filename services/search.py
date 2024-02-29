@@ -108,7 +108,7 @@ class SearchService:
                 await self.put_mapping()
             else:
                 # Check if the mapping is correct, and recreate the index if needed
-                mapping = await self.client.indices.get_mapping(index=self.index_name)
+                mapping = self.client.indices.get_mapping(index=self.index_name)
                 if mapping != expected_mapping:
                     await self.recreate_index()
 
