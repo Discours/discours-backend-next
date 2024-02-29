@@ -54,6 +54,7 @@ class SearchService:
     def __init__(self, index_name='search_index'):
         self.index_name = index_name
         self.client = None
+        self.lock = asyncio.Lock()  # Create an asyncio lock
 
         # Only initialize the instance if it's not already initialized
         if ELASTIC_HOST:
@@ -112,8 +113,8 @@ class SearchService:
                     await self.recreate_index()
 
     async def recreate_index(self):
-        async with asyncio.Lock():
-            self.delete_index()
+        async with self.lock:
+            self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
             await self.check_index()
 
     def index(self, shout):
