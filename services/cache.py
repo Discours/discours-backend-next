@@ -27,7 +27,7 @@ async def update_author_cache(author: dict, ttl=25 * 60 * 60):
 
 async def update_author_followers_cache(author_id: int, followers, ttl=25 * 60 * 60):
     payload = json.dumps(followers)
-    await redis.execute('SET', f'author:{author_id}:followers', payload)
+    await redis.execute('SETEX', f'author:{author_id}:followers', ttl, payload)
 
 
 async def update_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
@@ -157,9 +157,9 @@ async def update_followers_for_author(follower: Author, author: Author, is_inser
     if is_insert:
         followers.append(follower)
     else:
-        # Remove the entity from follows
-        follows = [e for e in followers if e['id'] != author.id]
-    await redis.execute('SETEX', redis_key, ttl, json.dumps(follows))
+        # Remove the entity from followers
+        followers = [e for e in followers if e['id'] != author.id]
+    await redis.execute('SETEX', redis_key, ttl, json.dumps(followers))
 
 
 async def handle_author_follower_change(
