@@ -79,8 +79,9 @@ async def get_author_by_user_id(user_id: str):
         if isinstance(res, str):
             author = json.loads(res)
             author_id = author.get('id')
+            author_slug = author.get('slug')
             if author_id:
-                logger.debug(f'got author @{author.slug} #{author_id} cached today')
+                logger.debug(f'got author @{author_slug} #{author_id} cached today')
                 return author
 
         q = select(Author).filter(Author.user == user_id)
