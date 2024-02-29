@@ -354,29 +354,29 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     :param offset: int offset in this order
     :return: Reaction[]
     """
-
+    aliased_reaction = aliased(Reaction)
     q = (
-        select(Reaction, Author, Shout)
+        select(aliased_reaction, Author, Shout)
         .select_from(Reaction)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
+        .join(Author, aliased_reaction.created_by == Author.id)
+        .join(Shout, aliased_reaction.shout == Shout.id)
     )
 
     # calculate counters
-    aliased_reaction = aliased(Reaction)
-    q = add_reaction_stat_columns(q, aliased_reaction)
+    aliased_reaction_counters = aliased(Reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction_counters)
 
     # filter
     q = apply_reaction_filters(by, q)
-    q = q.where(Reaction.deleted_at.is_(None))
+    q = q.where(aliased_reaction.deleted_at.is_(None))
 
     # group by
-    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
+    q = q.group_by(aliased_reaction.id, Author.id, Shout.id, aliased_reaction_counters.id)
 
     # order by
-    order_stat = by.get('sort', '')  # 'like' | 'dislike' | 'rating'
+    order_stat = by.get('sort', '')  # 'like' | 'dislike' | 'created_at' | '-created_at'
     order_fn = asc if order_stat.startswith('-') else desc
-    order_field = Reaction.created_at if not order_stat else f'{order_stat}s_stat'
+    order_field = aliased_reaction.created_at if not order_stat else f'{order_stat}s_stat'
     q = q.order_by(order_fn(order_field))
 
     # pagination
