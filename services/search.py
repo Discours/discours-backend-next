@@ -103,7 +103,7 @@ class SearchService:
 
     async def check_index(self):
         if self.client:
-            if not await self.client.indices.exists(index=self.index_name):
+            if not self.client.indices.exists(index=self.index_name):
                 await self.create_index()
                 await self.put_mapping()
             else:
