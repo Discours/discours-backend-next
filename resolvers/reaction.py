@@ -348,18 +348,18 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         :search - to search by reactions' body
         :comment - true if body.length > 0
         :after - amount of time ago
-        :sort - a fieldname to sort desc by default, 'like' | 'dislike' | 'rating'
+        :sort - a fieldname to sort desc by default
     }
     :param limit: int amount of shouts
     :param offset: int offset in this order
     :return: Reaction[]
     """
-    aliased_reaction = aliased(Reaction)
+
     q = (
-        select(aliased_reaction, Author, Shout)
+        select(Reaction, Author, Shout)
         .select_from(Reaction)
-        .join(Author, aliased_reaction.created_by == Author.id)
-        .join(Shout, aliased_reaction.shout == Shout.id)
+        .join(Author, Reaction.created_by == Author.id)
+        .join(Shout, Reaction.shout == Shout.id)
     )
 
     # calculate counters
@@ -374,10 +374,13 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
-    order_stat = by.get('sort', '')  # 'like' | 'dislike' | 'created_at' | '-created_at'
-    order_fn = asc if order_stat.startswith('-') else desc
-    order_field = Reaction.created_at if not order_stat else f'{order_stat}s_stat'
-    q = q.order_by(order_fn(order_field))
+    order_stat = by.get('sort', '').lower()  # 'like' | 'dislike' | 'newest' | 'oldest'
+    order_by_stmt = desc(Reaction.created_at)
+    if order_stat == 'oldest':
+        order_by_stmt = asc(Reaction.created_at)
+    elif order_stat.endswith('like'):
+        order_by_stmt = desc(f'{order_stat}s_stat')
+    q = q.order_by(order_by_stmt)
 
     # pagination
     q = q.limit(limit).offset(offset)

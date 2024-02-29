@@ -6,6 +6,13 @@ enum ReactionStatus {
   DELETED
 }
 
+enum ReactionSort {
+  newest
+  oldest
+  like
+  dislike
+}
+
 enum ReactionKind {
 
   # collabs
