@@ -99,16 +99,16 @@ class SearchService:
         if self.client:
             if self.lock.acquire(blocking=False):
                 try:
-                    logger.debug(f'Recreating index: {self.index_name}')
+                    logger.debug(f'Создается индекс: {self.index_name}')
                     self.delete_index()
                     self.check_index()
-                    logger.debug(f'Index {self.index_name} recreated')
+                    logger.debug(f'Индексс {self.index_name} создан')
                 except Exception as e:
-                    logger.debug(f'Error recreating index: {str(e)}')
+                    logger.debug(f'Ошибка создания индекса: {str(e)}')
                 finally:
                     self.lock.release()
             else:
-                logger.debug('Unable to acquire lock to recreate index')
+                logger.error('Не получается создать индекс')
 
     def put_mapping(self):
         if self.client:
@@ -129,19 +129,18 @@ class SearchService:
                     self.recreate_index()
 
     def recreate_index(self):
+        thread = threading.Thread(target=self._recreate_index)
+        thread.start()
+
+    def _recreate_index(self):
         if self.lock.acquire(blocking=False):
             try:
-                thread = threading.Thread(target=self._recreate_index)
-                thread.start()
-                thread.join()
+                self.delete_index()
+                self.check_index()
             finally:
                 self.lock.release()
         else:
-            logger.debug(' cant reindex at the moment')
-
-    def _recreate_index(self):
-        self.delete_index()
-        self.check_index()
+            logger.debug(' не удалось проиндексировать')
 
     def index(self, shout):
         if self.client:
