@@ -243,7 +243,7 @@ async def get_author_followers(_, _info, slug: str):
                         )
                     )
                     results = get_with_stat(q)
-                    _ = asyncio.create_task(update_author_followers_cache(author_id, results))
+                    _ = asyncio.create_task(update_author_followers_cache(author_id, [x.dict() for x in results]))
                     logger.debug(f'@{slug} cache updated with {len(results)} followers')
                     return results
                 else:
