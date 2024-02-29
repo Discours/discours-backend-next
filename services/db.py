@@ -57,6 +57,9 @@ class Base(declarative_base()):
                     data[c] = json.loads(str(value))
                 else:
                     data[c] = value
+            # Add synthetic field .stat
+            if hasattr(self, 'stat'):
+                data['stat'] = self.stat
             return data
         except Exception as e:
             logger.error(f'Error occurred while converting object to dictionary: {e}')

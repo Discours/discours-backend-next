@@ -50,7 +50,12 @@ async def get_author(_, _info, slug='', author_id=None):
             cache = await redis.execute('GET', f'id:{author_id}:author')
             logger.debug(f'result from cache: {cache}')
             q = select(Author).where(Author.id == author_id)
-            author_dict = json.loads(cache) if cache else get_with_stat(q)[0].dict()
+            author_dict = None
+            if cache:
+                author_dict = json.loads(cache)
+            else:
+                [author] = get_with_stat(q)
+                author_dict = author.dict()
             logger.debug(f'author to be stored: {author_dict}')
             if author:
                 await update_author_cache(author_dict)
