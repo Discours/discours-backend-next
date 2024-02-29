@@ -62,7 +62,7 @@ class ViewedStorage:
                     if now_date == self.start_date:
                         logger.info(' * Данные актуализованы!')
                     else:
-                        logger.info(f' * Миграция проводилась: {self.start_date}')
+                        logger.info(f' * Файл просмотров {VIEWS_FILEPATH} создан: {self.start_date}')
 
                 # Запуск фоновой задачи
                 _task = asyncio.create_task(self.worker())
