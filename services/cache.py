@@ -25,6 +25,11 @@ async def update_author_cache(author: dict, ttl=25 * 60 * 60):
     await redis.execute('SETEX', f'id:{author.get("id")}:author', ttl, payload)
 
 
+async def update_author_followers_cache(author_id: int, followers, ttl=25 * 60 * 60):
+    payload = json.dumps(followers)
+    await redis.execute('SET', f'author:{author_id}:followers', payload)
+
+
 async def update_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
     try:
         payload = json.dumps(follows)

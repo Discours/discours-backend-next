@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 
@@ -9,7 +10,7 @@ from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat, author_follows_authors, author_follows_topics
-from services.cache import update_author_cache
+from services.cache import update_author_cache, update_author_followers_cache
 from services.auth import login_required
 from services.db import local_session
 from services.rediscache import redis
@@ -242,6 +243,7 @@ async def get_author_followers(_, _info, slug: str):
                         )
                     )
                     results = get_with_stat(q)
+                    _ = asyncio.create_task(update_author_followers_cache(author_id, results))
                 return json.loads(cached) if cached else results
     except Exception as exc:
         import traceback
