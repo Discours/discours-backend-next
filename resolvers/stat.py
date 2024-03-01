@@ -67,7 +67,7 @@ def add_author_stat_columns(q):
     q = q.add_columns(func.count(distinct(aliased_author_followers.follower)).label('followers_stat'))
 
     # Create a subquery for comments count
-    subquery = (
+    subquery_comments = (
         select(Reaction.created_by, func.count(Reaction.id).label('comments_stat'))
         .filter(
             and_(
@@ -79,8 +79,8 @@ def add_author_stat_columns(q):
         .subquery()
     )
 
-    q = q.outerjoin(subquery, subquery.c.created_by == Author.id)
-    q = q.add_columns(subquery.c.comments_stat)
+    q = q.outerjoin(subquery_comments, subquery_comments.c.created_by == Author.id)
+    q = q.add_columns(subquery_comments.c.comments_stat)
 
     # Create a subquery for topics
     subquery_topics = (select(ShoutTopic.topic, func.count(ShoutTopic.shout).label('topics_stat'))
@@ -94,7 +94,7 @@ def add_author_stat_columns(q):
     q = q.outerjoin(subquery_topics, subquery_topics.c.topic == Author.id)
     q = q.add_columns(subquery_topics.c.topics_stat)
 
-    q = q.group_by(Author.id)
+    q = q.group_by(Author.id, subquery_comments.c.comments_stat, subquery_topics.c.topics_stat)
 
     return q
 
@@ -172,7 +172,8 @@ def get_with_stat(q):
             entity = cols[0]
             entity.stat = {'shouts': cols[1], 'authors': cols[2], 'followers': cols[3]}
             if is_author:
-                entity.stat['comments'] = 0  # FIXME: cols[4]
+                entity.stat['comments'] = cols[4]
+                entity.stat['topics'] = cols[5]
                 # entity.stat['rating'] = cols[5] - cols[6]
                 # entity.stat['rating_shouts'] = cols[7] - cols[8]
                 pass
