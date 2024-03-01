@@ -80,7 +80,19 @@ def add_author_stat_columns(q):
     )
 
     q = q.outerjoin(subquery, subquery.c.created_by == Author.id)
-    q = q.add_columns(subquery.c.comments_count)
+    q = q.add_columns(subquery.c.comments_stat)
+
+    # Create a subquery for topics
+    subquery_topics = (select(ShoutTopic.topic, func.count(ShoutTopic.shout).label('topics_stat'))
+        .join(Shout, ShoutTopic.shout == Shout.id)
+        .join(ShoutAuthor, Shout.id == ShoutAuthor.shout)
+        .filter(ShoutAuthor.author == Author.id)
+        .group_by(ShoutTopic.topic)
+        .subquery()
+    )
+
+    q = q.outerjoin(subquery_topics, subquery_topics.c.topic == Author.id)
+    q = q.add_columns(subquery_topics.c.topics_stat)
 
     q = q.group_by(Author.id)
 
