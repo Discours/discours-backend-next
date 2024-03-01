@@ -96,7 +96,7 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 # noinspection PyUnusedLocal
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    if hasattr(conn, '_query_start_time'):
+    if hasattr(conn, 'query_start_time'):
         elapsed = time.time() - conn.query_start_time
         conn.query_start_time = None
         query = f'{statement}'.replace('\n', ' ')
