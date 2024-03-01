@@ -57,38 +57,31 @@ def add_author_stat_columns(q):
     aliased_author_followers = aliased(AuthorFollower)
     # aliased_reaction = aliased(Reaction)
 
-    q = (
-        q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
-        .add_columns(
-            func.count(distinct(aliased_shout_author.shout)).label('shouts_stat')
-        )
+    q = q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
+    q = q.add_columns(func.count(distinct(aliased_shout_author.shout)).label('shouts_stat'))
 
-        .outerjoin(aliased_author_authors, aliased_author_authors.follower == Author.id)
-        .add_columns(
-            func.count(distinct(aliased_author_authors.author)).label('authors_stat')
-        )
+    q = q.outerjoin(aliased_author_authors, aliased_author_authors.follower == Author.id)
+    q = q.add_columns(func.count(distinct(aliased_author_authors.author)).label('authors_stat'))
 
-        .outerjoin(
-            aliased_author_followers, aliased_author_followers.author == Author.id
+    q = q.outerjoin(aliased_author_followers, aliased_author_followers.author == Author.id)
+    q = q.add_columns(func.count(distinct(aliased_author_followers.follower)).label('followers_stat'))
+
+    # Create a subquery for comments count
+    subquery = (
+        select(Reaction.created_by, func.count(Reaction.id).label('comments_stat'))
+        .filter(
+            and_(
+                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.deleted_at.is_(None),
+                )
         )
-        .add_columns(
-            func.count(distinct(aliased_author_followers.follower)).label(
-                'followers_stat'
-            )
-        )
+        .group_by(Reaction.created_by)
+        .subquery()
     )
 
-    # .outerjoin(
-    #    aliased_reaction,
-    #    and_(
-    #        aliased_reaction.created_by == Author.id,
-    #        aliased_reaction.kind == ReactionKind.COMMENT.value,
-    #        aliased_reaction.deleted_at.is_(None),
-    #        ),
-    # )
-    # .add_columns(
-    # func.count(distinct(aliased_reaction.id)).label('comments_stat')
-    # )
+    q = q.outerjoin(subquery, subquery.c.created_by == Author.id)
+    q = q.add_columns(subquery.c.comments_count)
+
     q = q.group_by(Author.id)
 
     return q
