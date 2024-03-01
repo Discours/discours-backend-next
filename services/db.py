@@ -100,4 +100,5 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         elapsed = time.time() - conn.query_start_time
         conn.query_start_time = None
         query = f'{statement}'.replace('\n', ' ')
-        logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
+        if elapsed > 1:
+            logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
