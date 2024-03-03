@@ -219,10 +219,19 @@ async def get_author_follows_authors(_, _info, slug='', user=None, author_id=Non
 
 def create_author(user_id: str, slug: str, name: str = ''):
     with local_session() as session:
-        new_author = Author(user=user_id, slug=slug, name=name)
-        session.add(new_author)
-        session.commit()
-        logger.info(f'author created by webhook {new_author.dict()}')
+        try:
+            author = None
+            if user_id:
+                author = session.query(Author).filter(Author.user == user_id).first()
+            elif slug:
+                author = session.query(Author).filter(Author.slug == slug).first()
+            if not author:
+                new_author = Author(user=user_id, slug=slug, name=name)
+                session.add(new_author)
+                session.commit()
+                logger.info(f'author created by webhook {new_author.dict()}')
+        except Exception as exc:
+            logger.debug(exc)
 
 
 @query.field('get_author_followers')

@@ -4,9 +4,9 @@ import re
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
 from orm.author import Author
-from resolvers.author import create_author
 from services.db import local_session
 from services.logger import root_logger as logger
 
@@ -15,28 +15,38 @@ class WebhookEndpoint(HTTPEndpoint):
     async def post(self, request: Request) -> JSONResponse:
         try:
             data = await request.json()
-            if data:
-                auth = request.headers.get('Authorization')
-                if auth:
-                    if auth == os.environ.get('WEBHOOK_SECRET'):
-                        logger.debug(data)
-                        user = data.get('user')
-                        if isinstance(user, dict):
-                            user_id: str = user.get('id')
-                            name: str = user.get('given_name', user.get('slug'))
-                            slug: str = user.get('email', '').split('@')[0]
-                            slug: str = re.sub('[^0-9a-z]+', '-', slug.lower())
-                            with local_session() as session:
-                                author = (
-                                    session.query(Author)
-                                    .filter(Author.slug == slug)
-                                    .first()
-                                )
-                                if author:
-                                    slug = slug + '-' + user_id.split('-').pop()
-                                create_author(user_id, slug, name)
+            if not data:
+                raise HTTPException(status_code=400, detail="Request body is empty")
+            auth = request.headers.get('Authorization')
+            if not auth or auth != os.environ.get('WEBHOOK_SECRET'):
+                raise HTTPException(status_code=401, detail="Invalid Authorization header")
+            logger.debug(data)
+            user = data.get('user')
+            if not isinstance(user, dict):
+                raise HTTPException(status_code=400, detail="User data is not a dictionary")
+            user_id: str = user.get('id')
+            name: str = user.get('given_name', user.get('slug'))
+            email: str = user.get('email', '')
+            pic: str = user.get('picture', '')
+
+            with local_session() as session:
+                author = session.query(Author).filter(Author.email == email).first()
+                if not author:
+                    # If the author does not exist, create a new one
+                    slug: str = email.split('@')[0].replace(".", "-").lower()
+                    slug: str = re.sub('[^0-9a-z]+', '-', slug)
+                    while True:
+                        author = session.query(Author).filter(Author.slug == slug).first()
+                        if not author:
+                            break
+                        slug = f"{slug}-{len(session.query(Author).filter(Author.email == email).all()) + 1}"
+                    author = Author(user_id=user_id, slug=slug, name=name, pic=pic)
+                    session.add(author)
+                    session.commit()
 
             return JSONResponse({'status': 'success'})
+        except HTTPException as e:
+            return JSONResponse({'status': 'error', 'message': str(e.detail)}, status_code=e.status_code)
         except Exception as e:
             import traceback
 

@@ -30,6 +30,7 @@ fmt_config = {
     'reset': True,
 }
 
+
 class MultilineColoredFormatter(colorlog.ColoredFormatter):
     def format(self, record):
         # Check if the message is multiline
