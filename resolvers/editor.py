@@ -218,7 +218,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                     return {'error': 'shout not found'}
                 if (
                     shout.created_by != author.id
-                    and not shout.authors.contains(author.id)
+                    and not filter(lambda x: x == author.id, shout.authors)
                     and 'editor' not in roles
                 ):
                     return {'error': 'access denied'}

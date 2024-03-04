@@ -8,7 +8,6 @@ from starlette.exceptions import HTTPException
 
 from orm.author import Author
 from services.db import local_session
-from services.logger import root_logger as logger
 
 
 class WebhookEndpoint(HTTPEndpoint):
@@ -20,7 +19,7 @@ class WebhookEndpoint(HTTPEndpoint):
             auth = request.headers.get('Authorization')
             if not auth or auth != os.environ.get('WEBHOOK_SECRET'):
                 raise HTTPException(status_code=401, detail="Invalid Authorization header")
-            logger.debug(data)
+            # logger.debug(data)
             user = data.get('user')
             if not isinstance(user, dict):
                 raise HTTPException(status_code=400, detail="User data is not a dictionary")
