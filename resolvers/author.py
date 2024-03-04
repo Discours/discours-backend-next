@@ -90,6 +90,8 @@ async def get_author_by_user_id(user_id: str):
         if author:
             await set_author_cache(author.dict())
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         logger.error(exc)
     return author
 
