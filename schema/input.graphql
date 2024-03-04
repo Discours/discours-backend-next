@@ -79,3 +79,8 @@ input ReactionBy {
   after: Int
   sort: ReactionSort
 }
+
+input NotificationSeenInput {
+  notifications: [Int]
+  thread: Int
+}

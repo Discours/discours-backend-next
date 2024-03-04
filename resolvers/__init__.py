@@ -43,6 +43,7 @@ from resolvers.topic import (
 )
 
 
+
 __all__ = [
     # author
     'get_author',

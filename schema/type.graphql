@@ -178,3 +178,34 @@ type AuthorFollows {
   # shouts: [Shout]
   communities: [Community]
 }
+
+type Notification {
+  id: Int!
+  action: String!
+  entity: String!
+  created_at: Int!
+  payload: String!
+  seen: [Author]
+}
+
+type NotificationSeenResult {
+  error: String
+}
+
+type NotificationGroup {
+  id: Int!
+  authors: [Author]
+  updated_at: Int!
+  entity: String!
+  action: String
+  shout: Shout
+  reactions: [Reaction]
+  seen: Boolean
+}
+
+type NotificationsResult {
+  notifications: [NotificationGroup!]!
+  unread: Int!
+  total: Int!
+  error: String
+}

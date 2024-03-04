@@ -1,12 +1,22 @@
 import json
 
+from orm.notification import Notification
+from services.db import local_session
 from services.rediscache import redis
+
+
+def save_notification(action: str, entity: str, payload):
+    with local_session() as session:
+        n = Notification(action=action, entity=entity, payload=payload)
+        session.add(n)
+        session.commit()
 
 
 async def notify_reaction(reaction, action: str = 'create'):
     channel_name = 'reaction'
     data = {'payload': reaction, 'action': action}
     try:
+        save_notification(action, channel_name, data.get('payload'))
         await redis.publish(channel_name, json.dumps(data))
     except Exception as e:
         print(f'[services.notify] Failed to publish to channel {channel_name}: {e}')
@@ -16,6 +26,7 @@ async def notify_shout(shout, action: str = 'update'):
     channel_name = 'shout'
     data = {'payload': shout, 'action': action}
     try:
+        save_notification(action, channel_name, data.get('payload'))
         await redis.publish(channel_name, json.dumps(data))
     except Exception as e:
         print(f'[services.notify] Failed to publish to channel {channel_name}: {e}')
@@ -35,6 +46,8 @@ async def notify_follower(follower: dict, author_id: int, action: str = 'follow'
         # Ensure the data is not empty before publishing
         if not json_data:
             raise ValueError('Empty data to publish.')
+
+        save_notification(action, channel_name, data.get('payload'))
 
         # Use the 'await' keyword when publishing
         await redis.publish(channel_name, json_data)

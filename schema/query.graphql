@@ -41,4 +41,7 @@ type Query {
   get_topics_random(amount: Int): [Topic]
   get_topics_by_author(slug: String, user: String, author_id: Int): [Topic]
   get_topics_by_community(slug: String, community_id: Int): [Topic]
+
+  # notifier
+  get_notifications: NotificationsResult!
 }
