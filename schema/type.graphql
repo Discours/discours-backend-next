@@ -193,11 +193,11 @@ type NotificationSeenResult {
 }
 
 type NotificationGroup {
-  id: Int!
-  authors: [Author]
-  updated_at: Int!
+  thread: String!
   entity: String!
-  action: String
+  action: String!
+  updated_at: Int!
+  authors: [Author]
   shout: Shout
   reactions: [Reaction]
   seen: Boolean

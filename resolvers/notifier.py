@@ -4,6 +4,8 @@ from typing import List, Tuple
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from orm.author import Author
+from orm.shout import Shout
 from services.auth import login_required
 from services.schema import mutation, query
 from sqlalchemy import and_, select
@@ -68,45 +70,17 @@ def query_notifications(author_id: int, after: int = 0) -> Tuple[int, int, List[
     return total, unread, notifications
 
 
-def group_shout(shout_dict, seen: bool, action: str):
+def group_notification(thread, authors=None, shout=None, reactions=None, entity="follower", action="follow"):
+    reactions = reactions or []
+    authors = authors or []
     return {
-        "thread": f'shout-{shout_dict.get("id")}',
-        "entity": 'shout',
-        "shout": shout_dict,
-        "authors": shout_dict.get('authors'),
-        "updated_at": shout_dict.get('created_at'),
-        "reactions": [],
-        "action": action,
-        "seen": seen
-    }
-
-
-def group_reaction(reaction_dict, seen: bool, action):
-    thread_id = reaction_dict['shout']
-    if reaction_dict['kind'] == "COMMENT" and reaction_dict.get('reply_to'):
-        thread_id += f"shout-{reaction_dict.get('shout')}::{reaction_dict.get('reply_to')}"
-    return {
-        "thread": thread_id,
-        "entity": 'reaction',
-        "updated_at": reaction_dict['created_at'],
-        "reactions": [reaction_dict['id']],
-        "shout": reaction_dict.get('shout'),
-        "authors": [reaction_dict.get('created_by'), ],
-        "action": action,
-        "seen": seen
-    }
-
-
-def group_follower(follower, seen: bool):
-    return {
-        "thread": "followers",
-        "authors": [follower],
+        "thread": thread,
+        "authors": authors,
         "updated_at": int(time.time()),
-        "shout": None,
-        "reactions": [],
-        "entity": "follower",
-        "action": "follow",
-        "seen": seen
+        "shout": shout,
+        "reactions": reactions,
+        "entity": entity,
+        "action": action
     }
 
 
@@ -144,41 +118,73 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
         if groups_amount >= limit:
             break
 
-        payload = notification.payload
+        payload = json.loads(notification.payload)
 
         if notification.entity == NotificationEntity.SHOUT.value:
-            group = group_shout(payload, seen, notification.action)
-            thread_id = group.get('thread')
-            groups_by_thread[thread_id] = group
-            groups_amount += 1
-
-        elif notification.entity == NotificationEntity.REACTION.value:
-            shout_id = payload.get('shout')
-            author_id = payload.get('created_by')
-            reply_id = payload.get('reply_to')
+            shout = payload
+            shout_id = shout.get('id')
+            author_id = shout.get('created_by')
             thread_id = f'shout-{shout_id}'
-            if reply_id and payload.get('kind', '').lower() == 'comment':
-                thread_id += f'{reply_id}'
-            existing_group = groups_by_thread.get(thread_id)
-            if existing_group:
-                existing_group['seen'] = False
-                existing_group['authors'].append(author_id)
-                existing_group['reactions'] = existing_group['reactions'] or []
-                existing_group['reactions'].append(payload)
-                groups_by_thread[thread_id] = existing_group
-            else:
-                group = group_reaction(payload, seen, notification.action)  # NOTE: last action will be group-wise
-                if group:
+            with local_session() as session:
+                author = session.query(Author).filter(Author.id == author_id).first()
+                shout = session.query(Shout).filter(Shout.id == shout_id).first()
+                if author and shout:
+                    author = author.dict()
+                    shout = shout.dict()
+                    group = group_notification(thread_id, authors=[author], action=notification.action, shout=shout)
                     groups_by_thread[thread_id] = group
                     groups_amount += 1
 
+        elif notification.entity == NotificationEntity.REACTION.value:
+            reaction = payload
+            shout_id = shout.get('shout')
+            author_id = shout.get('created_by')
+            with local_session() as session:
+                author = session.query(Author).filter(Author.id == author_id).first()
+                shout = session.query(Shout).filter(Shout.id == shout_id).first()
+                if shout and author:
+                    author = author.dict()
+                    shout = shout.dict()
+                    reply_id = reaction.get('reply_to')
+                    thread_id = f'shout-{shout_id}'
+                    if reply_id and reaction.get('kind', '').lower() == 'comment':
+                        thread_id += f'{reply_id}'
+                    existing_group = groups_by_thread.get(thread_id)
+                    if existing_group:
+                        existing_group['seen'] = False
+                        existing_group['authors'].append(author_id)
+                        existing_group['reactions'] = existing_group['reactions'] or []
+                        existing_group['reactions'].append(reaction)
+                        groups_by_thread[thread_id] = existing_group
+                    else:
+                        group = group_notification(thread_id,
+                                                   authors=[author],
+                                                   shout=shout,
+                                                   reactions=[reaction],
+                                                   entity=notification.entity,
+                                                   action=notification.action)
+                        if group:
+                            groups_by_thread[thread_id] = group
+                            groups_amount += 1
+
         elif notification.entity == "follower":
-            thread_id = 'followers' if notification.action == 'follow' else 'unfollowers'
+            thread_id = 'followers'
+            follower = json.loads(payload)
             group = groups_by_thread.get(thread_id)
             if group:
-                group['authors'].append(payload)
+                if notification.action == 'follow':
+                    group['authors'].append(follower)
+                elif notification.action == 'unfollow':
+                    follower_id = follower.get('id')
+                    for author in group['authors']:
+                        if author.get('id') == follower_id:
+                            group['authors'].remove(author)
+                            break
             else:
-                group = group_follower(payload, seen)
+                group = group_notification(thread_id,
+                                           authors=[follower],
+                                           entity=notification.entity,
+                                           action=notification.action)
                 groups_amount += 1
             groups_by_thread[thread_id] = group
     return groups_by_thread, unread, total
@@ -188,11 +194,18 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
 @login_required
 async def load_notifications(_, info, after: int, limit: int = 50):
     author_id = info.context.get("author_id")
-    if author_id:
-        groups, unread, total = get_notifications_grouped(author_id, after, limit)
-        notifications = sorted(groups.values(), key=lambda group: group.updated_at, reverse=True)
-        return {"notifications": notifications, "total": total, "unread": unread, "error": None}
-    return {"notifications": [], "total": 0, "unread": 0, "error": None}
+    error = None
+    total = 0
+    unread = 0
+    notifications = []
+    try:
+        if author_id:
+            groups, unread, total = get_notifications_grouped(author_id, after, limit)
+            notifications = sorted(groups.values(), key=lambda group: group.updated_at, reverse=True)
+    except Exception as e:
+        error = e
+        logger.error(e)
+    return {"notifications": notifications, "total": total, "unread": unread, "error": error}
 
 
 @mutation.field('notification_mark_seen')
@@ -241,7 +254,7 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
     error = None
     author_id = info.context.get('author_id')
     if author_id:
-        [shout_id, reply_to_id] = thread.split('::')
+        [shout_id, reply_to_id] = thread.split(':')
         with local_session() as session:
             # TODO: handle new follower and new shout notifications
             new_reaction_notifications = (
@@ -272,8 +285,8 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
                 reaction_id = reaction.get('id')
                 if (
                         reaction_id not in exclude
-                        and str(reaction.get('shout')) == str(shout_id)
-                        and str(reaction.get('reply_to')) == str(reply_to_id)
+                        and reaction.get('shout') == shout_id
+                        and reaction.get('reply_to') == reply_to_id
                 ):
                     try:
                         ns = NotificationSeen(notification=n.id, viewer=author_id)
