@@ -167,7 +167,7 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
                 existing_group['reactions'].append(payload)
                 groups_by_thread[thread_id] = existing_group
             else:
-                group = group_reaction(payload, seen, notification.action)
+                group = group_reaction(payload, seen, notification.action)  # NOTE: last action will be group-wise
                 if group:
                     groups_by_thread[thread_id] = group
                     groups_amount += 1
