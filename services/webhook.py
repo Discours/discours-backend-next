@@ -40,7 +40,7 @@ class WebhookEndpoint(HTTPEndpoint):
                         if not author:
                             break
                         slug = f"{slug}-{len(session.query(Author).filter(Author.email == email).all()) + 1}"
-                    author = Author(user_id=user_id, slug=slug, name=name, pic=pic)
+                    author = Author(user=user_id, slug=slug, name=name, pic=pic)
                     session.add(author)
                     session.commit()
 
