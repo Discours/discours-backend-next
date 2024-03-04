@@ -84,7 +84,7 @@ def group_notification(thread, authors=None, shout=None, reactions=None, entity=
     }
 
 
-def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
+def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10, offset: int = 0):
     """
     Retrieves notifications for a given author.
 
@@ -92,6 +92,7 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
         author_id (int): The ID of the author for whom notifications are retrieved.
         after (int, optional): If provided, selects only notifications created after this timestamp will be considered.
         limit (int, optional): The maximum number of groupa to retrieve.
+        offset (int, optional): offset
 
     Returns:
         Dict[str, NotificationGroup], int, int: A dictionary where keys are thread IDs
@@ -115,7 +116,7 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
     groups_amount = 0
 
     for notification, seen in notifications:
-        if groups_amount >= limit:
+        if (groups_amount + offset) >= limit:
             break
 
         payload = json.loads(notification.payload)
@@ -131,7 +132,11 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
                 if author and shout:
                     author = author.dict()
                     shout = shout.dict()
-                    group = group_notification(thread_id, authors=[author], action=notification.action, shout=shout)
+                    group = group_notification(thread_id,
+                                               shout=shout,
+                                               authors=[author],
+                                               action=notification.action,
+                                               entity=notification.entity)
                     groups_by_thread[thread_id] = group
                     groups_amount += 1
 
@@ -192,7 +197,7 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10):
 
 @query.field('load_notifications')
 @login_required
-async def load_notifications(_, info, after: int, limit: int = 50):
+async def load_notifications(_, info, after: int, limit: int = 50, offset=0):
     author_id = info.context.get("author_id")
     error = None
     total = 0
