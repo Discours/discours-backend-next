@@ -30,7 +30,7 @@ class WebhookEndpoint(HTTPEndpoint):
             pic: str = user.get('picture', '')
 
             with local_session() as session:
-                author = session.query(Author).filter(Author.email == email).first()
+                author = session.query(Author).filter(Author.user == user_id).first()
                 if not author:
                     # If the author does not exist, create a new one
                     slug: str = email.split('@')[0].replace(".", "-").lower()
