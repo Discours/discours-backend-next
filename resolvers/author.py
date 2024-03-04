@@ -43,8 +43,9 @@ async def get_author(_, _info, slug='', author_id=None):
     try:
         if slug:
             q = select(Author).select_from(Author).filter(Author.slug == slug)
-            [author] = get_with_stat(q)
-            if author:
+            result = get_with_stat(q)
+            if result:
+                [author] = result
                 author_id = author.id
 
         if author_id:
@@ -55,8 +56,10 @@ async def get_author(_, _info, slug='', author_id=None):
             if cache:
                 author_dict = json.loads(cache)
             else:
-                [author] = get_with_stat(q)
-                author_dict = author.dict()
+                result = get_with_stat(q)
+                if result:
+                    [author] = result
+                    author_dict = author.dict()
             logger.debug(f'author to be stored: {author_dict}')
             if author:
                 await set_author_cache(author_dict)
@@ -85,9 +88,9 @@ async def get_author_by_user_id(user_id: str):
                 return author
 
         q = select(Author).filter(Author.user == user_id)
-
-        [author] = get_with_stat(q)
-        if author:
+        result = get_with_stat(q)
+        if result:
+            [author] = result
             await set_author_cache(author.dict())
     except Exception as exc:
         import traceback

@@ -133,8 +133,10 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
 @event.listens_for(Author, 'after_update')
 def after_author_update(mapper, connection, author: Author):
     q = select(Author).where(Author.id == author.id)
-    [author_with_stat] = get_with_stat(q)
-    asyncio.create_task(set_author_cache(author_with_stat.dict()))
+    result = get_with_stat(q)
+    if result:
+        [author_with_stat] = result
+        asyncio.create_task(set_author_cache(author_with_stat.dict()))
 
 
 @event.listens_for(TopicFollower, 'after_insert')
