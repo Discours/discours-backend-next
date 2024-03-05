@@ -174,7 +174,7 @@ def patch_topics(session, shout, topics_input):
 
 @mutation.field('update_shout')
 @login_required
-async def update_shout(_, info, shout_id, shout_input=None, publish=False):
+async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     user_id = info.context.get('user_id')
     roles = info.context.get('roles', [])
     shout_input = shout_input or {}
@@ -185,11 +185,9 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         return {"error": "unauthorized"}
     try:
         with local_session() as session:
-            logger.debug(user_id)
             author = session.query(Author).filter(Author.user == user_id).first()
-            logger.debug(author)
             if author:
-                logger.info(f'author detected {author.dict()}')
+                logger.info(f'author for shout#{shout_id} detected {author.dict()}')
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
                 if not shout_by_id:
                     return {'error': 'shout not found'}
