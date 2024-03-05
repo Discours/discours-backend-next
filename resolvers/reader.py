@@ -57,77 +57,72 @@ async def get_shout(_, info, slug=None, shout_id=None):
 
         q = q.filter(Shout.deleted_at.is_(None)).group_by(Shout.id)
 
-        try:
-            results = session.execute(q).first()
-            if results:
-                [
-                    shout,
-                    reacted_stat,
-                    commented_stat,
-                    likes_stat,
-                    dislikes_stat,
-                    _last_comment,
-                ] = results
+        results = session.execute(q).first()
+        if results:
+            [
+                shout,
+                reacted_stat,
+                commented_stat,
+                likes_stat,
+                dislikes_stat,
+                _last_comment,
+            ] = results
 
-                if not shout.published_at:
-                    user_id = info.context.get('user_id', '')
-                    roles = info.context.get('roles', [])
+            if not shout.published_at:
+                user_id = info.context.get('user_id', '')
+                roles = info.context.get('roles', [])
 
-                    author = session.query(Author).filter(Author.user == user_id).first()
-                    if not isinstance(author, Author):
-                        raise HTTPException(
-                            status_code=401, detail='shout is not published yet'
-                        )
-
-                    author_id = author.id if author else None
-                    if (
-                            author_id is not None
-                            and shout.created_by != author_id
-                            and not any(x == author_id for x in [a.id for a in shout.authors])
-                            and 'editor' not in roles
-                    ):
-                        raise HTTPException(
-                            status_code=401, detail='shout is not published yet'
-                        )
-
-                shout.stat = {
-                    'viewed': await ViewedStorage.get_shout(shout.slug),
-                    'reacted': reacted_stat,
-                    'commented': commented_stat,
-                    'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                }
-
-                for author_caption in (
-                    session.query(ShoutAuthor).join(Shout).where(
-                        and_(
-                            Shout.slug == slug,
-                            Shout.published_at.is_not(None),
-                            Shout.deleted_at.is_(None)
-                        ))
-                ):
-                    for author in shout.authors:
-                        if author.id == author_caption.author:
-                            author.caption = author_caption.caption
-                main_topic = (
-                    session.query(Topic.slug)
-                    .join(
-                        ShoutTopic,
-                        and_(
-                            ShoutTopic.topic == Topic.id,
-                            ShoutTopic.shout == shout.id,
-                            ShoutTopic.main.is_(True),
-                        ),
+                author = session.query(Author).filter(Author.user == user_id).first()
+                if not isinstance(author, Author):
+                    raise HTTPException(
+                        status_code=401, detail='shout is not published yet'
                     )
-                    .first()
-                )
 
-                if main_topic:
-                    shout.main_topic = main_topic[0]
-                return shout
-        except Exception:
-            raise HTTPException(
-                status_code=404, detail=f'shout {slug or shout_id} not found'
+                author_id = author.id if author else None
+                if (
+                        author_id is not None
+                        and shout.created_by != author_id
+                        and not any(x == author_id for x in [a.id for a in shout.authors])
+                        and 'editor' not in roles
+                ):
+                    raise HTTPException(
+                        status_code=401, detail='shout is not published yet'
+                    )
+
+            shout.stat = {
+                'viewed': await ViewedStorage.get_shout(shout.slug),
+                'reacted': reacted_stat,
+                'commented': commented_stat,
+                'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+            }
+
+            for author_caption in (
+                session.query(ShoutAuthor).join(Shout).where(
+                    and_(
+                        Shout.slug == slug,
+                        Shout.published_at.is_not(None),
+                        Shout.deleted_at.is_(None)
+                    ))
+            ):
+                for author in shout.authors:
+                    if author.id == author_caption.author:
+                        author.caption = author_caption.caption
+            main_topic = (
+                session.query(Topic.slug)
+                .join(
+                    ShoutTopic,
+                    and_(
+                        ShoutTopic.topic == Topic.id,
+                        ShoutTopic.shout == shout.id,
+                        ShoutTopic.main.is_(True),
+                    ),
+                )
+                .first()
             )
+
+            if main_topic:
+                shout.main_topic = main_topic[0]
+            return shout
 
 
 @query.field('load_shouts_by')
