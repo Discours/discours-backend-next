@@ -185,7 +185,9 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         return {"error": "unauthorized"}
     try:
         with local_session() as session:
+            logger.debug(user_id)
             author = session.query(Author).filter(Author.user == user_id).first()
+            logger.debug(author)
             if author:
                 logger.info(f'author detected {author.dict()}')
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
