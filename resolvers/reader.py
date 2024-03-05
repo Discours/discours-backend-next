@@ -69,10 +69,10 @@ async def get_shout(_, info, slug=None, shout_id=None):
             ] = results
 
             if not shout.published_at:
-                logger.debug('editing shout which is not published yet')
                 user_id = info.context.get('user_id', '')
                 roles = info.context.get('roles', [])
-
+                logger.debug(f'{user_id} is getting shout which is not published yet')
+                logger.debug(f'roles: {roles}')
                 author = session.query(Author).filter(Author.user == user_id).first()
                 if not isinstance(author, Author):
                     logger.warn('author is not found')
