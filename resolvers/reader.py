@@ -230,8 +230,8 @@ async def load_shouts_by(_, _info, options):
     return shouts
 
 
-@login_required
 @query.field('load_shouts_drafts')
+@login_required
 async def load_shouts_drafts(_, info):
     user_id = info.context.get('user_id')
     shouts = []
