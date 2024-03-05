@@ -70,6 +70,12 @@ async def get_shout(_, info, slug=None, shout_id=None):
 
             if not shout.published_at:
                 user_id = info.context.get('user_id', '')
+                if not user_id:
+                    logger.warn('user is not logged in')
+                    logger.debug(info)
+                    raise HTTPException(
+                        status_code=401, detail='shout is not published yet'
+                    )
                 roles = info.context.get('roles', [])
                 logger.debug(f'{user_id} is getting shout which is not published yet')
                 logger.debug(f'roles: {roles}')
