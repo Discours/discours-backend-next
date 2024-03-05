@@ -230,51 +230,8 @@ async def load_shouts_by(_, _info, options):
     return shouts
 
 
-@login_required
-@query.field('load_shouts_drafts')
-async def load_shouts_drafts(_, info):
-    user_id = info.context.get('user_id')
-    shouts = []
-    if user_id:
-        q = (
-            select(Shout)
-            .options(joinedload(Shout.authors), joinedload(Shout.topics))
-            .filter(
-                and_(
-                    Shout.deleted_at.is_not(None),
-                    Shout.published_at.is_(None)
-                )
-            )
-        )
-
-        shouts = []
-        with local_session() as session:
-            reader = session.query(Author).filter(Author.user == user_id).first()
-            if isinstance(reader, Author):
-                q = q.filter(Shout.created_by == reader.id)
-                q = q.group_by(Shout.id)
-                for [shout] in session.execute(q).unique():
-                    main_topic = (
-                        session.query(Topic.slug)
-                        .join(
-                            ShoutTopic,
-                            and_(
-                                ShoutTopic.topic == Topic.id,
-                                ShoutTopic.shout == shout.id,
-                                ShoutTopic.main.is_(True),
-                            ),
-                        )
-                        .first()
-                    )
-
-                    if main_topic:
-                        shout.main_topic = main_topic[0]
-                    shouts.append(shout)
-
-    return shouts
-
-@login_required
 @query.field('load_shouts_feed')
+@login_required
 async def load_shouts_feed(_, info, options):
     user_id = info.context['user_id']
 
