@@ -1,7 +1,6 @@
 from sqlalchemy import bindparam, distinct, or_, text
 from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
-from starlette.exceptions import HTTPException
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
@@ -42,19 +41,12 @@ def apply_filters(q, filters, author_id=None):
 
 
 @query.field('get_shout')
-@login_required
-async def get_shout(_, info, slug=None, shout_id=None):
+async def get_shout(_, info, slug: str):
     with local_session() as session:
         q = select(Shout).options(joinedload(Shout.authors), joinedload(Shout.topics))
         aliased_reaction = aliased(Reaction)
         q = add_reaction_stat_columns(q, aliased_reaction)
-
-        if slug is not None:
-            q = q.filter(Shout.slug == slug)
-
-        if shout_id is not None:
-            q = q.filter(Shout.id == shout_id)
-
+        q = q.filter(Shout.slug == slug)
         q = q.filter(Shout.deleted_at.is_(None)).group_by(Shout.id)
 
         results = session.execute(q).first()
@@ -67,37 +59,6 @@ async def get_shout(_, info, slug=None, shout_id=None):
                 dislikes_stat,
                 _last_comment,
             ] = results
-
-            if not shout.published_at:
-                user_id = info.context.get('user_id', '')
-                if not user_id:
-                    logger.warn('user is not logged in')
-                    logger.debug(info)
-                    raise HTTPException(
-                        status_code=401, detail='shout is not published yet'
-                    )
-                roles = info.context.get('roles', [])
-                logger.debug(f'{user_id} is getting shout which is not published yet')
-                logger.debug(f'roles: {roles}')
-                author = session.query(Author).filter(Author.user == user_id).first()
-                logger.debug(author)
-                if not author:
-                    logger.warn('author is not found')
-                    raise HTTPException(
-                        status_code=401, detail='shout is not published yet'
-                    )
-
-                author_id = author.id if author else None
-                if (
-                        author_id is not None
-                        and shout.created_by != author_id
-                        and not any(x == author_id for x in [a.id for a in shout.authors])
-                        and 'editor' not in roles
-                ):
-                    logger.warn('author have no permissions to read this not published shout')
-                    raise HTTPException(
-                        status_code=401, detail='shout is not published yet'
-                    )
 
             shout.stat = {
                 'viewed': await ViewedStorage.get_shout(shout.slug),

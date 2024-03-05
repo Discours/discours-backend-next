@@ -19,10 +19,34 @@ from services.search import search_service
 from services.logger import root_logger as logger
 
 
+@query.field('get_my_shout')
+@login_required
+async def get_my_shout(_, info, shout_id: int):
+    user_id = info.context.get('user_id')
+    shout = None
+    error = None
+    with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
+        shout = session.query(Shout).filter(Shout.id == shout_id).first()
+        if shout and author:
+            if not shout.published_at:
+                user_id = info.context.get('user_id', '')
+                roles = info.context.get('roles', [])
+                if not user_id:
+                    error = 'user is not logged in'
+                elif shout.created_by != author.id:
+                    error = 'author cannot edit this post'
+                elif 'editor' not in roles:
+                    error = 'user has no editor role'
+                elif not any([x.id == author.id for x in shout.authors]):
+                    error = 'author have no permissions to read this not published shout'
+    return {"error": error, "shout": shout}
+
+
 @query.field('get_shouts_drafts')
 @login_required
 async def get_shouts_drafts(_, info):
-    user_id = info.context['user_id']
+    user_id = info.context.get('user_id')
     shouts = []
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
