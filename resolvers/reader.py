@@ -69,11 +69,13 @@ async def get_shout(_, info, slug=None, shout_id=None):
             ] = results
 
             if not shout.published_at:
+                logger.debug('editing shout which is not published yet')
                 user_id = info.context.get('user_id', '')
                 roles = info.context.get('roles', [])
 
                 author = session.query(Author).filter(Author.user == user_id).first()
                 if not isinstance(author, Author):
+                    logger.warn('author is not found')
                     raise HTTPException(
                         status_code=401, detail='shout is not published yet'
                     )
@@ -85,6 +87,7 @@ async def get_shout(_, info, slug=None, shout_id=None):
                         and not any(x == author_id for x in [a.id for a in shout.authors])
                         and 'editor' not in roles
                 ):
+                    logger.warn('author have no permissions to read this not published shout')
                     raise HTTPException(
                         status_code=401, detail='shout is not published yet'
                     )
