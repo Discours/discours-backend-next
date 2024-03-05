@@ -229,9 +229,8 @@ async def load_shouts_by(_, _info, options):
 
     return shouts
 
-
-@query.field('load_shouts_drafts')
 @login_required
+@query.field('load_shouts_drafts')
 async def load_shouts_drafts(_, info):
     user_id = info.context['user_id']
 
@@ -272,9 +271,8 @@ async def load_shouts_drafts(_, info):
 
     return shouts
 
-
-@query.field('load_shouts_feed')
 @login_required
+@query.field('load_shouts_feed')
 async def load_shouts_feed(_, info, options):
     user_id = info.context['user_id']
 
