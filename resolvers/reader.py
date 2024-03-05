@@ -229,6 +229,7 @@ async def load_shouts_by(_, _info, options):
 
     return shouts
 
+
 @login_required
 @query.field('load_shouts_drafts')
 async def load_shouts_drafts(_, info):

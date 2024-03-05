@@ -175,12 +175,12 @@ def patch_topics(session, shout, topics_input):
 @mutation.field('update_shout')
 @login_required
 async def update_shout(_, info, shout_id, shout_input=None, publish=False):
+    user_id = info.context.get('user_id')
+    roles = info.context.get('roles', [])
+    shout_input = shout_input or {}
+    if not user_id:
+        return {"error": "unauthorized"}
     try:
-        user_id = info.context.get('user_id')
-        if not user_id:
-            return {"error": "unauthorized"}
-        roles = info.context.get('roles', [])
-        shout_input = shout_input or {}
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
             current_time = int(time.time())
@@ -206,7 +206,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                         )
                     shout_input['slug'] = slug
 
-            if isinstance(author, Author) and isinstance(shout_id, int):
+            if author and isinstance(shout_id, int):
                 shout = (
                     session.query(Shout)
                     .options(joinedload(Shout.authors), joinedload(Shout.topics))
