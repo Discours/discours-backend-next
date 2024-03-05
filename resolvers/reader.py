@@ -75,7 +75,9 @@ async def get_shout(_, info, slug=None, shout_id=None):
 
                     author = session.query(Author).filter(Author.user == user_id).first()
                     if not isinstance(author, Author):
-                        return {'error': 'access denied'}
+                        raise HTTPException(
+                            status_code=401, detail='shout is not published yet'
+                        )
 
                     author_id = author.id if author else None
                     if (
@@ -84,7 +86,9 @@ async def get_shout(_, info, slug=None, shout_id=None):
                             and not any(x == author_id for x in [a.id for a in shout.authors])
                             and 'editor' not in roles
                     ):
-                        return {'error': 'access denied'}
+                        raise HTTPException(
+                            status_code=401, detail='shout is not published yet'
+                        )
 
                 shout.stat = {
                     'viewed': await ViewedStorage.get_shout(shout.slug),
