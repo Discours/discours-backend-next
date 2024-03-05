@@ -178,17 +178,18 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
     user_id = info.context.get('user_id')
     roles = info.context.get('roles', [])
     shout_input = shout_input or {}
+    current_time = int(time.time())
+    shout_id = shout_id or shout_input.get('id')
+    slug = shout_input.get('slug')
     if not user_id:
         return {"error": "unauthorized"}
     try:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
-            current_time = int(time.time())
-            shout_id = shout_id or shout_input.get('id')
-            slug = shout_input.get('slug')
-            if slug:
-
+            if author:
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
+                if not shout_by_id:
+                    return {'error': 'shout not found'}
                 if shout_by_id and slug != shout_by_id.slug:
                     same_slug_shout = (
                         session.query(Shout)
@@ -206,19 +207,9 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                         )
                     shout_input['slug'] = slug
 
-            if author and isinstance(shout_id, int):
-                shout = (
-                    session.query(Shout)
-                    .options(joinedload(Shout.authors), joinedload(Shout.topics))
-                    .filter(Shout.id == shout_id)
-                    .first()
-                )
-
-                if not shout:
-                    return {'error': 'shout not found'}
                 if (
-                    shout.created_by != author.id
-                    and not filter(lambda x: x == author.id, shout.authors)
+                    shout_by_id.created_by != author.id
+                    and not filter(lambda x: x == author.id, shout_by_id.authors)
                     and 'editor' not in roles
                 ):
                     return {'error': 'access denied'}
@@ -226,28 +217,28 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
                 # topics patch
                 topics_input = shout_input.get('topics')
                 if topics_input:
-                    patch_topics(session, shout, topics_input)
+                    patch_topics(session, shout_by_id, topics_input)
                     del shout_input['topics']
 
                 # main topic
                 main_topic = shout_input.get('main_topic')
                 if main_topic:
-                    patch_main_topic(session, main_topic, shout)
+                    patch_main_topic(session, main_topic, shout_by_id)
 
                 shout_input['updated_at'] = current_time
                 shout_input['published_at'] = current_time if publish else None
-                Shout.update(shout, shout_input)
-                session.add(shout)
+                Shout.update(shout_by_id, shout_input)
+                session.add(shout_by_id)
                 session.commit()
 
-                shout_dict = shout.dict()
+                shout_dict = shout_by_id.dict()
 
                 if not publish:
                     await notify_shout(shout_dict, 'update')
                 else:
                     await notify_shout(shout_dict, 'published')
                     # search service indexing
-                    search_service.index(shout)
+                    search_service.index(shout_by_id)
 
                 return {'shout': shout_dict}
     except Exception as exc:
