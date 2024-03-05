@@ -42,7 +42,8 @@ def apply_filters(q, filters, author_id=None):
 
 
 @query.field('get_shout')
-async def get_shout(_, _info, slug=None, shout_id=None):
+@login_required
+async def get_shout(_, info, slug=None, shout_id=None):
     with local_session() as session:
         q = select(Shout).options(joinedload(Shout.authors), joinedload(Shout.topics))
         aliased_reaction = aliased(Reaction)
@@ -68,6 +69,23 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                     _last_comment,
                 ] = results
 
+                if not shout.published_at:
+                    user_id = info.context.get('user_id', '')
+                    roles = info.context.get('roles', [])
+
+                    author = session.query(Author).filter(Author.user == user_id).first()
+                    if not isinstance(author, Author):
+                        return {'error': 'access denied'}
+
+                    author_id = author.id if author else None
+                    if (
+                            author_id is not None
+                            and shout.created_by != author_id
+                            and not any(x == author_id for x in [a.id for a in shout.authors])
+                            and 'editor' not in roles
+                    ):
+                        return {'error': 'access denied'}
+
                 shout.stat = {
                     'viewed': await ViewedStorage.get_shout(shout.slug),
                     'reacted': reacted_stat,
@@ -76,7 +94,12 @@ async def get_shout(_, _info, slug=None, shout_id=None):
                 }
 
                 for author_caption in (
-                    session.query(ShoutAuthor).join(Shout).where(Shout.slug == slug)
+                    session.query(ShoutAuthor).join(Shout).where(
+                        and_(
+                            Shout.slug == slug,
+                            Shout.published_at.is_not(None),
+                            Shout.deleted_at.is_(None)
+                        ))
                 ):
                     for author in shout.authors:
                         if author.id == author_caption.author:
@@ -128,7 +151,12 @@ async def load_shouts_by(_, _info, options):
     q = (
         select(Shout)
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
-        .where(and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None)))
+        .where(
+            and_(
+                Shout.deleted_at.is_(None),
+                Shout.published_at.is_not(None)
+            )
+        )
     )
 
     # stats
@@ -201,7 +229,12 @@ async def load_shouts_drafts(_, info):
     q = (
         select(Shout)
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
-        .filter(and_(Shout.deleted_at.is_(None), Shout.published_at.is_(None)))
+        .filter(
+            and_(
+                Shout.deleted_at.is_not(None),
+                Shout.published_at.is_(None)
+            )
+        )
     )
 
     shouts = []
