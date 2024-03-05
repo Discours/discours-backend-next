@@ -74,7 +74,8 @@ async def get_shout(_, info, slug=None, shout_id=None):
                 logger.debug(f'{user_id} is getting shout which is not published yet')
                 logger.debug(f'roles: {roles}')
                 author = session.query(Author).filter(Author.user == user_id).first()
-                if not isinstance(author, Author):
+                logger.debug(author)
+                if not author:
                     logger.warn('author is not found')
                     raise HTTPException(
                         status_code=401, detail='shout is not published yet'
