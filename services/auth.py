@@ -83,15 +83,14 @@ def login_required(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         info = args[1]
-        context = info.context
-        req = context.get('request')
+        req = info.context.get('request')
         authorized = await check_auth(req)
         if authorized:
             user_id, user_roles = authorized
             if user_id and user_roles:
                 logger.info(f' got {user_id} roles: {user_roles}')
-                context['user_id'] = user_id.strip()
-                context['roles'] = user_roles
+                info.context['user_id'] = user_id.strip()
+                info.context['roles'] = user_roles
         return await f(*args, **kwargs)
 
     return decorated_function
