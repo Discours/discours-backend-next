@@ -179,6 +179,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     roles = info.context.get('roles', [])
     shout_input = shout_input or {}
     current_time = int(time.time())
+    shout_id = shout_id or shout_input.get('id', shout_id)
     slug = shout_input.get('slug')
     if not user_id:
         return {"error": "unauthorized"}
