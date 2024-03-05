@@ -187,6 +187,7 @@ async def update_shout(_, info, shout_id, shout_input=None, publish=False):
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
             if author:
+                logger.info(f'author detected {author.dict()}')
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
                 if not shout_by_id:
                     return {'error': 'shout not found'}
