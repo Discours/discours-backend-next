@@ -185,8 +185,8 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
 @mutation.field('create_reaction')
 @login_required
 async def create_reaction(_, info, reaction):
-    user_id = info.context['user_id']
-
+    logger.debug(f'{info.context} for {reaction}')
+    user_id = info.context.get('user_id')
     shout_id = reaction.get('shout')
 
     if not shout_id:
@@ -231,6 +231,7 @@ async def create_reaction(_, info, reaction):
 @mutation.field('update_reaction')
 @login_required
 async def update_reaction(_, info, reaction):
+    logger.debug(f'{info.context} for {reaction}')
     user_id = info.context.get('user_id')
     roles = info.context.get('roles')
     rid = reaction.get('id')
@@ -289,6 +290,7 @@ async def update_reaction(_, info, reaction):
 @mutation.field('delete_reaction')
 @login_required
 async def delete_reaction(_, info, reaction_id: int):
+    logger.debug(f'{info.context} for {reaction_id}')
     user_id = info.context.get('user_id')
     roles = info.context.get('roles', [])
     if user_id:
