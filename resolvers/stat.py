@@ -54,9 +54,7 @@ def add_topic_stat_columns(q):
         func.coalesce(func.sum(sub_comments.c.comments_count), 0).label('comments_stat')
     )
 
-    q = q.group_by(
-        Topic.id, 'shouts_stat', 'authors_stat', 'followers_stat', 'comments_stat'
-    )
+    q = q.group_by(Topic.id, sub_comments.c.comments_stat)
 
     return q
 
