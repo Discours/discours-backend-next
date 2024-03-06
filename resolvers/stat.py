@@ -40,7 +40,7 @@ def add_topic_stat_columns(q):
         .join(
             Reaction,
             and_(
-                Reaction.shout_id == Shout.id,
+                Reaction.shout == Shout.id,
                 Reaction.kind == ReactionKind.COMMENT.value,
                 Reaction.deleted_at.is_(None),
             ),
