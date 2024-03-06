@@ -33,13 +33,12 @@ async def get_my_shout(_, info, shout_id: int):
                 user_id = info.context.get('user_id', '')
                 roles = info.context.get('roles', [])
                 if not user_id:
-                    error = 'user is not logged in'
-                elif shout.created_by != author.id:
-                    error = 'author cannot edit this post'
-                elif 'editor' not in roles:
-                    error = 'user has no editor role'
-                elif not any([x.id == author.id for x in shout.authors]):
-                    error = 'author have no permissions to read this not published shout'
+                    error = 'unauthorized'
+                else:
+                    if 'editor' in roles or filter(lambda x: x.id == author.id, [x for x in shout.authors]):
+                        return {"error": error, "shout": shout}
+                    else:
+                        error = 'forbidden'
     return {"error": error, "shout": shout}
 
 
@@ -232,40 +231,37 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         )
                     shout_input['slug'] = slug
 
-                if (
-                    shout_by_id.created_by != author.id
-                    and not filter(lambda x: x == author.id, shout_by_id.authors)
-                    and 'editor' not in roles
-                ):
-                    return {'error': 'access denied'}
+                if filter(lambda x: x.id == author.id, [x for x in shout_by_id.authors]) or 'editor' in roles:
+                    # topics patch
+                    topics_input = shout_input.get('topics')
+                    if topics_input:
+                        patch_topics(session, shout_by_id, topics_input)
+                        del shout_input['topics']
 
-                # topics patch
-                topics_input = shout_input.get('topics')
-                if topics_input:
-                    patch_topics(session, shout_by_id, topics_input)
-                    del shout_input['topics']
+                    # main topic
+                    main_topic = shout_input.get('main_topic')
+                    if main_topic:
+                        patch_main_topic(session, main_topic, shout_by_id)
 
-                # main topic
-                main_topic = shout_input.get('main_topic')
-                if main_topic:
-                    patch_main_topic(session, main_topic, shout_by_id)
+                    shout_input['updated_at'] = current_time
+                    shout_input['published_at'] = current_time if publish else None
+                    Shout.update(shout_by_id, shout_input)
+                    session.add(shout_by_id)
+                    session.commit()
 
-                shout_input['updated_at'] = current_time
-                shout_input['published_at'] = current_time if publish else None
-                Shout.update(shout_by_id, shout_input)
-                session.add(shout_by_id)
-                session.commit()
+                    shout_dict = shout_by_id.dict()
 
-                shout_dict = shout_by_id.dict()
+                    if not publish:
+                        await notify_shout(shout_dict, 'update')
+                    else:
+                        await notify_shout(shout_dict, 'published')
+                        # search service indexing
+                        search_service.index(shout_by_id)
 
-                if not publish:
-                    await notify_shout(shout_dict, 'update')
+                    return {'shout': shout_dict, 'error': None}
                 else:
-                    await notify_shout(shout_dict, 'published')
-                    # search service indexing
-                    search_service.index(shout_by_id)
+                    return {'error': 'access denied', 'shout': None}
 
-                return {'shout': shout_dict}
     except Exception as exc:
         logger.error(exc)
         logger.error(f' cannot update with data: {shout_input}')
@@ -275,7 +271,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 
 @mutation.field('delete_shout')
 @login_required
-async def delete_shout(_, info, shout_id):
+async def delete_shout(_, info, shout_id: int):
     user_id = info.context.get('user_id')
     roles = info.context.get('roles')
     if user_id:
@@ -285,24 +281,20 @@ async def delete_shout(_, info, shout_id):
             if not shout:
                 return {'error': 'invalid shout id'}
             if author and shout:
-                if (
-                    shout.created_by is not author.id
-                    and author.id not in shout.authors
-                    and 'editor' not in roles
-                ):
+                # NOTE: only owner and editor can mark the shout as deleted
+                if shout.created_by == author.id or 'editor' in roles:
+                    for author_id in shout.authors:
+                        reactions_unfollow(author_id, shout_id)
+
+                    shout_dict = shout.dict()
+                    shout_dict['deleted_at'] = int(time.time())
+                    Shout.update(shout, shout_dict)
+                    session.add(shout)
+                    session.commit()
+                    await notify_shout(shout_dict, 'delete')
+                    return {'error': None}
+                else:
                     return {'error': 'access denied'}
-
-                for author_id in shout.authors:
-                    reactions_unfollow(author_id, shout_id)
-
-                shout_dict = shout.dict()
-                shout_dict['deleted_at'] = int(time.time())
-                Shout.update(shout, shout_dict)
-                session.add(shout)
-                session.commit()
-                await notify_shout(shout_dict, 'delete')
-
-    return {}
 
 
 def handle_proposing(session, r, shout):
