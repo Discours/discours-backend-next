@@ -148,7 +148,7 @@ async def _create_reaction(session, shout, author, reaction):
     return rdict
 
 
-def check_rating(reaction: dict, shout_id: int, session, author: Author):
+def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
     kind = reaction.get('kind')
     opposite_kind = (
         ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
@@ -208,11 +208,14 @@ async def create_reaction(_, info, reaction):
                     return {'error': 'cannot create reaction without a kind'}
 
                 if kind in RATING_REACTIONS:
-                    result = check_rating(reaction, shout_id, session, author)
-                    if result:
-                        return result
+                    error_result = prepare_new_rating(reaction, shout_id, session, author)
+                    if error_result:
+                        return error_result
 
                 rdict = await _create_reaction(session, shout, author, reaction)
+
+                # TODO: call recount ratings periodically
+
                 return {'reaction': rdict}
     except Exception as e:
         import traceback
