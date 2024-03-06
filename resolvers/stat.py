@@ -31,21 +31,32 @@ def add_topic_stat_columns(q):
                 'followers_stat'
             )
         )
-        # TODO: topic.stat.comments
-        # .outerjoin(aliased_reaction)
-        # .add_columns(
-        #     func.count(distinct(aliased_reaction.id)).filter(
-        #         and_(
-        #             aliased_reaction.created_by == Author.id,
-        #             aliased_reaction.kind == ReactionKind.COMMENT.value,
-        #             aliased_reaction.deleted_at.is_(None),
-        #             )
-        #     )
-        #     .label('comments_count')
-        # )
+    )
+    # Create a subquery for comments count
+    sub_comments = (
+        select(
+            Shout.id, func.coalesce(func.count(Reaction.id), 0).label('comments_count')
+        )
+        .join(
+            Reaction,
+            and_(
+                Reaction.shout_id == Shout.id,
+                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.deleted_at.is_(None),
+            ),
+        )
+        .group_by(Shout.id)
+        .subquery()
     )
 
-    q = q.group_by(Topic.id)
+    q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.shout_id)
+    q = q.add_columns(
+        func.coalesce(func.sum(sub_comments.c.comments_count), 0).label('comments_stat')
+    )
+
+    q = q.group_by(
+        Topic.id, 'shouts_stat', 'authors_stat', 'followers_stat', 'comments_stat'
+    )
 
     return q
 
@@ -73,8 +84,7 @@ def add_author_stat_columns(q):
     # Create a subquery for comments count
     sub_comments = (
         select(
-            Author.id,
-            func.coalesce(func.count(Reaction.id), 0).label('comments_stat')
+            Author.id, func.coalesce(func.count(Reaction.id), 0).label('comments_stat')
         )
         .outerjoin(
             Reaction,
@@ -82,7 +92,7 @@ def add_author_stat_columns(q):
                 Reaction.created_by == Author.id,
                 Reaction.kind == ReactionKind.COMMENT.value,
                 Reaction.deleted_at.is_(None),
-                ),
+            ),
         )
         .group_by(Author.id)
         .subquery()

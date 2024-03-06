@@ -28,8 +28,10 @@ class WebhookEndpoint(HTTPEndpoint):
                     status_code=400, detail='User data is not a dictionary'
                 )
             user_id: str = user.get('id')
-            name: str = (f"{user.get('given_name', user.get('slug'))} {user.get('middle_name', '')}" +
-                         "{user.get('family_name', '')}".strip()) or 'Аноним'
+            name: str = (
+                f"{user.get('given_name', user.get('slug'))} {user.get('middle_name', '')}"
+                + "{user.get('family_name', '')}".strip()
+            ) or 'Аноним'
             email: str = user.get('email', '')
             pic: str = user.get('picture', '')
 
