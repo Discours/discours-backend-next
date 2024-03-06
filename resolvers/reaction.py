@@ -284,15 +284,15 @@ async def update_reaction(_, info, reaction):
 @mutation.field('delete_reaction')
 @login_required
 async def delete_reaction(_, info, reaction_id: int):
-    user_id = info.context['user_id']
-    roles = info.context['roles']
+    user_id = info.context.get('user_id')
+    roles = info.context('roles', [])
     if isinstance(reaction_id, int) and user_id and isinstance(roles, list):
         with local_session() as session:
             try:
                 author = session.query(Author).filter(Author.user == user_id).one()
                 r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
                 if r and author:
-                    if r.created_by is author.id and 'editor' not in roles:
+                    if r.created_by != author.id and 'editor' not in roles:
                         return {'error': 'access denied'}
 
                     if r.kind in [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]:
