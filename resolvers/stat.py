@@ -49,7 +49,7 @@ def add_topic_stat_columns(q):
         .subquery()
     )
 
-    q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.shout_id)
+    q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.shout)
     q = q.add_columns(
         func.coalesce(func.sum(sub_comments.c.comments_count), 0).label('comments_stat')
     )
