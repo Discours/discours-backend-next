@@ -285,7 +285,7 @@ async def update_reaction(_, info, reaction):
 @login_required
 async def delete_reaction(_, info, reaction_id: int):
     user_id = info.context.get('user_id')
-    roles = info.context('roles', [])
+    roles = info.context.get('roles', [])
     if isinstance(reaction_id, int) and user_id and isinstance(roles, list):
         with local_session() as session:
             try:
