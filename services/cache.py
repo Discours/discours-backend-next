@@ -20,21 +20,21 @@ DEFAULT_FOLLOWS = {
 }
 
 
-async def set_author_cache(author: dict, ttl=25 * 60 * 60):
+async def set_author_cache(author: dict):
     payload = json.dumps(author, cls=CustomJSONEncoder)
-    await redis.execute('SET', f'user:{author.get("user")}:author', ttl, payload)
-    await redis.execute('SET', f'id:{author.get("id")}:author', ttl, payload)
+    await redis.execute('SET', f'user:{author.get("user")}:author', payload)
+    await redis.execute('SET', f'id:{author.get("id")}:author', payload)
 
 
-async def update_author_followers_cache(author_id: int, followers, ttl=25 * 60 * 60):
+async def update_author_followers_cache(author_id: int, followers):
     payload = json.dumps(followers, cls=CustomJSONEncoder)
-    await redis.execute('SET', f'author:{author_id}:followers', ttl, payload)
+    await redis.execute('SET', f'author:{author_id}:followers', payload)
 
 
-async def set_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
+async def set_follows_topics_cache(follows, author_id: int):
     try:
         payload = json.dumps(follows, cls=CustomJSONEncoder)
-        await redis.execute('SET', f'author:{author_id}:follows-topics', ttl, payload)
+        await redis.execute('SET', f'author:{author_id}:follows-topics', payload)
     except Exception as exc:
         logger.error(exc)
         import traceback
@@ -43,15 +43,14 @@ async def set_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
         logger.error(exc)
 
 
-async def set_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60):
+async def set_follows_authors_cache(follows, author_id: int):
     try:
         payload = json.dumps(follows, cls=CustomJSONEncoder)
-        await redis.execute(
-            'SET', f'author:{author_id}:follows-authors', ttl, payload
-        )
-    except Exception:
+        await redis.execute('SET', f'author:{author_id}:follows-authors', payload)
+    except Exception as exc:
         import traceback
 
+        logger.error(exc)
         exc = traceback.format_exc()
         logger.error(exc)
 
