@@ -32,7 +32,7 @@ type Query {
   load_shouts_random_topic(limit: Int!): CommonResult!  # { topic shouts }
 
   # editor
-  get_my_shout(shout_id: Int!): CommonResult
+  get_my_shout(shout_id: Int!): CommonResult!
   get_shouts_drafts: [Shout]
 
   # topic
