@@ -286,7 +286,7 @@ async def update_reaction(_, info, reaction):
 async def delete_reaction(_, info, reaction_id: int):
     user_id = info.context.get('user_id')
     roles = info.context.get('roles', [])
-    if isinstance(reaction_id, int) and user_id and isinstance(roles, list):
+    if user_id:
         with local_session() as session:
             try:
                 author = session.query(Author).filter(Author.user == user_id).one()
