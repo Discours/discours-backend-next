@@ -72,14 +72,17 @@ def add_author_stat_columns(q):
 
     # Create a subquery for comments count
     sub_comments = (
-        select(Author.id, func.count(Reaction.id).label('comments_stat'))
-        .join(
+        select(
+            Author.id,
+            func.coalesce(func.count(Reaction.id), 0).label('comments_stat')
+        )
+        .outerjoin(
             Reaction,
             and_(
                 Reaction.created_by == Author.id,
                 Reaction.kind == ReactionKind.COMMENT.value,
                 Reaction.deleted_at.is_(None),
-            ),
+                ),
         )
         .group_by(Author.id)
         .subquery()
