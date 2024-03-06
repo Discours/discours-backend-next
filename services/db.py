@@ -21,10 +21,7 @@ inspector = inspect(engine)
 configure_mappers()
 T = TypeVar('T')
 REGISTRY: Dict[str, type] = {}
-FILTERED_FIELDS = [
-    '_sa_instance_state',
-    'search_vector'
-]
+FILTERED_FIELDS = ['_sa_instance_state', 'search_vector']
 
 
 # noinspection PyUnusedLocal
@@ -47,7 +44,9 @@ class Base(declarative_base()):
         REGISTRY[cls.__name__] = cls
 
     def dict(self) -> Dict[str, Any]:
-        column_names = filter(lambda x: x not in FILTERED_FIELDS, self.__table__.columns.keys())
+        column_names = filter(
+            lambda x: x not in FILTERED_FIELDS, self.__table__.columns.keys()
+        )
         try:
             data = {}
             for c in column_names:
@@ -76,7 +75,9 @@ Base.metadata.create_all(bind=engine)
 
 
 # Функция для вывода полного трейсбека при предупреждениях
-def warning_with_traceback(message: Warning | str, category, filename: str, lineno: int, file=None, line=None):
+def warning_with_traceback(
+    message: Warning | str, category, filename: str, lineno: int, file=None, line=None
+):
     tb = traceback.format_stack()
     tb_str = ''.join(tb)
     return f'{message} ({filename}, {lineno}): {category.__name__}\n{tb_str}'

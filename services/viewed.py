@@ -73,7 +73,9 @@ class ViewedStorage:
                 if now_date == self.start_date:
                     logger.info(' * Данные актуализованы!')
                 else:
-                    logger.info(f' * Файл просмотров {VIEWS_FILEPATH} создан: {self.start_date}')
+                    logger.info(
+                        f' * Файл просмотров {VIEWS_FILEPATH} создан: {self.start_date}'
+                    )
 
                 with open(VIEWS_FILEPATH, 'r') as file:
                     precounted_views = json.load(file)

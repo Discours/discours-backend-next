@@ -47,12 +47,14 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
             # If not multiline or no message, use the default formatting
             return super().format(record)
 
+
 # Create a MultilineColoredFormatter object for colorized logging
 formatter = MultilineColoredFormatter(fmt_string, **fmt_config)
 
 # Create a stream handler for logging output
 stream = logging.StreamHandler()
 stream.setFormatter(formatter)
+
 
 def get_colorful_logger(name='main'):
     # Create and configure the logger
@@ -61,6 +63,7 @@ def get_colorful_logger(name='main'):
     logger.addHandler(stream)
 
     return logger
+
 
 # Set up the root logger with the same formatting
 root_logger = logging.getLogger()

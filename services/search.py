@@ -113,7 +113,9 @@ class SearchService:
                     mapping = result.get('mapping')
                     if mapping and mapping != expected_mapping:
                         logger.debug(f' найдена структура индексации: {mapping}')
-                        logger.warn(' требуется другая структура индексации, переиндексация')
+                        logger.warn(
+                            ' требуется другая структура индексации, переиндексация'
+                        )
                         await self.recreate_index()
 
     async def recreate_index(self):
@@ -125,7 +127,9 @@ class SearchService:
         if self.client:
             id_ = str(shout.id)
             logger.debug(f' Индексируем пост {id_}')
-            asyncio.create_task(self.client.index(index=self.index_name, id=id_, body=shout.dict()))
+            asyncio.create_task(
+                self.client.index(index=self.index_name, id=id_, body=shout.dict())
+            )
 
     async def search(self, text, limit, offset):
         logger.debug(f' Ищем: {text}')

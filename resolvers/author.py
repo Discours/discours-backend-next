@@ -66,6 +66,7 @@ async def get_author(_, _info, slug='', author_id=None):
                 return author_dict
     except Exception as exc:
         import traceback
+
         logger.error(exc)
         exc = traceback.format_exc()
         logger.error(exc)
@@ -94,6 +95,7 @@ async def get_author_by_user_id(user_id: str):
             await set_author_cache(author.dict())
     except Exception as exc:
         import traceback
+
         traceback.print_exc()
         logger.error(exc)
     return author
@@ -154,17 +156,19 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=None):
             logger.debug(f'getting {author_id} follows authors')
             cached = await redis.execute('GET', rkey)
             # logger.debug(f'AUTHOR CACHED {cached}')
-            authors = json.loads(cached) if cached else author_follows_authors(author_id)
+            authors = (
+                json.loads(cached) if cached else author_follows_authors(author_id)
+            )
             if not cached:
                 prepared = [author.dict() for author in authors]
-                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
+                await redis.execute('SETEX', rkey, 24 * 60 * 60, json.dumps(prepared))
 
             rkey = f'author:{author_id}:follows-topics'
             cached = await redis.execute('GET', rkey)
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 prepared = [topic.dict() for topic in topics]
-                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
+                await redis.execute('SETEX', rkey, 24 * 60 * 60, json.dumps(prepared))
             return {
                 'topics': topics,
                 'authors': authors,
@@ -193,7 +197,7 @@ async def get_author_follows_topics(_, _info, slug='', user=None, author_id=None
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 prepared = [topic.dict() for topic in topics]
-                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
+                await redis.execute('SETEX', rkey, 24 * 60 * 60, json.dumps(prepared))
             return topics
         else:
             raise ValueError('Author not found')
@@ -213,10 +217,12 @@ async def get_author_follows_authors(_, _info, slug='', user=None, author_id=Non
             logger.debug(f'getting {author_id} follows authors')
             rkey = f'author:{author_id}:follows-authors'
             cached = await redis.execute('GET', rkey)
-            authors = json.loads(cached) if cached else author_follows_authors(author_id)
+            authors = (
+                json.loads(cached) if cached else author_follows_authors(author_id)
+            )
             if not cached:
                 prepared = [author.dict() for author in authors]
-                await redis.execute('SETEX', rkey, 24*60*60, json.dumps(prepared))
+                await redis.execute('SETEX', rkey, 24 * 60 * 60, json.dumps(prepared))
             return authors
         else:
             raise ValueError('Author not found')
@@ -245,7 +251,11 @@ async def get_author_followers(_, _info, slug: str):
     try:
         with local_session() as session:
             author_alias = aliased(Author)
-            author_id = session.query(author_alias.id).filter(author_alias.slug == slug).scalar()
+            author_id = (
+                session.query(author_alias.id)
+                .filter(author_alias.slug == slug)
+                .scalar()
+            )
             if author_id:
                 cached = await redis.execute('GET', f'author:{author_id}:followers')
                 results = []
@@ -256,10 +266,14 @@ async def get_author_followers(_, _info, slug: str):
                         and_(
                             author_follower_alias.author == author_id,
                             author_follower_alias.follower == Author.id,
-                        )
+                        ),
                     )
                     results = get_with_stat(q)
-                    _ = asyncio.create_task(update_author_followers_cache(author_id, [x.dict() for x in results]))
+                    _ = asyncio.create_task(
+                        update_author_followers_cache(
+                            author_id, [x.dict() for x in results]
+                        )
+                    )
                     logger.debug(f'@{slug} cache updated with {len(results)} followers')
                     return results
                 else:
@@ -267,6 +281,7 @@ async def get_author_followers(_, _info, slug: str):
                     return json.loads(cached)
     except Exception as exc:
         import traceback
+
         logger.error(exc)
         logger.error(traceback.format_exc())
         return []

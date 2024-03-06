@@ -208,7 +208,9 @@ async def create_reaction(_, info, reaction):
                     return {'error': 'cannot create reaction without a kind'}
 
                 if kind in RATING_REACTIONS:
-                    error_result = prepare_new_rating(reaction, shout_id, session, author)
+                    error_result = prepare_new_rating(
+                        reaction, shout_id, session, author
+                    )
                     if error_result:
                         return error_result
 

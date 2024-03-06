@@ -22,17 +22,16 @@ from services.db import local_session
 from services.logger import root_logger as logger
 
 
-def query_notifications(author_id: int, after: int = 0) -> Tuple[int, int, List[Tuple[Notification, bool]]]:
+def query_notifications(
+    author_id: int, after: int = 0
+) -> Tuple[int, int, List[Tuple[Notification, bool]]]:
     notification_seen_alias = aliased(NotificationSeen)
-    q = (
-        select(Notification, notification_seen_alias.viewer.label("seen"))
-        .outerjoin(
-            NotificationSeen,
-            and_(
-                NotificationSeen.viewer == author_id,
-                NotificationSeen.notification == Notification.id,
-            ),
-        )
+    q = select(Notification, notification_seen_alias.viewer.label('seen')).outerjoin(
+        NotificationSeen,
+        and_(
+            NotificationSeen.viewer == author_id,
+            NotificationSeen.notification == Notification.id,
+        ),
     )
     if after:
         q = q.filter(Notification.created_at > after)
@@ -70,21 +69,25 @@ def query_notifications(author_id: int, after: int = 0) -> Tuple[int, int, List[
     return total, unread, notifications
 
 
-def group_notification(thread, authors=None, shout=None, reactions=None, entity="follower", action="follow"):
+def group_notification(
+    thread, authors=None, shout=None, reactions=None, entity='follower', action='follow'
+):
     reactions = reactions or []
     authors = authors or []
     return {
-        "thread": thread,
-        "authors": authors,
-        "updated_at": int(time.time()),
-        "shout": shout,
-        "reactions": reactions,
-        "entity": entity,
-        "action": action
+        'thread': thread,
+        'authors': authors,
+        'updated_at': int(time.time()),
+        'shout': shout,
+        'reactions': reactions,
+        'entity': entity,
+        'action': action,
     }
 
 
-def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10, offset: int = 0):
+def get_notifications_grouped(
+    author_id: int, after: int = 0, limit: int = 10, offset: int = 0
+):
     """
     Retrieves notifications for a given author.
 
@@ -132,11 +135,13 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10, o
                 if author and shout:
                     author = author.dict()
                     shout = shout.dict()
-                    group = group_notification(thread_id,
-                                               shout=shout,
-                                               authors=[author],
-                                               action=notification.action,
-                                               entity=notification.entity)
+                    group = group_notification(
+                        thread_id,
+                        shout=shout,
+                        authors=[author],
+                        action=notification.action,
+                        entity=notification.entity,
+                    )
                     groups_by_thread[thread_id] = group
                     groups_amount += 1
 
@@ -162,17 +167,19 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10, o
                         existing_group['reactions'].append(reaction)
                         groups_by_thread[thread_id] = existing_group
                     else:
-                        group = group_notification(thread_id,
-                                                   authors=[author],
-                                                   shout=shout,
-                                                   reactions=[reaction],
-                                                   entity=notification.entity,
-                                                   action=notification.action)
+                        group = group_notification(
+                            thread_id,
+                            authors=[author],
+                            shout=shout,
+                            reactions=[reaction],
+                            entity=notification.entity,
+                            action=notification.action,
+                        )
                         if group:
                             groups_by_thread[thread_id] = group
                             groups_amount += 1
 
-        elif notification.entity == "follower":
+        elif notification.entity == 'follower':
             thread_id = 'followers'
             follower = json.loads(payload)
             group = groups_by_thread.get(thread_id)
@@ -186,10 +193,12 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10, o
                             group['authors'].remove(author)
                             break
             else:
-                group = group_notification(thread_id,
-                                           authors=[follower],
-                                           entity=notification.entity,
-                                           action=notification.action)
+                group = group_notification(
+                    thread_id,
+                    authors=[follower],
+                    entity=notification.entity,
+                    action=notification.action,
+                )
                 groups_amount += 1
             groups_by_thread[thread_id] = group
     return groups_by_thread, unread, total
@@ -198,7 +207,7 @@ def get_notifications_grouped(author_id: int, after: int = 0, limit: int = 10, o
 @query.field('load_notifications')
 @login_required
 async def load_notifications(_, info, after: int, limit: int = 50, offset=0):
-    author_id = info.context.get("author_id")
+    author_id = info.context.get('author_id')
     error = None
     total = 0
     unread = 0
@@ -206,11 +215,18 @@ async def load_notifications(_, info, after: int, limit: int = 50, offset=0):
     try:
         if author_id:
             groups, unread, total = get_notifications_grouped(author_id, after, limit)
-            notifications = sorted(groups.values(), key=lambda group: group.updated_at, reverse=True)
+            notifications = sorted(
+                groups.values(), key=lambda group: group.updated_at, reverse=True
+            )
     except Exception as e:
         error = e
         logger.error(e)
-    return {"notifications": notifications, "total": total, "unread": unread, "error": error}
+    return {
+        'notifications': notifications,
+        'total': total,
+        'unread': unread,
+        'error': error,
+    }
 
 
 @mutation.field('notification_mark_seen')
@@ -226,8 +242,8 @@ async def notification_mark_seen(_, info, notification_id: int):
             except SQLAlchemyError as e:
                 session.rollback()
                 logger.error(f'seen mutation failed: {e}')
-                return {"error": 'cant mark as read'}
-    return {"error": None}
+                return {'error': 'cant mark as read'}
+    return {'error': None}
 
 
 @mutation.field('notifications_seen_after')
@@ -239,7 +255,11 @@ async def notifications_seen_after(_, info, after: int):
         author_id = info.context.get('author_id')
         if author_id:
             with local_session() as session:
-                nnn = session.query(Notification).filter(and_(Notification.created_at > after)).all()
+                nnn = (
+                    session.query(Notification)
+                    .filter(and_(Notification.created_at > after))
+                    .all()
+                )
                 for n in nnn:
                     try:
                         ns = NotificationSeen(notification=n.id, viewer=author_id)
@@ -250,7 +270,7 @@ async def notifications_seen_after(_, info, after: int):
     except Exception as e:
         print(e)
         error = 'cant mark as read'
-    return {"error": error}
+    return {'error': error}
 
 
 @mutation.field('notifications_seen_thread')
@@ -268,7 +288,7 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
                     Notification.action == 'create',
                     Notification.entity == 'reaction',
                     Notification.created_at > after,
-                    )
+                )
                 .all()
             )
             removed_reaction_notifications = (
@@ -277,7 +297,7 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
                     Notification.action == 'delete',
                     Notification.entity == 'reaction',
                     Notification.created_at > after,
-                    )
+                )
                 .all()
             )
             exclude = set()
@@ -289,9 +309,9 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
                 reaction = json.loads(n.payload)
                 reaction_id = reaction.get('id')
                 if (
-                        reaction_id not in exclude
-                        and reaction.get('shout') == shout_id
-                        and reaction.get('reply_to') == reply_to_id
+                    reaction_id not in exclude
+                    and reaction.get('shout') == shout_id
+                    and reaction.get('reply_to') == reply_to_id
                 ):
                     try:
                         ns = NotificationSeen(notification=n.id, viewer=author_id)
@@ -302,4 +322,4 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
                         session.rollback()
     else:
         error = 'You are not logged in'
-    return {"error": error}
+    return {'error': error}

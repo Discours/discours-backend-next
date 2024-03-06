@@ -45,8 +45,8 @@ async def check_auth(req):
 
         gql = {
             'query': f'query {operation}($params: ValidateJWTTokenInput!)  {{'
-                     + f'{query_name}(params: $params) {{ is_valid claims }} '
-                     + '}',
+            + f'{query_name}(params: $params) {{ is_valid claims }} '
+            + '}',
             'variables': variables,
             'operationName': operation,
         }

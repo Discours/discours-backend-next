@@ -35,11 +35,13 @@ async def get_my_shout(_, info, shout_id: int):
                 if not user_id:
                     error = 'unauthorized'
                 else:
-                    if 'editor' in roles or filter(lambda x: x.id == author.id, [x for x in shout.authors]):
-                        return {"error": error, "shout": shout}
+                    if 'editor' in roles or filter(
+                        lambda x: x.id == author.id, [x for x in shout.authors]
+                    ):
+                        return {'error': error, 'shout': shout}
                     else:
                         error = 'forbidden'
-    return {"error": error, "shout": shout}
+    return {'error': error, 'shout': shout}
 
 
 @query.field('get_shouts_drafts')
@@ -205,7 +207,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     shout_id = shout_id or shout_input.get('id', shout_id)
     slug = shout_input.get('slug')
     if not user_id:
-        return {"error": "unauthorized"}
+        return {'error': 'unauthorized'}
     try:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
@@ -226,12 +228,19 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         slug += f'-{c}'
                         same_slug_shout = (
                             session.query(Shout)
-                            .filter(Shout.slug == slug)  # Use the updated slug value here
+                            .filter(
+                                Shout.slug == slug
+                            )  # Use the updated slug value here
                             .first()
                         )
                     shout_input['slug'] = slug
 
-                if filter(lambda x: x.id == author.id, [x for x in shout_by_id.authors]) or 'editor' in roles:
+                if (
+                    filter(
+                        lambda x: x.id == author.id, [x for x in shout_by_id.authors]
+                    )
+                    or 'editor' in roles
+                ):
                     # topics patch
                     topics_input = shout_input.get('topics')
                     if topics_input:

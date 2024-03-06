@@ -68,12 +68,15 @@ async def get_shout(_, info, slug: str):
             }
 
             for author_caption in (
-                session.query(ShoutAuthor).join(Shout).where(
+                session.query(ShoutAuthor)
+                .join(Shout)
+                .where(
                     and_(
                         Shout.slug == slug,
                         Shout.published_at.is_not(None),
-                        Shout.deleted_at.is_(None)
-                    ))
+                        Shout.deleted_at.is_(None),
+                    )
+                )
             ):
                 for author in shout.authors:
                     if author.id == author_caption.author:
@@ -121,12 +124,7 @@ async def load_shouts_by(_, _info, options):
     q = (
         select(Shout)
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
-        .where(
-            and_(
-                Shout.deleted_at.is_(None),
-                Shout.published_at.is_not(None)
-            )
-        )
+        .where(and_(Shout.deleted_at.is_(None), Shout.published_at.is_not(None)))
     )
 
     # stats

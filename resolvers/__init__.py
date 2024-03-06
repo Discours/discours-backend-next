@@ -46,7 +46,7 @@ from resolvers.notifier import (
     load_notifications,
     notification_mark_seen,
     notifications_seen_after,
-    notifications_seen_thread
+    notifications_seen_thread,
 )
 
 __all__ = [
@@ -93,10 +93,9 @@ __all__ = [
     'update_reaction',
     'delete_reaction',
     'load_reactions_by',
-
     # notifier
     'load_notifications',
     'notifications_seen_thread',
     'notifications_seen_after',
-    'notification_mark_seen'
+    'notification_mark_seen',
 ]

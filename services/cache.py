@@ -45,7 +45,9 @@ async def set_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
 async def set_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60):
     try:
         payload = json.dumps(follows)
-        await redis.execute('SETEX', f'author:{author_id}:follows-authors', ttl, payload)
+        await redis.execute(
+            'SETEX', f'author:{author_id}:follows-authors', ttl, payload
+        )
     except Exception:
         import traceback
 
@@ -53,7 +55,9 @@ async def set_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60):
         logger.error(exc)
 
 
-async def update_follows_for_author(follower: Author, entity_type: str, entity: dict, is_insert: bool):
+async def update_follows_for_author(
+    follower: Author, entity_type: str, entity: dict, is_insert: bool
+):
     redis_key = f'author:{follower.id}:follows-{entity_type}s'
     follows_str = await redis.get(redis_key)
     follows = json.loads(follows_str) if follows_str else []
@@ -69,7 +73,9 @@ async def update_follows_for_author(follower: Author, entity_type: str, entity: 
     return follows
 
 
-async def update_followers_for_author(follower: Author, author: Author, is_insert: bool):
+async def update_followers_for_author(
+    follower: Author, author: Author, is_insert: bool
+):
     redis_key = f'author:{author.id}:followers'
     followers_str = await redis.get(redis_key)
     followers = json.loads(followers_str) if followers_str else []
@@ -107,22 +113,27 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
             .where(Reaction.id == reaction.reply_to)
         )
 
-        author_query = select(
-            author_subquery.subquery().c.id,
-            author_subquery.subquery().c.slug,
-            author_subquery.subquery().c.created_at,
-            author_subquery.subquery().c.name,
-        ).select_from(author_subquery.subquery()).union(
+        author_query = (
             select(
-                replied_author_subquery.subquery().c.id,
+                author_subquery.subquery().c.id,
+                author_subquery.subquery().c.slug,
+                author_subquery.subquery().c.created_at,
+                author_subquery.subquery().c.name,
             )
-            .select_from(replied_author_subquery.subquery())
+            .select_from(author_subquery.subquery())
+            .union(
+                select(replied_author_subquery.subquery().c.id).select_from(
+                    replied_author_subquery.subquery()
+                )
+            )
         )
 
         for author_with_stat in get_with_stat(author_query):
             asyncio.create_task(set_author_cache(author_with_stat.dict()))
 
-        shout = connection.execute(select(Shout).select_from(Shout).where(Shout.id == reaction.shout)).first()
+        shout = connection.execute(
+            select(Shout).select_from(Shout).where(Shout.id == reaction.shout)
+        ).first()
         if shout:
             after_shouts_update(mapper, connection, shout)
     except Exception as exc:
@@ -176,7 +187,9 @@ async def handle_author_follower_change(
     follower = get_with_stat(follower_query)
     if follower and author:
         _ = asyncio.create_task(set_author_cache(author.dict()))
-        follows_authors = await redis.execute('GET', f'author:{follower_id}:follows-authors')
+        follows_authors = await redis.execute(
+            'GET', f'author:{follower_id}:follows-authors'
+        )
         if follows_authors:
             follows_authors = json.loads(follows_authors)
             if not any(x.get('id') == author.id for x in follows_authors):
@@ -209,7 +222,9 @@ async def handle_topic_follower_change(
     follower = get_with_stat(follower_query)
     if follower and topic:
         _ = asyncio.create_task(set_author_cache(follower.dict()))
-        follows_topics = await redis.execute('GET', f'author:{follower_id}:follows-topics')
+        follows_topics = await redis.execute(
+            'GET', f'author:{follower_id}:follows-topics'
+        )
         if follows_topics:
             follows_topics = json.loads(follows_topics)
             if not any(x.get('id') == topic.id for x in follows_topics):
