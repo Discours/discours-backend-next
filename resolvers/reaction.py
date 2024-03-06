@@ -441,7 +441,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             # Shouts where follower reacted
             q2 = (
                 select(Shout)
-                .join(Reaction, Reaction.shout_id == Shout.id)
+                .join(Reaction, Reaction.shout == Shout.id)
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
                 .filter(Reaction.created_by == follower_id)
                 .group_by(Shout.id)
