@@ -8,6 +8,7 @@ from orm.reaction import Reaction
 from orm.shout import ShoutAuthor, Shout
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
+from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
 from services.logger import root_logger as logger
 
@@ -21,19 +22,19 @@ DEFAULT_FOLLOWS = {
 
 async def set_author_cache(author: dict, ttl=25 * 60 * 60):
     payload = json.dumps(author)
-    await redis.execute('SETEX', f'user:{author.get("user")}:author', ttl, payload)
-    await redis.execute('SETEX', f'id:{author.get("id")}:author', ttl, payload)
+    await redis.execute('SET', f'user:{author.get("user")}:author', ttl, payload, cls=CustomJSONEncoder)
+    await redis.execute('SET', f'id:{author.get("id")}:author', ttl, payload, cls=CustomJSONEncoder)
 
 
 async def update_author_followers_cache(author_id: int, followers, ttl=25 * 60 * 60):
     payload = json.dumps(followers)
-    await redis.execute('SETEX', f'author:{author_id}:followers', ttl, payload)
+    await redis.execute('SET', f'author:{author_id}:followers', ttl, payload, cls=CustomJSONEncoder)
 
 
 async def set_follows_topics_cache(follows, author_id: int, ttl=25 * 60 * 60):
     try:
         payload = json.dumps(follows)
-        await redis.execute('SETEX', f'author:{author_id}:follows-topics', ttl, payload)
+        await redis.execute('SET', f'author:{author_id}:follows-topics', ttl, payload, cls=CustomJSONEncoder)
     except Exception as exc:
         logger.error(exc)
         import traceback
@@ -46,7 +47,7 @@ async def set_follows_authors_cache(follows, author_id: int, ttl=25 * 60 * 60):
     try:
         payload = json.dumps(follows)
         await redis.execute(
-            'SETEX', f'author:{author_id}:follows-authors', ttl, payload
+            'SET', f'author:{author_id}:follows-authors', ttl, payload, cls=CustomJSONEncoder
         )
     except Exception:
         import traceback

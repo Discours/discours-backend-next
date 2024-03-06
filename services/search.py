@@ -4,6 +4,7 @@ import os
 
 from opensearchpy import OpenSearch
 
+from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
 from services.rediscache import redis
 
@@ -144,7 +145,7 @@ class SearchService:
 
             # Use Redis as cache with TTL
             redis_key = f'search:{text}'
-            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results))
+            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results), cls=CustomJSONEncoder)
         return []
 
 
