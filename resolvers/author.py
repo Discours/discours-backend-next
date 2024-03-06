@@ -162,14 +162,14 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=None):
             )
             if not cached:
                 prepared = [author.dict() for author in authors]
-                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared), cls=CustomJSONEncoder)
+                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared, cls=CustomJSONEncoder))
 
             rkey = f'author:{author_id}:follows-topics'
             cached = await redis.execute('GET', rkey)
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 prepared = [topic.dict() for topic in topics]
-                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared), cls=CustomJSONEncoder)
+                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared, cls=CustomJSONEncoder))
             return {
                 'topics': topics,
                 'authors': authors,
@@ -198,7 +198,7 @@ async def get_author_follows_topics(_, _info, slug='', user=None, author_id=None
             topics = json.loads(cached) if cached else author_follows_topics(author_id)
             if not cached:
                 prepared = [topic.dict() for topic in topics]
-                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared), cls=CustomJSONEncoder)
+                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared, cls=CustomJSONEncoder))
             return topics
         else:
             raise ValueError('Author not found')
@@ -223,7 +223,7 @@ async def get_author_follows_authors(_, _info, slug='', user=None, author_id=Non
             )
             if not cached:
                 prepared = [author.dict() for author in authors]
-                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared), cls=CustomJSONEncoder)
+                await redis.execute('SET', rkey, 24 * 60 * 60, json.dumps(prepared, cls=CustomJSONEncoder))
             return authors
         else:
             raise ValueError('Author not found')

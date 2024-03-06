@@ -145,7 +145,7 @@ class SearchService:
 
             # Use Redis as cache with TTL
             redis_key = f'search:{text}'
-            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results), cls=CustomJSONEncoder)
+            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results, cls=CustomJSONEncoder))
         return []
 
 
