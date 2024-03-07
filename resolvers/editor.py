@@ -22,25 +22,23 @@ from services.logger import root_logger as logger
 @query.field('get_my_shout')
 @login_required
 async def get_my_shout(_, info, shout_id: int):
-    user_id = info.context.get('user_id')
-    shout = None
-    error = None
     with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
+        user_id = info.context.get('user_id', '')
+        if not user_id:
+            return {'error': 'unauthorized', 'shout': None}
         shout = session.query(Shout).filter(Shout.id == shout_id).first()
-        if shout and author:
-            if not shout.published_at:
-                user_id = info.context.get('user_id', '')
-                roles = info.context.get('roles', [])
-                if 'editor' in roles or filter(
-                    lambda x: x.id == author.id, [x for x in shout.authors]
-                ):
-                    error = None
-                else:
-                    error = 'forbidden'
-                    shout = None
-            return {'error': error, 'shout': shout.dict()}
-    return {'error': 'no shout found', 'shout': None}
+        if not shout:
+            return {'error': 'no shout found', 'shout': None}
+        if not shout.published_at:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            if not author:
+                return {'error': 'no author found', 'shout': None}
+            roles = info.context.get('roles', [])
+            if 'editor' not in roles and not filter(
+                lambda x: x.id == author.id, [x for x in shout.authors]
+            ):
+                return {'error': 'forbidden', 'shout': None}
+        return {'error': None, 'shout': shout.dict()}
 
 
 @query.field('get_shouts_drafts')
