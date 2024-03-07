@@ -38,7 +38,7 @@ async def get_my_shout(_, info, shout_id: int):
                     if 'editor' in roles or filter(
                         lambda x: x.id == author.id, [x for x in shout.authors]
                     ):
-                        return {'error': error, 'shout': shout}
+                        return {'error': None, 'shout': shout}
                     else:
                         error = 'forbidden'
     return {'error': error, 'shout': shout}
@@ -134,29 +134,33 @@ async def create_shout(_, info, inp):
 
 
 def patch_main_topic(session, main_topic, shout):
-    old_main_topic = (
-        session.query(ShoutTopic)
-        .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main.is_(True)))
-        .first()
-    )
-
-    main_topic = session.query(Topic).filter(Topic.slug == main_topic).first()
-
-    if main_topic:
-        new_main_topic = (
+    with session.begin():
+        shout = session.query(Shout).options(joinedload(Shout.topics)).filter(Shout.id == shout.id).first()
+        if not shout:
+            return
+        old_main_topic = (
             session.query(ShoutTopic)
-            .filter(
-                and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id)
-            )
+            .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main.is_(True)))
             .first()
         )
 
-        if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
-            ShoutTopic.update(old_main_topic, {'main': False})
-            session.add(old_main_topic)
+        main_topic = session.query(Topic).filter(Topic.slug == main_topic).first()
 
-            ShoutTopic.update(new_main_topic, {'main': True})
-            session.add(new_main_topic)
+        if main_topic:
+            new_main_topic = (
+                session.query(ShoutTopic)
+                .filter(
+                    and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id)
+                )
+                .first()
+            )
+
+            if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
+                ShoutTopic.update(old_main_topic, {'main': False})
+                session.add(old_main_topic)
+
+                ShoutTopic.update(new_main_topic, {'main': True})
+                session.add(new_main_topic)
 
 
 def patch_topics(session, shout, topics_input):
