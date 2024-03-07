@@ -303,11 +303,11 @@ async def delete_reaction(_, info, reaction_id: int):
                         return {'error': 'access denied'}
 
                     logger.debug(f'{user_id} user removing his #{reaction_id} reaction')
-
-                    if r.kind in [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]:
-                        session.delete(r)
-                        session.commit()
-                        await notify_reaction(r.dict(), 'delete')
+                    reaction_dict = r.dict()
+                    session.delete(r)
+                    session.commit()
+                    await notify_reaction(reaction_dict, 'delete')
+                    return {'error': None, 'reaction': reaction_dict}
             except Exception as exc:
                 return {'error': f'cannot delete reaction: {exc}'}
     return {'error': 'cannot delete reaction'}
