@@ -302,6 +302,8 @@ async def delete_reaction(_, info, reaction_id: int):
                     if r.created_by != author.id and 'editor' not in roles:
                         return {'error': 'access denied'}
 
+                    logger.debug(f'{user_id} user removing his #{reaction_id} reaction')
+
                     if r.kind in [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]:
                         session.delete(r)
                         session.commit()
