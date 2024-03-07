@@ -32,16 +32,15 @@ async def get_my_shout(_, info, shout_id: int):
             if not shout.published_at:
                 user_id = info.context.get('user_id', '')
                 roles = info.context.get('roles', [])
-                if not user_id:
-                    error = 'unauthorized'
+                if 'editor' in roles or filter(
+                    lambda x: x.id == author.id, [x for x in shout.authors]
+                ):
+                    error = None
                 else:
-                    if 'editor' in roles or filter(
-                        lambda x: x.id == author.id, [x for x in shout.authors]
-                    ):
-                        return {'error': None, 'shout': shout}
-                    else:
-                        error = 'forbidden'
-    return {'error': error, 'shout': shout}
+                    error = 'forbidden'
+                    shout = None
+            return {'error': error, 'shout': shout.dict()}
+    return {'error': 'no shout found', 'shout': None}
 
 
 @query.field('get_shouts_drafts')
