@@ -22,11 +22,17 @@ from services.logger import root_logger as logger
 @query.field('get_my_shout')
 @login_required
 async def get_my_shout(_, info, shout_id: int):
-    with local_session() as session:
+    with (local_session() as session):
         user_id = info.context.get('user_id', '')
         if not user_id:
             return {'error': 'unauthorized', 'shout': None}
-        shout = session.query(Shout).filter(Shout.id == shout_id).first()
+        shout = session.query(Shout).filter(
+            Shout.id == shout_id
+        ).options(
+            joinedload(Shout.authors), joinedload(Shout.topics)
+        ).filter(and_(
+            Shout.deleted_at.is_(None),
+            Shout.published_at.is_(None))).first()
         if not shout:
             return {'error': 'no shout found', 'shout': None}
         if not shout.published_at:
