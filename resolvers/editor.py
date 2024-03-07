@@ -38,7 +38,7 @@ async def get_my_shout(_, info, shout_id: int):
                 lambda x: x.id == author.id, [x for x in shout.authors]
             ):
                 return {'error': 'forbidden', 'shout': None}
-        return {'error': None, 'shout': shout.dict()}
+        return {'error': None, 'shout': shout}
 
 
 @query.field('get_shouts_drafts')
