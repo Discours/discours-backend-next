@@ -69,7 +69,6 @@ async def follow(_, info, what, slug):
         return {'error': str(e)}
 
 
-
 @mutation.field('unfollow')
 @login_required
 async def unfollow(_, info, what, slug):
