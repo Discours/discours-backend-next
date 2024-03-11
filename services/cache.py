@@ -66,6 +66,7 @@ async def update_follows_for_author(
     else:
         # Remove the entity from follows
         follows = [e for e in follows if e['id'] != entity['id']]
+        logger.debug(f'{entity} removed from follows')
     if entity_type == 'topic':
         await set_follows_topics_cache(follows, follower.id)
     if entity_type == 'author':
