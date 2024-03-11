@@ -33,7 +33,7 @@ async def update_author_followers_cache(author_id: int, followers):
 
 async def set_follows_topics_cache(follows, author_id: int):
     try:
-        payload = json.dumps([a.dict() for a in follows], cls=CustomJSONEncoder)
+        payload = json.dumps([a.dict() if isinstance(a, Author) else a for a in follows], cls=CustomJSONEncoder)
         await redis.execute('SET', f'author:{author_id}:follows-topics', payload)
     except Exception as exc:
         logger.error(exc)
@@ -45,7 +45,7 @@ async def set_follows_topics_cache(follows, author_id: int):
 
 async def set_follows_authors_cache(follows, author_id: int):
     try:
-        payload = json.dumps([a.dict() for a in follows], cls=CustomJSONEncoder)
+        payload = json.dumps([a.dict() if isinstance(a, Author) else a for a in follows], cls=CustomJSONEncoder)
         await redis.execute('SET', f'author:{author_id}:follows-authors', payload)
     except Exception as exc:
         import traceback
