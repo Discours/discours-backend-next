@@ -66,7 +66,7 @@ async def follow(_, info, what, slug):
     except Exception as e:
         logger.debug(info, what, slug)
         logger.error(e)
-        return {'error': str(e), f'{what}s': follows}
+        return {'error': str(e), f'{what.lower()}s': follows}
 
     return {}
 
@@ -105,7 +105,7 @@ async def unfollow(_, info, what, slug):
             elif what == 'REACTIONS':
                 reactions_unfollow(follower.id, slug)
     except Exception as e:
-        return {'error': str(e), f'{what}s': follows}
+        return {'error': str(e), f'{what.lower()}s': follows}
 
     return {}
 
