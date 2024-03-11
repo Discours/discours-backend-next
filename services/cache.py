@@ -141,6 +141,8 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
             after_shouts_update(mapper, connection, shout)
     except Exception as exc:
         logger.error(exc)
+        import traceback
+        traceback.print_exc()
 
 
 @event.listens_for(Author, 'after_insert')
