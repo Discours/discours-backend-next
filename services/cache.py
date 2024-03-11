@@ -197,7 +197,6 @@ async def handle_author_follower_change(
         _ = asyncio.create_task(set_follows_authors_cache(follows_authors, follower_id))
         _ = asyncio.create_task(set_author_cache(follower.dict()))
         await update_follows_for_author(
-            connection,
             follower,
             'author',
             {
