@@ -80,8 +80,8 @@ async def unfollow(_, info, what, slug):
         follower_query = select(Author).filter(Author.user == user_id)
         [follower] = get_with_stat(follower_query)
         if follower:
-            logger.info(f'@{follower.slug} unfollowing')
             if what == 'AUTHOR':
+                logger.info(f'@{follower.slug} unfollowing @{slug}')
                 if author_unfollow(follower.id, slug):
                     author_query = select(Author).where(Author.slug == slug)
                     [author] = get_with_stat(author_query)
@@ -94,6 +94,7 @@ async def unfollow(_, info, what, slug):
                         )
                         await notify_follower(follower.dict(), author.id, 'unfollow')
             elif what == 'TOPIC':
+                logger.info(f'@{follower.slug} unfollowing §{slug}')
                 topic_query = select(Topic).where(Topic.slug == slug)
                 [topic] = get_with_stat(topic_query)
                 if topic:
