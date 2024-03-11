@@ -53,8 +53,7 @@ async def follow(_, info, what, slug):
     elif what == 'TOPIC':
         if not topic_follow(follower.id, slug):
             return {"error": "cant follow topic"}
-        topic_query = select(Topic).where(Topic.slug == slug)
-        [topic] = get_with_stat(topic_query)
+        [topic] = get_with_stat(select(Topic).where(Topic.slug == slug))
         if not topic:
             return {"error": "topic is not found"}
         follows = await update_follows_for_author(follower, 'topic', topic, True)

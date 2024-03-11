@@ -36,8 +36,8 @@ enum ReactionKind {
 enum FollowingEntity {
   TOPIC
   AUTHOR
+  SHOUT
   COMMUNITY
-  REACTIONS
 }
 
 enum InviteStatus {
