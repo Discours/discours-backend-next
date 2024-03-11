@@ -194,9 +194,8 @@ def get_with_stat(q):
             entity.stat['shouts'] = cols[1]
             entity.stat['authors'] = cols[2]
             entity.stat['followers'] = cols[3]
-            entity.stat['comments'] = cols[4]
             if is_author:
-                pass
+                entity.stat['comments'] = cols[4]
                 # entity.stat['topics'] = cols[5]
                 # entity.stat['rating'] = cols[5] - cols[6]
                 # entity.stat['rating_shouts'] = cols[7] - cols[8]
