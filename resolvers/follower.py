@@ -62,11 +62,12 @@ async def follow(_, info, what, slug):
                 community_follow(follower.id, slug)
             elif what == 'REACTIONS':
                 reactions_follow(follower.id, slug)
+
+        return {f'{what.lower()}s': follows}
     except Exception as e:
         logger.error(e)
         return {'error': str(e)}
 
-    return {f'{what.lower()}s': follows}
 
 
 @mutation.field('unfollow')
@@ -110,7 +111,7 @@ async def unfollow(_, info, what, slug):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {'error': str(e), f'{what.lower()}s': follows}
+        return {'error': str(e)}
 
 
 async def get_follows_by_user_id(user_id: str):
