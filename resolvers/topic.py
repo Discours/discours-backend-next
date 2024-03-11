@@ -96,10 +96,10 @@ def topic_follow(follower_id, slug):
         with local_session() as session:
             topic = session.query(Topic).where(Topic.slug == slug).one()
             _following = TopicFollower(topic=topic.id, follower=follower_id)
-            return True
+        return None
     except Exception as exc:
         logger.error(exc)
-        return False
+        return exc
 
 
 def topic_unfollow(follower_id, slug):
@@ -114,10 +114,10 @@ def topic_unfollow(follower_id, slug):
             if sub:
                 session.delete(sub)
                 session.commit()
-                return True
+        return None
     except Exception as ex:
         logger.debug(ex)
-    return False
+        return ex
 
 
 @query.field('get_topics_random')
