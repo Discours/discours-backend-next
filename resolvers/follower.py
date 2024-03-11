@@ -30,8 +30,7 @@ from services.rediscache import redis
 @mutation.field('follow')
 @login_required
 async def follow(_, info, what, slug):
-    follows = None
-    logger.debug(info.context['request'])
+    follows = []
     try:
         user_id = info.context['user_id']
         follower_query = (
@@ -64,11 +63,10 @@ async def follow(_, info, what, slug):
             elif what == 'REACTIONS':
                 reactions_follow(follower.id, slug)
     except Exception as e:
-        logger.debug(info, what, slug)
         logger.error(e)
-        return {'error': str(e), f'{what.lower()}s': follows}
+        return {'error': str(e)}
 
-    return {}
+    return {f'{what.lower()}s': follows}
 
 
 @mutation.field('unfollow')
@@ -107,9 +105,9 @@ async def unfollow(_, info, what, slug):
             elif what == 'REACTIONS':
                 reactions_unfollow(follower.id, slug)
     except Exception as e:
-        return {'error': str(e), f'{what.lower()}s': follows}
+        return {'error': str(e)}
 
-    return {}
+    return {f'{what.lower()}s': follows}
 
 
 async def get_follows_by_user_id(user_id: str):

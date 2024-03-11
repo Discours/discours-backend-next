@@ -79,6 +79,7 @@ def login_required(f):
         req = info.context.get('request')
         authorized = await check_auth(req)
         if authorized:
+            logger.info(authorized)
             user_id, user_roles = authorized
             if user_id and user_roles:
                 logger.info(f' got {user_id} roles: {user_roles}')
