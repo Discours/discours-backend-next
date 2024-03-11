@@ -58,9 +58,11 @@ async def set_follows_authors_cache(follows, author_id: int):
 async def update_follows_for_author(
     follower: Author, entity_type: str, entity: dict, is_insert: bool
 ):
+    follows = []
     redis_key = f'author:{follower.id}:follows-{entity_type}s'
     follows_str = await redis.execute('GET', redis_key)
-    follows = json.loads(follows_str) if follows_str else []
+    if isinstance(follows_str, str):
+        follows = json.loads(follows_str)
     if is_insert:
         follows.append(entity)
     else:

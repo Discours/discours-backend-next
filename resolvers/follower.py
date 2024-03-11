@@ -73,7 +73,6 @@ async def follow(_, info, what, slug):
 @login_required
 async def unfollow(_, info, what, slug):
     follows = None
-    error = ''
     try:
         user_id = info.context.get('user_id')
         if not user_id:
@@ -81,6 +80,7 @@ async def unfollow(_, info, what, slug):
         follower_query = select(Author).filter(Author.user == user_id)
         [follower] = get_with_stat(follower_query)
         if follower:
+            logger.info(f'@{follower.slug} unfollowing')
             if what == 'AUTHOR':
                 if author_unfollow(follower.id, slug):
                     author_query = select(Author).where(Author.slug == slug)
@@ -105,12 +105,11 @@ async def unfollow(_, info, what, slug):
                 community_unfollow(follower.id, slug)
             elif what == 'REACTIONS':
                 reactions_unfollow(follower.id, slug)
+        return {'error': "", f'{what.lower()}s': follows}
     except Exception as e:
-        error = e
         import traceback
         traceback.print_exc()
-    finally:
-        return {'error': str(error), f'{what.lower()}s': follows}
+        return {'error': str(e), f'{what.lower()}s': follows}
 
 
 async def get_follows_by_user_id(user_id: str):
