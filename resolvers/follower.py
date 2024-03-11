@@ -77,6 +77,8 @@ async def unfollow(_, info, what, slug):
     follows = None
     try:
         user_id = info.context.get('user_id')
+        if not user_id:
+            return {"error": "unauthorized"}
         follower_query = select(Author).filter(Author.user == user_id)
         [follower] = get_with_stat(follower_query)
         if follower:
@@ -111,28 +113,38 @@ async def unfollow(_, info, what, slug):
 
 
 async def get_follows_by_user_id(user_id: str):
-    if user_id:
-        author = await redis.execute('GET', f'user:{user_id}:author')
-        follows = DEFAULT_FOLLOWS
-        day_old = int(time.time()) - author.get('last_seen', 0) > 24 * 60 * 60
-        if day_old:
-            author_id = json.loads(str(author)).get('id')
-            if author_id:
-                topics = author_follows_topics(author_id)
-                authors = author_follows_authors(author_id)
-                follows = {
-                    'topics': topics,
-                    'authors': authors,
-                    'communities': [
-                        {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
-                    ],
-                }
-        else:
-            logger.debug(f'getting follows for {user_id} from redis')
-            res = await redis.execute('GET', f'user:{user_id}:follows')
-            if isinstance(res, str):
-                follows = json.loads(res)
-        return follows
+    if not user_id:
+        return {"error": "unauthorized"}
+    author = await redis.execute('GET', f'user:{user_id}:author')
+    if isinstance(author, str):
+        author = json.loads(author)
+    if not author:
+        with local_session() as session:
+            author = session.query(Author).filter(Author.user == user_id).first()
+            if not author:
+                return {"error": "cant find author"}
+            author = author.dict()
+    last_seen = author.get('last_seen', 0) if isinstance(author, dict) else 0
+    follows = DEFAULT_FOLLOWS
+    day_old = int(time.time()) - last_seen > 24 * 60 * 60
+    if day_old:
+        author_id = json.loads(str(author)).get('id')
+        if author_id:
+            topics = author_follows_topics(author_id)
+            authors = author_follows_authors(author_id)
+            follows = {
+                'topics': topics,
+                'authors': authors,
+                'communities': [
+                    {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
+                ],
+            }
+    else:
+        logger.debug(f'getting follows for {user_id} from redis')
+        res = await redis.execute('GET', f'user:{user_id}:follows')
+        if isinstance(res, str):
+            follows = json.loads(res)
+    return follows
 
 
 def reactions_follow(author_id, shout_id, auto=False):
