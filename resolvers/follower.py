@@ -6,12 +6,12 @@ from sqlalchemy import select, or_
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
+from orm.community import Community
 
 # from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.community import community_follow, community_unfollow
 from resolvers.topic import topic_unfollow, topic_follow
 from resolvers.stat import get_with_stat, author_follows_topics, author_follows_authors
 from services.auth import login_required
@@ -31,84 +31,94 @@ from services.rediscache import redis
 @login_required
 async def follow(_, info, what, slug):
     follows = []
-    try:
-        user_id = info.context['user_id']
-        follower_query = (
-            select(Author).select_from(Author).filter(Author.user == user_id)
-        )
-        [follower] = get_with_stat(follower_query)
-        if follower:
-            if what == 'AUTHOR':
-                if author_follow(follower.id, slug):
-                    logger.debug(f'@{follower.slug} followed @{slug}')
-                    [author] = get_with_stat(select(Author).select_from(Author).where(Author.slug == slug))
-                    if author:
-                        follows = await update_follows_for_author(
-                            follower, 'author', author, True
-                        )
-                        _followers = await update_followers_for_author(follower, author, True)
-                        await notify_follower(follower.dict(), author.id, 'unfollow')
-            elif what == 'TOPIC':
-                topic_query = select(Topic).where(Topic.slug == slug)
-                [topic] = get_with_stat(topic_query)
-                if topic:
-                    follows = await update_follows_for_author(
-                        follower, 'topic', topic, True
-                    )
-                topic_follow(follower.id, slug)
-            elif what == 'COMMUNITY':
-                community_follow(follower.id, slug)
-            elif what == 'REACTIONS':
-                reactions_follow(follower.id, slug)
+    error = None
+    user_id = info.context.get('user_id')
+    if not user_id:
+        return {"error": "unauthorized"}
+    [follower] = get_with_stat(select(Author).select_from(Author).filter(Author.user == user_id))
+    if not follower:
+        return {"error": "cant find follower"}
 
-        return {f'{what.lower()}s': follows}
-    except Exception as e:
-        logger.error(e)
-        return {'error': str(e)}
+    if what == 'AUTHOR':
+        if not author_follow(follower.id, slug):
+            return {"error": "cant follow author"}
+        logger.debug(f'@{follower.slug} followed @{slug}')
+        [author] = get_with_stat(select(Author).select_from(Author).where(Author.slug == slug))
+        if not author:
+            return {"error": "author is not found"}
+        follows = await update_follows_for_author(follower, 'author', author, True)
+        _followers = await update_followers_for_author(follower, author, True)
+        await notify_follower(follower.dict(), author.id, 'unfollow')
+
+    elif what == 'TOPIC':
+        if not topic_follow(follower.id, slug):
+            return {"error": "cant follow topic"}
+        topic_query = select(Topic).where(Topic.slug == slug)
+        [topic] = get_with_stat(topic_query)
+        if not topic:
+            return {"error": "topic is not found"}
+        follows = await update_follows_for_author(follower, 'topic', topic, True)
+
+    elif what == 'COMMUNITY':
+        follows = local_session().execute(select(Community))
+
+    elif what == 'SHOUT':
+        if not reactions_follow(follower.id, slug):
+            return {"error": "cant follow shout"}
+        [shout] = local_session().execute(select(Shout).where(Shout.slug == slug))
+        if not shout:
+            return {"error": "cant find shout"}
+        follows = await update_follows_for_author(follower, 'shout', shout, True)
+
+    return {f'{what.lower()}s': follows, "error": error}
 
 
 @mutation.field('unfollow')
 @login_required
 async def unfollow(_, info, what, slug):
-    follows = None
-    try:
-        user_id = info.context.get('user_id')
-        if not user_id:
-            return {"error": "unauthorized"}
-        follower_query = select(Author).filter(Author.user == user_id)
-        [follower] = get_with_stat(follower_query)
-        if follower:
-            if what == 'AUTHOR':
-                logger.info(f'@{follower.slug} unfollowing @{slug}')
-                if author_unfollow(follower.id, slug):
-                    author_query = select(Author).where(Author.slug == slug)
-                    [author] = get_with_stat(author_query)
-                    if author:
-                        follows = await update_follows_for_author(
-                            follower, 'author', author, False
-                        )
-                        _followers = await update_followers_for_author(
-                            follower, author, False
-                        )
-                        await notify_follower(follower.dict(), author.id, 'unfollow')
-            elif what == 'TOPIC':
-                logger.info(f'@{follower.slug} unfollowing §{slug}')
-                topic_query = select(Topic).where(Topic.slug == slug)
-                [topic] = get_with_stat(topic_query)
-                if topic:
-                    follows = await update_follows_for_author(
-                        follower, 'topic', topic, False
-                    )
-                topic_unfollow(follower.id, slug)
-            elif what == 'COMMUNITY':
-                community_unfollow(follower.id, slug)
-            elif what == 'REACTIONS':
-                reactions_unfollow(follower.id, slug)
-        return {'error': "", f'{what.lower()}s': follows}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {'error': str(e)}
+    follows = []
+    error = None
+    user_id = info.context.get('user_id')
+    if not user_id:
+        return {"error": "unauthorized"}
+    follower_query = select(Author).filter(Author.user == user_id)
+    [follower] = get_with_stat(follower_query)
+    if not follower:
+        return {"error": "follower profile is not found"}
+
+    if what == 'AUTHOR':
+        if not author_unfollow(follower.id, slug):
+            return {"error": "cant unfollow author"}
+        logger.info(f'@{follower.slug} unfollowing @{slug}')
+        [author] = get_with_stat(select(Author).where(Author.slug == slug))
+        if not author:
+            return {"error": "cant find author"}
+        _followers = await update_followers_for_author(follower, author, False)
+        await notify_follower(follower.dict(), author.id, 'unfollow')
+        follows = await update_follows_for_author(follower, 'author', author, False)
+
+    elif what == 'TOPIC':
+        if not topic_unfollow(follower.id, slug):
+            return {"error": "cant unfollow topic"}
+        logger.info(f'@{follower.slug} unfollowing §{slug}')
+        [topic] = get_with_stat(select(Topic).where(Topic.slug == slug))
+        if not topic:
+            return {"error": "cant find topic"}
+        follows = await update_follows_for_author(follower, 'topic', topic, False)
+
+    elif what == 'COMMUNITY':
+        follows = local_session().execute(select(Community))
+
+    elif what == 'SHOUT':
+        logger.info(f'@{follower.slug} unfollowing §{slug}')
+        [shout] = local_session().execute(select(Shout).where(Shout.slug == slug))
+        if not shout:
+            return {"error": "cant find shout"}
+        if not reactions_unfollow(follower.id, slug):
+            return {"error": "cant unfollow shout"}
+        follows = await update_follows_for_author(follower, 'shout', shout, False)
+
+    return {'error': error, f'{what.lower()}s': follows}
 
 
 async def get_follows_by_user_id(user_id: str):
