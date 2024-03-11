@@ -144,31 +144,30 @@ def load_authors_by(_, _info, by, limit, offset):
 
 @query.field('get_author_follows')
 async def get_author_follows(_, _info, slug='', user=None, author_id=None):
-    with local_session() as session:
+    with (local_session() as session):
         if user or slug:
-            author_id_result = (
+            (author_id, ) = (
                 session.query(Author.id)
                 .filter(or_(Author.user == user, Author.slug == slug))
                 .first()
             )
-            logger.warn(author_id_result)
-            author_id = author_id_result[0] if author_id_result else None
         if author_id:
             rkey = f'author:{author_id}:follows-authors'
             logger.debug(f'getting {author_id} follows authors')
             cached = await redis.execute('GET', rkey)
-            # logger.debug(f'AUTHOR CACHED {cached}')
-            authors = (
-                json.loads(cached) if cached else author_follows_authors(author_id)
-            )
             if not cached:
+                authors = author_follows_authors(author_id)
                 prepared = [author.dict() for author in authors]
                 await redis.execute('SET', rkey, json.dumps(prepared, cls=CustomJSONEncoder))
+            else:
+                authors = json.loads(cached)
 
             rkey = f'author:{author_id}:follows-topics'
             cached = await redis.execute('GET', rkey)
-            topics = json.loads(cached) if cached else author_follows_topics(author_id)
+            if cached:
+                topics = json.loads(cached)
             if not cached:
+                topics = author_follows_topics(author_id)
                 prepared = [topic.dict() for topic in topics]
                 await redis.execute('SET', rkey, json.dumps(prepared, cls=CustomJSONEncoder))
             return {
