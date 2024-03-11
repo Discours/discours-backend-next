@@ -33,7 +33,7 @@ async def update_author_followers_cache(author_id: int, followers):
 
 async def set_follows_topics_cache(follows, author_id: int):
     try:
-        payload = json.dumps(follows, cls=CustomJSONEncoder)
+        payload = json.dumps([a.dict() for a in follows], cls=CustomJSONEncoder)
         await redis.execute('SET', f'author:{author_id}:follows-topics', payload)
     except Exception as exc:
         logger.error(exc)
@@ -45,7 +45,7 @@ async def set_follows_topics_cache(follows, author_id: int):
 
 async def set_follows_authors_cache(follows, author_id: int):
     try:
-        payload = json.dumps(follows, cls=CustomJSONEncoder)
+        payload = json.dumps([a.dict() for a in follows], cls=CustomJSONEncoder)
         await redis.execute('SET', f'author:{author_id}:follows-authors', payload)
     except Exception as exc:
         import traceback
@@ -184,7 +184,7 @@ async def handle_author_follower_change(
     author_query = select(Author).select_from(Author).filter(Author.id == author_id)
     [author] = get_with_stat(author_query)
     follower_query = select(Author).select_from(Author).filter(Author.id == follower_id)
-    follower = get_with_stat(follower_query)
+    [follower] = get_with_stat(follower_query)
     if follower and author:
         _ = asyncio.create_task(set_author_cache(author.dict()))
         follows_authors = await redis.execute(
@@ -215,11 +215,10 @@ async def handle_author_follower_change(
 async def handle_topic_follower_change(
     connection, topic_id: int, follower_id: int, is_insert: bool
 ):
-    q = select(Topic).filter(Topic.id == topic_id)
-    topics = get_with_stat(q)
-    topic = topics[0]
+    topic_query = select(Topic).filter(Topic.id == topic_id)
+    [topic] = get_with_stat(topic_query)
     follower_query = select(Author).filter(Author.id == follower_id)
-    follower = get_with_stat(follower_query)
+    [follower] = get_with_stat(follower_query)
     if follower and topic:
         _ = asyncio.create_task(set_author_cache(follower.dict()))
         follows_topics = await redis.execute(
