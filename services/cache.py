@@ -125,9 +125,12 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
             )
             .select_from(author_subquery.subquery())
             .union(
-                select(replied_author_subquery.subquery().c.id).select_from(
-                    replied_author_subquery.subquery()
-                )
+                select(
+                    replied_author_subquery.subquery().c.id,
+                    replied_author_subquery.subquery().c.slug,
+                    replied_author_subquery.subquery().c.created_at,
+                    replied_author_subquery.subquery().c.name,
+                ).select_from(replied_author_subquery.subquery())
             )
         )
 
