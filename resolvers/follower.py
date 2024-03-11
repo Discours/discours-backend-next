@@ -40,10 +40,7 @@ async def follow(_, info, what, slug):
         if follower:
             if what == 'AUTHOR':
                 if author_follow(follower.id, slug):
-                    author_query = (
-                        select(Author).select_from(Author).where(Author.slug == slug)
-                    )
-                    [author] = get_with_stat(author_query)
+                    [author] = get_with_stat(select(Author).select_from(Author).where(Author.slug == slug))
                     if author:
                         follows = await update_follows_for_author(
                             follower, 'author', author, True
