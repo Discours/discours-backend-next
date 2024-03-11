@@ -146,8 +146,8 @@ def load_authors_by(_, _info, by, limit, offset):
 async def get_author_follows(_, _info, slug='', user=None, author_id=None):
     with (local_session() as session):
         if user or slug:
-             author = session.query(Author).filter(or_(Author.user == user, Author.slug == slug)).first()
-             if author:
+            author = session.query(Author).filter(or_(Author.user == user, Author.slug == slug)).first()
+            if author:
                 author_id = author.id
         if author_id:
             rkey = f'author:{author_id}:follows-authors'
