@@ -12,7 +12,7 @@ from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.community import community_follow, community_unfollow
-from resolvers.topic import topic_unfollow
+from resolvers.topic import topic_unfollow, topic_follow
 from resolvers.stat import get_with_stat, author_follows_topics, author_follows_authors
 from services.auth import login_required
 from services.db import local_session
@@ -39,7 +39,7 @@ async def follow(_, info, what, slug):
         [follower] = get_with_stat(follower_query)
         if follower:
             if what == 'AUTHOR':
-                if author_unfollow(follower.id, slug):
+                if author_follow(follower.id, slug):
                     author_query = (
                         select(Author).select_from(Author).where(Author.slug == slug)
                     )
@@ -57,7 +57,7 @@ async def follow(_, info, what, slug):
                     follows = await update_follows_for_author(
                         follower, 'topic', topic, True
                     )
-                topic_unfollow(follower.id, slug)
+                topic_follow(follower.id, slug)
             elif what == 'COMMUNITY':
                 community_follow(follower.id, slug)
             elif what == 'REACTIONS':
