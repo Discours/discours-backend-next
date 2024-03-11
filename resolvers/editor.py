@@ -223,23 +223,13 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
                 if not shout_by_id:
                     return {'error': 'shout not found'}
-                if shout_by_id and slug != shout_by_id.slug:
-                    same_slug_shout = (
-                        session.query(Shout)
-                        .filter(Shout.slug == shout_input.get('slug'))
-                        .first()
-                    )
+                if slug != shout_by_id.slug:
+                    same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     c = 1
                     while same_slug_shout is not None:
                         c += 1
                         slug += f'-{c}'
-                        same_slug_shout = (
-                            session.query(Shout)
-                            .filter(
-                                Shout.slug == slug
-                            )  # Use the updated slug value here
-                            .first()
-                        )
+                        same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     shout_input['slug'] = slug
 
                 if (
@@ -279,6 +269,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     return {'error': 'access denied', 'shout': None}
 
     except Exception as exc:
+        import traceback
+
+        traceback.print_exc()
         logger.error(exc)
         logger.error(f' cannot update with data: {shout_input}')
 

@@ -31,6 +31,7 @@ from services.rediscache import redis
 @login_required
 async def follow(_, info, what, slug):
     follows = None
+    logger.debug(info.context['request'])
     try:
         user_id = info.context['user_id']
         follower_query = (

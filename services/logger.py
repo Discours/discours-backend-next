@@ -69,3 +69,8 @@ def get_colorful_logger(name='main'):
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(stream)
+
+ignore_logs = ['_trace', 'httpx', '_client', '_trace.atrace', 'aiohttp', '_client']
+for lgr in ignore_logs:
+    loggr = logging.getLogger(lgr)
+    loggr.setLevel(logging.INFO)

@@ -86,7 +86,7 @@ async def get_author_by_user_id(user_id: str):
             author_id = author.get('id')
             author_slug = author.get('slug')
             if author_id:
-                logger.debug(f'got author @{author_slug} #{author_id} cached today')
+                logger.debug(f'got author @{author_slug} #{author_id} cached')
                 return author
 
         q = select(Author).filter(Author.user == user_id)
@@ -278,7 +278,7 @@ async def get_author_followers(_, _info, slug: str):
                     logger.debug(f'@{slug} cache updated with {len(results)} followers')
                     return results
                 else:
-                    logger.debug(f'@{slug} got followers cached today')
+                    logger.debug(f'@{slug} got followers cached')
                     return json.loads(cached)
     except Exception as exc:
         import traceback

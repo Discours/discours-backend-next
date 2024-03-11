@@ -1,16 +1,9 @@
 from functools import wraps
 import httpx
-import logging
 from starlette.exceptions import HTTPException
 
 from services.logger import root_logger as logger
 from settings import ADMIN_SECRET, AUTH_URL
-
-trace_logger = logging.getLogger('_trace')
-trace_logger.setLevel(logging.INFO)
-
-httpx_logger = logging.getLogger('httpx')
-httpx_logger.setLevel(logging.INFO)
 
 
 async def request_data(gql, headers=None):
