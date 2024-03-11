@@ -40,6 +40,7 @@ async def follow(_, info, what, slug):
         if follower:
             if what == 'AUTHOR':
                 if author_follow(follower.id, slug):
+                    logger.debug(f'@{follower.slug} followed @{slug}')
                     [author] = get_with_stat(select(Author).select_from(Author).where(Author.slug == slug))
                     if author:
                         follows = await update_follows_for_author(
@@ -194,6 +195,9 @@ def reactions_unfollow(author_id, shout_id: int):
                 return True
     except Exception as ex:
         logger.debug(ex)
+        import traceback
+
+        traceback.print_exc()
     return False
 
 
@@ -206,7 +210,11 @@ def author_follow(follower_id, slug):
             session.add(af)
             session.commit()
         return True
-    except Exception:
+    except Exception as exc:
+        logger.error(exc)
+        import traceback
+
+        traceback.print_exc()
         return False
 
 
