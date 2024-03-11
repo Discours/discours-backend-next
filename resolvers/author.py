@@ -151,6 +151,7 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=None):
                 .filter(or_(Author.user == user, Author.slug == slug))
                 .first()
             )
+            logger.warn(author_id_result)
             author_id = author_id_result[0] if author_id_result else None
         if author_id:
             rkey = f'author:{author_id}:follows-authors'
