@@ -105,7 +105,7 @@ class SearchService:
                     index=self.index_name, body=expected_mapping
                 )
             else:
-                logger.debug(f' найден существующий индекс {self.index_name}')
+                logger.info(f'найден существующий индекс {self.index_name}')
                 # Check if the mapping is correct, and recreate the index if needed
                 result = self.client.indices.get_mapping(index=self.index_name)
                 if isinstance(result, str):
