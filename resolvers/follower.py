@@ -48,7 +48,7 @@ async def follow(_, info, what, slug):
                         follows = await update_follows_for_author(
                             follower, 'author', author, True
                         )
-                        await update_followers_for_author(follower, author, True)
+                        _followers = await update_followers_for_author(follower, author, True)
                         await notify_follower(follower.dict(), author.id, 'unfollow')
             elif what == 'TOPIC':
                 topic_query = select(Topic).where(Topic.slug == slug)
@@ -86,10 +86,10 @@ async def unfollow(_, info, what, slug):
                     author_query = select(Author).where(Author.slug == slug)
                     [author] = get_with_stat(author_query)
                     if author:
-                        await update_follows_for_author(
+                        follows = await update_follows_for_author(
                             follower, 'author', author, False
                         )
-                        follows = await update_followers_for_author(
+                        _followers = await update_followers_for_author(
                             follower, author, False
                         )
                         await notify_follower(follower.dict(), author.id, 'unfollow')
