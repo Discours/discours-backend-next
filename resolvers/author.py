@@ -110,11 +110,11 @@ async def get_author_id(_, _info, user: str):
 
 
 @query.field('load_authors_by')
-async def load_authors_by(_, _info, by, limit, offset):
-    cache_key = f"load_authors_by_{json.dumps(by)}_{limit}_{offset}"
+def load_authors_by(_, _info, by, limit, offset):
+    cache_key = f"{json.dumps(by)}_{limit}_{offset}"
 
     @authors_cache_region.cache_on_arguments(cache_key)
-    async def _load_authors_by(_, _info, by, limit, offset):
+    def _load_authors_by():
         logger.debug(f'loading authors by {by}')
         q = select(Author)
         if by.get('slug'):
@@ -147,7 +147,7 @@ async def load_authors_by(_, _info, by, limit, offset):
 
         return authors
 
-    return await _load_authors_by(None, None, by, limit, offset)
+    return _load_authors_by()
 
 
 
