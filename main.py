@@ -7,6 +7,7 @@ from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
 
+from services.cache import events_register
 from services.rediscache import redis
 from services.schema import resolvers
 from services.viewed import ViewedStorage
@@ -37,6 +38,7 @@ app = Starlette(
         ViewedStorage.init,
         # search_service.info,
         # start_sentry,
+        events_register,
         start,
     ],
     on_shutdown=[redis.disconnect],

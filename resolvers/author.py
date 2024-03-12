@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc, literal
+from sqlalchemy import select, or_, and_, text, desc
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -52,7 +52,7 @@ async def get_author(_, _info, slug='', author_id=None):
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
             logger.debug(f'result from cache: {cache}')
-            q = select(Author).where(Author.id == literal(author_id))
+            q = select(Author).where(Author.id == author_id)
             author_dict = None
             if cache:
                 author_dict = json.loads(cache)

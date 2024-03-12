@@ -6,6 +6,7 @@ from orm.topic import TopicFollower, Topic
 from services.db import local_session
 from orm.author import AuthorFollower, Author, AuthorRating
 from orm.shout import ShoutTopic, ShoutAuthor, Shout
+from services.logger import root_logger as logger
 
 
 def add_topic_stat_columns(q):
@@ -16,26 +17,26 @@ def add_topic_stat_columns(q):
     q = (
         q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
         .add_columns(
-            func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat')
+            func.count(distinct(aliased_shout_topic.shout)).label("shouts_stat")
         )
         .outerjoin(
             aliased_shout_author,
             aliased_shout_topic.shout == aliased_shout_author.shout,
         )
         .add_columns(
-            func.count(distinct(aliased_shout_author.author)).label('authors_stat')
+            func.count(distinct(aliased_shout_author.author)).label("authors_stat")
         )
         .outerjoin(aliased_topic_follower)
         .add_columns(
             func.count(distinct(aliased_topic_follower.follower)).label(
-                'followers_stat'
+                "followers_stat"
             )
         )
     )
     # Create a subquery for comments count
     _sub_comments = (
         select(
-            Shout.id, func.coalesce(func.count(Reaction.id), 0).label('comments_count')
+            Shout.id, func.coalesce(func.count(Reaction.id), 0).label("comments_count")
         )
         .join(
             Reaction,
@@ -66,23 +67,23 @@ def add_author_stat_columns(q):
 
     q = q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
     q = q.add_columns(
-        func.count(distinct(aliased_shout_author.shout)).label('shouts_stat')
+        func.count(distinct(aliased_shout_author.shout)).label("shouts_stat")
     )
 
     q = q.outerjoin(aliased_authors, aliased_authors.follower == Author.id)
     q = q.add_columns(
-        func.count(distinct(aliased_authors.author)).label('authors_stat')
+        func.count(distinct(aliased_authors.author)).label("authors_stat")
     )
 
     q = q.outerjoin(aliased_followers, aliased_followers.author == Author.id)
     q = q.add_columns(
-        func.count(distinct(aliased_followers.follower)).label('followers_stat')
+        func.count(distinct(aliased_followers.follower)).label("followers_stat")
     )
 
     # Create a subquery for comments count
     sub_comments = (
         select(
-            Author.id, func.coalesce(func.count(Reaction.id), 0).label('comments_stat')
+            Author.id, func.coalesce(func.count(Reaction.id), 0).label("comments_stat")
         )
         .outerjoin(
             Reaction,
@@ -99,22 +100,9 @@ def add_author_stat_columns(q):
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
     q = q.add_columns(sub_comments.c.comments_stat)
 
-    # Create a subquery for topics
-    _sub_topics = (
-        select(
-            ShoutAuthor.author,
-            func.count(distinct(ShoutTopic.topic)).label('topics_stat'),
-        )
-        .join(Shout, ShoutTopic.shout == Shout.id)
-        .join(ShoutAuthor, Shout.id == ShoutAuthor.shout)
-        .group_by(ShoutAuthor.author)
-        .subquery()
+    q = q.group_by(
+        Author.id, sub_comments.c.comments_stat
     )
-
-    # q = q.outerjoin(sub_topics, Author.id == sub_topics.c.author)
-    # q = q.add_columns(sub_topics.c.topics_stat)
-
-    q = q.group_by(Author.id, sub_comments.c.comments_stat)  #, sub_topics.c.topics_stat)
 
     return q
 
@@ -124,7 +112,7 @@ def add_author_ratings(q):
     ratings_subquery = (
         select(
             [
-                aliased_author.id.label('author_id'),
+                aliased_author.id.label("author_id"),
                 func.count()
                 .filter(
                     and_(
@@ -133,12 +121,12 @@ def add_author_ratings(q):
                         Reaction.deleted_at.is_(None),
                     )
                 )
-                .label('comments_count'),
+                .label("comments_count"),
                 func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label(
-                    'likes_count'
+                    "likes_count"
                 ),
                 func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label(
-                    'dislikes_count'
+                    "dislikes_count"
                 ),
                 func.sum(
                     case(
@@ -151,7 +139,7 @@ def add_author_ratings(q):
                         ),
                         else_=0,
                     )
-                ).label('shouts_likes'),
+                ).label("shouts_likes"),
                 func.sum(
                     case(
                         (
@@ -163,7 +151,7 @@ def add_author_ratings(q):
                         ),
                         else_=0,
                     )
-                ).label('shouts_dislikes'),
+                ).label("shouts_dislikes"),
             ]
         )
         .select_from(aliased_author)
@@ -171,42 +159,47 @@ def add_author_ratings(q):
         .outerjoin(Shout, Shout.authors.any(id=aliased_author.id))
         .filter(Reaction.deleted_at.is_(None))
         .group_by(aliased_author.id)
-        .alias('ratings_subquery')
+        .alias("ratings_subquery")
     )
 
     return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
 
 
 def get_with_stat(q):
-    is_author = f'{q}'.lower().startswith('select author')
-    is_topic = f'{q}'.lower().startswith('select topic')
-    if is_author:
-        q = add_author_stat_columns(q)
-        # q = add_author_ratings(q)  # TODO: move rating to cols down there
-    elif is_topic:
-        q = add_topic_stat_columns(q)
-    records = []
-    # logger.debug(f'{q}'.replace('\n', ' '))
-    with local_session() as session:
-        for cols in session.execute(q):
-            entity = cols[0]
-            entity.stat = {}
-            entity.stat['shouts'] = cols[1]
-            entity.stat['authors'] = cols[2]
-            entity.stat['followers'] = cols[3]
-            if is_author:
-                entity.stat['comments'] = cols[4]
-                # entity.stat['topics'] = cols[5]
-                # entity.stat['rating'] = cols[5] - cols[6]
-                # entity.stat['rating_shouts'] = cols[7] - cols[8]
-
-            records.append(entity)
-
+    try:
+        is_author = f"{q}".lower().startswith("select author")
+        is_topic = f"{q}".lower().startswith("select topic")
+        if is_author:
+            q = add_author_stat_columns(q)
+            # q = add_author_ratings(q)  # TODO: move rating to cols down there
+        elif is_topic:
+            q = add_topic_stat_columns(q)
+        records = []
+        # logger.debug(f'{q}'.replace('\n', ' '))
+        with local_session() as session:
+            for cols in session.execute(q):
+                entity = cols[0]
+                if not isinstance(entity, dict):
+                    entity = entity.dict()
+                stat = dict()
+                stat["shouts"] = cols[1]
+                stat["authors"] = cols[2]
+                stat["followers"] = cols[3]
+                if is_author:
+                    stat["comments"] = cols[4]
+                    # entity.stat['topics'] = cols[5]
+                    # entity.stat['rating'] = cols[5] - cols[6]
+                    # entity.stat['rating_shouts'] = cols[7] - cols[8]
+                entity['stat'] = stat
+                records.append(entity)
+    except Exception as exc:
+        logger.debug(cols)
+        raise Exception(exc)
     return records
 
 
 def author_follows_authors(author_id: int):
-    af = aliased(AuthorFollower, name='af')
+    af = aliased(AuthorFollower, name="af")
     q = (
         select(Author)
         .select_from(join(Author, af, Author.id == af.author))
