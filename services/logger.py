@@ -40,7 +40,7 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
             formatted_lines = [super().format(record)]  # Format the first line
             for line in lines[1:]:
                 record.message = line  # Set the message to the remaining lines one by one
-                formatted_lines.append(self._formatMessage(record))  # Format without prefix
+                formatted_lines.append(super().format(record))  # Format without prefix
             return '\n'.join(formatted_lines)
         else:
             return super().format(record)
