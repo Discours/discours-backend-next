@@ -147,7 +147,7 @@ async def load_authors_by(_, _info, by, limit, offset):
 
         return authors
 
-    return await _load_authors_by(_, _info, by, limit, offset)
+    return await _load_authors_by(None, None, by, limit, offset)
 
 
 
