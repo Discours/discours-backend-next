@@ -33,19 +33,18 @@ fmt_config = {
 
 class MultilineColoredFormatter(colorlog.ColoredFormatter):
     def format(self, record):
-        # Check if the message is multiline
-        if record.getMessage() and '\n' in record.getMessage():
-            # Split the message into lines
-            lines = record.getMessage().split('\n')
-            formatted_lines = []
-            for line in lines:
-                # Format each line with the provided format
-                formatted_lines.append(super().format(record))
-            # Join the formatted lines
+        message = record.getMessage()
+        if '\n' in message:
+            lines = message.split('\n')
+            record.message = lines[0]  # Keep only the first line in the record
+            formatted_lines = [super().format(record)]  # Format the first line
+            for line in lines[1:]:
+                record.message = line  # Set the message to the remaining lines one by one
+                formatted_lines.append(self._formatMessage(record))  # Format without prefix
             return '\n'.join(formatted_lines)
         else:
-            # If not multiline or no message, use the default formatting
             return super().format(record)
+
 
 
 # Create a MultilineColoredFormatter object for colorized logging
