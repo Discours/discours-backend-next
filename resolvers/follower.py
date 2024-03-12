@@ -12,7 +12,7 @@ from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_authors_with_stat_cached, author_follows_topics, author_follows_authors, get_with_stat, \
+from resolvers.stat import get_authors_with_stat_cached, author_follows_topics, author_follows_authors, \
     get_topics_with_stat_cached
 from services.auth import login_required
 from services.db import local_session
@@ -274,14 +274,14 @@ def author_unfollow(follower_id, slug):
 
 
 @query.field('get_topic_followers')
-def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
+async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
     q = select(Author)
     q = (
         q.join(TopicFollower, TopicFollower.follower == Author.id)
         .join(Topic, Topic.id == TopicFollower.topic)
         .filter(or_(Topic.slug == slug, Topic.id == topic_id))
     )
-    return get_with_stat(q)
+    return await get_authors_with_stat_cached(q)
 
 
 @query.field('get_shout_followers')

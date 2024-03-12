@@ -14,7 +14,7 @@ from services.cache import set_author_cache, update_author_followers_cache
 from services.auth import login_required
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
-from services.memorycache import authors_cache_region
+from services.memorycache import cache_region
 from services.rediscache import redis
 from services.schema import mutation, query
 from services.logger import root_logger as logger
@@ -113,7 +113,7 @@ async def get_author_id(_, _info, user: str):
 def load_authors_by(_, _info, by, limit, offset):
     cache_key = f"{json.dumps(by)}_{limit}_{offset}"
 
-    @authors_cache_region.cache_on_arguments(cache_key)
+    @cache_region.cache_on_arguments(cache_key)
     def _load_authors_by():
         logger.debug(f'loading authors by {by}')
         q = select(Author)
@@ -148,8 +148,6 @@ def load_authors_by(_, _info, by, limit, offset):
         return authors
 
     return _load_authors_by()
-
-
 
 
 @query.field('get_author_follows')

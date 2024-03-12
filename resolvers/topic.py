@@ -3,21 +3,35 @@ from sqlalchemy import distinct, func, select
 from orm.author import Author
 from orm.shout import ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import get_topics_with_stat_cached
+from resolvers.stat import get_topics_with_stat_cached, get_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
+from services.memorycache import cache_region
 
 
 @query.field('get_topics_all')
-async def get_topics_all(_, _info):
-    return await get_topics_with_stat_cached(select(Topic))
+def get_topics_all(_, _info):
+    cache_key = "get_topics_all"
+
+    @cache_region.cache_on_arguments(cache_key)
+    def _get_topics_all():
+        return get_with_stat(select(Topic))
+
+    return _get_topics_all()
 
 
 @query.field('get_topics_by_community')
-async def get_topics_by_community(_, _info, community_id: int):
-    q = select(Topic).where(Topic.community == community_id)
-    return await get_topics_with_stat_cached(q)
+def get_topics_by_community(_, _info, community_id: int):
+    cache_key = f"get_topics_by_community_{community_id}"
+
+    @cache_region.cache_on_arguments(cache_key)
+    def _get_topics_by_community():
+        q = select(Topic).where(Topic.community == community_id)
+        return get_with_stat(q)
+
+    return _get_topics_by_community()
+
 
 
 @query.field('get_topics_by_author')
@@ -34,9 +48,9 @@ async def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
 
 
 @query.field('get_topic')
-async def get_topic(_, _info, slug: str):
+def get_topic(_, _info, slug: str):
     q = select(Topic).filter(Topic.slug == slug)
-    topics = await get_topics_with_stat_cached(q)
+    topics = get_with_stat(q)
     if topics:
         return topics[0]
 
