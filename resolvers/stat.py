@@ -203,7 +203,7 @@ async def get_authors_with_stat_cached(q):
     try:
         records = []
         with local_session() as session:
-            for x in session.execute(q):
+            for [x] in session.execute(q):
                 stat_str = await redis.execute('GET', f'author:{x.id}')
                 if isinstance(stat_str, str):
                     x.stat = json.loads(stat_str).get('stat')
@@ -218,7 +218,7 @@ async def get_topics_with_stat_cached(q):
         records = []
         current = None
         with local_session() as session:
-            for x in session.execute(q):
+            for [x] in session.execute(q):
                 current = x
                 stat_str = await redis.execute('GET', f'topic:{x.id}')
                 if isinstance(stat_str, str):
