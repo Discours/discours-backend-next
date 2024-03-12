@@ -9,7 +9,7 @@ from sqlalchemy_searchable import search
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import get_authors_with_stat_cached, author_follows_authors, author_follows_topics
+from resolvers.stat import get_authors_with_stat_cached, author_follows_authors, author_follows_topics, get_with_stat
 from services.cache import set_author_cache, update_author_followers_cache
 from services.auth import login_required
 from services.db import local_session
@@ -137,7 +137,7 @@ async def load_authors_by(_, _info, by, limit, offset):
     # q = q.distinct()
     q = q.limit(limit).offset(offset)
 
-    authors = await get_authors_with_stat_cached(q)
+    authors = get_with_stat(q)
 
     return authors
 
