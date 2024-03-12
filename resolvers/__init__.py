@@ -49,6 +49,10 @@ from resolvers.notifier import (
     notifications_seen_thread,
 )
 
+from services.cache import events_register
+
+events_register()
+
 __all__ = [
     # author
     'get_author',
