@@ -187,13 +187,11 @@ def after_author_follower_insert(mapper, connection, target: AuthorFollower):
 @event.listens_for(AuthorFollower, 'after_delete')
 def after_author_follower_delete(mapper, connection, target: AuthorFollower):
     asyncio.create_task(
-        handle_author_follower_change(connection, target.author, target.follower, False)
+        handle_author_follower_change(target.author, target.follower, False)
     )
 
 
-async def handle_author_follower_change(
-    connection, author_id: int, follower_id: int, is_insert: bool
-):
+async def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
     author_query = select(Author).select_from(Author).filter(Author.id == author_id)
     [author] = get_with_stat(author_query)
     follower_query = select(Author).select_from(Author).filter(Author.id == follower_id)
