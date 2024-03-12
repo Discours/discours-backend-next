@@ -179,8 +179,6 @@ def get_with_stat(q):
         with local_session() as session:
             for cols in session.execute(q):
                 entity = cols[0]
-                if not isinstance(entity, dict):
-                    entity = entity.dict()
                 stat = dict()
                 stat["shouts"] = cols[1]
                 stat["authors"] = cols[2]
@@ -190,7 +188,7 @@ def get_with_stat(q):
                     # entity.stat['topics'] = cols[5]
                     # entity.stat['rating'] = cols[5] - cols[6]
                     # entity.stat['rating_shouts'] = cols[7] - cols[8]
-                entity['stat'] = stat
+                entity.stat = stat
                 records.append(entity)
     except Exception as exc:
         logger.debug(cols)
