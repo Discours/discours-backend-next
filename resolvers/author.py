@@ -9,7 +9,7 @@ from sqlalchemy_searchable import search
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import get_with_stat, author_follows_authors, author_follows_topics
+from resolvers.stat import get_authors_with_stat_cached, author_follows_authors, author_follows_topics
 from services.cache import set_author_cache, update_author_followers_cache
 from services.auth import login_required
 from services.db import local_session
@@ -44,7 +44,7 @@ async def get_author(_, _info, slug='', author_id=None):
     try:
         if slug:
             q = select(Author).select_from(Author).filter(Author.slug == slug)
-            result = get_with_stat(q)
+            result = get_authors_with_stat_cached(q)
             if result:
                 [author] = result
                 author_id = author.id
@@ -57,7 +57,7 @@ async def get_author(_, _info, slug='', author_id=None):
             if cache:
                 author_dict = json.loads(cache)
             else:
-                result = get_with_stat(q)
+                result = get_authors_with_stat_cached(q)
                 if result:
                     [author] = result
                     author_dict = author.dict()
@@ -90,7 +90,7 @@ async def get_author_by_user_id(user_id: str):
                 return author
 
         q = select(Author).filter(Author.user == user_id)
-        result = get_with_stat(q)
+        result = get_authors_with_stat_cached(q)
         if result:
             [author] = result
             await set_author_cache(author.dict())
@@ -137,7 +137,7 @@ def load_authors_by(_, _info, by, limit, offset):
     # q = q.distinct()
     q = q.limit(limit).offset(offset)
 
-    authors = get_with_stat(q)
+    authors = get_authors_with_stat_cached(q)
 
     return authors
 
@@ -266,7 +266,7 @@ async def get_author_followers(_, _info, slug: str):
                             author_follower_alias.follower == Author.id,
                         ),
                     )
-                    results = get_with_stat(q)
+                    results = get_authors_with_stat_cached(q)
                     _ = asyncio.create_task(
                         update_author_followers_cache(
                             author_id, [x.dict() for x in results]
@@ -288,4 +288,4 @@ async def get_author_followers(_, _info, slug: str):
 @query.field('search_authors')
 def search_authors(_, _info, what: str):
     q = search(select(Author), what)
-    return get_with_stat(q)
+    return get_authors_with_stat_cached(q)

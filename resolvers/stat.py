@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import func, distinct, select, join, and_, case, true, cast, Integer
 from sqlalchemy.orm import aliased
 
@@ -7,6 +9,7 @@ from services.db import local_session
 from orm.author import AuthorFollower, Author, AuthorRating
 from orm.shout import ShoutTopic, ShoutAuthor, Shout
 from services.logger import root_logger as logger
+from services.rediscache import redis
 
 
 def add_topic_stat_columns(q):
@@ -192,6 +195,20 @@ def get_with_stat(q):
                 records.append(entity)
     except Exception as exc:
         logger.debug(cols)
+        raise Exception(exc)
+    return records
+
+
+async def get_authors_with_stat_cached(q):
+    try:
+        records = []
+        with local_session() as session:
+            for x in session.execute(q):
+                stat_str = await redis.execute('GET', f'id:{x.id}:{'author'}')
+                if isinstance(stat_str, str):
+                    x.stat = json.loads(stat_str).get('stat')
+                records.append(x)
+    except Exception as exc:
         raise Exception(exc)
     return records
 
