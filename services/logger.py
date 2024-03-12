@@ -45,24 +45,10 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
             formatted_lines = [super().format(record)]  # Format the first line with prefix
             for line in lines[1:]:
                 record.message = line  # Set the message to the remaining lines one by one
-                formatted_lines.append(self.format_secondary_line(record))  # Format without prefix
+                formatted_lines.append(record.getMessage())
             return '\n'.join(formatted_lines)
         else:
             return super().format(record)
-
-    def format_secondary_line(self, record):
-        msg = record.getMessage()
-        log_color = self.log_colors.get(record.levelname, 'reset')
-        formatted_msg = []
-
-        # Since there are no secondary log colors in the subsequent lines,
-        # we apply the log_color to each part of the message.
-        for part in msg.split(' '):
-            formatted_msg.append(f"{log_color}{part}{self.reset}")
-
-        return ' '.join(formatted_msg)
-
-
 
 
 # Create a MultilineColoredFormatter object for colorized logging
