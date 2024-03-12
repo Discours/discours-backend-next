@@ -14,6 +14,7 @@ from services.cache import set_author_cache, update_author_followers_cache
 from services.auth import login_required
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
+from services.memorycache import authors_cache_region
 from services.rediscache import redis
 from services.schema import mutation, query
 from services.logger import root_logger as logger
@@ -109,37 +110,45 @@ async def get_author_id(_, _info, user: str):
 
 @query.field('load_authors_by')
 async def load_authors_by(_, _info, by, limit, offset):
-    logger.debug(f'loading authors by {by}')
-    q = select(Author)
-    if by.get('slug'):
-        q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
-    elif by.get('name'):
-        q = q.filter(Author.name.ilike(f"%{by['name']}%"))
-    elif by.get('topic'):
-        q = (
-            q.join(ShoutAuthor)
-            .join(ShoutTopic)
-            .join(Topic)
-            .where(Topic.slug == str(by['topic']))
-        )
+    cache_key = f"load_authors_by_{json.dumps(by)}_{limit}_{offset}"
 
-    if by.get('last_seen'):  # in unix time
-        before = int(time.time()) - by['last_seen']
-        q = q.filter(Author.last_seen > before)
-    elif by.get('created_at'):  # in unix time
-        before = int(time.time()) - by['created_at']
-        q = q.filter(Author.created_at > before)
+    @authors_cache_region.cache_on_arguments(cache_key)
+    async def _load_authors_by(_, _info, by, limit, offset):
+        logger.debug(f'loading authors by {by}')
+        q = select(Author)
+        if by.get('slug'):
+            q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
+        elif by.get('name'):
+            q = q.filter(Author.name.ilike(f"%{by['name']}%"))
+        elif by.get('topic'):
+            q = (
+                q.join(ShoutAuthor)
+                .join(ShoutTopic)
+                .join(Topic)
+                .where(Topic.slug == str(by['topic']))
+            )
 
-    order = by.get('order')
-    if order in ['likes', 'shouts', 'followers']:
-        q = q.order_by(desc(text(f'{order}_stat')))
+        if by.get('last_seen'):  # in unix time
+            before = int(time.time()) - by['last_seen']
+            q = q.filter(Author.last_seen > before)
+        elif by.get('created_at'):  # in unix time
+            before = int(time.time()) - by['created_at']
+            q = q.filter(Author.created_at > before)
 
-    # q = q.distinct()
-    q = q.limit(limit).offset(offset)
+        order = by.get('order')
+        if order in ['likes', 'shouts', 'followers']:
+            q = q.order_by(desc(text(f'{order}_stat')))
 
-    authors = get_with_stat(q)
+        # q = q.distinct()
+        q = q.limit(limit).offset(offset)
 
-    return authors
+        authors = get_with_stat(q)
+
+        return authors
+
+    return await _load_authors_by()
+
+
 
 
 @query.field('get_author_follows')
