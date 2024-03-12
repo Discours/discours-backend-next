@@ -22,8 +22,13 @@ DEFAULT_FOLLOWS = {
 
 async def set_author_cache(author: dict):
     payload = json.dumps(author, cls=CustomJSONEncoder)
-    await redis.execute("SET", f'user:{author.get("user")}:author', payload)
-    await redis.execute("SET", f'id:{author.get("id")}:author', payload)
+    await redis.execute("SET", f'user:{author.get("user")}', payload)
+    await redis.execute("SET", f'author:{author.get("id")}', payload)
+
+
+async def set_topic_cache(topic: dict):
+    payload = json.dumps(topic, cls=CustomJSONEncoder)
+    await redis.execute("SET", f'topic:{topic.get("id")}', payload)
 
 
 async def update_author_followers_cache(author_id: int, followers):

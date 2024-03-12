@@ -12,7 +12,8 @@ from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_authors_with_stat_cached, author_follows_topics, author_follows_authors, get_with_stat
+from resolvers.stat import get_authors_with_stat_cached, author_follows_topics, author_follows_authors, get_with_stat, \
+    get_topics_with_stat_cached
 from services.auth import login_required
 from services.db import local_session
 from services.cache import (
@@ -34,7 +35,7 @@ async def follow(_, info, what, slug):
     user_id = info.context.get('user_id')
     if not user_id:
         return {"error": "unauthorized"}
-    [follower] = get_authors_with_stat_cached(select(Author).select_from(Author).filter(Author.user == user_id))
+    [follower] = await get_authors_with_stat_cached(select(Author).select_from(Author).filter(Author.user == user_id))
     if not follower:
         return {"error": "cant find follower"}
 
@@ -42,7 +43,7 @@ async def follow(_, info, what, slug):
         error = author_follow(follower.id, slug)
         if not error:
             logger.debug(f'@{follower.slug} followed @{slug}')
-            [author] = get_authors_with_stat_cached(select(Author).select_from(Author).where(Author.slug == slug))
+            [author] = await get_authors_with_stat_cached(select(Author).select_from(Author).where(Author.slug == slug))
             if not author:
                 return {"error": "author is not found"}
             follows = await update_follows_for_author(follower, 'author', author.dict(), True)
@@ -52,7 +53,7 @@ async def follow(_, info, what, slug):
     elif what == 'TOPIC':
         error = topic_follow(follower.id, slug)
         if not error:
-            [topic] = get_with_stat(select(Topic).where(Topic.slug == slug))
+            [topic] = await get_topics_with_stat_cached(select(Topic).where(Topic.slug == slug))
             if not topic:
                 return {"error": "topic is not found"}
             follows = await update_follows_for_author(follower, 'topic', topic.dict(), True)
@@ -80,7 +81,7 @@ async def unfollow(_, info, what, slug):
     if not user_id:
         return {"error": "unauthorized"}
     follower_query = select(Author).filter(Author.user == user_id)
-    [follower] = get_authors_with_stat_cached(follower_query)
+    [follower] = await get_authors_with_stat_cached(follower_query)
     if not follower:
         return {"error": "follower profile is not found"}
 
@@ -88,7 +89,7 @@ async def unfollow(_, info, what, slug):
         error = author_unfollow(follower.id, slug)
         if not error:
             logger.info(f'@{follower.slug} unfollowing @{slug}')
-            [author] = get_authors_with_stat_cached(select(Author).where(Author.slug == slug))
+            [author] = await get_authors_with_stat_cached(select(Author).where(Author.slug == slug))
             if not author:
                 return {"error": "cant find author"}
             _followers = await update_followers_for_author(follower, author, False)
@@ -99,7 +100,7 @@ async def unfollow(_, info, what, slug):
         error = topic_unfollow(follower.id, slug)
         if not error:
             logger.info(f'@{follower.slug} unfollowing §{slug}')
-            [topic] = get_with_stat(select(Topic).where(Topic.slug == slug))
+            [topic] = await get_topics_with_stat_cached(select(Topic).where(Topic.slug == slug))
             if not topic:
                 return {"error": "cant find topic"}
             follows = await update_follows_for_author(follower, 'topic', topic.dict(), False)
@@ -123,7 +124,7 @@ async def unfollow(_, info, what, slug):
 async def get_follows_by_user_id(user_id: str):
     if not user_id:
         return {"error": "unauthorized"}
-    author = await redis.execute('GET', f'user:{user_id}:author')
+    author = await redis.execute('GET', f'user:{user_id}')
     if isinstance(author, str):
         author = json.loads(author)
     if not author:

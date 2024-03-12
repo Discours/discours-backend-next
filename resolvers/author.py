@@ -44,20 +44,20 @@ async def get_author(_, _info, slug='', author_id=None):
     try:
         if slug:
             q = select(Author).select_from(Author).filter(Author.slug == slug)
-            result = get_authors_with_stat_cached(q)
+            result = await get_authors_with_stat_cached(q)
             if result:
                 [author] = result
                 author_id = author.id
 
         if author_id:
-            cache = await redis.execute('GET', f'id:{author_id}:author')
+            cache = await redis.execute('GET', f'author:{author_id}')
             logger.debug(f'result from cache: {cache}')
             q = select(Author).where(Author.id == author_id)
             author_dict = None
             if cache:
                 author_dict = json.loads(cache)
             else:
-                result = get_authors_with_stat_cached(q)
+                result = await get_authors_with_stat_cached(q)
                 if result:
                     [author] = result
                     author_dict = author.dict()
@@ -77,7 +77,7 @@ async def get_author(_, _info, slug='', author_id=None):
 
 async def get_author_by_user_id(user_id: str):
     logger.info(f'getting author id for {user_id}')
-    redis_key = f'user:{user_id}:author'
+    redis_key = f'user:{user_id}'
     author = None
     try:
         res = await redis.execute('GET', redis_key)
@@ -90,7 +90,7 @@ async def get_author_by_user_id(user_id: str):
                 return author
 
         q = select(Author).filter(Author.user == user_id)
-        result = get_authors_with_stat_cached(q)
+        result = await get_authors_with_stat_cached(q)
         if result:
             [author] = result
             await set_author_cache(author.dict())
@@ -108,7 +108,7 @@ async def get_author_id(_, _info, user: str):
 
 
 @query.field('load_authors_by')
-def load_authors_by(_, _info, by, limit, offset):
+async def load_authors_by(_, _info, by, limit, offset):
     logger.debug(f'loading authors by {by}')
     q = select(Author)
     if by.get('slug'):
@@ -137,7 +137,7 @@ def load_authors_by(_, _info, by, limit, offset):
     # q = q.distinct()
     q = q.limit(limit).offset(offset)
 
-    authors = get_authors_with_stat_cached(q)
+    authors = await get_authors_with_stat_cached(q)
 
     return authors
 
@@ -266,7 +266,7 @@ async def get_author_followers(_, _info, slug: str):
                             author_follower_alias.follower == Author.id,
                         ),
                     )
-                    results = get_authors_with_stat_cached(q)
+                    results = await get_authors_with_stat_cached(q)
                     _ = asyncio.create_task(
                         update_author_followers_cache(
                             author_id, [x.dict() for x in results]
@@ -286,6 +286,6 @@ async def get_author_followers(_, _info, slug: str):
 
 
 @query.field('search_authors')
-def search_authors(_, _info, what: str):
+async def search_authors(_, _info, what: str):
     q = search(select(Author), what)
-    return get_authors_with_stat_cached(q)
+    return await get_authors_with_stat_cached(q)
