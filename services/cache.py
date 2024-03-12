@@ -98,7 +98,7 @@ async def update_followers_for_author(
 
 @event.listens_for(Shout, 'after_insert')
 @event.listens_for(Shout, 'after_update')
-def after_shouts_update(mapper, connection, shout: Shout):
+def after_shouts_update(_mapper, _connection, shout: Shout):
     # Main query to get authors associated with the shout through ShoutAuthor
     authors_query = (
         select(Author)
@@ -155,7 +155,7 @@ def after_reaction_insert(mapper, connection, reaction: Reaction):
 
 @event.listens_for(Author, 'after_insert')
 @event.listens_for(Author, 'after_update')
-def after_author_update(mapper, connection, author: Author):
+def after_author_update(_mapper, _connection, author: Author):
     q = select(Author).where(Author.id == author.id)
     result = get_with_stat(q)
     if result:
@@ -164,28 +164,28 @@ def after_author_update(mapper, connection, author: Author):
 
 
 @event.listens_for(TopicFollower, 'after_insert')
-def after_topic_follower_insert(mapper, connection, target: TopicFollower):
+def after_topic_follower_insert(_mapper, _connection, target: TopicFollower):
     asyncio.create_task(
         handle_topic_follower_change(target.topic, target.follower, True)
     )
 
 
 @event.listens_for(TopicFollower, 'after_delete')
-def after_topic_follower_delete(mapper, connection, target: TopicFollower):
+def after_topic_follower_delete(_mapper, _connection, target: TopicFollower):
     asyncio.create_task(
         handle_topic_follower_change(target.topic, target.follower, False)
     )
 
 
 @event.listens_for(AuthorFollower, 'after_insert')
-def after_author_follower_insert(mapper, connection, target: AuthorFollower):
+def after_author_follower_insert(_mapper, _connection, target: AuthorFollower):
     asyncio.create_task(
         handle_author_follower_change(target.author, target.follower, True)
     )
 
 
 @event.listens_for(AuthorFollower, 'after_delete')
-def after_author_follower_delete(mapper, connection, target: AuthorFollower):
+def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
     asyncio.create_task(
         handle_author_follower_change(target.author, target.follower, False)
     )

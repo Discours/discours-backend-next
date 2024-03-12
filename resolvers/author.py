@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc
+from sqlalchemy import select, or_, and_, text, desc, literal
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
@@ -52,7 +52,7 @@ async def get_author(_, _info, slug='', author_id=None):
         if author_id:
             cache = await redis.execute('GET', f'id:{author_id}:author')
             logger.debug(f'result from cache: {cache}')
-            q = select(Author).where(Author.id == author_id)
+            q = select(Author).where(Author.id == literal(author_id))
             author_dict = None
             if cache:
                 author_dict = json.loads(cache)
@@ -257,7 +257,6 @@ async def get_author_followers(_, _info, slug: str):
             )
             if author_id:
                 cached = await redis.execute('GET', f'author:{author_id}:followers')
-                results = []
                 if not cached:
                     author_follower_alias = aliased(AuthorFollower, name='af')
                     q = select(Author).join(
@@ -287,6 +286,6 @@ async def get_author_followers(_, _info, slug: str):
 
 
 @query.field('search_authors')
-def search_authors(_, info, what: str):
+def search_authors(_, _info, what: str):
     q = search(select(Author), what)
     return get_with_stat(q)
