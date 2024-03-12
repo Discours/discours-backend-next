@@ -41,11 +41,12 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
         message = record.getMessage()
         if '\n' in message:
             lines = message.split('\n')
-            record.message = lines[0]  # Keep only the first line in the record
-            formatted_lines = [super().format(record)]  # Format the first line with prefix
+            first_line = lines[0]
+            record.message = first_line
+            formatted_first_line = super().format(record)
+            formatted_lines = [formatted_first_line]
             for line in lines[1:]:
-                record.message = line  # Set the message to the remaining lines one by one
-                formatted_lines.append(record.getMessage())
+                formatted_lines.append(line)
             return '\n'.join(formatted_lines)
         else:
             return super().format(record)
