@@ -64,17 +64,15 @@ class ViewedStorage:
         self = ViewedStorage
         try:
             if os.path.exists(VIEWS_FILEPATH):
-                file_timestamp = os.path.getctime(VIEWS_FILEPATH)
-                self.start_date = datetime.fromtimestamp(file_timestamp).strftime(
-                    '%Y-%m-%d'
-                )
+                self.file_modification_timestamp = os.path.getmtime(VIEWS_FILEPATH)
+                self.start_date = datetime.fromtimestamp(self.file_modification_timestamp).strftime('%Y-%m-%d')
                 now_date = datetime.now().strftime('%Y-%m-%d')
 
                 if now_date == self.start_date:
                     logger.info(' * Данные актуализованы!')
                 else:
-                    logger.info(
-                        f' * Файл просмотров {VIEWS_FILEPATH} создан: {self.start_date}'
+                    logger.warn(
+                        f' * Файл просмотров {VIEWS_FILEPATH} устарел: {self.start_date}'
                     )
 
                 with open(VIEWS_FILEPATH, 'r') as file:
@@ -83,6 +81,8 @@ class ViewedStorage:
                     logger.info(
                         f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.'
                     )
+            else:
+                logger.info(" * Файл просмотров не найден.")
         except Exception as e:
             logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
 
