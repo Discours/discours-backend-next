@@ -51,16 +51,17 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
             return super().format(record)
 
     def format_secondary_line(self, record):
-        msg = self.formatMessage(record)
+        msg = record.getMessage()
         log_color = self.log_colors.get(record.levelname, 'reset')
-        secondary_colors = self.secondary_log_colors.get(record.name, {})
         formatted_msg = []
 
+        # Since there are no secondary log colors in the subsequent lines,
+        # we apply the log_color to each part of the message.
         for part in msg.split(' '):
-            color = secondary_colors.get(part.split('=')[0], log_color)
-            formatted_msg.append(f"{color}{part}{self.reset}")
+            formatted_msg.append(f"{log_color}{part}{self.reset}")
 
         return ' '.join(formatted_msg)
+
 
 
 
