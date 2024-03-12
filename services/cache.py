@@ -166,21 +166,21 @@ def after_author_update(mapper, connection, author: Author):
 @event.listens_for(TopicFollower, 'after_insert')
 def after_topic_follower_insert(mapper, connection, target: TopicFollower):
     asyncio.create_task(
-        handle_topic_follower_change(connection, target.topic, target.follower, True)
+        handle_topic_follower_change(target.topic, target.follower, True)
     )
 
 
 @event.listens_for(TopicFollower, 'after_delete')
 def after_topic_follower_delete(mapper, connection, target: TopicFollower):
     asyncio.create_task(
-        handle_topic_follower_change(connection, target.topic, target.follower, False)
+        handle_topic_follower_change(target.topic, target.follower, False)
     )
 
 
 @event.listens_for(AuthorFollower, 'after_insert')
 def after_author_follower_insert(mapper, connection, target: AuthorFollower):
     asyncio.create_task(
-        handle_author_follower_change(connection, target.author, target.follower, True)
+        handle_author_follower_change(target.author, target.follower, True)
     )
 
 
@@ -224,9 +224,7 @@ async def handle_author_follower_change(
         )
 
 
-async def handle_topic_follower_change(
-    connection, topic_id: int, follower_id: int, is_insert: bool
-):
+async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
     topic_query = select(Topic).filter(Topic.id == topic_id)
     [topic] = get_with_stat(topic_query)
     follower_query = select(Author).filter(Author.id == follower_id)

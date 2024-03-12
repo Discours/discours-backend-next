@@ -1,13 +1,12 @@
-from sqlalchemy import and_, distinct, func, select
+from sqlalchemy import distinct, func, select
 
 from orm.author import Author
 from orm.shout import ShoutTopic
-from orm.topic import Topic, TopicFollower
+from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
-from services.logger import root_logger as logger
 
 
 @query.field('get_topics_all')
@@ -89,35 +88,6 @@ async def delete_topic(_, info, slug: str):
 
             return {}
     return {'error': 'access denied'}
-
-
-def topic_follow(follower_id, slug):
-    try:
-        with local_session() as session:
-            topic = session.query(Topic).where(Topic.slug == slug).one()
-            _following = TopicFollower(topic=topic.id, follower=follower_id)
-        return None
-    except Exception as exc:
-        logger.error(exc)
-        return exc
-
-
-def topic_unfollow(follower_id, slug):
-    try:
-        with local_session() as session:
-            sub = (
-                session.query(TopicFollower)
-                .join(Topic)
-                .filter(and_(TopicFollower.follower == follower_id, Topic.slug == slug))
-                .first()
-            )
-            if sub:
-                session.delete(sub)
-                session.commit()
-        return None
-    except Exception as ex:
-        logger.debug(ex)
-        return ex
 
 
 @query.field('get_topics_random')

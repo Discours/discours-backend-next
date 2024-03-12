@@ -12,7 +12,6 @@ from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.topic import topic_unfollow, topic_follow
 from resolvers.stat import get_with_stat, author_follows_topics, author_follows_authors
 from services.auth import login_required
 from services.db import local_session
@@ -154,6 +153,35 @@ async def get_follows_by_user_id(user_id: str):
         if isinstance(res, str):
             follows = json.loads(res)
     return follows
+
+
+def topic_follow(follower_id, slug):
+    try:
+        with local_session() as session:
+            topic = session.query(Topic).where(Topic.slug == slug).one()
+            _following = TopicFollower(topic=topic.id, follower=follower_id)
+        return None
+    except Exception as exc:
+        logger.error(exc)
+        return exc
+
+
+def topic_unfollow(follower_id, slug):
+    try:
+        with local_session() as session:
+            sub = (
+                session.query(TopicFollower)
+                .join(Topic)
+                .filter(and_(TopicFollower.follower == follower_id, Topic.slug == slug))
+                .first()
+            )
+            if sub:
+                session.delete(sub)
+                session.commit()
+        return None
+    except Exception as ex:
+        logger.debug(ex)
+        return ex
 
 
 def reactions_follow(author_id, shout_id, auto=False):
