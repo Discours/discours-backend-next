@@ -32,18 +32,35 @@ fmt_config = {
 
 
 class MultilineColoredFormatter(colorlog.ColoredFormatter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log_colors = kwargs.pop('log_colors', {})
+        self.secondary_log_colors = kwargs.pop('secondary_log_colors', {})
+
     def format(self, record):
         message = record.getMessage()
         if '\n' in message:
             lines = message.split('\n')
             record.message = lines[0]  # Keep only the first line in the record
-            formatted_lines = [super().format(record)]  # Format the first line
+            formatted_lines = [super().format(record)]  # Format the first line with prefix
             for line in lines[1:]:
                 record.message = line  # Set the message to the remaining lines one by one
-                formatted_lines.append(super().format(record))  # Format without prefix
+                formatted_lines.append(self.format_secondary_line(record))  # Format without prefix
             return '\n'.join(formatted_lines)
         else:
             return super().format(record)
+
+    def format_secondary_line(self, record):
+        msg = self.formatMessage(record)
+        log_color = self.log_colors.get(record.levelname, 'reset')
+        secondary_colors = self.secondary_log_colors.get(record.name, {})
+        formatted_msg = []
+
+        for part in msg.split(' '):
+            color = secondary_colors.get(part.split('=')[0], log_color)
+            formatted_msg.append(f"{color}{part}{self.reset}")
+
+        return ' '.join(formatted_msg)
 
 
 
