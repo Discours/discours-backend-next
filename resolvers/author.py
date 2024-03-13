@@ -44,7 +44,7 @@ async def get_author(_, _info, slug='', author_id=None):
     author = None
     try:
         if slug:
-            [author_id] = local_session().execute(Author.id).filter(Author.slug == slug).scalar()
+            [author_id] = local_session().query(Author.id).filter(Author.slug == slug).scalar()
             if author_id:
                 cache_key = f'author:{author_id}'
                 cache = await redis.execute('GET', cache_key)
