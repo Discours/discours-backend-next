@@ -44,29 +44,24 @@ async def get_author(_, _info, slug='', author_id=None):
     author = None
     try:
         if slug:
-            q = select(Author).select_from(Author).filter(Author.slug == slug)
-            result = await get_authors_with_stat_cached(q)
-            if result:
-                [author] = result
-                author_id = author.id
-
-        if author_id:
-            cache_key = f'author:{author_id}'
-            cache = await redis.execute('GET', cache_key)
-            logger.debug(f'result from {cache_key}: {cache}')
-            q = select(Author).where(Author.id == author_id)
-            author_dict = None
-            if cache:
-                author_dict = json.loads(cache)
-            else:
-                result = await get_authors_with_stat_cached(q)
-                if result:
-                    [author] = result
-                    author_dict = author.dict()
-            logger.debug(f'author to be stored: {author_dict}')
-            if author:
-                await set_author_cache(author_dict)
-                return author_dict
+            [author_id] = local_session().execute(Author.id).filter(Author.slug == slug).scalar()
+            if author_id:
+                cache_key = f'author:{author_id}'
+                cache = await redis.execute('GET', cache_key)
+                logger.debug(f'result from {cache_key}: {cache}')
+                q = select(Author).where(Author.id == author_id)
+                author_dict = None
+                if cache:
+                    author_dict = json.loads(cache)
+                else:
+                    result = await get_authors_with_stat_cached(q)
+                    if result:
+                        [author] = result
+                        author_dict = author.dict()
+                logger.debug(f'author to be stored: {author_dict}')
+                if author:
+                    await set_author_cache(author_dict)
+                    return author_dict
     except Exception as exc:
         import traceback
 
