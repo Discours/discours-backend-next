@@ -48,7 +48,7 @@ async def get_author(_, _info, slug='', author_id=None):
             if author_id:
                 cache_key = f'author:{author_id}'
                 cache = await redis.execute('GET', cache_key)
-                logger.debug(f'result from {cache_key}: {cache}')
+                logger.debug(f'GET {cache_key} -> {cache}')
                 q = select(Author).where(Author.id == author_id)
                 author_dict = None
                 if cache:
