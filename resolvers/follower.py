@@ -2,6 +2,7 @@ import json
 import time
 from typing import List
 
+from psycopg2.errors import UniqueViolation
 from sqlalchemy import select, or_
 from sqlalchemy.sql import and_
 
@@ -162,6 +163,9 @@ def topic_follow(follower_id, slug):
             topic = session.query(Topic).where(Topic.slug == slug).one()
             _following = TopicFollower(topic=topic.id, follower=follower_id)
         return None
+    except UniqueViolation as error:
+        logger.warn(error)
+        return 'already followed'
     except Exception as exc:
         logger.error(exc)
         return exc
@@ -180,6 +184,9 @@ def topic_unfollow(follower_id, slug):
                 session.delete(sub)
                 session.commit()
         return None
+    except UniqueViolation as error:
+        logger.warn(error)
+        return 'already unfollowed'
     except Exception as ex:
         logger.debug(ex)
         return ex
@@ -208,6 +215,9 @@ def reactions_follow(author_id, shout_id, auto=False):
                 session.add(following)
                 session.commit()
         return None
+    except UniqueViolation as error:
+        logger.warn(error)
+        return 'already followed'
     except Exception as exc:
         return exc
 
@@ -232,6 +242,9 @@ def reactions_unfollow(author_id, shout_id: int):
                 session.delete(following)
                 session.commit()
         return None
+    except UniqueViolation as error:
+        logger.warn(error)
+        return 'already unfollowed'
     except Exception as ex:
         import traceback
 
@@ -248,6 +261,9 @@ def author_follow(follower_id, slug):
             session.add(af)
             session.commit()
         return None
+    except UniqueViolation as error:
+        logger.warn(error)
+        return 'already followed'
     except Exception as exc:
         import traceback
 
@@ -269,6 +285,9 @@ def author_unfollow(follower_id, slug):
                 session.delete(flw)
                 session.commit()
                 return None
+    except UniqueViolation as error:
+        logger.warn(error)
+        return 'already unfollowed'
     except Exception as exc:
         return exc
 
