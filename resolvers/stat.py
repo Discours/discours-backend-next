@@ -180,7 +180,8 @@ def get_with_stat(q):
         records = []
         # logger.debug(f'{q}'.replace('\n', ' '))
         with local_session() as session:
-            for cols in session.execute(q):
+            result = session.execute(q)
+            for cols in result:
                 entity = cols[0]
                 stat = dict()
                 stat["shouts"] = cols[1]
@@ -194,7 +195,9 @@ def get_with_stat(q):
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
-        logger.debug(cols)
+        import traceback
+
+        traceback.print_exc()
         raise Exception(exc)
     return records
 
