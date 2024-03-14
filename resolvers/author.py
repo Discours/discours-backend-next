@@ -45,6 +45,7 @@ async def get_author(_, _info, slug='', author_id=None):
     try:
         if slug:
             author_id = local_session().query(Author.id).filter(Author.slug == slug).scalar()
+            logger.debug(f'found @{slug} with id {author_id}')
             if author_id:
                 cache_key = f'author:{author_id}'
                 cache = await redis.execute('GET', cache_key)
@@ -57,6 +58,11 @@ async def get_author(_, _info, slug='', author_id=None):
                     result = await get_authors_with_stat_cached(q)
                     if result:
                         [author] = result
+                        author_dict = author.dict()
+                    else:
+                        logger.warn('author was not cached!')
+                        author_query = select(Author).filter(Author.id == author_id)
+                        author = get_with_stat(author_query)
                         author_dict = author.dict()
                 logger.debug(f'author to be stored: {author_dict}')
                 if author:
