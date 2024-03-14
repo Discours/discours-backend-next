@@ -41,7 +41,7 @@ def get_authors_all(_, _info):
 
 @query.field('get_author')
 async def get_author(_, _info, slug='', author_id=None):
-    author = None
+    author_dict = None
     try:
         if slug:
             author_id = local_session().query(Author.id).filter(Author.slug == slug).scalar()
@@ -64,9 +64,9 @@ async def get_author(_, _info, slug='', author_id=None):
                         author_query = select(Author).filter(Author.id == author_id)
                         author = get_with_stat(author_query)
                         author_dict = author.dict()
-                logger.debug(f'author to be stored: {author_dict}')
-                if author:
+                if author_dict:
                     await set_author_cache(author_dict)
+                    logger.debug('author stored in cache')
                     return author_dict
     except Exception as exc:
         import traceback
