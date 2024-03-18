@@ -23,13 +23,19 @@ from services.logger import root_logger as logger
 @mutation.field('update_author')
 @login_required
 async def update_author(_, info, profile):
-    user_id = info.context['user_id']
-    with local_session() as session:
-        author = session.query(Author).where(Author.user == user_id).first()
-        Author.update(author, profile)
-        session.add(author)
-        session.commit()
-    return {'error': None, 'author': author}
+    user_id = info.context.get('user_id')
+    if not user_id:
+        return {'error': 'unauthorized', 'author': None}
+    try:
+        with local_session() as session:
+            author = session.query(Author).where(Author.user == user_id).first()
+            if author:
+                Author.update(author, profile)
+                session.add(author)
+                session.commit()
+                return {'error': None, 'author': author}
+    except Exception as exc:
+        return {'error': exc, 'author': None}
 
 
 @query.field('get_authors_all')
