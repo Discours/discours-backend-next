@@ -35,6 +35,9 @@ async def update_author(_, info, profile):
                 session.commit()
                 return {'error': None, 'author': author}
     except Exception as exc:
+        import traceback
+
+        logger.error(traceback.format_exc())
         return {'error': exc, 'author': None}
 
 
