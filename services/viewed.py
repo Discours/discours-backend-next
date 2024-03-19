@@ -42,15 +42,16 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
+
+            # Загрузка предварительно подсчитанных просмотров из файла JSON
+            self.load_precounted_views()
+
             os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', GOOGLE_KEYFILE_PATH)
             if GOOGLE_KEYFILE_PATH and os.path.isfile(GOOGLE_KEYFILE_PATH):
                 # Using a default constructor instructs the client to use the credentials
                 # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
                 self.analytics_client = BetaAnalyticsDataClient()
                 logger.info(' * Клиент Google Analytics успешно авторизован')
-
-                # Загрузка предварительно подсчитанных просмотров из файла JSON
-                self.load_precounted_views()
 
                 # Запуск фоновой задачи
                 _task = asyncio.create_task(self.worker())
