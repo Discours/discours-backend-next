@@ -27,7 +27,9 @@ def query_shouts():
 
 def filter_my(info, session, q):
     reader_id = None
-    user_id = info.context.get('user_id')
+    user_id = None
+    if isinstance(info.context, dict):
+        user_id = info.context.get('user_id')
     if user_id:
         reader = session.query(Author).filter(Author.user == user_id).first()
         if reader:
