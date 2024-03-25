@@ -309,8 +309,8 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
     return []
 
 
-@login_required
 @query.field('load_shouts_unrated')
+@login_required
 async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = query_shouts()
     q = q.outerjoin(
@@ -338,7 +338,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = add_reaction_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
-    user_id = info.context.get('user_id')
+    user_id = info.context.get('user_id') if isinstance(info.context, {}) else None
     if user_id:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
