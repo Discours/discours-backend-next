@@ -55,25 +55,26 @@ def filter_my(info, session, q):
 
 
 def apply_filters(q, filters, author_id=None):
-    if filters.get('reacted'):
-        q.join(Reaction, Reaction.created_by == author_id)
+    if isinstance(filters, dict):
+        if filters.get('reacted'):
+            q.join(Reaction, Reaction.created_by == author_id)
 
-    by_featured = filters.get('featured')
-    if by_featured:
-        q = q.filter(Shout.featured_at.is_not(None))
-    by_layouts = filters.get('layouts')
-    if by_layouts:
-        q = q.filter(Shout.layout.in_(by_layouts))
-    by_author = filters.get('author')
-    if by_author:
-        q = q.filter(Shout.authors.any(slug=by_author))
-    by_topic = filters.get('topic')
-    if by_topic:
-        q = q.filter(Shout.topics.any(slug=by_topic))
-    by_after = filters.get('after')
-    if by_after:
-        ts = int(by_after)
-        q = q.filter(Shout.created_at > ts)
+        by_featured = filters.get('featured')
+        if by_featured:
+            q = q.filter(Shout.featured_at.is_not(None))
+        by_layouts = filters.get('layouts')
+        if by_layouts:
+            q = q.filter(Shout.layout.in_(by_layouts))
+        by_author = filters.get('author')
+        if by_author:
+            q = q.filter(Shout.authors.any(slug=by_author))
+        by_topic = filters.get('topic')
+        if by_topic:
+            q = q.filter(Shout.topics.any(slug=by_topic))
+        by_after = filters.get('after')
+        if by_after:
+            ts = int(by_after)
+            q = q.filter(Shout.created_at > ts)
 
     return q
 
@@ -236,7 +237,7 @@ async def load_shouts_feed(_, info, options):
         q = add_reaction_stat_columns(q, aliased_reaction)
 
         # filters
-        filters = options.get('filters')
+        filters = options.get('filters', {})
         if filters:
             q, reader_id = filter_my(info, session, q)
             q = apply_filters(q, filters, reader_id)
