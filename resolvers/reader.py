@@ -57,7 +57,7 @@ async def get_shout(_, info, slug: str):
                 commented_stat,
                 likes_stat,
                 dislikes_stat,
-                _last_comment,
+                last_comment,
             ] = results
 
             shout.stat = {
@@ -65,6 +65,7 @@ async def get_shout(_, info, slug: str):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                'last_comment': last_comment
             }
 
             for author_caption in (
@@ -161,7 +162,7 @@ async def load_shouts_by(_, _info, options):
             commented_stat,
             likes_stat,
             dislikes_stat,
-            _last_comment,
+            last_comment,
         ] in session.execute(q).unique():
             main_topic = (
                 session.query(Topic.slug)
@@ -183,6 +184,7 @@ async def load_shouts_by(_, _info, options):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat) - int(dislikes_stat),
+                'last_comment': last_comment
             }
             shouts.append(shout)
 
@@ -258,7 +260,7 @@ async def load_shouts_feed(_, info, options):
                 commented_stat,
                 likes_stat,
                 dislikes_stat,
-                _last_comment,
+                last_comment,
             ] in session.execute(q).unique():
                 main_topic = (
                     session.query(Topic.slug)
@@ -280,6 +282,7 @@ async def load_shouts_feed(_, info, options):
                     'reacted': reacted_stat,
                     'commented': commented_stat,
                     'rating': likes_stat - dislikes_stat,
+                    'last_comment': last_comment
                 }
                 shouts.append(shout)
 

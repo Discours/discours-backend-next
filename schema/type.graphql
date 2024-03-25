@@ -96,6 +96,7 @@ type Stat {
   rating: Int
   commented: Int
   ranking: Int
+  last_comment: Int
 }
 
 type Community {
