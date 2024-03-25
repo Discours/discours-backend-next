@@ -381,23 +381,28 @@ async def load_shouts_random_top(_, _info, options):
     aliased_reaction = aliased(Reaction)
 
     subquery = (
-        select(Shout.id).outerjoin(aliased_reaction).where(Shout.deleted_at.is_(None))
+        select(Shout.id)
+        .outerjoin(aliased_reaction)
+        .where(and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None)))
     )
 
     subquery = apply_filters(subquery, options.get('filters', {}))
+
     subquery = subquery.group_by(Shout.id).order_by(
         desc(
             func.sum(
                 case(
-                    (Reaction.kind == str(ReactionKind.LIKE.value), 1),
-                    (Reaction.kind == str(ReactionKind.DISLIKE.value), -1),
+                    # do not count comments' reactions
+                    (aliased_reaction.replyTo.is_not(None), 0),
+                    (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
+                    (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
                     else_=0,
+                    )
                 )
             )
-        )
     )
 
-    random_limit = options.get('random_limit')
+    random_limit = options.get('random_limit', 100)
     if random_limit:
         subquery = subquery.limit(random_limit)
 
@@ -406,7 +411,7 @@ async def load_shouts_random_top(_, _info, options):
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .where(Shout.id.in_(subquery))
     )
-    aliased_reaction = aliased(Reaction)
+
     q = add_reaction_stat_columns(q, aliased_reaction)
 
     limit = options.get('limit', 10)
@@ -415,6 +420,7 @@ async def load_shouts_random_top(_, _info, options):
     shouts = await get_shouts_from_query(q)
 
     return shouts
+
 
 
 @query.field('load_shouts_random_topic')
