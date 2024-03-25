@@ -393,7 +393,7 @@ async def load_shouts_random_top(_, _info, options):
             func.sum(
                 case(
                     # do not count comments' reactions
-                    (aliased_reaction.replyTo.is_not(None), 0),
+                    (aliased_reaction.reply_to.is_not(None), 0),
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
                     (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
                     else_=0,
