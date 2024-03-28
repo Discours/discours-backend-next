@@ -58,7 +58,7 @@ async def get_author(_, _info, slug='', author_id=None):
     author_dict = None
     try:
         if slug:
-            author_id = local_session().query(Author.id).filter(Author.slug == slug)
+            author_id = local_session().query(Author.id).filter(Author.slug == slug).scalar()
             logger.debug(f'found @{slug} with id {author_id}')
         if author_id:
             cache_key = f'author:{author_id}'
