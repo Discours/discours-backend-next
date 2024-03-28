@@ -153,6 +153,7 @@ def add_rating_columns(q, group_list):
                 )
             )).label('shouts_rating')
         )
+        .select_from(Reaction)
         .outerjoin(
             Shout,
             Shout.authors.any(Author.id == Author.id)
