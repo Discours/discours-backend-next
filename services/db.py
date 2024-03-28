@@ -92,7 +92,6 @@ warnings.simplefilter('always', exc.SAWarning)
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.query_start_time = time.time()
-    conn.statement = statement
 
 
 # noinspection PyUnusedLocal
@@ -106,6 +105,6 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
             if parameters
             else f'{statement}'.replace('\n', ' ')
         )
-        if elapsed > 1 and conn.executed_statement != conn.statement:
+        if elapsed > 1 and str(conn.last_executed_statement()) != str(statement):
             conn.executed_statement = conn.statement
             logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
