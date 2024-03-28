@@ -67,12 +67,10 @@ async def get_author(_, _info, slug='', author_id=None):
             if cache and isinstance(cache, str):
                 logger.debug(f'got cached author {cache_key} -> {cache}')
                 author_dict = json.loads(cache)
-                if not author_dict.get('stat'):
-                    logger.warn('author was cached without stat')
-                    stat_str = await redis.execute('GET', f'author:{author_id}')
-                    stat = json.loads(stat_str).get('stat') if isinstance(stat_str, str) else {}
-                    author_dict['stat'] = stat
-                    logger.info(f'stat updated {stat}')
+                stat_str = await redis.execute('GET', f'author:{author_id}')
+                stat = json.loads(stat_str).get('stat') if isinstance(stat_str, str) else {}
+                author_dict['stat'] = stat
+                logger.info(f'cached stat {stat}')
             else:
                 q = select(Author).where(Author.id == author_id)
                 [author] = await get_authors_with_stat_cached(q)
