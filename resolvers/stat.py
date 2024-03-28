@@ -63,7 +63,7 @@ def add_topic_stat_columns(q):
     return q
 
 
-def add_author_stat_columns(q):
+def add_author_stat_columns(q, with_rating=False):
     aliased_shout_author = aliased(ShoutAuthor)
     aliased_authors = aliased(AuthorFollower)
     aliased_followers = aliased(AuthorFollower)
@@ -84,13 +84,25 @@ def add_author_stat_columns(q):
     )
 
     # Create a subquery for comments count
+    select_list = [
+        Author.id,
+        func.coalesce(func.count(case((Reaction.kind == ReactionKind.COMMENT.value, Reaction.id), else_=None)), 0).label('comments_stat'),
+    ]
+    if with_rating:
+        select_list.extend([
+            func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
+            func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value,Shout.authors.any(id=Author.id)),1),else_=0)).label('shouts_likes'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=Author.id)),1),else_=0)).label('shouts_dislikes')
+        ])
+
     sub_comments = (
-        select(Author.id, func.coalesce(func.count(Reaction.id), 0).label('comments_stat'))
+        select(*select_list)
         .outerjoin(
             Reaction,
             and_(
                 Reaction.created_by == Author.id,
-                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.kind == ReactionKind.COMMENT.value, # TODO: CHANGE HERE
                 Reaction.deleted_at.is_(None),
             ),
         )
@@ -100,32 +112,17 @@ def add_author_stat_columns(q):
 
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
     q = q.add_columns(sub_comments.c.comments_stat)
+    if with_rating:
+        q = q.add_columns(
+            sub_comments.c.likes_count,
+            sub_comments.c.dislikes_count,
+            sub_comments.c.shouts_likes,
+            sub_comments.c.shouts_dislikes,
+        )
 
     q = q.group_by(Author.id, sub_comments.c.comments_stat)
 
     return q
-
-
-def add_author_ratings(q):
-    aliased_author = aliased(Author)
-    selection_list = [
-        aliased_author.id.label('author_id'),
-        func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
-        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
-        func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value,Shout.authors.any(id=aliased_author.id)),1),else_=0)).label('shouts_likes'),
-        func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=aliased_author.id)),1),else_=0)).label('shouts_dislikes'),
-    ]
-    ratings_subquery = (
-        select(*selection_list)
-        .select_from(aliased_author)
-        .join(AuthorRating, AuthorRating.author == aliased_author.id)
-        .outerjoin(Shout, Shout.authors.any(id=aliased_author.id))
-        .filter(Reaction.deleted_at.is_(None))
-        .group_by(aliased_author.id)
-        .alias('ratings_subquery')
-    )
-
-    return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
 
 
 def get_with_stat(q, with_rating=False):
@@ -133,13 +130,10 @@ def get_with_stat(q, with_rating=False):
         is_author = f'{q}'.lower().startswith('select author')
         is_topic = f'{q}'.lower().startswith('select topic')
         if is_author:
-            q = add_author_stat_columns(q)
-            if with_rating:
-                q = add_author_ratings(q)
+            q = add_author_stat_columns(q, with_rating)
         elif is_topic:
             q = add_topic_stat_columns(q)
         records = []
-        # logger.debug(f'{q}'.replace('\n', ' '))
         with local_session() as session:
             result = session.execute(q)
             for cols in result:
@@ -150,7 +144,6 @@ def get_with_stat(q, with_rating=False):
                 stat['followers'] = cols[3]
                 if is_author:
                     stat['comments'] = cols[4]
-                    # entity.stat['topics'] = cols[5]
                     if with_rating:
                         logger.debug(cols)
                         entity.stat['rating'] = cols[5] - cols[6]
