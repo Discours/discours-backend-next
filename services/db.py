@@ -107,5 +107,5 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
             else f'{statement}'.replace('\n', ' ')
         )
         if elapsed > 1 and str(conn.last_statement) != str(statement):
-            conn.last_statement = str(conn.statement)
+            conn.last_statement = str(statement)
             logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
