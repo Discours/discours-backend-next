@@ -154,10 +154,10 @@ def get_with_stat(q, with_rating=False):
                 if is_author:
                     stat['comments'] = cols[4]
                     if with_rating:
-                        logger.debug('author, shouts, authors, followers, comments, author_likes, author_dislikes, shouts_likes, shouts_dislikes, comment_likes, comments_dislikes')
+                        # logger.debug('author, shouts, authors, followers, comments, author_likes, author_dislikes, shouts_likes, shouts_dislikes, comment_likes, comments_dislikes')
                         logger.debug(cols)
                         stat['rating'] = cols[6] - cols[7]
-                        stat['rating_shouts'] = cols[8] - cols[9]
+                        # stat['rating_shouts'] = cols[8] - cols[9]
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
