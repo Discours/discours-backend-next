@@ -338,7 +338,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = add_reaction_stat_columns(q, aliased_reaction)
 
     q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
-    user_id = info.context.get('user_id') if isinstance(info.context, {}) else None
+    user_id = info.context.get('user_id') if isinstance(info.context, dict) else None
     if user_id:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()

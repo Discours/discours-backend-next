@@ -120,9 +120,10 @@ class SearchService:
                         await self.recreate_index()
 
     async def recreate_index(self):
-        async with self.lock:
-            self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
-            await self.check_index()
+        if self.client:
+            async with self.lock:
+                self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
+                await self.check_index()
 
     def index(self, shout):
         if self.client:
