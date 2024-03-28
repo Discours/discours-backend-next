@@ -93,6 +93,7 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
     conn.query_start_time = time.time()
     conn.last_statement = ''
 
+
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     compiled_statement = context.compiled.string

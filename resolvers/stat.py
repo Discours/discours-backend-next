@@ -197,6 +197,7 @@ def get_with_stat(q):
 
 
 async def get_authors_with_stat_cached(q):
+    logger.debug(q)
     try:
         records = []
         with local_session() as session:
