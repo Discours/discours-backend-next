@@ -173,11 +173,12 @@ type Invite {
   status: InviteStatus
 }
 
-type AuthorFollows {
+type AuthorFollowsResult {
   topics: [Topic]
   authors: [Author]
   # shouts: [Shout]
   communities: [Community]
+  error: String
 }
 
 type Notification {
