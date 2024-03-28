@@ -9,6 +9,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
 from sqlalchemy_searchable import make_searchable
+from sqlalchemy.sql import Executable
+from sqlalchemy.dialects.postgresql.psycopg2 import PGExecutionContext
 
 from services.logger import root_logger as logger
 from settings import DB_URL
@@ -88,27 +90,23 @@ warnings.showwarning = warning_with_traceback
 warnings.simplefilter('always', exc.SAWarning)
 
 
-# Перехватчики для журнала запросов SQLAlchemy
 @event.listens_for(Engine, 'before_cursor_execute')
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.query_start_time = time.time()
     conn.last_statement = ''
 
-
-# noinspection PyUnusedLocal
 @event.listens_for(Engine, 'after_cursor_execute')
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    if hasattr(conn, 'query_start_time'):
-        elapsed = time.time() - conn.query_start_time
-        conn.query_start_time = None
-        query = (
-            f'{statement} % {parameters}'
-            if parameters
-            else f'{statement}'.replace('\n', ' ')
-        )
-        logger.debug(conn)
-        logger.debug(cursor)
-        logger.debug(context)
-        if elapsed > 1:
-            conn.last_statement = str(statement)
-            logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
+    if not isinstance(statement, Executable):
+        return
+
+    if isinstance(context, PGExecutionContext):
+        compiled_statement = context.compiled.string
+        compiled_parameters = context.compiled.params
+        if compiled_statement:
+            elapsed = time.time() - conn.query_start_time
+            query = compiled_statement % compiled_parameters
+
+            if elapsed > 1 and conn.last_statement != query:
+                conn.last_statement = query
+                logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
