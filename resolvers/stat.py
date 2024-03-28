@@ -1,12 +1,13 @@
 import json
 
-from sqlalchemy import func, distinct, select, join, and_, case, true
+from sqlalchemy import func, distinct, select, join, and_
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
+from resolvers.rating import add_rating_columns
 from orm.topic import TopicFollower, Topic
 from services.db import local_session
-from orm.author import AuthorFollower, Author, AuthorRating
+from orm.author import AuthorFollower, Author
 from orm.shout import ShoutTopic, ShoutAuthor, Shout
 from services.logger import root_logger as logger
 from services.rediscache import redis
@@ -103,33 +104,12 @@ def add_author_stat_columns(q, with_rating=False):
 
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
     q = q.add_columns(sub_comments.c.comments_count)
-
-    q = q.outerjoin(AuthorRating, AuthorRating.author == Author.id)
-    q = q.add_columns(
-        func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
-        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
-    )
+    group_list = [Author.id, sub_comments.c.comments_count]
 
     if with_rating:
-        subq = select(Reaction).where(
-            and_(
-                Reaction.shout == Shout.id,
-                Shout.authors.any(id=Author.id),
-                Reaction.reply_to.is_(None),
-                Reaction.deleted_at.is_(None)
-            )
-        ).subquery()
+        q, group_list = add_rating_columns(q, group_list)
 
-        q = q.outerjoin(subq, subq.c.shout == Shout.id)
-        q = q.add_columns(
-            func.count(case((subq.c.kind == ReactionKind.LIKE.value, subq.c.id), else_=None)).label('shouts_likes'),
-            func.count(case((subq.c.kind == ReactionKind.DISLIKE.value, subq.c.id), else_=None)).label('shouts_dislikes'),
-        )
-
-    q = q.group_by(
-        Author.id,
-        sub_comments.c.comments_count
-    )
+    q = q.group_by(*group_list)
 
     return q
 
@@ -154,10 +134,10 @@ def get_with_stat(q, with_rating=False):
                 if is_author:
                     stat['comments'] = cols[4]
                     if with_rating:
-                        # logger.debug('author, shouts, authors, followers, comments, author_likes, author_dislikes, shouts_likes, shouts_dislikes, comment_likes, comments_dislikes')
                         logger.debug(cols)
                         stat['rating'] = cols[6] - cols[7]
-                        # stat['rating_shouts'] = cols[8] - cols[9]
+                        stat['rating_shouts'] = cols[8] - cols[9]
+                        stat['rating_comments'] = cols[10] - cols[11]
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:

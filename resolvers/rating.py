@@ -1,4 +1,4 @@
-from sqlalchemy import and_
+from sqlalchemy import and_, func, case, true, select, distinct
 from sqlalchemy.orm import aliased
 
 from orm.author import AuthorRating, Author
@@ -131,3 +131,50 @@ def load_author_ratings(session, author: Author):
     author.stat['rating_comments'] = count_author_comments_rating(session, author.id)
     author.stat['commented'] = comments_count
     return author
+
+
+def add_rating_columns(q, group_list):
+    # old karma
+    q = q.outerjoin(AuthorRating, AuthorRating.author == Author.id)
+    q = q.add_columns(
+        func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
+        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
+    )
+
+    # by shouts
+    subq = select(Reaction).where(
+        and_(
+            Reaction.shout == Shout.id,
+            Shout.authors.any(id=Author.id),
+            Reaction.reply_to.is_(None),
+            Reaction.deleted_at.is_(None)
+        )
+    ).subquery()
+
+    q = q.outerjoin(subq, subq.c.shout == Shout.id)
+    q = q.add_columns(
+        func.count(distinct(case((subq.c.kind == ReactionKind.LIKE.value, 1)))).label('shouts_likes'),
+        func.count(distinct(case((subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('shouts_dislikes'),
+    )
+    group_list.extend([subq.c.shouts_likes, subq.c.shouts_dislikes])
+
+    # by comments
+    replied_comment = aliased(Reaction)
+    subq = select(Reaction).where(
+        and_(
+            replied_comment.kind == ReactionKind.COMMENT.value,
+            replied_comment.created_by == Author.id,
+            Reaction.reply_to == replied_comment.id,
+            Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+            Reaction.deleted_at.is_(None)
+        )
+    ).subquery()
+
+    q = q.outerjoin(subq, subq.c.reply_to == replied_comment.id)
+    q = q.add_columns(
+        func.count(distinct(case((subq.c.kind == ReactionKind.LIKE.value, 1)))).label('comments_likes'),
+        func.count(distinct(case((subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('comments_dislikes'),
+    )
+    group_list.extend([subq.c.comments_likes, subq.c.comments_dislikes])
+
+    return q, group_list
