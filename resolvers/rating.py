@@ -1,4 +1,4 @@
-from sqlalchemy import and_, func, case, true, select, distinct
+from sqlalchemy import and_, func, case, true, select
 from sqlalchemy.orm import aliased
 
 from orm.author import AuthorRating, Author
@@ -171,21 +171,36 @@ def add_rating_columns(q, group_list):
 
     # by comments
     replied_comment = aliased(Reaction)
-    comments_subq = select(Reaction).where(
+    comments_subq = select(
+        Author.id,
+        func.coalesce(func.sum(
+            case(
+                (Reaction.kind == ReactionKind.LIKE.value, 1),
+                (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                else_=0
+            )
+        )).label('comments_rating'),
+    ).select_from(Reaction).outerjoin(
+        replied_comment,
         and_(
             replied_comment.kind == ReactionKind.COMMENT.value,
             replied_comment.created_by == Author.id,
-            Reaction.reply_to == replied_comment.id,
             Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+            Reaction.reply_to == replied_comment.id,
             Reaction.deleted_at.is_(None)
         )
-    ).subquery()
+    ).group_by(Author.id).subquery()
 
     q = q.outerjoin(comments_subq, comments_subq.c.reply_to == replied_comment.id)
     q = q.add_columns(
-        func.count(distinct(case((comments_subq.c.kind == ReactionKind.LIKE.value, 1)))).label('comments_likes'),
-        func.count(distinct(case((comments_subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('comments_dislikes'),
+        func.coalesce(func.sum(
+            case(
+                (Reaction.kind == ReactionKind.LIKE.value, 1),
+                (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                else_=0
+            )
+        )).label('comments_rating')
     )
-    group_list.extend([comments_subq.c.comments_likes, comments_subq.c.comments_dislikes])
+    group_list.extend([comments_subq.c.comments_rating])
 
     return q, group_list

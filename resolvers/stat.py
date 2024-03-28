@@ -135,9 +135,9 @@ def get_with_stat(q, with_rating=False):
                     stat['comments'] = cols[4]
                     if with_rating:
                         logger.debug(cols)
-                        stat['rating'] = cols[6] - cols[7]
-                        stat['rating_shouts'] = cols[8] - cols[9]
-                        stat['rating_comments'] = cols[10] - cols[11]
+                        stat['rating'] = cols[6]
+                        stat['rating_shouts'] = cols[7]
+                        stat['rating_comments'] = cols[8]
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
