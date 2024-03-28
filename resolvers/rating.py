@@ -142,7 +142,7 @@ def add_rating_columns(q, group_list):
     )
 
     # by shouts
-    subq = select(Reaction).where(
+    shouts_subq = select(Reaction).where(
         and_(
             Reaction.shout == Shout.id,
             Shout.authors.any(id=Author.id),
@@ -151,16 +151,16 @@ def add_rating_columns(q, group_list):
         )
     ).subquery()
 
-    q = q.outerjoin(subq, subq.c.shout == Shout.id)
+    q = q.outerjoin(shouts_subq, shouts_subq.c.shout == Shout.id)
     q = q.add_columns(
-        func.count(distinct(case((subq.c.kind == ReactionKind.LIKE.value, 1)))).label('shouts_likes'),
-        func.count(distinct(case((subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('shouts_dislikes'),
+        func.count(distinct(case((shouts_subq.c.kind == ReactionKind.LIKE.value, 1)))).label('shouts_likes'),
+        func.count(distinct(case((shouts_subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('shouts_dislikes'),
     )
-    group_list.extend([subq.c.shouts_likes, subq.c.shouts_dislikes])
+    group_list.extend([shouts_subq.c.shouts_likes, shouts_subq.c.shouts_dislikes])
 
     # by comments
     replied_comment = aliased(Reaction)
-    subq = select(Reaction).where(
+    comments_subq = select(Reaction).where(
         and_(
             replied_comment.kind == ReactionKind.COMMENT.value,
             replied_comment.created_by == Author.id,
@@ -170,11 +170,11 @@ def add_rating_columns(q, group_list):
         )
     ).subquery()
 
-    q = q.outerjoin(subq, subq.c.reply_to == replied_comment.id)
+    q = q.outerjoin(comments_subq, comments_subq.c.reply_to == replied_comment.id)
     q = q.add_columns(
-        func.count(distinct(case((subq.c.kind == ReactionKind.LIKE.value, 1)))).label('comments_likes'),
-        func.count(distinct(case((subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('comments_dislikes'),
+        func.count(distinct(case((comments_subq.c.kind == ReactionKind.LIKE.value, 1)))).label('comments_likes'),
+        func.count(distinct(case((comments_subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('comments_dislikes'),
     )
-    group_list.extend([subq.c.comments_likes, subq.c.comments_dislikes])
+    group_list.extend([comments_subq.c.comments_likes, comments_subq.c.comments_dislikes])
 
     return q, group_list
