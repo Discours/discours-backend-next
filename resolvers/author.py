@@ -71,8 +71,8 @@ async def get_author(_, _info, slug='', author_id=None):
                 q = select(Author).where(Author.id == author_id)
                 [author] = await get_authors_with_stat_cached(q)
                 if author:
-                    logger.debug(f'queried author from db {cache_key} -> {cache}')
                     author_dict = author.dict()
+                    logger.debug(f'queried author from db {author_dict}')
                 else:
                     logger.warn('author was not cached!')
                     author_query = select(Author).filter(Author.id == author_id)
