@@ -86,8 +86,11 @@ def add_author_stat_columns(q, with_rating=False):
     # Create a subquery for comments count
     select_list = [
         Author.id,
-        func.coalesce(func.count(case((Reaction.kind == ReactionKind.COMMENT.value, Reaction.id), else_=None)), 0).label('comments_stat'),
+        func.coalesce(
+            func.count(case((Reaction.kind == ReactionKind.COMMENT.value, 1), else_=0))
+        ).label('comments_count'),
     ]
+
     if with_rating:
         select_list.extend([
             func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
@@ -111,7 +114,7 @@ def add_author_stat_columns(q, with_rating=False):
     )
 
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
-    q = q.add_columns(sub_comments.c.comments_stat)
+
     if with_rating:
         q = q.add_columns(
             sub_comments.c.likes_count,
@@ -128,6 +131,7 @@ def add_author_stat_columns(q, with_rating=False):
             sub_comments.c.shouts_dislikes
         )
     else:
+        q = q.add_columns(sub_comments.c.comments_stat)
         q = q.group_by(Author.id, sub_comments.c.comments_stat)
 
     return q
