@@ -70,7 +70,10 @@ async def get_author(_, _info, slug='', author_id=None):
             if cache and isinstance(cache, str):
                 author_dict = json.loads(cache)
                 logger.debug(f'got cached author {cache_key} -> {author_dict}')
-            else:
+                if not author_dict.get('stat'):
+                    cache = ''
+                    logger.warn(f'author {author_id} stat updating')
+            if not cache:
                 [author] = await get_authors_with_stat_cached(author_query)
                 if not author or not author.stat:
                     [author] = get_with_stat(author_query)
