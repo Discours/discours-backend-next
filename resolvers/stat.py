@@ -162,13 +162,14 @@ def add_author_ratings(q):
     return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
 
 
-def get_with_stat(q):
+def get_with_stat(q, with_rating=False):
     try:
         is_author = f'{q}'.lower().startswith('select author')
         is_topic = f'{q}'.lower().startswith('select topic')
         if is_author:
             q = add_author_stat_columns(q)
-            q = add_author_ratings(q)  # TODO: move rating to cols down there
+            if with_rating:
+                q = add_author_ratings(q)
         elif is_topic:
             q = add_topic_stat_columns(q)
         records = []
@@ -184,8 +185,9 @@ def get_with_stat(q):
                 if is_author:
                     stat['comments'] = cols[4]
                     # entity.stat['topics'] = cols[5]
-                    entity.stat['rating'] = cols[5] - cols[6]
-                    entity.stat['rating_shouts'] = cols[7] - cols[8]
+                    if with_rating:
+                        entity.stat['rating'] = cols[5] - cols[6]
+                        entity.stat['rating_shouts'] = cols[7] - cols[8]
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
