@@ -168,7 +168,7 @@ def get_with_stat(q):
         is_topic = f'{q}'.lower().startswith('select topic')
         if is_author:
             q = add_author_stat_columns(q)
-            # q = add_author_ratings(q)  # TODO: move rating to cols down there
+            q = add_author_ratings(q)  # TODO: move rating to cols down there
         elif is_topic:
             q = add_topic_stat_columns(q)
         records = []
@@ -184,8 +184,8 @@ def get_with_stat(q):
                 if is_author:
                     stat['comments'] = cols[4]
                     # entity.stat['topics'] = cols[5]
-                    # entity.stat['rating'] = cols[5] - cols[6]
-                    # entity.stat['rating_shouts'] = cols[7] - cols[8]
+                    entity.stat['rating'] = cols[5] - cols[6]
+                    entity.stat['rating_shouts'] = cols[7] - cols[8]
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
