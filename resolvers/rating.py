@@ -191,7 +191,7 @@ def add_rating_columns(q, group_list):
         )
     ).group_by(Author.id).subquery()
 
-    q = q.outerjoin(comments_subq, comments_subq.c.reply_to == replied_comment.id)
+    q = q.outerjoin(comments_subq, Author.id == comments_subq.c.id)
     q = q.add_columns(
         func.coalesce(func.sum(
             case(
