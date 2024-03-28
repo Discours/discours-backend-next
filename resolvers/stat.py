@@ -1,6 +1,6 @@
 import json
 
-from sqlalchemy import func, distinct, select, join, and_, case, true, or_
+from sqlalchemy import func, distinct, select, join, and_, case, true
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
@@ -122,7 +122,7 @@ def add_author_stat_columns(q, with_rating=False):
                 Reaction,
                 and_(
                     Reaction.created_by == Author.id,
-                    or_(Reaction.kind == ReactionKind.LIKE.value, Reaction.kind == ReactionKind.DISLIKE.value),
+                    Reaction.reply_to.is_(None),
                     Reaction.deleted_at.is_(None),
                 ),
             )
