@@ -83,30 +83,28 @@ def add_author_stat_columns(q, with_rating=False):
         func.count(distinct(aliased_followers.follower)).label('followers_stat')
     )
 
-    if not with_rating:
-        # Create a subquery for comments count
-        select_list = [
-            Author.id,
-            func.coalesce(func.count(Reaction.id)).label('comments_count'),
-        ]
+    # Create a subquery for comments count
+    select_list = [
+        Author.id,
+        func.coalesce(func.count(Reaction.id)).label('comments_count'),
+    ]
 
-        sub_comments = (
-            select(*select_list)
-            .outerjoin(
-                Reaction,
-                and_(
-                    Reaction.created_by == Author.id,
-                    Reaction.kind == ReactionKind.COMMENT.value,
-                    Reaction.deleted_at.is_(None),
-                ),
-            )
-            .group_by(Author.id)
-            .subquery()
+    sub_comments = (
+        select(*select_list)
+        .outerjoin(
+            Reaction,
+            and_(
+                Reaction.created_by == Author.id,
+                Reaction.kind == ReactionKind.COMMENT.value,
+                Reaction.deleted_at.is_(None),
+            ),
         )
+        .group_by(Author.id)
+        .subquery()
+    )
 
-        q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
-        q = q.add_columns(sub_comments.c.comments_count)
-        q = q.group_by(Author.id, sub_comments.c.comments_count)
+    q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
+    q = q.add_columns(sub_comments.c.comments_count)
 
     if with_rating:
         # Create a subquery for ratings counters
@@ -145,6 +143,11 @@ def add_author_stat_columns(q, with_rating=False):
             sub_rating.c.dislikes_count,
             sub_rating.c.shouts_likes,
             sub_rating.c.shouts_dislikes,
+        )
+    else:
+        q = q.group_by(
+            Author.id,
+            sub_comments.c.comments_count
         )
 
     return q
