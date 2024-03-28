@@ -175,24 +175,24 @@ def add_rating_columns(q, group_list):
 
     # by comments
     replied_comment = aliased(Reaction)
-    react = aliased(Reaction)
+    reaction_2 = aliased(Reaction)
     comments_subq = select(
         Author.id,
         func.coalesce(func.sum(
             case(
-                (react.kind == ReactionKind.LIKE.value, 1),
-                (react.kind == ReactionKind.DISLIKE.value, -1),
+                (reaction_2.kind == ReactionKind.LIKE.value, 1),
+                (reaction_2.kind == ReactionKind.DISLIKE.value, -1),
                 else_=0
             )
         )).label('comments_rating'),
-    ).select_from(react).outerjoin(
+    ).select_from(reaction_2).outerjoin(
         replied_comment,
         and_(
             replied_comment.kind == ReactionKind.COMMENT.value,
             replied_comment.created_by == Author.id,
-            react.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
-            react.reply_to == replied_comment.id,
-            react.deleted_at.is_(None)
+            reaction_2.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+            reaction_2.reply_to == replied_comment.id,
+            reaction_2.deleted_at.is_(None)
         )
     ).group_by(Author.id).subquery()
 
