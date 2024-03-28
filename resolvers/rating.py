@@ -154,10 +154,13 @@ def add_rating_columns(q, group_list):
             )).label('shouts_rating')
         )
         .outerjoin(
+            Shout,
+            Shout.authors.any(Author.id == Author.id)
+        )
+        .outerjoin(
             Reaction,
             and_(
                 Reaction.shout == Shout.id,
-                Shout.authors.any(id=Author.id),
                 Reaction.deleted_at.is_(None),
             ),
         )
