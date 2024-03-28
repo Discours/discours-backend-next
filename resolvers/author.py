@@ -176,7 +176,7 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=0):
         logger.debug(author_query)
         [author] = local_session().execute(author_query)
         if isinstance(author, Author):
-            logger.debug(author.dict())
+            # logger.debug(author.dict())
             author_id = author.id.scalar()
             rkey = f'author:{author_id}:follows-authors'
             logger.debug(f'getting {author_id} follows authors')
