@@ -173,39 +173,39 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=0):
             author_query = author_query.filter(Author.id == author_id)
         else:
             raise ValueError('One of slug, user, or author_id must be provided')
-        # logger.debug(author_query)
-        result = local_session().execute(author_query)
-        logger.debug(result)
-        [author] = result
-        logger.debug(author)
-        if author and isinstance(author, Author):
-            logger.debug(author.dict())
-            author_id = author.id.scalar()
-            rkey = f'author:{author_id}:follows-authors'
-            logger.debug(f'getting {author_id} follows authors')
-            cached = await redis.execute('GET', rkey)
-            if not cached:
-                authors = author_follows_authors(author_id)
-                prepared = [author.dict() for author in authors]
-                await redis.execute('SET', rkey, json.dumps(prepared, cls=CustomJSONEncoder))
-            elif isinstance(cached, str):
-                authors = json.loads(cached)
+        [result] = local_session().execute(author_query)
+        if len(result) > 0:
+            #logger.debug(result)
+            [author] = result
+            #logger.debug(author)
+            if author and isinstance(author, Author):
+                logger.debug(author.dict())
+                author_id = author.id.scalar()
+                rkey = f'author:{author_id}:follows-authors'
+                logger.debug(f'getting {author_id} follows authors')
+                cached = await redis.execute('GET', rkey)
+                if not cached:
+                    authors = author_follows_authors(author_id)
+                    prepared = [author.dict() for author in authors]
+                    await redis.execute('SET', rkey, json.dumps(prepared, cls=CustomJSONEncoder))
+                elif isinstance(cached, str):
+                    authors = json.loads(cached)
 
-            rkey = f'author:{author_id}:follows-topics'
-            cached = await redis.execute('GET', rkey)
-            if cached and isinstance(cached, str):
-                topics = json.loads(cached)
-            if not cached:
-                topics = author_follows_topics(author_id)
-                prepared = [topic.dict() for topic in topics]
-                await redis.execute('SET', rkey, json.dumps(prepared, cls=CustomJSONEncoder))
-            return {
-                'topics': topics,
-                'authors': authors,
-                'communities': [
-                    {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
-                ],
-            }
+                rkey = f'author:{author_id}:follows-topics'
+                cached = await redis.execute('GET', rkey)
+                if cached and isinstance(cached, str):
+                    topics = json.loads(cached)
+                if not cached:
+                    topics = author_follows_topics(author_id)
+                    prepared = [topic.dict() for topic in topics]
+                    await redis.execute('SET', rkey, json.dumps(prepared, cls=CustomJSONEncoder))
+                return {
+                    'topics': topics,
+                    'authors': authors,
+                    'communities': [
+                        {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
+                    ],
+                }
     except Exception:
         import traceback
 
