@@ -54,19 +54,21 @@ def get_authors_all(_, _info):
 
 
 @query.field('get_author')
-async def get_author(_, _info, slug='', author_id=None):
+async def get_author(_, _info, slug='', author_id=0):
     author_dict = None
     try:
         author_query = ''
         author = None
+        author_id = 0
         author_dict = None
         if slug:
             author_query = select(Author).filter(Author.slug == slug)
             [author] = await get_authors_with_stat_cached(author_query)
-            logger.debug(f'found @{slug} with id {author_id}')
-        if isinstance(author, Author):
-            author_id = author.id
-            author_query = select(Author.id).filter(Author.id == author_id)
+            if author:
+                author_id = author.id
+                logger.debug(f'found @{slug} with id {author_id}')
+        if author_id:
+            author_query = select(Author).filter(Author.id == author_id)
             cache_key = f'author:{author_id}'
             cache = await redis.execute('GET', cache_key)
             if cache and isinstance(cache, str):
