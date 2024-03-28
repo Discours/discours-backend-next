@@ -111,6 +111,7 @@ def add_author_stat_columns(q, with_rating=False):
     if with_rating:
         # Create a subquery for ratings counters
         select_list = [
+            Author.id,
             func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
             func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
             func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)).label('shouts_likes'),
