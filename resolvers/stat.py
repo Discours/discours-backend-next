@@ -85,9 +85,7 @@ def add_author_stat_columns(q):
 
     # Create a subquery for comments count
     sub_comments = (
-        select(
-            Author.id, func.coalesce(func.count(Reaction.id), 0).label('comments_stat')
-        )
+        select(Author.id, func.coalesce(func.count(Reaction.id), 0).label('comments_stat'))
         .outerjoin(
             Reaction,
             and_(
@@ -112,42 +110,10 @@ def add_author_ratings(q):
     aliased_author = aliased(Author)
     selection_list = [
         aliased_author.id.label('author_id'),
-        func.count()
-        .filter(
-            and_(
-                Reaction.created_by == aliased_author.id,
-                Reaction.kind == ReactionKind.COMMENT.value,
-            )
-        )
-        .label('comments_count'),
         func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
-        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label(
-            'dislikes_count'
-        ),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Reaction.kind == ReactionKind.LIKE.value,
-                        Shout.authors.any(id=aliased_author.id),
-                    ),
-                    1,
-                ),
-                else_=0,
-            )
-        ).label('shouts_likes'),
-        func.sum(
-            case(
-                (
-                    and_(
-                        Reaction.kind == ReactionKind.DISLIKE.value,
-                        Shout.authors.any(id=aliased_author.id),
-                    ),
-                    1,
-                ),
-                else_=0,
-            )
-        ).label('shouts_dislikes'),
+        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
+        func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value,Shout.authors.any(id=aliased_author.id)),1),else_=0)).label('shouts_likes'),
+        func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=aliased_author.id)),1),else_=0)).label('shouts_dislikes'),
     ]
     ratings_subquery = (
         select(*selection_list)
@@ -186,6 +152,7 @@ def get_with_stat(q, with_rating=False):
                     stat['comments'] = cols[4]
                     # entity.stat['topics'] = cols[5]
                     if with_rating:
+                        logger.debug(cols)
                         entity.stat['rating'] = cols[5] - cols[6]
                         entity.stat['rating_shouts'] = cols[7] - cols[8]
                 entity.stat = stat
