@@ -151,12 +151,13 @@ def add_rating_columns(q, group_list):
         )
     ).subquery()
 
-    q = q.outerjoin(shouts_subq, shouts_subq.c.shout == Shout.id)
+    shouts_subq_alias = aliased(shouts_subq)
+    q = q.outerjoin(shouts_subq_alias, Author.id == shouts_subq_alias.c.author)
     q = q.add_columns(
         func.count(distinct(case((shouts_subq.c.kind == ReactionKind.LIKE.value, 1)))).label('shouts_likes'),
         func.count(distinct(case((shouts_subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('shouts_dislikes'),
     )
-    group_list.extend([shouts_subq.c.shouts_likes, shouts_subq.c.shouts_dislikes])
+    group_list.extend([shouts_subq_alias.c.shouts_likes, shouts_subq_alias.c.shouts_dislikes])
 
     # by comments
     replied_comment = aliased(Reaction)
