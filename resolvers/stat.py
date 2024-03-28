@@ -119,8 +119,16 @@ def add_author_stat_columns(q, with_rating=False):
             sub_comments.c.shouts_likes,
             sub_comments.c.shouts_dislikes,
         )
-
-    q = q.group_by(Author.id, sub_comments.c.comments_stat)
+        q = q.group_by(
+            Author.id,
+            sub_comments.c.comments_stat,
+            sub_comments.c.likes_count,
+            sub_comments.c.dislikes_count,
+            sub_comments.c.shouts_likes,
+            sub_comments.c.shouts_dislikes
+        )
+    else:
+        q = q.group_by(Author.id, sub_comments.c.comments_stat)
 
     return q
 
