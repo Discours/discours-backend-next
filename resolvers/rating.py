@@ -141,22 +141,33 @@ def add_rating_columns(q, group_list):
         func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
     )
 
-    # by shouts
-    shouts_subq = select(Reaction).where(
-        and_(
-            Reaction.shout == Shout.id,
-            Shout.authors.any(id=Author.id),
-            Reaction.reply_to.is_(None),
-            Reaction.deleted_at.is_(None)
+    # by shouts rating
+    shouts_rating_subq = (
+        select(
+            Author.id,
+            func.coalesce(func.sum(
+                case(
+                    (Reaction.kind == ReactionKind.LIKE.value, 1),
+                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                    else_=0
+                )
+            )).label('shouts_rating')
         )
-    ).subquery()
-
-    q = q.outerjoin(shouts_subq, shouts_subq.c.shout == Shout.id)
-    q = q.add_columns(
-        func.count(distinct(case((shouts_subq.c.kind == ReactionKind.LIKE.value, 1)))).label('shouts_likes'),
-        func.count(distinct(case((shouts_subq.c.kind == ReactionKind.DISLIKE.value, 1)))).label('shouts_dislikes'),
+        .outerjoin(
+            Reaction,
+            and_(
+                Reaction.shout == Shout.id,
+                Shout.authors.any(id=Author.id),
+                Reaction.deleted_at.is_(None),
+            ),
+        )
+        .group_by(Author.id)
+        .subquery()
     )
-    group_list.extend([shouts_subq.c.shouts_likes, shouts_subq.c.shouts_dislikes])
+
+    q = q.outerjoin(shouts_rating_subq, Author.id == shouts_rating_subq.c.id)
+    q = q.add_columns(shouts_rating_subq.c.shouts_rating)
+    group_list = [shouts_rating_subq.c.shouts_rating]
 
     # by comments
     replied_comment = aliased(Reaction)
