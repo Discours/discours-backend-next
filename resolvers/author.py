@@ -55,47 +55,28 @@ def get_authors_all(_, _info):
 
 @query.field('get_author')
 async def get_author(_, _info, slug='', author_id=0):
+    author_query = ''
+    author = None
     author_dict = None
     try:
-        author_query = ''
-        author = None
-        author_id = 0
-        author_dict = None
-        if slug:
-            author_query = select(Author).filter(Author.slug == slug)
-            [author] = await get_authors_with_stat_cached(author_query)
+        author_query = select(Author).filter(or_(Author.slug == slug, Author.id == author_id))
+        [author] = await get_authors_with_stat_cached(author_query)
+        if isinstance(author, Author):
+            author_id = author.id
+            logger.debug(f'found @{slug} with id {author_id}')
+        if not author.stat:
+            [author] = get_with_stat(author_query)
             if author:
-                author_id = author.id
-                logger.debug(f'found @{slug} with id {author_id}')
-        if author_id:
-            author_query = select(Author).filter(Author.id == author_id)
-            cache_key = f'author:{author_id}'
-            cache = await redis.execute('GET', cache_key)
-            if cache and isinstance(cache, str):
-                author_dict = json.loads(cache)
-                logger.debug(f'got cached author {cache_key} -> {author_dict}')
-                if not author_dict.get('stat'):
-                    cache = ''
-                    logger.warn(f'author {author_id} stat updating')
-            if not cache:
-                [author] = await get_authors_with_stat_cached(author_query)
-                if not author or not author.stat:
-                    [author] = get_with_stat(author_query)
-                if author:
-                    author_dict = author.dict()
-                    author.stat = author_dict.get('stat')
-            if author_dict:
-                await set_author_cache(author_dict)
+                await set_author_cache(author.dict())
                 logger.debug('updated author stored in cache')
-        return author_dict
-    except Exception as exc:
+        if isinstance(author, Author):
+            author_dict = author.dict()
+    except Exception:
         import traceback
 
-        logger.error(exc)
         exc = traceback.format_exc()
         logger.error(exc)
-    return
-    # {"slug": "anonymous", "id": 1, "name": "Аноним", "bio": "Неизвестно кто"}
+    return author_dict
 
 
 async def get_author_by_user_id(user_id: str):
