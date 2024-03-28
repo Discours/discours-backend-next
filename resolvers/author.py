@@ -173,7 +173,7 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=0):
         raise ValueError('One of slug, user, or author_id must be provided')
     [author] = local_session().execute(author_query)
     if isinstance(author, Author):
-        author_id = author.id
+        author_id = author.id.scalar()
         rkey = f'author:{author_id}:follows-authors'
         logger.debug(f'getting {author_id} follows authors')
         cached = await redis.execute('GET', rkey)
@@ -186,7 +186,7 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=0):
 
         rkey = f'author:{author_id}:follows-topics'
         cached = await redis.execute('GET', rkey)
-        if cached:
+        if cached and isinstance(cached, str):
             topics = json.loads(cached)
         if not cached:
             topics = author_follows_topics(author_id)
