@@ -95,8 +95,8 @@ def add_author_stat_columns(q, with_rating=False):
         select_list.extend([
             func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
             func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label('dislikes_count'),
-            func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value,Shout.authors.any(id=Author.id)),1),else_=0)).label('shouts_likes'),
-            func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=Author.id)),1),else_=0)).label('shouts_dislikes')
+            func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)).label('shouts_likes'),
+            func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value, Shout.authors.any(id=Author.id)), 1), else_=0)).label('shouts_dislikes'),
         ])
 
     sub_comments = (
@@ -105,7 +105,7 @@ def add_author_stat_columns(q, with_rating=False):
             Reaction,
             and_(
                 Reaction.created_by == Author.id,
-                Reaction.kind == ReactionKind.COMMENT.value, # TODO: CHANGE HERE
+                Reaction.kind == ReactionKind.COMMENT.value,
                 Reaction.deleted_at.is_(None),
             ),
         )
@@ -124,15 +124,15 @@ def add_author_stat_columns(q, with_rating=False):
         )
         q = q.group_by(
             Author.id,
-            sub_comments.c.comments_stat,
+            sub_comments.c.comments_count,
             sub_comments.c.likes_count,
             sub_comments.c.dislikes_count,
             sub_comments.c.shouts_likes,
-            sub_comments.c.shouts_dislikes
+            sub_comments.c.shouts_dislikes,
         )
     else:
-        q = q.add_columns(sub_comments.c.comments_stat)
-        q = q.group_by(Author.id, sub_comments.c.comments_stat)
+        q = q.add_columns(sub_comments.c.comments_count)
+        q = q.group_by(Author.id, sub_comments.c.comments_count)
 
     return q
 
