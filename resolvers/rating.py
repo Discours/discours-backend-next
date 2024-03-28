@@ -142,27 +142,29 @@ def add_rating_columns(q, group_list):
     )
 
     # by shouts rating
+    shout_reaction = aliased(Reaction)
     shouts_rating_subq = (
         select(
             Author.id,
             func.coalesce(func.sum(
                 case(
-                    (Reaction.kind == ReactionKind.LIKE.value, 1),
-                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                    (shout_reaction.kind == ReactionKind.LIKE.value, 1),
+                    (shout_reaction.kind == ReactionKind.DISLIKE.value, -1),
                     else_=0
                 )
             )).label('shouts_rating')
         )
-        .select_from(Reaction)
+        .select_from(shout_reaction)
         .outerjoin(
             Shout,
-            Shout.authors.any(Author.id == Author.id)
+            Shout.authors.any(id=Author.id)
         )
         .outerjoin(
-            Reaction,
+            shout_reaction,
             and_(
-                Reaction.shout == Shout.id,
-                Reaction.deleted_at.is_(None),
+                shout_reaction.reply_to.is_(None),
+                shout_reaction.shout == Shout.id,
+                shout_reaction.deleted_at.is_(None),
             ),
         )
         .group_by(Author.id)
