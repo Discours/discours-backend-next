@@ -202,7 +202,7 @@ async def get_authors_with_stat_cached(q):
         records = []
         with local_session() as session:
             for [x] in session.execute(q):
-                stat_str = await redis.execute('GET', f'author:{x.id}')
+                stat_str = await redis.execute('GET', f'author:{x.id if isinstance(x, Author) else x}')
                 x.stat = json.loads(stat_str).get('stat') if isinstance(stat_str, str) else {}
                 records.append(x)
     except Exception as exc:
