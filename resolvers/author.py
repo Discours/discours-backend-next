@@ -60,28 +60,27 @@ async def get_author(_, _info, slug='', author_id=None):
         if slug:
             author_id = local_session().query(Author.id).filter(Author.slug == slug)
             logger.debug(f'found @{slug} with id {author_id}')
-            if author_id:
-                cache_key = f'author:{author_id}'
-                cache = await redis.execute('GET', cache_key)
-                logger.debug(f'GET {cache_key} -> {cache}')
+        if author_id:
+            cache_key = f'author:{author_id}'
+            cache = await redis.execute('GET', cache_key)
+            author_dict = None
+            if cache and isinstance(cache, str):
+                logger.debug(f'got cached author {cache_key} -> {cache}')
+                author_dict = json.loads(cache)
+            else:
                 q = select(Author).where(Author.id == author_id)
-                author_dict = None
-                if cache and isinstance(cache, str):
-                    author_dict = json.loads(cache)
+                [author] = await get_authors_with_stat_cached(q)
+                if author:
+                    author_dict = author.dict()
                 else:
-                    result = await get_authors_with_stat_cached(q)
-                    if result:
-                        [author] = result
-                        author_dict = author.dict()
-                    else:
-                        logger.warn('author was not cached!')
-                        author_query = select(Author).filter(Author.id == author_id)
-                        [author] = get_with_stat(author_query)
-                        author_dict = author.dict()
-                if author_dict:
-                    await set_author_cache(author_dict)
-                    logger.debug('author stored in cache')
-                    return author_dict
+                    logger.warn('author was not cached!')
+                    author_query = select(Author).filter(Author.id == author_id)
+                    [author] = get_with_stat(author_query)
+                    author_dict = author.dict()
+            if author_dict:
+                await set_author_cache(author_dict)
+                logger.debug('author stored in cache')
+            return author_dict
     except Exception as exc:
         import traceback
 
