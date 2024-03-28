@@ -122,9 +122,9 @@ def get_notifications_grouped(
         if (groups_amount + offset) >= limit:
             break
 
-        payload = json.loads(notification.payload.scalar())
+        payload = json.loads(str(notification.payload))
 
-        if notification.entity.scalar() == NotificationEntity.SHOUT.value:
+        if str(notification.entity) == NotificationEntity.SHOUT.value:
             shout = payload
             shout_id = shout.get('id')
             author_id = shout.get('created_by')
@@ -139,13 +139,13 @@ def get_notifications_grouped(
                         thread_id,
                         shout=shout,
                         authors=[author],
-                        action=notification.action.scalar(),
-                        entity=notification.entity.scalar(),
+                        action=str(notification.action),
+                        entity=str(notification.entity),
                     )
                     groups_by_thread[thread_id] = group
                     groups_amount += 1
 
-        elif notification.entity.scalar() == NotificationEntity.REACTION.value:
+        elif str(notification.entity) == NotificationEntity.REACTION.value:
             reaction = payload
             if not isinstance(shout, dict):
                 raise ValueError('reaction data is not consistent')
@@ -153,7 +153,9 @@ def get_notifications_grouped(
             author_id = shout.get('created_by', 0)
             if shout_id and author_id:
                 with local_session() as session:
-                    author = session.query(Author).filter(Author.id == author_id).first()
+                    author = (
+                        session.query(Author).filter(Author.id == author_id).first()
+                    )
                     shout = session.query(Shout).filter(Shout.id == shout_id).first()
                     if shout and author:
                         author = author.dict()
@@ -166,7 +168,9 @@ def get_notifications_grouped(
                         if existing_group:
                             existing_group['seen'] = False
                             existing_group['authors'].append(author_id)
-                            existing_group['reactions'] = existing_group['reactions'] or []
+                            existing_group['reactions'] = (
+                                existing_group['reactions'] or []
+                            )
                             existing_group['reactions'].append(reaction)
                             groups_by_thread[thread_id] = existing_group
                         else:
@@ -175,21 +179,21 @@ def get_notifications_grouped(
                                 authors=[author],
                                 shout=shout,
                                 reactions=[reaction],
-                                entity=notification.entity.scalar(),
-                                action=notification.action.scalar(),
+                                entity=str(notification.entity),
+                                action=str(notification.action),
                             )
                             if group:
                                 groups_by_thread[thread_id] = group
                                 groups_amount += 1
 
-            elif notification.entity.scalar() == 'follower':
+            elif str(notification.entity) == 'follower':
                 thread_id = 'followers'
                 follower = json.loads(payload)
                 group = groups_by_thread.get(thread_id)
                 if group:
-                    if notification.action.scalar() == 'follow':
+                    if str(notification.action) == 'follow':
                         group['authors'].append(follower)
-                    elif notification.action.scalar() == 'unfollow':
+                    elif str(notification.action) == 'unfollow':
                         follower_id = follower.get('id')
                         for author in group['authors']:
                             if author.get('id') == follower_id:
@@ -199,8 +203,8 @@ def get_notifications_grouped(
                     group = group_notification(
                         thread_id,
                         authors=[follower],
-                        entity=notification.entity.scalar(),
-                        action=notification.action.scalar(),
+                        entity=str(notification.entity),
+                        action=str(notification.action),
                     )
                     groups_amount += 1
                 groups_by_thread[thread_id] = group
@@ -305,11 +309,11 @@ async def notifications_seen_thread(_, info, thread: str, after: int):
             )
             exclude = set()
             for nr in removed_reaction_notifications:
-                reaction = json.loads(nr.payload.scalar())
+                reaction = json.loads(str(nr.payload))
                 reaction_id = reaction.get('id')
                 exclude.add(reaction_id)
             for n in new_reaction_notifications:
-                reaction = json.loads(n.payload.scalar())
+                reaction = json.loads(str(n.payload))
                 reaction_id = reaction.get('id')
                 if (
                     reaction_id not in exclude

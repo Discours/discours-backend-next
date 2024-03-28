@@ -12,7 +12,7 @@ from services.memorycache import cache_region
 
 @query.field('get_topics_all')
 def get_topics_all(_, _info):
-    cache_key = "get_topics_all"
+    cache_key = 'get_topics_all'
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_all():
@@ -23,7 +23,7 @@ def get_topics_all(_, _info):
 
 @query.field('get_topics_by_community')
 def get_topics_by_community(_, _info, community_id: int):
-    cache_key = f"get_topics_by_community_{community_id}"
+    cache_key = f'get_topics_by_community_{community_id}'
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_by_community():
@@ -31,7 +31,6 @@ def get_topics_by_community(_, _info, community_id: int):
         return get_with_stat(q)
 
     return _get_topics_by_community()
-
 
 
 @query.field('get_topics_by_author')

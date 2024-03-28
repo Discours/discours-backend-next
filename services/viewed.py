@@ -42,7 +42,6 @@ class ViewedStorage:
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
         async with self.lock:
-
             # Загрузка предварительно подсчитанных просмотров из файла JSON
             self.load_precounted_views()
 
@@ -66,7 +65,9 @@ class ViewedStorage:
         try:
             if os.path.exists(VIEWS_FILEPATH):
                 self.file_modification_timestamp = os.path.getmtime(VIEWS_FILEPATH)
-                self.start_date = datetime.fromtimestamp(self.file_modification_timestamp).strftime('%Y-%m-%d')
+                self.start_date = datetime.fromtimestamp(
+                    self.file_modification_timestamp
+                ).strftime('%Y-%m-%d')
                 now_date = datetime.now().strftime('%Y-%m-%d')
 
                 if now_date == self.start_date:
@@ -83,7 +84,7 @@ class ViewedStorage:
                         f' * {len(precounted_views)} публикаций с просмотрами успешно загружены.'
                     )
             else:
-                logger.info(" * Файл просмотров не найден.")
+                logger.info(' * Файл просмотров не найден.')
         except Exception as e:
             logger.error(f'Ошибка загрузки предварительно подсчитанных просмотров: {e}')
 

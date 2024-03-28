@@ -430,8 +430,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 .outerjoin(
                     Reaction,
                     and_(
-                        Reaction.shout == Shout.id,
-                        Reaction.created_by == follower_id,
+                        Reaction.shout == Shout.id, Reaction.created_by == follower_id
                     ),
                 )
                 .outerjoin(Author, Shout.authors.any(id=follower_id))

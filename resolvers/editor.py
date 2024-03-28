@@ -22,17 +22,17 @@ from services.logger import root_logger as logger
 @query.field('get_my_shout')
 @login_required
 async def get_my_shout(_, info, shout_id: int):
-    with (local_session() as session):
+    with local_session() as session:
         user_id = info.context.get('user_id', '')
         if not user_id:
             return {'error': 'unauthorized', 'shout': None}
-        shout = session.query(Shout).filter(
-            Shout.id == shout_id
-        ).options(
-            joinedload(Shout.authors), joinedload(Shout.topics)
-        ).filter(and_(
-            Shout.deleted_at.is_(None),
-            Shout.published_at.is_(None))).first()
+        shout = (
+            session.query(Shout)
+            .filter(Shout.id == shout_id)
+            .options(joinedload(Shout.authors), joinedload(Shout.topics))
+            .filter(and_(Shout.deleted_at.is_(None), Shout.published_at.is_(None)))
+            .first()
+        )
         if not shout:
             return {'error': 'no shout found', 'shout': None}
         if not shout.published_at:
@@ -138,7 +138,12 @@ async def create_shout(_, info, inp):
 
 def patch_main_topic(session, main_topic, shout):
     with session.begin():
-        shout = session.query(Shout).options(joinedload(Shout.topics)).filter(Shout.id == shout.id).first()
+        shout = (
+            session.query(Shout)
+            .options(joinedload(Shout.topics))
+            .filter(Shout.id == shout.id)
+            .first()
+        )
         if not shout:
             return
         old_main_topic = (
@@ -153,12 +158,18 @@ def patch_main_topic(session, main_topic, shout):
             new_main_topic = (
                 session.query(ShoutTopic)
                 .filter(
-                    and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id)
+                    and_(
+                        ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id
+                    )
                 )
                 .first()
             )
 
-            if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
+            if (
+                old_main_topic
+                and new_main_topic
+                and old_main_topic is not new_main_topic
+            ):
                 ShoutTopic.update(old_main_topic, {'main': False})
                 session.add(old_main_topic)
 
@@ -224,12 +235,16 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                 if not shout_by_id:
                     return {'error': 'shout not found'}
                 if slug != shout_by_id.slug:
-                    same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
+                    same_slug_shout = (
+                        session.query(Shout).filter(Shout.slug == slug).first()
+                    )
                     c = 1
                     while same_slug_shout is not None:
                         c += 1
                         slug += f'-{c}'
-                        same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
+                        same_slug_shout = (
+                            session.query(Shout).filter(Shout.slug == slug).first()
+                        )
                     shout_input['slug'] = slug
 
                 if (

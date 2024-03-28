@@ -17,12 +17,11 @@ from services.logger import root_logger as logger
 
 
 def query_shouts():
-    return select(Shout).options(joinedload(Shout.authors), joinedload(Shout.topics)).where(
-            and_(
-                Shout.published_at.is_not(None),
-                Shout.deleted_at.is_(None),
-            )
-        )
+    return (
+        select(Shout)
+        .options(joinedload(Shout.authors), joinedload(Shout.topics))
+        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
 
 
 def filter_my(info, session, q):
@@ -104,7 +103,7 @@ async def get_shout(_, info, slug: str):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                'last_comment': last_comment
+                'last_comment': last_comment,
             }
 
             for author_caption in (
@@ -219,7 +218,7 @@ async def load_shouts_by(_, _info, options):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': int(likes_stat) - int(dislikes_stat),
-                'last_comment': last_comment
+                'last_comment': last_comment,
             }
             shouts.append(shout)
 
@@ -293,7 +292,7 @@ async def load_shouts_feed(_, info, options):
                 'reacted': reacted_stat,
                 'commented': commented_stat,
                 'rating': likes_stat - dislikes_stat,
-                'last_comment': last_comment
+                'last_comment': last_comment,
             }
             shouts.append(shout)
 
@@ -313,7 +312,8 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 @login_required
 async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = query_shouts()
-    q = q.outerjoin(
+    q = (
+        q.outerjoin(
             Reaction,
             and_(
                 Reaction.shout == Shout.id,
@@ -322,14 +322,16 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
                     [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
                 ),
             ),
-        ).outerjoin(Author, Author.user == bindparam('user_id')).where(
+        )
+        .outerjoin(Author, Author.user == bindparam('user_id'))
+        .where(
             and_(
                 Shout.deleted_at.is_(None),
                 Shout.layout.is_not(None),
                 or_(Author.id.is_(None), Reaction.created_by != Author.id),
             )
         )
-
+    )
 
     # 3 or fewer votes is 0, 1, 2 or 3 votes (null, reaction id1, reaction id2, reaction id3)
     q = q.having(func.count(distinct(Reaction.id)) <= 4)
@@ -407,9 +409,9 @@ async def load_shouts_random_top(_, _info, options):
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
                     (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
                     else_=0,
-                    )
                 )
             )
+        )
     )
 
     random_limit = options.get('random_limit', 100)
@@ -430,7 +432,6 @@ async def load_shouts_random_top(_, _info, options):
     shouts = await get_shouts_from_query(q)
 
     return shouts
-
 
 
 @query.field('load_shouts_random_topic')

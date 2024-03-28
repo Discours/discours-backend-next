@@ -101,7 +101,11 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
     if hasattr(conn, 'query_start_time'):
         elapsed = time.time() - conn.query_start_time
         conn.query_start_time = None
-        query = f'{statement} % {parameters}' if parameters else f'{statement}'.replace('\n', ' ')
+        query = (
+            f'{statement} % {parameters}'
+            if parameters
+            else f'{statement}'.replace('\n', ' ')
+        )
         if elapsed > 1 and conn.executed_statement != conn.statement:
             conn.executed_statement = conn.statement
             logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")

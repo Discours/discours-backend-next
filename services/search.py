@@ -122,7 +122,9 @@ class SearchService:
     async def recreate_index(self):
         if self.client:
             async with self.lock:
-                self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
+                self.client.indices.delete(
+                    index=self.index_name, ignore_unavailable=True
+                )
                 await self.check_index()
 
     def index(self, shout):
@@ -146,7 +148,12 @@ class SearchService:
 
             # Use Redis as cache with TTL
             redis_key = f'search:{text}'
-            await redis.execute('SETEX', redis_key, REDIS_TTL, json.dumps(results, cls=CustomJSONEncoder))
+            await redis.execute(
+                'SETEX',
+                redis_key,
+                REDIS_TTL,
+                json.dumps(results, cls=CustomJSONEncoder),
+            )
         return []
 
 

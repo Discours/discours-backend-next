@@ -20,26 +20,26 @@ def add_topic_stat_columns(q):
     q = (
         q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
         .add_columns(
-            func.count(distinct(aliased_shout_topic.shout)).label("shouts_stat")
+            func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat')
         )
         .outerjoin(
             aliased_shout_author,
             aliased_shout_topic.shout == aliased_shout_author.shout,
         )
         .add_columns(
-            func.count(distinct(aliased_shout_author.author)).label("authors_stat")
+            func.count(distinct(aliased_shout_author.author)).label('authors_stat')
         )
         .outerjoin(aliased_topic_follower)
         .add_columns(
             func.count(distinct(aliased_topic_follower.follower)).label(
-                "followers_stat"
+                'followers_stat'
             )
         )
     )
     # Create a subquery for comments count
     _sub_comments = (
         select(
-            Shout.id, func.coalesce(func.count(Reaction.id), 0).label("comments_count")
+            Shout.id, func.coalesce(func.count(Reaction.id), 0).label('comments_count')
         )
         .join(
             Reaction,
@@ -70,23 +70,23 @@ def add_author_stat_columns(q):
 
     q = q.outerjoin(aliased_shout_author, aliased_shout_author.author == Author.id)
     q = q.add_columns(
-        func.count(distinct(aliased_shout_author.shout)).label("shouts_stat")
+        func.count(distinct(aliased_shout_author.shout)).label('shouts_stat')
     )
 
     q = q.outerjoin(aliased_authors, aliased_authors.follower == Author.id)
     q = q.add_columns(
-        func.count(distinct(aliased_authors.author)).label("authors_stat")
+        func.count(distinct(aliased_authors.author)).label('authors_stat')
     )
 
     q = q.outerjoin(aliased_followers, aliased_followers.author == Author.id)
     q = q.add_columns(
-        func.count(distinct(aliased_followers.follower)).label("followers_stat")
+        func.count(distinct(aliased_followers.follower)).label('followers_stat')
     )
 
     # Create a subquery for comments count
     sub_comments = (
         select(
-            Author.id, func.coalesce(func.count(Reaction.id), 0).label("comments_stat")
+            Author.id, func.coalesce(func.count(Reaction.id), 0).label('comments_stat')
         )
         .outerjoin(
             Reaction,
@@ -103,9 +103,7 @@ def add_author_stat_columns(q):
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
     q = q.add_columns(sub_comments.c.comments_stat)
 
-    q = q.group_by(
-        Author.id, sub_comments.c.comments_stat
-    )
+    q = q.group_by(Author.id, sub_comments.c.comments_stat)
 
     return q
 
@@ -113,12 +111,43 @@ def add_author_stat_columns(q):
 def add_author_ratings(q):
     aliased_author = aliased(Author)
     selection_list = [
-        aliased_author.id.label("author_id"),
-        func.count().filter(and_(Reaction.created_by == aliased_author.id,Reaction.kind == ReactionKind.COMMENT.value)).label("comments_count"),
-        func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label("likes_count"),
-        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label("dislikes_count"),
-        func.sum(case((and_(Reaction.kind == ReactionKind.LIKE.value,Shout.authors.any(id=aliased_author.id)),1),else_=0)).label("shouts_likes"),
-        func.sum(case((and_(Reaction.kind == ReactionKind.DISLIKE.value,Shout.authors.any(id=aliased_author.id)),1),else_=0)).label("shouts_dislikes"),
+        aliased_author.id.label('author_id'),
+        func.count()
+        .filter(
+            and_(
+                Reaction.created_by == aliased_author.id,
+                Reaction.kind == ReactionKind.COMMENT.value,
+            )
+        )
+        .label('comments_count'),
+        func.sum(case((AuthorRating.plus == true(), 1), else_=0)).label('likes_count'),
+        func.sum(case((AuthorRating.plus != true(), 1), else_=0)).label(
+            'dislikes_count'
+        ),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Reaction.kind == ReactionKind.LIKE.value,
+                        Shout.authors.any(id=aliased_author.id),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ).label('shouts_likes'),
+        func.sum(
+            case(
+                (
+                    and_(
+                        Reaction.kind == ReactionKind.DISLIKE.value,
+                        Shout.authors.any(id=aliased_author.id),
+                    ),
+                    1,
+                ),
+                else_=0,
+            )
+        ).label('shouts_dislikes'),
     ]
     ratings_subquery = (
         select(*selection_list)
@@ -127,7 +156,7 @@ def add_author_ratings(q):
         .outerjoin(Shout, Shout.authors.any(id=aliased_author.id))
         .filter(Reaction.deleted_at.is_(None))
         .group_by(aliased_author.id)
-        .alias("ratings_subquery")
+        .alias('ratings_subquery')
     )
 
     return q.join(ratings_subquery, Author.id == ratings_subquery.c.author_id)
@@ -135,8 +164,8 @@ def add_author_ratings(q):
 
 def get_with_stat(q):
     try:
-        is_author = f"{q}".lower().startswith("select author")
-        is_topic = f"{q}".lower().startswith("select topic")
+        is_author = f'{q}'.lower().startswith('select author')
+        is_topic = f'{q}'.lower().startswith('select topic')
         if is_author:
             q = add_author_stat_columns(q)
             # q = add_author_ratings(q)  # TODO: move rating to cols down there
@@ -149,11 +178,11 @@ def get_with_stat(q):
             for cols in result:
                 entity = cols[0]
                 stat = dict()
-                stat["shouts"] = cols[1]
-                stat["authors"] = cols[2]
-                stat["followers"] = cols[3]
+                stat['shouts'] = cols[1]
+                stat['authors'] = cols[2]
+                stat['followers'] = cols[3]
                 if is_author:
-                    stat["comments"] = cols[4]
+                    stat['comments'] = cols[4]
                     # entity.stat['topics'] = cols[5]
                     # entity.stat['rating'] = cols[5] - cols[6]
                     # entity.stat['rating_shouts'] = cols[7] - cols[8]
@@ -199,7 +228,7 @@ async def get_topics_with_stat_cached(q):
 
 
 def author_follows_authors(author_id: int):
-    af = aliased(AuthorFollower, name="af")
+    af = aliased(AuthorFollower, name='af')
     q = (
         select(Author)
         .select_from(join(Author, af, Author.id == af.author))
