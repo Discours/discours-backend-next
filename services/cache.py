@@ -87,9 +87,9 @@ async def update_follows_for_author(
         follows = [e for e in follows if e["id"] != entity_id]
         logger.debug(f'{entity['slug']} removed from what @{follower.slug} follows')
     if entity_type == "topic":
-        await set_follows_topics_cache(follows, follower.id)
+        await set_follows_topics_cache(follows, follower.id.scalar())
     if entity_type == "author":
-        await set_follows_authors_cache(follows, follower.id)
+        await set_follows_authors_cache(follows, follower.id.scalar())
     return follows
 
 
@@ -166,25 +166,25 @@ def after_author_update(_mapper, _connection, author: Author):
 
 def after_topic_follower_insert(_mapper, _connection, target: TopicFollower):
     asyncio.create_task(
-        handle_topic_follower_change(target.topic, target.follower, True)
+        handle_topic_follower_change(target.topic.scalar(), target.follower.scalar(), True)
     )
 
 
 def after_topic_follower_delete(_mapper, _connection, target: TopicFollower):
     asyncio.create_task(
-        handle_topic_follower_change(target.topic, target.follower, False)
+        handle_topic_follower_change(target.topic.scalar(), target.follower.scalar(), False)
     )
 
 
 def after_author_follower_insert(_mapper, _connection, target: AuthorFollower):
     asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, True)
+        handle_author_follower_change(target.author.scalar(), target.follower.scalar(), True)
     )
 
 
 def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
     asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, False)
+        handle_author_follower_change(target.author.scalar(), target.follower.scalar(), False)
     )
 
 
@@ -200,7 +200,7 @@ async def handle_author_follower_change(
         follows_authors = await redis.execute(
             "GET", f"author:{follower_id}:follows-authors"
         )
-        if follows_authors:
+        if isinstance(follows_authors, str):
             follows_authors = json.loads(follows_authors)
             if not any(x.get("id") == author.id for x in follows_authors):
                 follows_authors.append(author.dict())
@@ -233,7 +233,7 @@ async def handle_topic_follower_change(
         follows_topics = await redis.execute(
             "GET", f"author:{follower_id}:follows-topics"
         )
-        if follows_topics:
+        if isinstance(follows_topics, str):
             follows_topics = json.loads(follows_topics)
             if not any(x.get("id") == topic.id for x in follows_topics):
                 follows_topics.append(topic)
