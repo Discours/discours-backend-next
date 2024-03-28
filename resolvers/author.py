@@ -203,12 +203,11 @@ async def get_author_follows(_, _info, slug='', user=None, author_id=0):
                     {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
                 ],
             }
-        else:
-            raise ValueError('Author not found')
     except Exception:
         import traceback
 
         traceback.print_exc()
+    return {'error': 'Author not found'}
 
 
 @query.field('get_author_follows_topics')

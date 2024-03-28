@@ -106,7 +106,7 @@ async def update_followers_for_author(
     else:
         # Remove the entity from followers
         followers = [e for e in followers if e["id"] != author.id]
-    await update_author_followers_cache(author.id, followers)
+    await update_author_followers_cache(author.id.scalar(), followers)
     return followers
 
 
