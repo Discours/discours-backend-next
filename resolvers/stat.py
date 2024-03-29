@@ -4,7 +4,7 @@ from sqlalchemy import func, distinct, select, join, and_
 from sqlalchemy.orm import aliased
 
 from orm.reaction import Reaction, ReactionKind
-from resolvers.rating import add_rating_columns
+from resolvers.rating import add_author_rating_columns
 from orm.topic import TopicFollower, Topic
 from services.db import local_session
 from orm.author import AuthorFollower, Author
@@ -107,7 +107,7 @@ def add_author_stat_columns(q, with_rating=False):
     group_list = [Author.id, sub_comments.c.comments_count]
 
     if with_rating:
-        q, group_list = add_rating_columns(q, group_list)
+        q, group_list = add_author_rating_columns(q, group_list)
 
     q = q.group_by(*group_list)
 

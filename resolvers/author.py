@@ -60,17 +60,21 @@ async def get_author(_, _info, slug='', author_id=0):
     author_dict = None
     try:
         author_query = select(Author).filter(or_(Author.slug == slug, Author.id == author_id))
-        [author] = await get_authors_with_stat_cached(author_query)
+        result = await get_authors_with_stat_cached(author_query)
+        if not result:
+            raise ValueError('Author not found')
+        [author] = result
+        author_id = author.id
+        logger.debug(f'found @{slug} with id {author_id}')
         if isinstance(author, Author):
-            author_id = author.id
-            logger.debug(f'found @{slug} with id {author_id}')
-        if not author.stat or not author.stat.get('rating_shouts'):
-            [author] = get_with_stat(author_query) # FIXME: with_rating=True)
-            if author:
-                await set_author_cache(author.dict())
-                logger.debug('updated author stored in cache')
-        if isinstance(author, Author):
+            if not author.stat:
+                [author] = get_with_stat(author_query) # FIXME: with_rating=True)
+                if author:
+                    await set_author_cache(author.dict())
+                    logger.debug('updated author stored in cache')
             author_dict = author.dict()
+    except ValueError:
+        pass
     except Exception:
         import traceback
 
