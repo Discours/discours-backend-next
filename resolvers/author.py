@@ -65,7 +65,7 @@ async def get_author(_, _info, slug='', author_id=0):
             author_id = author.id
             logger.debug(f'found @{slug} with id {author_id}')
         if not author.stat or not author.stat.get('rating_shouts'):
-            [author] = get_with_stat(author_query, with_rating=True)
+            [author] = get_with_stat(author_query) # FIXME: with_rating=True)
             if author:
                 await set_author_cache(author.dict())
                 logger.debug('updated author stored in cache')
