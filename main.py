@@ -8,20 +8,13 @@ from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
+from starlette.middleware import Middleware
 
 from services.rediscache import redis
 from services.schema import resolvers
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
-
-# Initialize GlitchTip SDK with DSN from environment variable
-GLITCHTIP_DSN = os.getenv('GLITCHTIP_DSN')
-sentry_sdk.init(
-    dsn=GLITCHTIP_DSN,
-    traces_sample_rate=1.0,
-    integrations=[SentryAsgiMiddleware()]
-)
 
 import_module('resolvers')
 schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
@@ -51,4 +44,12 @@ app = Starlette(
     ],
     on_shutdown=[redis.disconnect],
     debug=True,
+)
+
+# Initialize GlitchTip SDK with DSN from environment variable
+GLITCHTIP_DSN = os.getenv('GLITCHTIP_DSN')
+sentry_sdk.init(
+    dsn=GLITCHTIP_DSN,
+    traces_sample_rate=1.0,
+    integrations=[SentryAsgiMiddleware(app)]
 )
