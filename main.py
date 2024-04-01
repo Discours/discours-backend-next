@@ -1,4 +1,6 @@
 import os
+import sentry_sdk
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from importlib import import_module
 from os.path import exists
 
@@ -12,6 +14,14 @@ from services.schema import resolvers
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
+
+# Initialize GlitchTip SDK with DSN from environment variable
+GLITCHTIP_DSN = os.getenv('GLITCHTIP_DSN')
+sentry_sdk.init(
+    dsn=GLITCHTIP_DSN,
+    traces_sample_rate=1.0,
+    integrations=[SentryAsgiMiddleware()]
+)
 
 import_module('resolvers')
 schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
