@@ -1,6 +1,5 @@
 import os
 import sentry_sdk
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from importlib import import_module
 from os.path import exists
 
@@ -8,7 +7,6 @@ from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
-from starlette.middleware import Middleware
 
 from services.rediscache import redis
 from services.schema import resolvers
@@ -21,10 +19,7 @@ schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
 
 # Initialize GlitchTip SDK with DSN from environment variable
 GLITCHTIP_DSN = os.getenv('GLITCHTIP_DSN')
-sentry_sdk.init(
-    dsn=GLITCHTIP_DSN,
-    traces_sample_rate=1.0
-)
+sentry_sdk.init(GLITCHTIP_DSN)
 
 async def start():
     if MODE == 'development':
@@ -49,6 +44,5 @@ app = Starlette(
         start,
     ],
     on_shutdown=[redis.disconnect],
-    middleware=[Middleware(SentryAsgiMiddleware)],
     debug=True,
 )
