@@ -19,6 +19,12 @@ from settings import DEV_SERVER_PID_FILE_NAME, MODE
 import_module('resolvers')
 schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
 
+# Initialize GlitchTip SDK with DSN from environment variable
+GLITCHTIP_DSN = os.getenv('GLITCHTIP_DSN')
+sentry_sdk.init(
+    dsn=GLITCHTIP_DSN,
+    traces_sample_rate=1.0
+)
 
 async def start():
     if MODE == 'development':
@@ -43,13 +49,6 @@ app = Starlette(
         start,
     ],
     on_shutdown=[redis.disconnect],
+    middleware=[Middleware(SentryAsgiMiddleware)],
     debug=True,
-)
-
-# Initialize GlitchTip SDK with DSN from environment variable
-GLITCHTIP_DSN = os.getenv('GLITCHTIP_DSN')
-sentry_sdk.init(
-    dsn=GLITCHTIP_DSN,
-    traces_sample_rate=1.0,
-    integrations=[SentryAsgiMiddleware(app)]
 )
