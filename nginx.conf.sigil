@@ -10,6 +10,13 @@ map $http_origin $allow_origin {
     default "";
 }
 
+events {
+    worker_connections 1024;
+}
+
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g 
+                 inactive=60m use_temp_path=off;
+
 {{ range $port_map := .PROXY_PORT_MAP | split " " }}
 {{ $port_map_list := $port_map | split ":" }}
 {{ $scheme := index $port_map_list 0 }}
@@ -36,6 +43,9 @@ server {
         ssl_prefer_server_ciphers off;
 
         keepalive_timeout   70;
+        keepalive_requests 500;
+        proxy_read_timeout 3600;
+        limit_conn addr 1000;
     {{ end }}
 
 
@@ -46,6 +56,13 @@ server {
         {{ $cors_headers_options }}
         {{ $cors_headers_post }}
         {{ $cors_headers_get }}
+
+        proxy_cache my_cache;
+        proxy_cache_revalidate on;
+        proxy_cache_min_uses 2;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+        proxy_cache_background_update on;
+        proxy_cache_lock on;       
     }
 
     location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
