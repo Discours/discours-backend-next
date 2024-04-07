@@ -16,9 +16,6 @@ RUN pip install poetry && \
     poetry config virtualenvs.create false && \
     poetry install --no-root --only main
     
-# Modify the nginx.conf file to add the events block
-RUN echo "events { worker_connections 1024; }" >> /etc/nginx/nginx.conf
-
 # Copy the rest of the application
 COPY . /app
 
