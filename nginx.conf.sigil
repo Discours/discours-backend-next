@@ -12,6 +12,7 @@ map $http_origin $allow_origin {
 
 proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g 
                  inactive=60m use_temp_path=off;
+limit_conn_zone $binary_remote_addr zone=addr:10m;
 
 {{ range $port_map := .PROXY_PORT_MAP | split " " }}
 {{ $port_map_list := $port_map | split ":" }}
@@ -42,7 +43,6 @@ server {
         keepalive_requests 500;
         proxy_read_timeout 3600;
         limit_conn addr 1000;
-        limit_conn_zone $binary_remote_addr zone=addr:10m;
     {{ end }}
 
 
