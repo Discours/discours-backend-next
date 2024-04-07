@@ -42,6 +42,7 @@ server {
         keepalive_requests 500;
         proxy_read_timeout 3600;
         limit_conn addr 1000;
+        limit_conn_zone $binary_remote_addr zone=addr:10m;
     {{ end }}
 
 
