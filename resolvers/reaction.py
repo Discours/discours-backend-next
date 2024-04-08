@@ -307,6 +307,7 @@ async def delete_reaction(_, info, reaction_id: int):
                     session.delete(r)
                     session.commit()
                     await notify_reaction(reaction_dict, 'delete')
+
                     return {'error': None, 'reaction': reaction_dict}
             except Exception as exc:
                 return {'error': f'cannot delete reaction: {exc}'}
