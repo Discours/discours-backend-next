@@ -135,7 +135,7 @@ class SearchService:
 
     async def perform_index(self, shout):
         if self.client:
-            await self.client.index(index=self.index_name, id=str(shout.id), body=shout.dict())
+            self.client.index(index=self.index_name, id=str(shout.id), body=shout.dict())
 
     async def search(self, text, limit, offset):
         logger.debug(f' Ищем: {text}')
