@@ -120,19 +120,19 @@ def get_author_rating_old(session, author: Author):
 def get_author_rating_shouts(session, author: Author) -> int:
     q = (
         select(
-            func.coalesce(func.sum(
-                case(
-                    (Reaction.kind == ReactionKind.LIKE.value, 1),
-                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0
-                )
-            ), 0).label('shouts_rating')
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Reaction.kind == ReactionKind.LIKE.value, 1),
+                        (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label('shouts_rating')
         )
         .select_from(Reaction)
-        .outerjoin(
-            Shout,
-            Shout.authors.any(id=author.id)
-        )
+        .outerjoin(Shout, Shout.authors.any(id=author.id))
         .outerjoin(
             Reaction,
             and_(
@@ -150,13 +150,16 @@ def get_author_rating_comments(session, author: Author) -> int:
     replied_comment = aliased(Reaction)
     q = (
         select(
-            func.coalesce(func.sum(
-                case(
-                    (Reaction.kind == ReactionKind.LIKE.value, 1),
-                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0
-                )
-            ), 0).label('shouts_rating')
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Reaction.kind == ReactionKind.LIKE.value, 1),
+                        (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label('shouts_rating')
         )
         .select_from(Reaction)
         .outerjoin(
@@ -164,7 +167,9 @@ def get_author_rating_comments(session, author: Author) -> int:
             and_(
                 replied_comment.kind == ReactionKind.COMMENT.value,
                 replied_comment.created_by == author.id,
-                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+                Reaction.kind.in_(
+                    [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
+                ),
                 Reaction.reply_to == replied_comment.id,
                 Reaction.deleted_at.is_(None),
             ),
@@ -179,26 +184,27 @@ def add_author_rating_columns(q, group_list):
 
     # old karma
     q = q.outerjoin(AuthorRating, AuthorRating.author == Author.id)
-    q = q.add_columns(func.sum(case((AuthorRating.plus == true(), 1), else_=-1)).label('rating'))
+    q = q.add_columns(
+        func.sum(case((AuthorRating.plus == true(), 1), else_=-1)).label('rating')
+    )
 
     # by shouts rating
     shout_reaction = aliased(Reaction)
     shouts_rating_subq = (
         select(
             Author.id,
-            func.coalesce(func.sum(
-                case(
-                    (shout_reaction.kind == ReactionKind.LIKE.value, 1),
-                    (shout_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0
+            func.coalesce(
+                func.sum(
+                    case(
+                        (shout_reaction.kind == ReactionKind.LIKE.value, 1),
+                        (shout_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                        else_=0,
+                    )
                 )
-            )).label('shouts_rating')
+            ).label('shouts_rating'),
         )
         .select_from(shout_reaction)
-        .outerjoin(
-            Shout,
-            Shout.authors.any(id=Author.id)
-        )
+        .outerjoin(Shout, Shout.authors.any(id=Author.id))
         .outerjoin(
             shout_reaction,
             and_(
@@ -218,25 +224,35 @@ def add_author_rating_columns(q, group_list):
     # by comments
     replied_comment = aliased(Reaction)
     reaction_2 = aliased(Reaction)
-    comments_subq = select(
-        Author.id,
-        func.coalesce(func.sum(
-            case(
-                (reaction_2.kind == ReactionKind.LIKE.value, 1),
-                (reaction_2.kind == ReactionKind.DISLIKE.value, -1),
-                else_=0
-            )
-        )).label('comments_rating'),
-    ).select_from(reaction_2).outerjoin(
-        replied_comment,
-        and_(
-            replied_comment.kind == ReactionKind.COMMENT.value,
-            replied_comment.created_by == Author.id,
-            reaction_2.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
-            reaction_2.reply_to == replied_comment.id,
-            reaction_2.deleted_at.is_(None)
+    comments_subq = (
+        select(
+            Author.id,
+            func.coalesce(
+                func.sum(
+                    case(
+                        (reaction_2.kind == ReactionKind.LIKE.value, 1),
+                        (reaction_2.kind == ReactionKind.DISLIKE.value, -1),
+                        else_=0,
+                    )
+                )
+            ).label('comments_rating'),
         )
-    ).group_by(Author.id).subquery()
+        .select_from(reaction_2)
+        .outerjoin(
+            replied_comment,
+            and_(
+                replied_comment.kind == ReactionKind.COMMENT.value,
+                replied_comment.created_by == Author.id,
+                reaction_2.kind.in_(
+                    [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
+                ),
+                reaction_2.reply_to == replied_comment.id,
+                reaction_2.deleted_at.is_(None),
+            ),
+        )
+        .group_by(Author.id)
+        .subquery()
+    )
 
     q = q.outerjoin(comments_subq, Author.id == comments_subq.c.id)
     q = q.add_columns(comments_subq.c.comments_rating)

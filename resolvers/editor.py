@@ -35,7 +35,7 @@ async def get_my_shout(_, info, shout_id: int):
         )
         if not shout:
             return {'error': 'no shout found', 'shout': None}
-        if not shout.published_at:
+        if not bool(shout.published_at):
             author = session.query(Author).filter(Author.user == user_id).first()
             if not author:
                 return {'error': 'no author found', 'shout': None}
@@ -241,7 +241,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     c = 1
                     while same_slug_shout is not None:
                         c += 1
-                        slug += f'-{c}'
+                        slug = f'{slug}-{c}'
                         same_slug_shout = (
                             session.query(Shout).filter(Shout.slug == slug).first()
                         )

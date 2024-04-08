@@ -1,5 +1,4 @@
 import os
-import sentry_sdk
 from importlib import import_module
 from os.path import exists
 
@@ -10,6 +9,7 @@ from starlette.routing import Route
 
 from services.rediscache import redis
 from services.schema import resolvers
+from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
@@ -17,8 +17,6 @@ from settings import DEV_SERVER_PID_FILE_NAME, MODE
 import_module('resolvers')
 schema = make_executable_schema(load_schema_from_path('schema/'), resolvers)
 
-# Initialize GlitchTip SDK with DSN
-sentry_sdk.init("https://e8b4aabe17db4a7bbf703304cda33892@glitchtip.discours.io/1")
 
 async def start():
     if MODE == 'development':
@@ -39,7 +37,7 @@ app = Starlette(
         redis.connect,
         ViewedStorage.init,
         # search_service.info,
-        # start_sentry,
+        start_sentry,
         start,
     ],
     on_shutdown=[redis.disconnect],

@@ -87,8 +87,7 @@ def add_author_stat_columns(q, with_rating=False):
     # Create a subquery for comments count
     sub_comments = (
         select(
-            Author.id,
-            func.coalesce(func.count(Reaction.id)).label('comments_count')
+            Author.id, func.coalesce(func.count(Reaction.id)).label('comments_count')
         )
         .outerjoin(
             Reaction,
@@ -155,7 +154,11 @@ async def get_authors_with_stat_cached(q):
         with local_session() as session:
             for [x] in session.execute(q):
                 stat_str = await redis.execute('GET', f'author:{x.id}')
-                x.stat = json.loads(stat_str).get('stat') if isinstance(stat_str, str) else {}
+                x.stat = (
+                    json.loads(stat_str).get('stat')
+                    if isinstance(stat_str, str)
+                    else {}
+                )
                 records.append(x)
     except Exception as exc:
         raise Exception(exc)

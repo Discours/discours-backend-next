@@ -59,7 +59,9 @@ async def get_author(_, _info, slug='', author_id=0):
     author = None
     author_dict = None
     try:
-        author_query = select(Author).filter(or_(Author.slug == slug, Author.id == author_id))
+        author_query = select(Author).filter(
+            or_(Author.slug == slug, Author.id == author_id)
+        )
         result = await get_authors_with_stat_cached(author_query)
         if not result:
             raise ValueError('Author not found')
@@ -68,7 +70,7 @@ async def get_author(_, _info, slug='', author_id=0):
         logger.debug(f'found @{slug} with id {author_id}')
         if isinstance(author, Author):
             if not author.stat:
-                [author] = get_with_stat(author_query) # FIXME: with_rating=True)
+                [author] = get_with_stat(author_query)  # FIXME: with_rating=True)
                 if author:
                     await set_author_cache(author.dict())
                     logger.debug('updated author stored in cache')
@@ -290,8 +292,12 @@ async def get_author_followers(_, _info, slug: str):
     try:
         with local_session() as session:
             author_alias = aliased(Author)
-            author_id = session.query(author_alias.id).filter(author_alias.slug == slug)
-            if author_id:
+            result = (
+                session.query(author_alias).filter(author_alias.slug == slug).first()
+            )
+            if result:
+                [author] = result
+                author_id = author.id
                 cached = await redis.execute('GET', f'author:{author_id}:followers')
                 if not cached:
                     author_follower_alias = aliased(AuthorFollower, name='af')
