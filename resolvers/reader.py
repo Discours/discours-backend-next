@@ -1,6 +1,7 @@
 from sqlalchemy import bindparam, distinct, or_, text
 from sqlalchemy.orm import aliased, joinedload
-from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
+from sqlalchemy.sql.expression import (and_, asc, case, desc, func, nulls_last,
+                                       select)
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
@@ -10,10 +11,10 @@ from resolvers.reaction import add_reaction_stat_columns
 from resolvers.topic import get_topics_random
 from services.auth import login_required
 from services.db import local_session
+from services.logger import root_logger as logger
 from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
-from services.logger import root_logger as logger
 
 
 def query_shouts():

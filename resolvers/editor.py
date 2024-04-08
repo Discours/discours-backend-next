@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import and_, select, desc
+from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
@@ -13,10 +13,10 @@ from resolvers.follower import reactions_follow, reactions_unfollow
 from services.auth import login_required
 from services.db import local_session
 from services.diff import apply_diff, get_diff
+from services.logger import root_logger as logger
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
-from services.logger import root_logger as logger
 
 
 @query.field('get_my_shout')

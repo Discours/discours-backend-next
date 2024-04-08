@@ -1,7 +1,7 @@
 import time
 from typing import List
 
-from sqlalchemy import and_, case, desc, func, select, text, asc
+from sqlalchemy import and_, asc, case, desc, func, select, text
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
@@ -13,10 +13,10 @@ from resolvers.editor import handle_proposing
 from resolvers.follower import reactions_follow
 from services.auth import add_user_role, login_required
 from services.db import local_session
+from services.logger import root_logger as logger
 from services.notify import notify_reaction
 from services.schema import mutation, query
 from services.viewed import ViewedStorage
-from services.logger import root_logger as logger
 
 
 def add_reaction_stat_columns(q, aliased_reaction):

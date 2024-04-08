@@ -2,27 +2,23 @@ import asyncio
 import json
 import time
 
-from sqlalchemy import select, or_, and_, text, desc
+from sqlalchemy import and_, desc, or_, select, text
 from sqlalchemy.orm import aliased
 from sqlalchemy_searchable import search
 
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import (
-    get_authors_with_stat_cached,
-    author_follows_authors,
-    author_follows_topics,
-    get_with_stat,
-)
-from services.cache import set_author_cache, update_author_followers_cache
+from resolvers.stat import (author_follows_authors, author_follows_topics,
+                            get_authors_with_stat_cached, get_with_stat)
 from services.auth import login_required
+from services.cache import set_author_cache, update_author_followers_cache
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
+from services.logger import root_logger as logger
 from services.memorycache import cache_region
 from services.rediscache import redis
 from services.schema import mutation, query
-from services.logger import root_logger as logger
 
 
 @mutation.field('update_author')

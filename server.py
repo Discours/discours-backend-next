@@ -1,8 +1,8 @@
 from granian.constants import Interfaces
 from granian.server import Granian
+
 from services.logger import root_logger as logger
 from settings import PORT
-
 
 if __name__ == '__main__':
     logger.info('started')

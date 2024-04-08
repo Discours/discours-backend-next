@@ -1,3 +1,8 @@
+[0.3.3]
+- feat: sentry integration enabled
+- fix: reindex on update shout
+- packages upgrade, isort
+
 [0.3.2]
 - redis cache for what author follows
 - redis cache for followers

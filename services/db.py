@@ -1,10 +1,12 @@
 import json
 import math
 import time
-
+import traceback
+import warnings
 from typing import Any, Callable, Dict, TypeVar
-from sqlalchemy import exc, event, Engine
-from sqlalchemy import inspect, Column, Integer, create_engine, JSON
+
+from sqlalchemy import (JSON, Column, Engine, Integer, create_engine, event,
+                        exc, inspect)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
@@ -12,8 +14,6 @@ from sqlalchemy_searchable import make_searchable
 
 from services.logger import root_logger as logger
 from settings import DB_URL
-import warnings
-import traceback
 
 # Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)

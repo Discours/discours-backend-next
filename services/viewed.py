@@ -7,12 +7,8 @@ from typing import Dict
 
 # ga
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import (
-    DateRange,
-    Dimension,
-    Metric,
-    RunReportRequest,
-)
+from google.analytics.data_v1beta.types import (DateRange, Dimension, Metric,
+                                                RunReportRequest)
 
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic

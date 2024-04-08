@@ -2,24 +2,19 @@ import json
 import time
 from typing import List, Tuple
 
-from sqlalchemy.exc import SQLAlchemyError
-
-from orm.author import Author
-from orm.shout import Shout
-from services.auth import login_required
-from services.schema import mutation, query
 from sqlalchemy import and_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import not_
 
-from orm.notification import (
-    Notification,
-    NotificationAction,
-    NotificationEntity,
-    NotificationSeen,
-)
+from orm.author import Author
+from orm.notification import (Notification, NotificationAction,
+                              NotificationEntity, NotificationSeen)
+from orm.shout import Shout
+from services.auth import login_required
 from services.db import local_session
 from services.logger import root_logger as logger
+from services.schema import mutation, query
 
 
 def query_notifications(

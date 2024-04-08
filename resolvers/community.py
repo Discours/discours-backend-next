@@ -5,8 +5,8 @@ from orm.author import Author
 from orm.community import Community, CommunityAuthor
 from orm.shout import ShoutCommunity
 from services.db import local_session
-from services.schema import query
 from services.logger import root_logger as logger
+from services.schema import query
 
 
 def add_community_stat_columns(q):

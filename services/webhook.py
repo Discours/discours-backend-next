@@ -2,9 +2,9 @@ import os
 import re
 
 from starlette.endpoints import HTTPEndpoint
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.exceptions import HTTPException
 
 from orm.author import Author
 from services.db import local_session

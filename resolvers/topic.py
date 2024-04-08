@@ -6,8 +6,8 @@ from orm.topic import Topic
 from resolvers.stat import get_topics_with_stat_cached, get_with_stat
 from services.auth import login_required
 from services.db import local_session
-from services.schema import mutation, query
 from services.memorycache import cache_region
+from services.schema import mutation, query
 
 
 @query.field('get_topics_all')

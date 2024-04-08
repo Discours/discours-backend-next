@@ -1,8 +1,8 @@
+import logging
+
 import redis.asyncio as aredis
 
-import logging
 from settings import REDIS_URL
-
 
 # Set redis logging level to suppress DEBUG messages
 logger = logging.getLogger('redis')

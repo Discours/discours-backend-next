@@ -3,33 +3,26 @@ import time
 from typing import List
 
 from psycopg2.errors import UniqueViolation
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
 from orm.community import Community
-
 # from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import (
-    get_authors_with_stat_cached,
-    author_follows_topics,
-    author_follows_authors,
-    get_topics_with_stat_cached,
-)
+from resolvers.stat import (author_follows_authors, author_follows_topics,
+                            get_authors_with_stat_cached,
+                            get_topics_with_stat_cached)
 from services.auth import login_required
+from services.cache import (DEFAULT_FOLLOWS, update_followers_for_author,
+                            update_follows_for_author)
 from services.db import local_session
-from services.cache import (
-    DEFAULT_FOLLOWS,
-    update_follows_for_author,
-    update_followers_for_author,
-)
-from services.notify import notify_follower
-from services.schema import mutation, query
 from services.logger import root_logger as logger
+from services.notify import notify_follower
 from services.rediscache import redis
+from services.schema import mutation, query
 
 
 @mutation.field('follow')

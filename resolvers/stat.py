@@ -1,14 +1,14 @@
 import json
 
-from sqlalchemy import func, distinct, select, join, and_
+from sqlalchemy import and_, distinct, func, join, select
 from sqlalchemy.orm import aliased
 
+from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
+from orm.topic import Topic, TopicFollower
 from resolvers.rating import add_author_rating_columns
-from orm.topic import TopicFollower, Topic
 from services.db import local_session
-from orm.author import AuthorFollower, Author
-from orm.shout import ShoutTopic, ShoutAuthor, Shout
 from services.logger import root_logger as logger
 from services.rediscache import redis
 

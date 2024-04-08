@@ -3,11 +3,11 @@ import time
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from services.db import Base
-from orm.community import Community
 from orm.author import Author
+from orm.community import Community
 from orm.reaction import Reaction
 from orm.topic import Topic
+from services.db import Base
 
 
 class ShoutTopic(Base):

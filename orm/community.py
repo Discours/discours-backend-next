@@ -3,8 +3,8 @@ import time
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from services.db import Base
 from orm.author import Author
+from services.db import Base
 
 
 class CommunityAuthor(Base):

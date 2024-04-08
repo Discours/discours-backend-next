@@ -1,17 +1,16 @@
 import asyncio
-
-from sqlalchemy import select, event
 import json
+
+from sqlalchemy import event, select
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
-from orm.shout import ShoutAuthor, Shout
+from orm.shout import Shout, ShoutAuthor
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
 from services.encoders import CustomJSONEncoder
-from services.rediscache import redis
 from services.logger import root_logger as logger
-
+from services.rediscache import redis
 
 DEFAULT_FOLLOWS = {
     'topics': [],

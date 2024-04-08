@@ -1,7 +1,7 @@
-from sqlalchemy import and_, func, case, true, select
+from sqlalchemy import and_, case, func, select, true
 from sqlalchemy.orm import aliased
 
-from orm.author import AuthorRating, Author
+from orm.author import Author, AuthorRating
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from services.auth import login_required
