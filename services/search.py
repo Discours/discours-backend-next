@@ -131,9 +131,11 @@ class SearchService:
         if self.client:
             id_ = str(shout.id)
             logger.debug(f' Индексируем пост {id_}')
-            asyncio.create_task(
-                self.client.index(index=self.index_name, id=id_, body=shout.dict())
-            )
+            asyncio.create_task(self.perform_index(shout))
+
+    async def perform_index(self, shout):
+        if self.client:
+            await self.client.index(index=self.index_name, id=str(shout.id), body=shout.dict())
 
     async def search(self, text, limit, offset):
         logger.debug(f' Ищем: {text}')
