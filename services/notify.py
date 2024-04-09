@@ -3,7 +3,7 @@ import json
 from orm.notification import Notification
 from services.db import local_session
 from services.rediscache import redis
-
+from services.logger import root_logger as logger
 
 def save_notification(action: str, entity: str, payload):
     with local_session() as session:
@@ -19,7 +19,7 @@ async def notify_reaction(reaction, action: str = 'create'):
         save_notification(action, channel_name, data.get('payload'))
         await redis.publish(channel_name, json.dumps(data))
     except Exception as e:
-        print(f'[services.notify] Failed to publish to channel {channel_name}: {e}')
+        logger.error(f'Failed to publish to channel {channel_name}: {e}')
 
 
 async def notify_shout(shout, action: str = 'update'):
@@ -29,7 +29,7 @@ async def notify_shout(shout, action: str = 'update'):
         save_notification(action, channel_name, data.get('payload'))
         await redis.publish(channel_name, json.dumps(data))
     except Exception as e:
-        print(f'[services.notify] Failed to publish to channel {channel_name}: {e}')
+        logger.error(f'Failed to publish to channel {channel_name}: {e}')
 
 
 async def notify_follower(follower: dict, author_id: int, action: str = 'follow'):
@@ -37,22 +37,19 @@ async def notify_follower(follower: dict, author_id: int, action: str = 'follow'
     try:
         # Simplify dictionary before publishing
         simplified_follower = {k: follower[k] for k in ['id', 'name', 'slug', 'pic']}
-
         data = {'payload': simplified_follower, 'action': action}
+        # save in channel
+        save_notification(action, channel_name, data.get('payload'))
 
         # Convert data to JSON string
         json_data = json.dumps(data)
 
         # Ensure the data is not empty before publishing
-        if not json_data:
-            raise ValueError('Empty data to publish.')
+        if  json_data:
+            # Use the 'await' keyword when publishing
+            await redis.publish(channel_name, json_data)
 
-        save_notification(action, channel_name, data.get('payload'))
-
-        # Use the 'await' keyword when publishing
-        await redis.publish(channel_name, json_data)
 
     except Exception as e:
         # Log the error and re-raise it
-        print(f'[services.notify] Failed to publish to channel {channel_name}: {e}')
-        raise
+        logger.error(f'Failed to publish to channel {channel_name}: {e}')
