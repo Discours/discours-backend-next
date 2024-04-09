@@ -10,43 +10,39 @@ from services.cache import cache_author
 
 
 def add_topic_stat_columns(q):
-    aliased_shout_author = aliased(ShoutAuthor)
-    aliased_topic_follower = aliased(TopicFollower)
     aliased_shout_topic = aliased(ShoutTopic)
+    aliased_authors = aliased(ShoutAuthor)
+    aliased_followers = aliased(TopicFollower)
     aliased_shout = aliased(Shout)
 
-    q = (
-        q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
-        .add_columns(
-            func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat')
-        )
-        .outerjoin(
-            aliased_shout_author,
-            and_(
-                aliased_shout_topic.shout == aliased_shout_author.shout,
-                aliased_shout.published_at.is_not(None),
-            )
-        )
-        .outerjoin(
-            aliased_shout_author,
-            aliased_shout_topic.shout == aliased_shout_author.shout,
-        )
-        .add_columns(
-            func.count(distinct(aliased_shout_author.author)).label('authors_stat')
-        )
-        .outerjoin(aliased_topic_follower)
-        .add_columns(
-            func.count(distinct(aliased_topic_follower.follower)).label(
-                'followers_stat'
-            )
-        )
+    q = q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
+    q = q.add_columns(
+        func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat')
     )
+
+    q = q.outerjoin(aliased_shout, and_(
+        aliased_shout.id == aliased_shout_topic.shout,
+        aliased_shout.published_at.is_not(None),
+        aliased_shout.deleted_at.is_(None)
+    ))
+    q = q.outerjoin(aliased_authors, aliased_shout.authors.contains(aliased_authors.author))
+    q = q.add_columns(
+        func.count(distinct(aliased_authors.author)).label('authors_stat')
+    )
+
+    q = q.outerjoin(aliased_followers, aliased_followers.topic == Topic.id)
+    q = q.add_columns(
+        func.count(distinct(aliased_followers.follower)).label('followers_stat')
+    )
+
     # Create a subquery for comments count
-    _sub_comments = (
+    sub_comments = (
         select(
-            Shout.id, func.coalesce(func.count(Reaction.id), 0).label('comments_count')
+            Shout.id.label('shout_id'), func.coalesce(func.count(Reaction.id)).label('comments_count')
         )
-        .join(
+        .join(ShoutTopic, Topic.id == ShoutTopic.topic)
+        .join(Shout, ShoutTopic.shout == Shout.id)
+        .outerjoin(
             Reaction,
             and_(
                 Reaction.shout == Shout.id,
@@ -58,12 +54,12 @@ def add_topic_stat_columns(q):
         .subquery()
     )
 
-    # q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.id)
-    # q = q.add_columns(
-    #    func.coalesce(func.sum(sub_comments.c.comments_count), 0).label('comments_stat')
-    # )
+    q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.shout_id)
+    q = q.add_columns(func.coalesce(sub_comments.c.comments_count, 0).label('comments_stat'))
 
-    q = q.group_by(Topic.id)
+    group_list = [Topic.id, sub_comments.c.comments_count]
+
+    q = q.group_by(*group_list)
 
     return q
 
@@ -107,7 +103,7 @@ def add_author_stat_columns(q):
 
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
     q = q.add_columns(sub_comments.c.comments_count)
-    group_list = [Author.id, sub_comments.c.comments_count]
+    group_list = [Topic.id, sub_comments.c.comments_count]
 
     q = q.group_by(*group_list)
 

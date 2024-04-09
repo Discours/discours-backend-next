@@ -49,9 +49,10 @@ async def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
 @query.field('get_topic')
 def get_topic(_, _info, slug: str):
     q = select(Topic).filter(Topic.slug == slug)
-    topics = get_with_stat(q)
-    if topics:
-        return topics[0]
+    result = get_with_stat(q)
+    if result:
+        [topic] = result
+        return topic
 
 
 @mutation.field('create_topic')
