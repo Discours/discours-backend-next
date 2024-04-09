@@ -100,7 +100,7 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
     compiled_parameters = context.compiled.params
     if compiled_statement:
         elapsed = time.time() - conn.query_start_time
-        query = compiled_statement % compiled_parameters
+        query = compiled_statement.format(*compiled_parameters)
 
         if elapsed > 1 and conn.last_statement != query:
             conn.last_statement = query
