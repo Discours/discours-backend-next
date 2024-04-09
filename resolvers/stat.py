@@ -7,6 +7,7 @@ from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from services.db import local_session
 from services.cache import cache_author
+from services.logger import root_logger as logger
 
 
 def add_topic_stat_columns(q):
@@ -63,7 +64,7 @@ def add_topic_stat_columns(q):
     group_list = [Topic.id, sub_comments.c.comments_count]
 
     q = q.group_by(*group_list)
-
+    logger.debug(q)
     return q
 
 
