@@ -26,7 +26,7 @@ def add_topic_stat_columns(q):
         aliased_shout.published_at.is_not(None),
         aliased_shout.deleted_at.is_(None)
     ))
-    q = q.outerjoin(aliased_authors, aliased_shout.authors.any(author=aliased_authors.author))
+    q = q.outerjoin(aliased_authors, aliased_shout.authors.contains(aliased_authors.id))
     q = q.add_columns(func.count(distinct(aliased_authors.author)).label('authors_stat'))
 
     # followers
@@ -159,7 +159,7 @@ def author_follows_topics(author_id: int):
 
 
 async def update_author_stat(author: Author):
-    author_with_stat = get_with_stat(select(Author).where(Author=author.id))
+    author_with_stat = get_with_stat(select(Author).where(Author.id==author.id))
     if isinstance(author_with_stat, Author):
         author_dict = author_with_stat.dict()
         await cache_author(author_dict)
