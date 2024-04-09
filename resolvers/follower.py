@@ -30,11 +30,9 @@ async def follow(_, info, what, slug):
     if not user_id:
         return {'error': 'unauthorized'}
 
-    follower_query = select(Author).select_from(Author).filter(Author.user == user_id)
-    [follower] = local_session().execute(follower_query)
+    follower = local_session().query(Author).filter(Author.user == user_id).first()
     if not follower:
         return {'error': 'cant find follower'}
-
     if what == 'AUTHOR':
         error = author_follow(follower.id, slug)
         if not error:
@@ -70,11 +68,9 @@ async def unfollow(_, info, what, slug):
     user_id = info.context.get('user_id')
     if not user_id:
         return {'error': 'unauthorized'}
-    follower_query = select(Author).filter(Author.user == user_id)
-    [follower] = local_session().execute(follower_query)
+    follower = local_session().query(Author).filter(Author.user == user_id).first()
     if not follower:
         return {'error': 'follower profile is not found'}
-
     if what == 'AUTHOR':
         error = author_unfollow(follower.id, slug)
         # NOTE: after triggers should update cached stats
