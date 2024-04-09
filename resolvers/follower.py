@@ -36,9 +36,9 @@ async def follow(_, info, what, slug):
     if what == 'AUTHOR':
         error = author_follow(follower.id, slug)
         if not error:
-            author_query = select(Author).where(Author.slug == slug)
-            [author] = local_session().execute(author_query)
-            await notify_follower(follower.dict(), author.id, 'follow')
+            author = local_session().query(Author).where(Author.slug == slug).first()
+            if author:
+                await notify_follower(follower.dict(), author.id, 'follow')
 
     elif what == 'TOPIC':
         error = topic_follow(follower.id, slug)
@@ -76,9 +76,9 @@ async def unfollow(_, info, what, slug):
         # NOTE: after triggers should update cached stats
         if not error:
             logger.info(f'@{follower.slug} unfollowed @{slug}')
-            author_query = select(Author).where(Author.slug == slug)
-            [author] = local_session().execute(author_query)
-            await notify_follower(follower.dict(), author.id, 'unfollow')
+            author = local_session().query(Author).where(Author.slug == slug).first()
+            if author:
+                await notify_follower(follower.dict(), author.id, 'unfollow')
 
     elif what == 'TOPIC':
         error = topic_unfollow(follower.id, slug)
