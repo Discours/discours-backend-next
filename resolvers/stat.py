@@ -38,7 +38,8 @@ def add_topic_stat_columns(q):
     # Create a subquery for comments count
     sub_comments = (
         select(
-            Shout.id.label('shout_id'), func.coalesce(func.count(Reaction.id)).label('comments_count')
+            Shout.id.label('shout_id'),
+            func.coalesce(func.count(Reaction.id)).label('comments_count')
         )
         .join(ShoutTopic, Topic.id == ShoutTopic.topic)
         .join(Shout, ShoutTopic.shout == Shout.id)
