@@ -15,27 +15,25 @@ def add_topic_stat_columns(q):
     aliased_followers = aliased(TopicFollower)
     aliased_shout = aliased(Shout)
 
+    # shouts
     q = q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
-    q = q.add_columns(
-        func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat')
-    )
+    q = q.add_columns(func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat'))
 
-    q = q.outerjoin(aliased_shout, and_(
-        aliased_shout.id == aliased_shout_topic.shout,
-        aliased_shout.published_at.is_not(None),
-        aliased_shout.deleted_at.is_(None)
+    # authors
+    q = q.outerjoin(aliased_authors, and_(
+        aliased_shout.id == aliased_authors.shout,
+        aliased_authors.author == Author.id,
+        Topic.id.in_(select(ShoutTopic.topic).where(ShoutTopic.shout == aliased_shout.id))
     ))
-    q = q.outerjoin(aliased_authors, aliased_shout.authors.contains(aliased_authors.id))
-    q = q.add_columns(
-        func.count(distinct(aliased_authors.author)).label('authors_stat')
-    )
+    q = q.add_columns(func.count(distinct(aliased_authors.author_id)).label('authors_stat'))
 
+    # followers
     q = q.outerjoin(aliased_followers, aliased_followers.topic == Topic.id)
     q = q.add_columns(
         func.count(distinct(aliased_followers.follower)).label('followers_stat')
     )
 
-    # Create a subquery for comments count
+    # comments
     sub_comments = (
         select(
             Shout.id.label('shout_id'),
@@ -54,8 +52,6 @@ def add_topic_stat_columns(q):
         .group_by(Shout.id)
         .subquery()
     )
-
-
     q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.shout_id)
     q = q.add_columns(func.coalesce(sub_comments.c.comments_count, 0).label('comments_stat'))
 
