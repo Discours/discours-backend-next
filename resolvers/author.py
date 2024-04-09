@@ -55,7 +55,7 @@ async def get_author(_, _info, slug='', author_id=0):
     try:
         # lookup for cached author
         author_query = select(Author).filter(or_(Author.slug == slug, Author.id == author_id))
-        found_author = local_session().execute(author_query).first()
+        [found_author] = local_session().execute(author_query).first()
         logger.debug(found_author)
         if found_author:
             logger.debug(f'found author id: {found_author.id}')
