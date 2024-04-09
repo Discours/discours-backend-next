@@ -16,9 +16,16 @@ def add_topic_stat_columns(q):
     aliased_shout = aliased(Shout)
 
     q = (
-        q.outerjoin(aliased_shout_topic, and_(aliased_shout_topic.topic == Topic.id, aliased_shout.published_at.is_not(None)))
+        q.outerjoin(aliased_shout_topic, aliased_shout_topic.topic == Topic.id)
         .add_columns(
             func.count(distinct(aliased_shout_topic.shout)).label('shouts_stat')
+        )
+        .outerjoin(
+            aliased_shout_author,
+            and_(
+                aliased_shout_topic.shout == aliased_shout_author.shout,
+                aliased_shout.published_at.is_not(None),
+            )
         )
         .outerjoin(
             aliased_shout_author,
