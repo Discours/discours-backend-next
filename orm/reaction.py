@@ -14,10 +14,12 @@ class ReactionKind(Enumeration):
     DISAGREE = 'DISAGREE'  # -1
     ASK = 'ASK'  # +0
     PROPOSE = 'PROPOSE'  # +0
-    PROOF = 'PROOF'  # +1
-    DISPROOF = 'DISPROOF'  # -1
     ACCEPT = 'ACCEPT'  # +1
     REJECT = 'REJECT'  # -1
+
+    # expert mode
+    PROOF = 'PROOF'  # +1
+    DISPROOF = 'DISPROOF'  # -1
 
     # public feed
     QUOTE = 'QUOTE'  # +0 TODO: use to bookmark in collection

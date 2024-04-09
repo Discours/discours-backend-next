@@ -6,7 +6,7 @@ from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
 from orm.author import Author
-from orm.rating import RATING_REACTIONS, is_negative, is_positive
+from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from resolvers.editor import handle_proposing
@@ -124,19 +124,25 @@ async def _create_reaction(session, shout, author, reaction):
     # collaborative editing
     if (
         rdict.get('reply_to')
-        and r.kind in RATING_REACTIONS
+        and r.kind in PROPOSAL_REACTIONS
         and author.id in shout.authors
     ):
         handle_proposing(session, r, shout)
 
-    # self-regultaion mechanics
-    if check_to_unfeature(session, author.id, r):
-        set_unfeatured(session, shout.id)
-    elif check_to_feature(session, author.id, r):
-        await set_featured(session, shout.id)
+    if r.kind in RATING_REACTIONS:
+        # self-regultaion mechanics
+        if check_to_unfeature(session, author.id, r):
+            set_unfeatured(session, shout.id)
+        elif check_to_feature(session, author.id, r):
+            await set_featured(session, shout.id)
 
-    # reactions auto-following
-    reactions_follow(author.id, reaction['shout'], True)
+        # follow if liked
+        if r.kind == ReactionKind.LIKE.value:
+            try:
+                # reactions auto-following
+                reactions_follow(author.id, reaction['shout'], True)
+            except Exception:
+                pass
 
     rdict['shout'] = shout.dict()
     rdict['created_by'] = author.dict()
@@ -208,9 +214,7 @@ async def create_reaction(_, info, reaction):
                     return {'error': 'cannot create reaction without a kind'}
 
                 if kind in RATING_REACTIONS:
-                    error_result = prepare_new_rating(
-                        reaction, shout_id, session, author
-                    )
+                    error_result = prepare_new_rating(reaction, shout_id, session, author)
                     if error_result:
                         return error_result
 
