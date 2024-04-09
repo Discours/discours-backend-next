@@ -26,14 +26,8 @@ def add_topic_stat_columns(q):
         aliased_shout.published_at.is_not(None),
         aliased_shout.deleted_at.is_(None)
     ))
-    q = q.outerjoin(aliased_authors, and_(
-        aliased_shout.id == aliased_authors.shout,
-        aliased_authors.author == Author.id,
-        Topic.id.in_(select(ShoutTopic.topic).where(ShoutTopic.shout == aliased_shout.id))
-    ))
-    q = q.select_from(join(Topic, Author)).add_columns(
-        func.count(distinct(aliased_authors.author)).label('authors_stat')
-    )
+    q = q.outerjoin(aliased_authors, aliased_shout.authors.any(author=aliased_authors.author))
+    q = q.add_columns(func.count(distinct(aliased_authors.author)).label('authors_stat'))
 
     # followers
     q = q.outerjoin(aliased_followers, aliased_followers.topic == Topic.id)
