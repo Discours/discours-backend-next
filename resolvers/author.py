@@ -77,11 +77,9 @@ async def get_author(_, _info, slug='', author_id=0):
                 await cache_author(author_dict)
     except ValueError:
         pass
-    except Exception:
+    except Exception as exc:
         import traceback
-
-        exc = traceback.format_exc()
-        logger.error(exc)
+        logger.error(f'{exc}:\n{traceback.format_exc()}')
     return author_dict
 
 
