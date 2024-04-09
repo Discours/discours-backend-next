@@ -6,6 +6,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from services.db import local_session
+from services.cache import cache_author
 
 
 def add_topic_stat_columns(q):
@@ -152,3 +153,10 @@ def author_follows_topics(author_id: int):
         .where(TopicFollower.follower == author_id)
     )
     return get_with_stat(q)
+
+
+async def update_author_stat(author: Author):
+    author_with_stat = get_with_stat(select(Author).where(Author=author.id))
+    if isinstance(author_with_stat, Author):
+        author_dict = author_with_stat.dict()
+        await cache_author(author_dict)

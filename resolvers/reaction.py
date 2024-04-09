@@ -1,6 +1,7 @@
 import time
 from typing import List
 
+from resolvers.stat import update_author_stat
 from sqlalchemy import and_, asc, case, desc, func, select, text
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
@@ -121,6 +122,10 @@ async def _create_reaction(session, shout, author, reaction):
     session.commit()
     rdict = r.dict()
 
+    # пересчет счетчика комментариев
+    if r.kind == ReactionKind.COMMENT.value:
+        await update_author_stat(author)
+
     # collaborative editing
     if (
         rdict.get('reply_to')
@@ -129,6 +134,7 @@ async def _create_reaction(session, shout, author, reaction):
     ):
         handle_proposing(session, r, shout)
 
+    # рейтинг и саморегуляция
     if r.kind in RATING_REACTIONS:
         # self-regultaion mechanics
         if check_to_unfeature(session, author.id, r):
@@ -144,8 +150,12 @@ async def _create_reaction(session, shout, author, reaction):
             except Exception:
                 pass
 
+    # обновление счетчика комментариев в кеше
+    if r.kind == ReactionKind.COMMENT.value:
+        await update_author_stat(author)
+
     rdict['shout'] = shout.dict()
-    rdict['created_by'] = author.dict()
+    rdict['created_by'] = author.id
     rdict['stat'] = {'commented': 0, 'reacted': 0, 'rating': 0}
 
     # notifications call
@@ -302,17 +312,20 @@ async def delete_reaction(_, info, reaction_id: int):
             try:
                 author = session.query(Author).filter(Author.user == user_id).one()
                 r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
-                if r and author:
-                    if r.created_by != author.id and 'editor' not in roles:
-                        return {'error': 'access denied'}
+                if r.created_by != author.id and 'editor' not in roles:
+                    return {'error': 'access denied'}
 
-                    logger.debug(f'{user_id} user removing his #{reaction_id} reaction')
-                    reaction_dict = r.dict()
-                    session.delete(r)
-                    session.commit()
-                    await notify_reaction(reaction_dict, 'delete')
+                logger.debug(f'{user_id} user removing his #{reaction_id} reaction')
+                reaction_dict = r.dict()
+                session.delete(r)
+                session.commit()
 
-                    return {'error': None, 'reaction': reaction_dict}
+                # обновление счетчика комментариев в кеше
+                if r.kind == ReactionKind.COMMENT.value:
+                    await update_author_stat(author)
+                await notify_reaction(reaction_dict, 'delete')
+
+                return {'error': None, 'reaction': reaction_dict}
             except Exception as exc:
                 return {'error': f'cannot delete reaction: {exc}'}
     return {'error': 'cannot delete reaction'}
