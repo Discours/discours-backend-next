@@ -55,13 +55,12 @@ async def get_author(_, _info, slug='', author_id=0):
     try:
         # lookup for cached author
         author_query = select(Author).filter(or_(Author.slug == slug, Author.id == author_id))
-        [result]= local_session().execute(author_query)
-        if result:
-            [found_author] = result
-            logger.debug(found_author)
-            if found_author:
-                logger.debug(f'found author id: {found_author.id}')
-                author_id = found_author.id if not found_author.id else author_id
+        found_author = local_session().execute(author_query).first()
+        logger.debug(found_author)
+        if found_author:
+            logger.debug(f'found author id: {found_author.id}')
+            author_id = found_author.id if found_author.id else author_id
+            if author_id:
                 cached_result = await redis.execute('GET', f'author:{author_id}')
                 author_dict = json.loads(cached_result) if cached_result else None
 
