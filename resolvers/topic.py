@@ -3,7 +3,7 @@ from sqlalchemy import distinct, func, select
 from orm.author import Author
 from orm.shout import ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import get_topics_with_stat_cached, get_with_stat
+from resolvers.stat import get_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.memorycache import cache_region
@@ -43,7 +43,7 @@ async def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
     elif user:
         q = q.join(Author).where(Author.user == user)
 
-    return await get_topics_with_stat_cached(q)
+    return get_with_stat(q)
 
 
 @query.field('get_topic')
