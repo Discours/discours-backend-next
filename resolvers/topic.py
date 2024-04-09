@@ -50,8 +50,7 @@ async def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
 def get_topic(_, _info, slug: str):
     q = select(Topic).filter(Topic.slug == slug)
     result = get_with_stat(q)
-    if result:
-        [topic] = result
+    for topic in result:
         return topic
 
 
