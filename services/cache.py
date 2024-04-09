@@ -1,12 +1,9 @@
 import json
 
-from sqlalchemy import select
 
 from orm.author import Author
 from orm.topic import Topic
-from resolvers.stat import get_with_stat
 from services.encoders import CustomJSONEncoder
-from services.logger import root_logger as logger
 from services.rediscache import redis
 
 DEFAULT_FOLLOWS = {
@@ -114,31 +111,3 @@ async def cache_follower(follower: Author, author: Author, is_insert=True):
             author['stat']['followers'] = len(updated_followers)
             await cache_author(author)
     return followers
-
-
-async def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
-    logger.info(author_id)
-    author_query = select(Author).select_from(Author).filter(Author.id == author_id)
-    [author] = get_with_stat(author_query)
-    follower_query = select(Author).select_from(Author).filter(Author.id == follower_id)
-    [follower] = get_with_stat(follower_query)
-    if follower and author:
-        await cache_author(author.dict())
-        await cache_author(follower.dict())
-        await cache_follows(follower, 'author', author.dict(), is_insert)
-        await cache_follower(follower, author, is_insert)
-
-
-async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
-    logger.info(topic_id)
-    topic_query = select(Topic).filter(Topic.id == topic_id)
-    [topic] = get_with_stat(topic_query)
-    follower_query = select(Author).filter(Author.id == follower_id)
-    [follower] = get_with_stat(follower_query)
-    if follower and topic:
-        await cache_author(follower.dict())
-        await redis.execute('SET', f'topic:{topic.id}', json.dumps(topic.dict(), cls=CustomJSONEncoder))
-        await cache_follows(follower, 'topic', topic.dict(), is_insert)
-
-
-# handle_author_follow and handle_topic_follow -> cache_author, cache_follows, cache_followers
