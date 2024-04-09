@@ -31,7 +31,9 @@ def add_topic_stat_columns(q):
         aliased_authors.author == Author.id,
         Topic.id.in_(select(ShoutTopic.topic).where(ShoutTopic.shout == aliased_shout.id))
     ))
-    q = q.add_columns(func.count(distinct(aliased_authors.author)).label('authors_stat'))
+    q = q.select_from(join(Topic, Author)).add_columns(
+        func.count(distinct(aliased_authors.author)).label('authors_stat')
+    )
 
     # followers
     q = q.outerjoin(aliased_followers, aliased_followers.topic == Topic.id)
