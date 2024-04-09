@@ -41,8 +41,8 @@ def add_topic_stat_columns(q):
             Shout.id.label('shout_id'),
             func.coalesce(func.count(Reaction.id)).label('comments_count')
         )
-        .join(ShoutTopic, Topic.id == ShoutTopic.topic)
-        .join(Shout, ShoutTopic.shout == Shout.id)
+        .join(ShoutTopic, ShoutTopic.shout == Shout.id)
+        .join(Topic, ShoutTopic.topic == Topic.id)
         .outerjoin(
             Reaction,
             and_(
@@ -54,6 +54,7 @@ def add_topic_stat_columns(q):
         .group_by(Shout.id)
         .subquery()
     )
+
 
     q = q.outerjoin(sub_comments, aliased_shout_topic.shout == sub_comments.c.shout_id)
     q = q.add_columns(func.coalesce(sub_comments.c.comments_count, 0).label('comments_stat'))
