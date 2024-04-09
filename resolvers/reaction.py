@@ -344,7 +344,7 @@ def apply_reaction_filters(by, q):
         q = q.filter(Author.id == created_by)
 
     topic = by.get('topic', None)
-    if topic:
+    if isinstance(topic, int):
         q = q.filter(Shout.topics.any(id=topic))
 
     if by.get('comment', False):
