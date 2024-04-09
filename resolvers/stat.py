@@ -103,7 +103,7 @@ def add_author_stat_columns(q):
 
     q = q.outerjoin(sub_comments, Author.id == sub_comments.c.id)
     q = q.add_columns(sub_comments.c.comments_count)
-    group_list = [Topic.id, sub_comments.c.comments_count]
+    group_list = [Author.id, sub_comments.c.comments_count]
 
     q = q.group_by(*group_list)
 
