@@ -111,6 +111,7 @@ def add_author_stat_columns(q):
 
 
 def get_with_stat(q):
+    records = []
     try:
         is_author = f'{q}'.lower().startswith('select author')
         is_topic = f'{q}'.lower().startswith('select topic')
@@ -118,7 +119,6 @@ def get_with_stat(q):
             q = add_author_stat_columns(q)
         elif is_topic:
             q = add_topic_stat_columns(q)
-        records = []
         with local_session() as session:
             result = session.execute(q)
             for cols in result:
@@ -133,8 +133,7 @@ def get_with_stat(q):
                 records.append(entity)
     except Exception as exc:
         import traceback
-
-        traceback.print_exc()
+        logger.error(exc, traceback.format_exc())
         raise Exception(exc)
     return records
 
