@@ -1,5 +1,3 @@
-import json
-
 from sqlalchemy import and_, distinct, func, join, select
 from sqlalchemy.orm import aliased
 
@@ -7,10 +5,7 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.rating import add_author_rating_columns
 from services.db import local_session
-from services.logger import root_logger as logger
-from services.rediscache import redis
 
 
 def add_topic_stat_columns(q):
@@ -65,7 +60,7 @@ def add_topic_stat_columns(q):
     return q
 
 
-def add_author_stat_columns(q, with_rating=False):
+def add_author_stat_columns(q):
     aliased_shout_author = aliased(ShoutAuthor)
     aliased_authors = aliased(AuthorFollower)
     aliased_followers = aliased(AuthorFollower)
@@ -106,20 +101,17 @@ def add_author_stat_columns(q, with_rating=False):
     q = q.add_columns(sub_comments.c.comments_count)
     group_list = [Author.id, sub_comments.c.comments_count]
 
-    if with_rating:
-        q, group_list = add_author_rating_columns(q, group_list)
-
     q = q.group_by(*group_list)
 
     return q
 
 
-def get_with_stat(q, with_rating=False):
+def get_with_stat(q):
     try:
         is_author = f'{q}'.lower().startswith('select author')
         is_topic = f'{q}'.lower().startswith('select topic')
         if is_author:
-            q = add_author_stat_columns(q, with_rating)
+            q = add_author_stat_columns(q)
         elif is_topic:
             q = add_topic_stat_columns(q)
         records = []
@@ -133,52 +125,12 @@ def get_with_stat(q, with_rating=False):
                 stat['followers'] = cols[3]
                 if is_author:
                     stat['comments'] = cols[4]
-                    if with_rating:
-                        logger.debug(cols)
-                        stat['rating'] = cols[6]
-                        stat['rating_shouts'] = cols[7]
-                        stat['rating_comments'] = cols[8]
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
         import traceback
 
         traceback.print_exc()
-        raise Exception(exc)
-    return records
-
-
-async def get_authors_with_stat_cached(q):
-    # logger.debug(q)
-    try:
-        records = []
-        with local_session() as session:
-            for [x] in session.execute(q):
-                stat_str = await redis.execute('GET', f'author:{x.id}')
-                x.stat = (
-                    json.loads(stat_str).get('stat')
-                    if isinstance(stat_str, str)
-                    else {}
-                )
-                records.append(x)
-    except Exception as exc:
-        raise Exception(exc)
-    return records
-
-
-async def get_topics_with_stat_cached(q):
-    try:
-        records = []
-        current = None
-        with local_session() as session:
-            for [x] in session.execute(q):
-                current = x
-                stat_str = await redis.execute('GET', f'topic:{x.id}')
-                if isinstance(stat_str, str):
-                    x.stat = json.loads(stat_str).get('stat')
-                records.append(x)
-    except Exception as exc:
-        logger.error(current)
         raise Exception(exc)
     return records
 

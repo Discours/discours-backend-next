@@ -1,4 +1,3 @@
-import asyncio
 import json
 import time
 
@@ -9,10 +8,9 @@ from sqlalchemy_searchable import search
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import (author_follows_authors, author_follows_topics,
-                            get_authors_with_stat_cached, get_with_stat)
+from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
 from services.auth import login_required
-from services.cache import set_author_cache, update_author_followers_cache
+from services.cache import cache_author, cache_follower
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
@@ -55,22 +53,25 @@ async def get_author(_, _info, slug='', author_id=0):
     author = None
     author_dict = None
     try:
-        author_query = select(Author).filter(
-            or_(Author.slug == slug, Author.id == author_id)
-        )
-        result = await get_authors_with_stat_cached(author_query)
-        if not result:
-            raise ValueError('Author not found')
-        [author] = result
-        author_id = author.id
-        logger.debug(f'found @{slug} with id {author_id}')
-        if isinstance(author, Author):
-            if not author.stat:
-                [author] = get_with_stat(author_query)  # FIXME: with_rating=True)
-                if author:
-                    await set_author_cache(author.dict())
-                    logger.debug('updated author stored in cache')
-            author_dict = author.dict()
+        # lookup for cached author
+        author_query = select(Author).filter(or_(Author.slug == slug, Author.id == author_id))
+        found_author = local_session().execute(author_query).first()
+        logger.debug(f'found author id: {found_author.id}')
+        author_id = found_author.id if not found_author.id else author_id
+        cached_result = await redis.execute('GET', f'author:{author_id}')
+        author_dict = json.loads(cached_result) if cached_result else None
+
+        # update stat from db
+        if not author_dict or not author_dict.get('stat'):
+            result = get_with_stat(author_query)
+            if not result:
+                raise ValueError('Author not found')
+            [author] = result
+            # use found author
+            if isinstance(author, Author):
+                logger.debug(f'update @{author.slug} with id {author.id}')
+                author_dict = author.dict()
+                await cache_author(author_dict)
     except ValueError:
         pass
     except Exception:
@@ -95,11 +96,11 @@ async def get_author_by_user_id(user_id: str):
                 logger.debug(f'got author @{author_slug} #{author_id} cached')
                 return author
 
-        q = select(Author).filter(Author.user == user_id)
-        result = await get_authors_with_stat_cached(q)
+        author_query = select(Author).filter(Author.user == user_id)
+        result = get_with_stat(author_query)
         if result:
             [author] = result
-            await set_author_cache(author.dict())
+            await cache_author(author.dict())
     except Exception as exc:
         import traceback
 
@@ -286,36 +287,32 @@ def create_author(user_id: str, slug: str, name: str = ''):
 async def get_author_followers(_, _info, slug: str):
     logger.debug(f'getting followers for @{slug}')
     try:
-        with local_session() as session:
-            author_alias = aliased(Author)
-            result = (
-                session.query(author_alias).filter(author_alias.slug == slug).first()
-            )
-            if result:
-                [author] = result
-                author_id = author.id
-                cached = await redis.execute('GET', f'author:{author_id}:followers')
-                if not cached:
-                    author_follower_alias = aliased(AuthorFollower, name='af')
-                    q = select(Author).join(
-                        author_follower_alias,
-                        and_(
-                            author_follower_alias.author == author_id,
-                            author_follower_alias.follower == Author.id,
-                        ),
-                    )
-                    results = await get_authors_with_stat_cached(q)
-                    _ = asyncio.create_task(
-                        update_author_followers_cache(
-                            author_id, [x.dict() for x in results]
-                        )
-                    )
+        author_alias = aliased(Author)
+        author_query = select(author_alias).filter(author_alias.slug == slug)
+        result = local_session().execute(author_query).first()
+        if result:
+            [author] = result
+            author_id = author.id
+            cached = await redis.execute('GET', f'author:{author_id}:followers')
+            if not cached:
+                author_follower_alias = aliased(AuthorFollower, name='af')
+                q = select(Author).join(
+                    author_follower_alias,
+                    and_(
+                        author_follower_alias.author == author_id,
+                        author_follower_alias.follower == Author.id,
+                    ),
+                )
+                results = get_with_stat(q)
+                if isinstance(results, list):
+                    for follower in results:
+                        await cache_follower(follower, author)
                     logger.debug(f'@{slug} cache updated with {len(results)} followers')
-                    return results
-                else:
-                    logger.debug(f'@{slug} got followers cached')
-                    if isinstance(cached, str):
-                        return json.loads(cached)
+                return results
+            else:
+                logger.debug(f'@{slug} got followers cached')
+                if isinstance(cached, str):
+                    return json.loads(cached)
     except Exception as exc:
         import traceback
 
@@ -327,4 +324,4 @@ async def get_author_followers(_, _info, slug: str):
 @query.field('search_authors')
 async def search_authors(_, _info, what: str):
     q = search(select(Author), what)
-    return await get_authors_with_stat_cached(q)
+    return get_with_stat(q)

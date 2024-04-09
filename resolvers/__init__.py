@@ -19,7 +19,7 @@ from resolvers.reader import (get_shout, load_shouts_by, load_shouts_feed,
                               load_shouts_search, load_shouts_unrated)
 from resolvers.topic import (get_topic, get_topics_all, get_topics_by_author,
                              get_topics_by_community)
-from services.cache import events_register
+from services.triggers import events_register
 
 events_register()
 
