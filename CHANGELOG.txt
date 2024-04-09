@@ -1,5 +1,5 @@
 [0.3.3]
-- feat: sentry integration enabled
+- feat: sentry integration enabled with glitchtip
 - fix: reindex on update shout
 - packages upgrade, isort
 

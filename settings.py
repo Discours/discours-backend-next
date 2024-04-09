@@ -10,7 +10,7 @@ DB_URL = (
 REDIS_URL = environ.get('REDIS_URL') or 'redis://127.0.0.1'
 API_BASE = environ.get('API_BASE') or ''
 AUTH_URL = environ.get('AUTH_URL') or ''
-SENTRY_DSN = environ.get('SENTRY_DSN')
+GLITCHTIP_DSN = environ.get('GLITCHTIP_DSN')
 DEV_SERVER_PID_FILE_NAME = 'dev-server.pid'
 MODE = 'development' if 'dev' in sys.argv else 'production'
 

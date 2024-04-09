@@ -3,14 +3,14 @@ from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 
-from settings import SENTRY_DSN
+from settings import GLITCHTIP_DSN
 
 
 def start_sentry():
     # sentry monitoring
     try:
         sentry_sdk.init(
-            SENTRY_DSN,
+            GLITCHTIP_DSN,
             # Set traces_sample_rate to 1.0 to capture 100%
             # of transactions for performance monitoring.
             traces_sample_rate=1.0,
