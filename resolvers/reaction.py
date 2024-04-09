@@ -345,7 +345,7 @@ def apply_reaction_filters(by, q):
 
     topic = by.get('topic', None)
     if topic:
-        q = q.filter(Shout.topics.contains(topic))
+        q = q.filter(Shout.topics.any(id=topic))
 
     if by.get('comment', False):
         q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)

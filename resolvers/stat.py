@@ -26,7 +26,7 @@ def add_topic_stat_columns(q):
         aliased_shout.published_at.is_not(None),
         aliased_shout.deleted_at.is_(None)
     ))
-    q = q.outerjoin(aliased_authors, aliased_shout.authors.contains(aliased_authors.id))
+    q = q.outerjoin(aliased_authors, aliased_shout.authors.any(id=aliased_authors.id))
     q = q.add_columns(func.count(distinct(aliased_authors.author)).label('authors_stat'))
 
     # followers
