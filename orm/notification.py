@@ -3,9 +3,11 @@ from enum import Enum as Enumeration
 
 from sqlalchemy import JSON, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlalchemy.exc import ProgrammingError
 
 from orm.author import Author
-from services.db import Base
+from services.db import Base, engine
+from services.logger import root_logger as logger
 
 
 class NotificationEntity(Enumeration):
@@ -39,3 +41,11 @@ class Notification(Base):
     payload = Column(JSON, nullable=True)
 
     seen = relationship(lambda: Author, secondary='notification_seen')
+
+
+try:
+    Notification.__table__.create(engine)
+    logger.info("Table `notification` was created.")
+except ProgrammingError:
+    # Handle the exception here, for example by printing a message
+    logger.info("Table `notification` already exists.")
