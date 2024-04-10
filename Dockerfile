@@ -15,8 +15,8 @@ COPY pyproject.toml /app/
 RUN pip install poetry && \
     poetry config virtualenvs.create false && \
     poetry install --no-root --only main
-    
-# Copy the rest of the application
+
+# Copy the rest of the files
 COPY . /app
 
 # Expose the port
