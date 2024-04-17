@@ -32,26 +32,27 @@ class WebhookEndpoint(HTTPEndpoint):
                 f"{user.get('given_name', user.get('slug'))} {user.get('middle_name', '')}"
                 + f"{user.get('family_name', '')}".strip()
             ) or "Аноним"
+            user_id: str = user.get("id", "")
             email: str = user.get("email", "")
             pic: str = user.get("picture", "")
+            if user_id:
 
-            with local_session() as session:
-                author = session.query(Author).filter(Author.email == email).first()
-                if not author:
-                    user_id: str = user.get("id", "")
-                    # If the author does not exist, create a new one
-                    slug: str = email.split("@")[0].replace(".", "-").lower()
-                    slug: str = re.sub("[^0-9a-z]+", "-", slug)
-                    while True:
-                        author = (
-                            session.query(Author).filter(Author.slug == slug).first()
-                        )
-                        if not author:
-                            break
-                        slug = f"{slug}-{len(session.query(Author).filter(Author.email == email).all()) + 1}"
-                    author = Author(user=user_id, slug=slug, name=name, pic=pic)
-                    session.add(author)
-                    session.commit()
+                with local_session() as session:
+                    author = session.query(Author).filter(Author.user == user_id).first()
+                    if not author:
+                        # If the author does not exist, create a new one
+                        slug: str = email.split("@")[0].replace(".", "-").lower()
+                        slug: str = re.sub("[^0-9a-z]+", "-", slug)
+                        while True:
+                            author = (
+                                session.query(Author).filter(Author.slug == slug).first()
+                            )
+                            if not author:
+                                break
+                            slug = f"{slug}-{len(session.query(Author).filter(Author.email == email).all()) + 1}"
+                        author = Author(user=user_id, slug=slug, name=name, pic=pic)
+                        session.add(author)
+                        session.commit()
 
             return JSONResponse({"status": "success"})
         except HTTPException as e:
