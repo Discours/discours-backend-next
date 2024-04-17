@@ -27,7 +27,7 @@ class WebhookEndpoint(HTTPEndpoint):
                 raise HTTPException(
                     status_code=400, detail="User data is not a dictionary"
                 )
-            user_id: str = user.get("id", "")
+            #
             name: str = (
                 f"{user.get('given_name', user.get('slug'))} {user.get('middle_name', '')}"
                 + f"{user.get('family_name', '')}".strip()
@@ -36,8 +36,9 @@ class WebhookEndpoint(HTTPEndpoint):
             pic: str = user.get("picture", "")
 
             with local_session() as session:
-                author = session.query(Author).filter(Author.user == user_id).first()
+                author = session.query(Author).filter(Author.email == email).first()
                 if not author:
+                    user_id: str = user.get("id", "")
                     # If the author does not exist, create a new one
                     slug: str = email.split("@")[0].replace(".", "-").lower()
                     slug: str = re.sub("[^0-9a-z]+", "-", slug)
