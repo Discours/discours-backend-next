@@ -10,9 +10,9 @@ from services.memorycache import cache_region
 from services.schema import mutation, query
 
 
-@query.field('get_topics_all')
+@query.field("get_topics_all")
 def get_topics_all(_, _info):
-    cache_key = 'get_topics_all'
+    cache_key = "get_topics_all"
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_all():
@@ -21,9 +21,9 @@ def get_topics_all(_, _info):
     return _get_topics_all()
 
 
-@query.field('get_topics_by_community')
+@query.field("get_topics_by_community")
 def get_topics_by_community(_, _info, community_id: int):
-    cache_key = f'get_topics_by_community_{community_id}'
+    cache_key = f"get_topics_by_community_{community_id}"
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_by_community():
@@ -33,8 +33,8 @@ def get_topics_by_community(_, _info, community_id: int):
     return _get_topics_by_community()
 
 
-@query.field('get_topics_by_author')
-async def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
+@query.field("get_topics_by_author")
+async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
     q = select(Topic)
     if author_id:
         q = q.join(Author).where(Author.id == author_id)
@@ -46,7 +46,7 @@ async def get_topics_by_author(_, _info, author_id=0, slug='', user=''):
     return get_with_stat(q)
 
 
-@query.field('get_topic')
+@query.field("get_topic")
 def get_topic(_, _info, slug: str):
     q = select(Topic).filter(Topic.slug == slug)
     result = get_with_stat(q)
@@ -54,7 +54,7 @@ def get_topic(_, _info, slug: str):
         return topic
 
 
-@mutation.field('create_topic')
+@mutation.field("create_topic")
 @login_required
 async def create_topic(_, _info, inp):
     with local_session() as session:
@@ -64,46 +64,46 @@ async def create_topic(_, _info, inp):
         session.add(new_topic)
         session.commit()
 
-        return {'topic': new_topic}
+        return {"topic": new_topic}
 
 
-@mutation.field('update_topic')
+@mutation.field("update_topic")
 @login_required
 async def update_topic(_, _info, inp):
-    slug = inp['slug']
+    slug = inp["slug"]
     with local_session() as session:
         topic = session.query(Topic).filter(Topic.slug == slug).first()
         if not topic:
-            return {'error': 'topic not found'}
+            return {"error": "topic not found"}
         else:
             Topic.update(topic, inp)
             session.add(topic)
             session.commit()
 
-            return {'topic': topic}
+            return {"topic": topic}
 
 
-@mutation.field('delete_topic')
+@mutation.field("delete_topic")
 @login_required
 async def delete_topic(_, info, slug: str):
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
     with local_session() as session:
         t: Topic = session.query(Topic).filter(Topic.slug == slug).first()
         if not t:
-            return {'error': 'invalid topic slug'}
+            return {"error": "invalid topic slug"}
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
             if t.created_by != author.id:
-                return {'error': 'access denied'}
+                return {"error": "access denied"}
 
             session.delete(t)
             session.commit()
 
             return {}
-    return {'error': 'access denied'}
+    return {"error": "access denied"}
 
 
-@query.field('get_topics_random')
+@query.field("get_topics_random")
 def get_topics_random(_, _info, amount=12):
     q = select(Topic)
     q = q.join(ShoutTopic)

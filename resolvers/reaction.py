@@ -22,22 +22,22 @@ from services.viewed import ViewedStorage
 
 def add_reaction_stat_columns(q, aliased_reaction):
     q = q.outerjoin(aliased_reaction).add_columns(
-        func.sum(aliased_reaction.id).label('reacted_stat'),
+        func.sum(aliased_reaction.id).label("reacted_stat"),
         func.sum(
             case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)
-        ).label('comments_stat'),
+        ).label("comments_stat"),
         func.sum(
             case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)
-        ).label('likes_stat'),
+        ).label("likes_stat"),
         func.sum(
             case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)
-        ).label('dislikes_stat'),
+        ).label("dislikes_stat"),
         func.max(
             case(
                 (aliased_reaction.kind != str(ReactionKind.COMMENT.value), None),
                 else_=aliased_reaction.created_at,
             )
-        ).label('last_comment_stat'),
+        ).label("last_comment_stat"),
     )
 
     return q
@@ -101,7 +101,7 @@ def check_to_unfeature(session, rejecter_id, reaction):
 async def set_featured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
     s.featured_at = int(time.time())
-    Shout.update(s, {'featured_at': int(time.time())})
+    Shout.update(s, {"featured_at": int(time.time())})
     author = session.query(Author).filter(Author.id == s.created_by).first()
     if author:
         await add_user_role(str(author.user))
@@ -111,7 +111,7 @@ async def set_featured(session, shout_id):
 
 def set_unfeatured(session, shout_id):
     s = session.query(Shout).where(Shout.id == shout_id).first()
-    Shout.update(s, {'featured_at': None})
+    Shout.update(s, {"featured_at": None})
     session.add(s)
     session.commit()
 
@@ -128,7 +128,7 @@ async def _create_reaction(session, shout, author, reaction):
 
     # collaborative editing
     if (
-        rdict.get('reply_to')
+        rdict.get("reply_to")
         and r.kind in PROPOSAL_REACTIONS
         and author.id in shout.authors
     ):
@@ -146,7 +146,7 @@ async def _create_reaction(session, shout, author, reaction):
         if r.kind == ReactionKind.LIKE.value:
             try:
                 # reactions auto-following
-                reactions_follow(author.id, reaction['shout'], True)
+                reactions_follow(author.id, reaction["shout"], True)
             except Exception:
                 pass
 
@@ -154,18 +154,18 @@ async def _create_reaction(session, shout, author, reaction):
     if r.kind == ReactionKind.COMMENT.value:
         await update_author_stat(author)
 
-    rdict['shout'] = shout.dict()
-    rdict['created_by'] = author.id
-    rdict['stat'] = {'commented': 0, 'reacted': 0, 'rating': 0}
+    rdict["shout"] = shout.dict()
+    rdict["created_by"] = author.id
+    rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
     # notifications call
-    await notify_reaction(rdict, 'create')
+    await notify_reaction(rdict, "create")
 
     return rdict
 
 
 def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
-    kind = reaction.get('kind')
+    kind = reaction.get("kind")
     opposite_kind = (
         ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
     )
@@ -177,7 +177,7 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
             Reaction.kind.in_(RATING_REACTIONS),
         )
     )
-    reply_to = reaction.get('reply_to')
+    reply_to = reaction.get("reply_to")
     if reply_to and isinstance(reply_to, int):
         q = q.filter(Reaction.reply_to == reply_to)
     rating_reactions = session.execute(q).all()
@@ -190,41 +190,43 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
         rating_reactions,
     )
     if same_rating:
-        return {'error': "You can't rate the same thing twice"}
+        return {"error": "You can't rate the same thing twice"}
     elif opposite_rating:
-        return {'error': 'Remove opposite vote first'}
+        return {"error": "Remove opposite vote first"}
     elif filter(lambda r: r.created_by == author.id, rating_reactions):
-        return {'error': "You can't rate your own thing"}
+        return {"error": "You can't rate your own thing"}
     return
 
 
-@mutation.field('create_reaction')
+@mutation.field("create_reaction")
 @login_required
 async def create_reaction(_, info, reaction):
-    logger.debug(f'{info.context} for {reaction}')
-    user_id = info.context.get('user_id')
-    shout_id = reaction.get('shout')
+    logger.debug(f"{info.context} for {reaction}")
+    user_id = info.context.get("user_id")
+    shout_id = reaction.get("shout")
 
     if not shout_id:
-        return {'error': 'Shout ID is required to create a reaction.'}
+        return {"error": "Shout ID is required to create a reaction."}
 
     try:
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
             author = session.query(Author).filter(Author.user == user_id).first()
             if shout and author:
-                reaction['created_by'] = author.id
-                kind = reaction.get('kind')
+                reaction["created_by"] = author.id
+                kind = reaction.get("kind")
                 shout_id = shout.id
 
-                if not kind and isinstance(reaction.get('body'), str):
+                if not kind and isinstance(reaction.get("body"), str):
                     kind = ReactionKind.COMMENT.value
 
                 if not kind:
-                    return {'error': 'cannot create reaction without a kind'}
+                    return {"error": "cannot create reaction without a kind"}
 
                 if kind in RATING_REACTIONS:
-                    error_result = prepare_new_rating(reaction, shout_id, session, author)
+                    error_result = prepare_new_rating(
+                        reaction, shout_id, session, author
+                    )
                     if error_result:
                         return error_result
 
@@ -232,25 +234,25 @@ async def create_reaction(_, info, reaction):
 
                 # TODO: call recount ratings periodically
 
-                return {'reaction': rdict}
+                return {"reaction": rdict}
     except Exception as e:
         import traceback
 
         traceback.print_exc()
-        logger.error(f'{type(e).__name__}: {e}')
+        logger.error(f"{type(e).__name__}: {e}")
 
-    return {'error': 'Cannot create reaction.'}
+    return {"error": "Cannot create reaction."}
 
 
-@mutation.field('update_reaction')
+@mutation.field("update_reaction")
 @login_required
 async def update_reaction(_, info, reaction):
-    logger.debug(f'{info.context} for {reaction}')
-    user_id = info.context.get('user_id')
-    roles = info.context.get('roles')
-    rid = reaction.get('id')
+    logger.debug(f"{info.context} for {reaction}")
+    user_id = info.context.get("user_id")
+    roles = info.context.get("roles")
+    rid = reaction.get("id")
     if rid and isinstance(rid, int) and user_id and roles:
-        del reaction['id']
+        del reaction["id"]
         with local_session() as session:
             reaction_query = select(Reaction).filter(Reaction.id == rid)
             aliased_reaction = aliased(Reaction)
@@ -263,19 +265,19 @@ async def update_reaction(_, info, reaction):
                 )
 
                 if not r:
-                    return {'error': 'invalid reaction id'}
+                    return {"error": "invalid reaction id"}
 
                 author = session.query(Author).filter(Author.user == user_id).first()
                 if author:
-                    if r.created_by != author.id and 'editor' not in roles:
-                        return {'error': 'access denied'}
+                    if r.created_by != author.id and "editor" not in roles:
+                        return {"error": "access denied"}
 
-                    body = reaction.get('body')
+                    body = reaction.get("body")
                     if body:
                         r.body = body
                     r.updated_at = int(time.time())
 
-                    if r.kind != reaction['kind']:
+                    if r.kind != reaction["kind"]:
                         # Определение изменения мнения может быть реализовано здесь
                         pass
 
@@ -284,38 +286,38 @@ async def update_reaction(_, info, reaction):
                     session.commit()
 
                     r.stat = {
-                        'reacted': reacted_stat,
-                        'commented': commented_stat,
-                        'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
+                        "reacted": reacted_stat,
+                        "commented": commented_stat,
+                        "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
                     }
 
-                    await notify_reaction(r.dict(), 'update')
+                    await notify_reaction(r.dict(), "update")
 
-                    return {'reaction': r}
+                    return {"reaction": r}
                 else:
-                    return {'error': 'not authorized'}
+                    return {"error": "not authorized"}
             except Exception:
                 import traceback
 
                 traceback.print_exc()
-    return {'error': 'cannot create reaction'}
+    return {"error": "cannot create reaction"}
 
 
-@mutation.field('delete_reaction')
+@mutation.field("delete_reaction")
 @login_required
 async def delete_reaction(_, info, reaction_id: int):
-    logger.debug(f'{info.context} for {reaction_id}')
-    user_id = info.context.get('user_id')
-    roles = info.context.get('roles', [])
+    logger.debug(f"{info.context} for {reaction_id}")
+    user_id = info.context.get("user_id")
+    roles = info.context.get("roles", [])
     if user_id:
         with local_session() as session:
             try:
                 author = session.query(Author).filter(Author.user == user_id).one()
                 r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
-                if r.created_by != author.id and 'editor' not in roles:
-                    return {'error': 'access denied'}
+                if r.created_by != author.id and "editor" not in roles:
+                    return {"error": "access denied"}
 
-                logger.debug(f'{user_id} user removing his #{reaction_id} reaction')
+                logger.debug(f"{user_id} user removing his #{reaction_id} reaction")
                 reaction_dict = r.dict()
                 session.delete(r)
                 session.commit()
@@ -323,47 +325,47 @@ async def delete_reaction(_, info, reaction_id: int):
                 # обновление счетчика комментариев в кеше
                 if r.kind == ReactionKind.COMMENT.value:
                     await update_author_stat(author)
-                await notify_reaction(reaction_dict, 'delete')
+                await notify_reaction(reaction_dict, "delete")
 
-                return {'error': None, 'reaction': reaction_dict}
+                return {"error": None, "reaction": reaction_dict}
             except Exception as exc:
-                return {'error': f'cannot delete reaction: {exc}'}
-    return {'error': 'cannot delete reaction'}
+                return {"error": f"cannot delete reaction: {exc}"}
+    return {"error": "cannot delete reaction"}
 
 
 def apply_reaction_filters(by, q):
-    shout_slug = by.get('shout', None)
+    shout_slug = by.get("shout", None)
     if shout_slug:
         q = q.filter(Shout.slug == shout_slug)
 
-    elif by.get('shouts'):
-        q = q.filter(Shout.slug.in_(by.get('shouts', [])))
+    elif by.get("shouts"):
+        q = q.filter(Shout.slug.in_(by.get("shouts", [])))
 
-    created_by = by.get('created_by', None)
+    created_by = by.get("created_by", None)
     if created_by:
         q = q.filter(Author.id == created_by)
 
-    topic = by.get('topic', None)
+    topic = by.get("topic", None)
     if isinstance(topic, int):
         q = q.filter(Shout.topics.any(id=topic))
 
-    if by.get('comment', False):
+    if by.get("comment", False):
         q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)
-    if by.get('rating', False):
+    if by.get("rating", False):
         q = q.filter(Reaction.kind.in_(RATING_REACTIONS))
 
-    by_search = by.get('search', '')
+    by_search = by.get("search", "")
     if len(by_search) > 2:
-        q = q.filter(Reaction.body.ilike(f'%{by_search}%'))
+        q = q.filter(Reaction.body.ilike(f"%{by_search}%"))
 
-    after = by.get('after', None)
+    after = by.get("after", None)
     if isinstance(after, int):
         q = q.filter(Reaction.created_at > after)
 
     return q
 
 
-@query.field('load_reactions_by')
+@query.field("load_reactions_by")
 async def load_reactions_by(_, info, by, limit=50, offset=0):
     """
     :param info: graphql meta
@@ -401,12 +403,12 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
 
     # order by
-    order_stat = by.get('sort', '').lower()  # 'like' | 'dislike' | 'newest' | 'oldest'
+    order_stat = by.get("sort", "").lower()  # 'like' | 'dislike' | 'newest' | 'oldest'
     order_by_stmt = desc(Reaction.created_at)
-    if order_stat == 'oldest':
+    if order_stat == "oldest":
         order_by_stmt = asc(Reaction.created_at)
-    elif order_stat.endswith('like'):
-        order_by_stmt = desc(f'{order_stat}s_stat')
+    elif order_stat.endswith("like"):
+        order_by_stmt = desc(f"{order_stat}s_stat")
     q = q.order_by(order_by_stmt)
 
     # pagination
@@ -428,9 +430,9 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reaction.created_by = author
             reaction.shout = shout
             reaction.stat = {
-                'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                'reacted': reacted_stat,
-                'commented': commented_stat,
+                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                "reacted": reacted_stat,
+                "commented": commented_stat,
             }
             reactions.add(reaction)  # Используем список для хранения реакций
 
@@ -470,7 +472,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             # Sort shouts by the `last_comment` field
             combined_query = (
                 union(q1, q2)
-                .order_by(desc(text('last_comment_stat')))
+                .order_by(desc(text("last_comment_stat")))
                 .limit(limit)
                 .offset(offset)
             )
@@ -485,26 +487,26 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 last_comment,
             ] in results:
                 shout.stat = {
-                    'viewed': await ViewedStorage.get_shout(shout.slug),
-                    'rating': int(likes_stat or 0) - int(dislikes_stat or 0),
-                    'reacted': reacted_stat,
-                    'commented': commented_stat,
-                    'last_comment': last_comment,
+                    "viewed": await ViewedStorage.get_shout(shout.slug),
+                    "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                    "reacted": reacted_stat,
+                    "commented": commented_stat,
+                    "last_comment": last_comment,
                 }
                 shouts.append(shout)
 
     return shouts
 
 
-@query.field('load_shouts_followed')
+@query.field("load_shouts_followed")
 @login_required
 async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
             try:
-                author_id: int = author.dict()['id']
+                author_id: int = author.dict()["id"]
                 shouts = await reacted_shouts_updates(author_id, limit, offset)
                 return shouts
             except Exception as error:

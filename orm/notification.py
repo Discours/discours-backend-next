@@ -11,36 +11,36 @@ from services.logger import root_logger as logger
 
 
 class NotificationEntity(Enumeration):
-    REACTION = 'reaction'
-    SHOUT = 'shout'
-    FOLLOWER = 'follower'
+    REACTION = "reaction"
+    SHOUT = "shout"
+    FOLLOWER = "follower"
 
 
 class NotificationAction(Enumeration):
-    CREATE = 'create'
-    UPDATE = 'update'
-    DELETE = 'delete'
-    SEEN = 'seen'
-    FOLLOW = 'follow'
-    UNFOLLOW = 'unfollow'
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    SEEN = "seen"
+    FOLLOW = "follow"
+    UNFOLLOW = "unfollow"
 
 
 class NotificationSeen(Base):
-    __tablename__ = 'notification_seen'
+    __tablename__ = "notification_seen"
 
-    viewer = Column(ForeignKey('author.id'))
-    notification = Column(ForeignKey('notification.id'))
+    viewer = Column(ForeignKey("author.id"))
+    notification = Column(ForeignKey("notification.id"))
 
 
 class Notification(Base):
-    __tablename__ = 'notification'
+    __tablename__ = "notification"
 
     created_at = Column(Integer, server_default=str(int(time.time())))
     entity = Column(String, nullable=False)
     action = Column(String, nullable=False)
     payload = Column(JSON, nullable=True)
 
-    seen = relationship(lambda: Author, secondary='notification_seen')
+    seen = relationship(lambda: Author, secondary="notification_seen")
 
 
 try:

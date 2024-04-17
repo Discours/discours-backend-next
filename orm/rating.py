@@ -10,15 +10,9 @@ PROPOSAL_REACTIONS = [
     ReactionKind.PROPOSE.value,
 ]
 
-PROOF_REACTIONS = [
-    ReactionKind.PROOF.value,
-    ReactionKind.DISPROOF.value
-]
+PROOF_REACTIONS = [ReactionKind.PROOF.value, ReactionKind.DISPROOF.value]
 
-RATING_REACTIONS = [
-    ReactionKind.LIKE.value,
-    ReactionKind.DISLIKE.value
-]
+RATING_REACTIONS = [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
 
 
 def is_negative(x):

@@ -6,10 +6,10 @@ from services.db import local_session
 from services.schema import mutation
 
 
-@mutation.field('accept_invite')
+@mutation.field("accept_invite")
 @login_required
 async def accept_invite(_, info, invite_id: int):
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
 
     # Check if the user exists
     with local_session() as session:
@@ -30,19 +30,19 @@ async def accept_invite(_, info, invite_id: int):
                         session.delete(invite)
                         session.add(shout)
                         session.commit()
-                    return {'success': True, 'message': 'Invite accepted'}
+                    return {"success": True, "message": "Invite accepted"}
                 else:
-                    return {'error': 'Shout not found'}
+                    return {"error": "Shout not found"}
             else:
-                return {'error': 'Invalid invite or already accepted/rejected'}
+                return {"error": "Invalid invite or already accepted/rejected"}
         else:
-            return {'error': 'User not found'}
+            return {"error": "User not found"}
 
 
-@mutation.field('reject_invite')
+@mutation.field("reject_invite")
 @login_required
 async def reject_invite(_, info, invite_id: int):
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
 
     # Check if the user exists
     with local_session() as session:
@@ -58,17 +58,17 @@ async def reject_invite(_, info, invite_id: int):
                 # Delete the invite
                 session.delete(invite)
                 session.commit()
-                return {'success': True, 'message': 'Invite rejected'}
+                return {"success": True, "message": "Invite rejected"}
             else:
-                return {'error': 'Invalid invite or already accepted/rejected'}
+                return {"error": "Invalid invite or already accepted/rejected"}
         else:
-            return {'error': 'User not found'}
+            return {"error": "User not found"}
 
 
-@mutation.field('create_invite')
+@mutation.field("create_invite")
 @login_required
-async def create_invite(_, info, slug: str = '', author_id: int = 0):
-    user_id = info.context['user_id']
+async def create_invite(_, info, slug: str = "", author_id: int = 0):
+    user_id = info.context["user_id"]
 
     # Check if the inviter is the owner of the shout
     with local_session() as session:
@@ -90,7 +90,7 @@ async def create_invite(_, info, slug: str = '', author_id: int = 0):
                     .first()
                 )
                 if existing_invite:
-                    return {'error': 'Invite already sent'}
+                    return {"error": "Invite already sent"}
 
                 # Create a new invite
                 new_invite = Invite(
@@ -102,17 +102,17 @@ async def create_invite(_, info, slug: str = '', author_id: int = 0):
                 session.add(new_invite)
                 session.commit()
 
-                return {'error': None, 'invite': new_invite}
+                return {"error": None, "invite": new_invite}
             else:
-                return {'error': 'Invalid author'}
+                return {"error": "Invalid author"}
         else:
-            return {'error': 'Access denied'}
+            return {"error": "Access denied"}
 
 
-@mutation.field('remove_author')
+@mutation.field("remove_author")
 @login_required
-async def remove_author(_, info, slug: str = '', author_id: int = 0):
-    user_id = info.context['user_id']
+async def remove_author(_, info, slug: str = "", author_id: int = 0):
+    user_id = info.context["user_id"]
     with local_session() as session:
         author = session.query(Author).filter(Author.user == user_id).first()
         if author:
@@ -124,13 +124,13 @@ async def remove_author(_, info, slug: str = '', author_id: int = 0):
                 ]
                 session.commit()
                 return {}
-    return {'error': 'Access denied'}
+    return {"error": "Access denied"}
 
 
-@mutation.field('remove_invite')
+@mutation.field("remove_invite")
 @login_required
 async def remove_invite(_, info, invite_id: int):
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
 
     # Check if the user exists
     with local_session() as session:
@@ -148,6 +148,6 @@ async def remove_invite(_, info, invite_id: int):
                             session.commit()
                             return {}
             else:
-                return {'error': 'Invalid invite or already accepted/rejected'}
+                return {"error": "Invalid invite or already accepted/rejected"}
         else:
-            return {'error': 'Author not found'}
+            return {"error": "Author not found"}

@@ -14,13 +14,15 @@ from services.logger import root_logger as logger
 from services.cache import cache_author, cache_follows, cache_follower
 
 DEFAULT_FOLLOWS = {
-    'topics': [],
-    'authors': [],
-    'communities': [{'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}],
+    "topics": [],
+    "authors": [],
+    "communities": [{"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}],
 }
 
 
-async def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
+async def handle_author_follower_change(
+    author_id: int, follower_id: int, is_insert: bool
+):
     logger.info(author_id)
     author_query = select(Author).select_from(Author).filter(Author.id == author_id)
     [author] = get_with_stat(author_query)
@@ -29,11 +31,13 @@ async def handle_author_follower_change(author_id: int, follower_id: int, is_ins
     if follower and author:
         await cache_author(author.dict())
         await cache_author(follower.dict())
-        await cache_follows(follower, 'author', author.dict(), is_insert)
+        await cache_follows(follower, "author", author.dict(), is_insert)
         await cache_follower(follower, author, is_insert)
 
 
-async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
+async def handle_topic_follower_change(
+    topic_id: int, follower_id: int, is_insert: bool
+):
     logger.info(topic_id)
     topic_query = select(Topic).filter(Topic.id == topic_id)
     [topic] = get_with_stat(topic_query)
@@ -41,15 +45,17 @@ async def handle_topic_follower_change(topic_id: int, follower_id: int, is_inser
     [follower] = get_with_stat(follower_query)
     if follower and topic:
         await cache_author(follower.dict())
-        await redis.execute('SET', f'topic:{topic.id}', json.dumps(topic.dict(), cls=CustomJSONEncoder))
-        await cache_follows(follower, 'topic', topic.dict(), is_insert)
+        await redis.execute(
+            "SET", f"topic:{topic.id}", json.dumps(topic.dict(), cls=CustomJSONEncoder)
+        )
+        await cache_follows(follower, "topic", topic.dict(), is_insert)
 
 
 # handle_author_follow and handle_topic_follow -> cache_author, cache_follows, cache_followers
 
 
 def after_shout_update(_mapper, _connection, shout: Shout):
-    logger.info('after shout update')
+    logger.info("after shout update")
     # Main query to get authors associated with the shout through ShoutAuthor
     authors_query = (
         select(Author)
@@ -63,7 +69,7 @@ def after_shout_update(_mapper, _connection, shout: Shout):
 
 
 def after_reaction_update(mapper, connection, reaction: Reaction):
-    logger.info('after reaction update')
+    logger.info("after reaction update")
     try:
         author_subquery = select(Author).where(Author.id == reaction.created_by)
         replied_author_subquery = (
@@ -98,7 +104,7 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
 
 
 def after_author_update(_mapper, _connection, author: Author):
-    logger.info('after author update')
+    logger.info("after author update")
     q = select(Author).where(Author.id == author.id)
     result = get_with_stat(q)
     if result:
@@ -135,19 +141,19 @@ def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
 
 
 def events_register():
-    event.listen(Shout, 'after_insert', after_shout_update)
-    event.listen(Shout, 'after_update', after_shout_update)
+    event.listen(Shout, "after_insert", after_shout_update)
+    event.listen(Shout, "after_update", after_shout_update)
 
-    event.listen(Reaction, 'after_insert', after_reaction_update)
-    event.listen(Reaction, 'after_update', after_reaction_update)
+    event.listen(Reaction, "after_insert", after_reaction_update)
+    event.listen(Reaction, "after_update", after_reaction_update)
 
-    event.listen(Author, 'after_insert', after_author_update)
-    event.listen(Author, 'after_update', after_author_update)
+    event.listen(Author, "after_insert", after_author_update)
+    event.listen(Author, "after_update", after_author_update)
 
-    event.listen(AuthorFollower, 'after_insert', after_author_follower_insert)
-    event.listen(AuthorFollower, 'after_delete', after_author_follower_delete)
+    event.listen(AuthorFollower, "after_insert", after_author_follower_insert)
+    event.listen(AuthorFollower, "after_delete", after_author_follower_delete)
 
-    event.listen(TopicFollower, 'after_insert', after_topic_follower_insert)
-    event.listen(TopicFollower, 'after_delete', after_topic_follower_delete)
+    event.listen(TopicFollower, "after_insert", after_topic_follower_insert)
+    event.listen(TopicFollower, "after_delete", after_topic_follower_delete)
 
-    logger.info('cache events were registered!')
+    logger.info("cache events were registered!")

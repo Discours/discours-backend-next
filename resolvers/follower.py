@@ -21,111 +21,111 @@ from services.rediscache import redis
 from services.schema import mutation, query
 
 
-@mutation.field('follow')
+@mutation.field("follow")
 @login_required
 async def follow(_, info, what, slug):
     follows = []
     error = None
-    user_id = info.context.get('user_id')
+    user_id = info.context.get("user_id")
     if not user_id:
-        return {'error': 'unauthorized'}
+        return {"error": "unauthorized"}
 
     follower = local_session().query(Author).filter(Author.user == user_id).first()
     if not follower:
-        return {'error': 'cant find follower'}
-    if what == 'AUTHOR':
+        return {"error": "cant find follower"}
+    if what == "AUTHOR":
         error = author_follow(follower.id, slug)
         if not error:
             author = local_session().query(Author).where(Author.slug == slug).first()
             if author:
-                await notify_follower(follower.dict(), author.id, 'follow')
+                await notify_follower(follower.dict(), author.id, "follow")
 
-    elif what == 'TOPIC':
+    elif what == "TOPIC":
         error = topic_follow(follower.id, slug)
 
-    elif what == 'COMMUNITY':
+    elif what == "COMMUNITY":
         # FIXME: when more communities
         follows = local_session().execute(select(Community))
 
-    elif what == 'SHOUT':
+    elif what == "SHOUT":
         error = reactions_follow(follower.id, slug)
 
     if error:
-        return {'error': error}
+        return {"error": error}
 
     entity = what.lower()
-    follows_str = await redis.execute('GET', f'author:{follower.id}:follows-{entity}s')
+    follows_str = await redis.execute("GET", f"author:{follower.id}:follows-{entity}s")
     if follows_str:
         follows = json.loads(follows_str)
-    return { f'{entity}s': follows }
+    return {f"{entity}s": follows}
 
 
-@mutation.field('unfollow')
+@mutation.field("unfollow")
 @login_required
 async def unfollow(_, info, what, slug):
     follows = []
     error = None
-    user_id = info.context.get('user_id')
+    user_id = info.context.get("user_id")
     if not user_id:
-        return {'error': 'unauthorized'}
+        return {"error": "unauthorized"}
     follower = local_session().query(Author).filter(Author.user == user_id).first()
     if not follower:
-        return {'error': 'follower profile is not found'}
-    if what == 'AUTHOR':
+        return {"error": "follower profile is not found"}
+    if what == "AUTHOR":
         error = author_unfollow(follower.id, slug)
         # NOTE: after triggers should update cached stats
         if not error:
-            logger.info(f'@{follower.slug} unfollowed @{slug}')
+            logger.info(f"@{follower.slug} unfollowed @{slug}")
             author = local_session().query(Author).where(Author.slug == slug).first()
             if author:
-                await notify_follower(follower.dict(), author.id, 'unfollow')
+                await notify_follower(follower.dict(), author.id, "unfollow")
 
-    elif what == 'TOPIC':
+    elif what == "TOPIC":
         error = topic_unfollow(follower.id, slug)
 
-    elif what == 'COMMUNITY':
+    elif what == "COMMUNITY":
         follows = local_session().execute(select(Community))
 
-    elif what == 'SHOUT':
+    elif what == "SHOUT":
         error = reactions_unfollow(follower.id, slug)
 
     entity = what.lower()
-    follows_str = await redis.execute('GET', f'author:{follower.id}:follows-{entity}s')
+    follows_str = await redis.execute("GET", f"author:{follower.id}:follows-{entity}s")
     if follows_str:
         follows = json.loads(follows_str)
-    return {'error': error, f'{entity}s': follows}
+    return {"error": error, f"{entity}s": follows}
 
 
 async def get_follows_by_user_id(user_id: str):
     if not user_id:
-        return {'error': 'unauthorized'}
-    author = await redis.execute('GET', f'user:{user_id}')
+        return {"error": "unauthorized"}
+    author = await redis.execute("GET", f"user:{user_id}")
     if isinstance(author, str):
         author = json.loads(author)
     if not author:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
             if not author:
-                return {'error': 'cant find author'}
+                return {"error": "cant find author"}
             author = author.dict()
-    last_seen = author.get('last_seen', 0) if isinstance(author, dict) else 0
+    last_seen = author.get("last_seen", 0) if isinstance(author, dict) else 0
     follows = DEFAULT_FOLLOWS
     day_old = int(time.time()) - last_seen > 24 * 60 * 60
     if day_old:
-        author_id = json.loads(str(author)).get('id')
+        author_id = json.loads(str(author)).get("id")
         if author_id:
             topics = author_follows_topics(author_id)
             authors = author_follows_authors(author_id)
             follows = {
-                'topics': topics,
-                'authors': authors,
-                'communities': [
-                    {'id': 1, 'name': 'Дискурс', 'slug': 'discours', 'pic': ''}
+                "topics": topics,
+                "authors": authors,
+                "communities": [
+                    {"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}
                 ],
             }
     else:
-        logger.debug(f'getting follows for {user_id} from redis')
-        res = await redis.execute('GET', f'user:{user_id}:follows')
+        logger.debug(f"getting follows for {user_id} from redis")
+        res = await redis.execute("GET", f"user:{user_id}:follows")
         if isinstance(res, str):
             follows = json.loads(res)
     return follows
@@ -139,7 +139,7 @@ def topic_follow(follower_id, slug):
         return None
     except UniqueViolation as error:
         logger.warn(error)
-        return 'already followed'
+        return "already followed"
     except Exception as exc:
         logger.error(exc)
         return exc
@@ -160,7 +160,7 @@ def topic_unfollow(follower_id, slug):
         return None
     except UniqueViolation as error:
         logger.warn(error)
-        return 'already unfollowed'
+        return "already unfollowed"
     except Exception as ex:
         logger.debug(ex)
         return ex
@@ -191,7 +191,7 @@ def reactions_follow(author_id, shout_id, auto=False):
         return None
     except UniqueViolation as error:
         logger.warn(error)
-        return 'already followed'
+        return "already followed"
     except Exception as exc:
         return exc
 
@@ -218,7 +218,7 @@ def reactions_unfollow(author_id, shout_id: int):
         return None
     except UniqueViolation as error:
         logger.warn(error)
-        return 'already unfollowed'
+        return "already unfollowed"
     except Exception as ex:
         import traceback
 
@@ -237,7 +237,7 @@ def author_follow(follower_id, slug):
         return None
     except UniqueViolation as error:
         logger.warn(error)
-        return 'already followed'
+        return "already followed"
     except Exception as exc:
         import traceback
 
@@ -263,12 +263,12 @@ def author_unfollow(follower_id, slug):
                 return None
     except UniqueViolation as error:
         logger.warn(error)
-        return 'already unfollowed'
+        return "already unfollowed"
     except Exception as exc:
         return exc
 
 
-@query.field('get_topic_followers')
+@query.field("get_topic_followers")
 async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
     q = select(Author)
     q = (
@@ -279,9 +279,9 @@ async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author
     return get_with_stat(q)
 
 
-@query.field('get_shout_followers')
+@query.field("get_shout_followers")
 def get_shout_followers(
-    _, _info, slug: str = '', shout_id: int | None = None
+    _, _info, slug: str = "", shout_id: int | None = None
 ) -> List[Author]:
     followers = []
     with local_session() as session:

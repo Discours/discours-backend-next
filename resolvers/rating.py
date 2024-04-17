@@ -9,10 +9,10 @@ from services.db import local_session
 from services.schema import mutation
 
 
-@mutation.field('rate_author')
+@mutation.field("rate_author")
 @login_required
 async def rate_author(_, info, rated_slug, value):
-    user_id = info.context['user_id']
+    user_id = info.context["user_id"]
 
     with local_session() as session:
         rated_author = session.query(Author).filter(Author.slug == rated_slug).first()
@@ -41,7 +41,7 @@ async def rate_author(_, info, rated_slug, value):
                     session.add(rating)
                     session.commit()
                 except Exception as err:
-                    return {'error': err}
+                    return {"error": err}
     return {}
 
 
@@ -129,7 +129,7 @@ def get_author_rating_shouts(session, author: Author) -> int:
                     )
                 ),
                 0,
-            ).label('shouts_rating')
+            ).label("shouts_rating")
         )
         .select_from(Reaction)
         .outerjoin(Shout, Shout.authors.any(id=author.id))
@@ -159,7 +159,7 @@ def get_author_rating_comments(session, author: Author) -> int:
                     )
                 ),
                 0,
-            ).label('shouts_rating')
+            ).label("shouts_rating")
         )
         .select_from(Reaction)
         .outerjoin(
@@ -185,7 +185,7 @@ def add_author_rating_columns(q, group_list):
     # old karma
     q = q.outerjoin(AuthorRating, AuthorRating.author == Author.id)
     q = q.add_columns(
-        func.sum(case((AuthorRating.plus == true(), 1), else_=-1)).label('rating')
+        func.sum(case((AuthorRating.plus == true(), 1), else_=-1)).label("rating")
     )
 
     # by shouts rating
@@ -201,7 +201,7 @@ def add_author_rating_columns(q, group_list):
                         else_=0,
                     )
                 )
-            ).label('shouts_rating'),
+            ).label("shouts_rating"),
         )
         .select_from(shout_reaction)
         .outerjoin(Shout, Shout.authors.any(id=Author.id))
@@ -235,7 +235,7 @@ def add_author_rating_columns(q, group_list):
                         else_=0,
                     )
                 )
-            ).label('comments_rating'),
+            ).label("comments_rating"),
         )
         .select_from(reaction_2)
         .outerjoin(
