@@ -36,16 +36,19 @@ class WebhookEndpoint(HTTPEndpoint):
             email: str = user.get("email", "")
             pic: str = user.get("picture", "")
             if user_id:
-
                 with local_session() as session:
-                    author = session.query(Author).filter(Author.user == user_id).first()
+                    author = (
+                        session.query(Author).filter(Author.user == user_id).first()
+                    )
                     if not author:
                         # If the author does not exist, create a new one
                         slug: str = email.split("@")[0].replace(".", "-").lower()
                         slug: str = re.sub("[^0-9a-z]+", "-", slug)
                         while True:
                             author = (
-                                session.query(Author).filter(Author.slug == slug).first()
+                                session.query(Author)
+                                .filter(Author.slug == slug)
+                                .first()
                             )
                             if not author:
                                 break

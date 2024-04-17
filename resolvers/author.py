@@ -32,6 +32,8 @@ async def update_author(_, info, profile):
                 Author.update(author, profile)
                 session.add(author)
                 session.commit()
+                [author] = get_with_stat(select(Author).where(Author.user == user_id))
+                await cache_author(author.dict())
                 return {"error": None, "author": author}
     except Exception as exc:
         import traceback

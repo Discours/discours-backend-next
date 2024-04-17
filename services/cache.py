@@ -21,7 +21,7 @@ async def cache_author(author: dict):
     # update stat all field for followers' caches in <authors> list
     followers_str = await redis.execute("GET", f'author:{author.get("id")}:followers')
     followers = []
-    if followers_str:
+    if isinstance(followers_str, str):
         followers = json.loads(followers_str)
     if isinstance(followers, list):
         for follower in followers:
