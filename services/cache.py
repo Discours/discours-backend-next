@@ -29,7 +29,7 @@ async def cache_author(author: dict):
             follower_follows_authors_str = await redis.execute(
                 "GET", f'author:{author.get("id")}:follows-authors'
             )
-            if follower_follows_authors_str:
+            if isinstance(follower_follows_authors_str, str):
                 follower_follows_authors = json.loads(follower_follows_authors_str)
                 c = 0
                 for old_author in follower_follows_authors:
@@ -46,7 +46,7 @@ async def cache_author(author: dict):
         "GET", f'author:{author.get("id")}:follows-authors'
     )
     follows_authors = []
-    if follows_str:
+    if isinstance(follows_str, str):
         follows_authors = json.loads(follows_str)
     if isinstance(follows_authors, list):
         for followed_author in follows_authors:
@@ -54,7 +54,7 @@ async def cache_author(author: dict):
             followed_author_followers_str = await redis.execute(
                 "GET", f'author:{author.get("id")}:followers'
             )
-            if followed_author_followers_str:
+            if isinstance(followed_author_followers_str, str):
                 followed_author_followers = json.loads(followed_author_followers_str)
                 c = 0
                 for old_follower in followed_author_followers:
@@ -90,7 +90,7 @@ async def cache_follows(follower: Author, entity_type: str, entity, is_insert=Tr
 
     # update follower's stats everywhere
     author_str = await redis.execute("GET", f"author:{follower.id}")
-    if author_str:
+    if isinstance(author_str, str):
         author = json.loads(author_str)
         author["stat"][f"{entity_type}s"] = len(updated_data)
         await cache_author(author)
@@ -114,7 +114,7 @@ async def cache_follower(follower: Author, author: Author, is_insert=True):
         payload = json.dumps(updated_followers, cls=CustomJSONEncoder)
         await redis.execute("SET", redis_key, payload)
         author_str = await redis.execute("GET", f"author:{follower.id}")
-        if author_str:
+        if isinstance(author_str, str):
             author = json.loads(author_str)
             author["stat"]["followers"] = len(updated_followers)
             await cache_author(author)

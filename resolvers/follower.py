@@ -13,7 +13,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
 from services.auth import login_required
-from services.cache import DEFAULT_FOLLOWS
+from services.cache import DEFAULT_FOLLOWS, cache_follower
 from services.db import local_session
 from services.logger import root_logger as logger
 from services.notify import notify_follower
@@ -24,7 +24,6 @@ from services.schema import mutation, query
 @mutation.field("follow")
 @login_required
 async def follow(_, info, what, slug):
-    follows = []
     error = None
     user_id = info.context.get("user_id")
     if not user_id:
@@ -32,13 +31,28 @@ async def follow(_, info, what, slug):
 
     follower = local_session().query(Author).filter(Author.user == user_id).first()
     if not follower:
+        return {"error": "cant find follower account"}
+
+    entity = what.lower()
+    follows = []
+    follows_str = await redis.execute("GET", f"author:{follower.id}:follows-{entity}s")
+    if isinstance(follows_str, str):
+        follows = json.loads(follows_str)
+
+    if not follower:
         return {"error": "cant find follower"}
+
     if what == "AUTHOR":
         error = author_follow(follower.id, slug)
         if not error:
-            author = local_session().query(Author).where(Author.slug == slug).first()
-            if author:
-                await notify_follower(follower.dict(), author.id, "follow")
+            result = get_with_stat(select(Author).where(Author.slug == slug))
+            if result:
+                [author] = result
+                if author:
+                    await cache_follower(follower, author)
+                    await notify_follower(follower.dict(), author.id, "follow")
+                    if not any(a["id"] == author.id for a in follows):
+                        follows.append(author.dict())
 
     elif what == "TOPIC":
         error = topic_follow(follower.id, slug)
@@ -53,10 +67,6 @@ async def follow(_, info, what, slug):
     if error:
         return {"error": error}
 
-    entity = what.lower()
-    follows_str = await redis.execute("GET", f"author:{follower.id}:follows-{entity}s")
-    if follows_str:
-        follows = json.loads(follows_str)
     return {f"{entity}s": follows}
 
 
@@ -68,17 +78,24 @@ async def unfollow(_, info, what, slug):
     user_id = info.context.get("user_id")
     if not user_id:
         return {"error": "unauthorized"}
+
     follower = local_session().query(Author).filter(Author.user == user_id).first()
     if not follower:
-        return {"error": "follower profile is not found"}
+        return {"error": "cant find follower account"}
+
     if what == "AUTHOR":
         error = author_unfollow(follower.id, slug)
         # NOTE: after triggers should update cached stats
         if not error:
             logger.info(f"@{follower.slug} unfollowed @{slug}")
             author = local_session().query(Author).where(Author.slug == slug).first()
-            if author:
+            if isinstance(author, Author):
+                await cache_follower(follower, author, False)
                 await notify_follower(follower.dict(), author.id, "unfollow")
+                for idx, item in enumerate(follows):
+                    if item["id"] == author.id:
+                        follows.pop(idx)  # Remove the author_dict from the follows list
+                        break
 
     elif what == "TOPIC":
         error = topic_unfollow(follower.id, slug)
@@ -91,7 +108,7 @@ async def unfollow(_, info, what, slug):
 
     entity = what.lower()
     follows_str = await redis.execute("GET", f"author:{follower.id}:follows-{entity}s")
-    if follows_str:
+    if isinstance(follows_str, str):
         follows = json.loads(follows_str)
     return {"error": error, f"{entity}s": follows}
 

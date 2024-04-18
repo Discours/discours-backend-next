@@ -123,7 +123,7 @@ async def _create_reaction(session, shout, author, reaction):
     rdict = r.dict()
 
     # пересчет счетчика комментариев
-    if r.kind == ReactionKind.COMMENT.value:
+    if str(r.kind) == ReactionKind.COMMENT.value:
         await update_author_stat(author)
 
     # collaborative editing
@@ -151,7 +151,7 @@ async def _create_reaction(session, shout, author, reaction):
                 pass
 
     # обновление счетчика комментариев в кеше
-    if r.kind == ReactionKind.COMMENT.value:
+    if str(r.kind) == ReactionKind.COMMENT.value:
         await update_author_stat(author)
 
     rdict["shout"] = shout.dict()
@@ -215,7 +215,6 @@ async def create_reaction(_, info, reaction):
             if shout and author:
                 reaction["created_by"] = author.id
                 kind = reaction.get("kind")
-                shout_id = shout.id
 
                 if not kind and isinstance(reaction.get("body"), str):
                     kind = ReactionKind.COMMENT.value
@@ -260,42 +259,50 @@ async def update_reaction(_, info, reaction):
             reaction_query = reaction_query.group_by(Reaction.id)
 
             try:
-                [r, reacted_stat, commented_stat, likes_stat, dislikes_stat, _l] = (
-                    session.execute(reaction_query).unique().first()
-                )
+                result = session.execute(reaction_query).unique().first()
+                if result:
+                    [
+                        r,
+                        reacted_stat,
+                        commented_stat,
+                        likes_stat,
+                        dislikes_stat,
+                        last_comment,
+                    ] = result
+                    if not r:
+                        return {"error": "invalid reaction id"}
 
-                if not r:
-                    return {"error": "invalid reaction id"}
+                    author = (
+                        session.query(Author).filter(Author.user == user_id).first()
+                    )
+                    if author:
+                        if r.created_by != author.id and "editor" not in roles:
+                            return {"error": "access denied"}
 
-                author = session.query(Author).filter(Author.user == user_id).first()
-                if author:
-                    if r.created_by != author.id and "editor" not in roles:
-                        return {"error": "access denied"}
+                        body = reaction.get("body")
+                        if body:
+                            r.body = body
+                        r.updated_at = int(time.time())
 
-                    body = reaction.get("body")
-                    if body:
-                        r.body = body
-                    r.updated_at = int(time.time())
+                        if r.kind != reaction["kind"]:
+                            # Определение изменения мнения может быть реализовано здесь
+                            pass
 
-                    if r.kind != reaction["kind"]:
-                        # Определение изменения мнения может быть реализовано здесь
-                        pass
+                        Reaction.update(r, reaction)
+                        session.add(r)
+                        session.commit()
 
-                    Reaction.update(r, reaction)
-                    session.add(r)
-                    session.commit()
+                        r.stat = {
+                            "reacted": reacted_stat,
+                            "commented": commented_stat,
+                            "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                        }
 
-                    r.stat = {
-                        "reacted": reacted_stat,
-                        "commented": commented_stat,
-                        "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                    }
+                        await notify_reaction(r.dict(), "update")
 
-                    await notify_reaction(r.dict(), "update")
-
-                    return {"reaction": r}
-                else:
-                    return {"error": "not authorized"}
+                        return {"reaction": r}
+                    else:
+                        return {"error": "not authorized"}
             except Exception:
                 import traceback
 
@@ -323,7 +330,7 @@ async def delete_reaction(_, info, reaction_id: int):
                 session.commit()
 
                 # обновление счетчика комментариев в кеше
-                if r.kind == ReactionKind.COMMENT.value:
+                if str(r.kind) == ReactionKind.COMMENT.value:
                     await update_author_stat(author)
                 await notify_reaction(reaction_dict, "delete")
 
