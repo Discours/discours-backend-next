@@ -9,50 +9,57 @@ from services.schema import mutation
 @mutation.field("accept_invite")
 @login_required
 async def accept_invite(_, info, invite_id: int):
-    user_id = info.context["user_id"]
-
-    # Check if the user exists
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
+    info.context["user_id"]
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
+    if author_id:
+        author_id = int(author_id)
+        # Check if the user exists
+        with local_session() as session:
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
             if (
                 invite
-                and invite.author_d is author.id
+                and invite.author_id is author_id
                 and invite.status is InviteStatus.PENDING.value
             ):
                 # Add the user to the shout authors
                 shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
                 if shout:
-                    if author not in shout.authors:
-                        shout.authors.append(author)
-                        session.delete(invite)
-                        session.add(shout)
-                        session.commit()
+                    if author_id not in shout.authors:
+                        author = (
+                            session.query(Author).filter(Author.id == author_id).first()
+                        )
+                        if author:
+                            shout.authors.append(author)
+                            session.add(shout)
+                            session.delete(invite)
+                            session.commit()
                     return {"success": True, "message": "Invite accepted"}
                 else:
                     return {"error": "Shout not found"}
             else:
                 return {"error": "Invalid invite or already accepted/rejected"}
-        else:
-            return {"error": "User not found"}
+    else:
+        return {"error": "Unauthorized"}
 
 
 @mutation.field("reject_invite")
 @login_required
 async def reject_invite(_, info, invite_id: int):
-    user_id = info.context["user_id"]
+    info.context["user_id"]
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
 
-    # Check if the user exists
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
+    if author_id:
+        # Check if the user exists
+        with local_session() as session:
+            author_id = int(author_id)
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
             if (
                 invite
-                and invite.author_id is author.id
+                and invite.author_id is author_id
                 and invite.status is InviteStatus.PENDING.value
             ):
                 # Delete the invite
@@ -61,23 +68,21 @@ async def reject_invite(_, info, invite_id: int):
                 return {"success": True, "message": "Invite rejected"}
             else:
                 return {"error": "Invalid invite or already accepted/rejected"}
-        else:
-            return {"error": "User not found"}
+    return {"error": "User not found"}
 
 
 @mutation.field("create_invite")
 @login_required
 async def create_invite(_, info, slug: str = "", author_id: int = 0):
     user_id = info.context["user_id"]
-
-    # Check if the inviter is the owner of the shout
-    with local_session() as session:
-        shout = session.query(Shout).filter(Shout.slug == slug).first()
-        inviter = session.query(Author).filter(Author.user == user_id).first()
-        if inviter and shout and shout.authors and inviter.id is shout.created_by:
-            # Check if the author is a valid author
-            author = session.query(Author).filter(Author.id == author_id).first()
-            if author:
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
+    if author_id:
+        # Check if the inviter is the owner of the shout
+        with local_session() as session:
+            shout = session.query(Shout).filter(Shout.slug == slug).first()
+            inviter = session.query(Author).filter(Author.user == user_id).first()
+            if inviter and shout and shout.authors and inviter.id is shout.created_by:
                 # Check if an invite already exists
                 existing_invite = (
                     session.query(Invite)
@@ -105,8 +110,8 @@ async def create_invite(_, info, slug: str = "", author_id: int = 0):
                 return {"error": None, "invite": new_invite}
             else:
                 return {"error": "Invalid author"}
-        else:
-            return {"error": "Access denied"}
+    else:
+        return {"error": "Access denied"}
 
 
 @mutation.field("remove_author")
@@ -130,18 +135,20 @@ async def remove_author(_, info, slug: str = "", author_id: int = 0):
 @mutation.field("remove_invite")
 @login_required
 async def remove_invite(_, info, invite_id: int):
-    user_id = info.context["user_id"]
+    info.context["user_id"]
 
-    # Check if the user exists
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
+    if author_id:
+        # Check if the user exists
+        with local_session() as session:
+            author_id == int(author_id)
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
             if isinstance(invite, Invite):
                 shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
                 if shout and shout.deleted_at is None and invite:
-                    if invite.inviter_id is author.id or author.id is shout.created_by:
+                    if invite.inviter_id is author_id or author_id == shout.created_by:
                         if invite.status is InviteStatus.PENDING.value:
                             # Delete the invite
                             session.delete(invite)
@@ -149,5 +156,5 @@ async def remove_invite(_, info, invite_id: int):
                             return {}
             else:
                 return {"error": "Invalid invite or already accepted/rejected"}
-        else:
-            return {"error": "Author not found"}
+    else:
+        return {"error": "Author not found"}

@@ -5,8 +5,8 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from services.db import local_session
 from services.cache import cache_author
+from services.db import local_session
 from services.logger import root_logger as logger
 
 
@@ -167,8 +167,8 @@ def author_follows_topics(author_id: int):
     return get_with_stat(q)
 
 
-async def update_author_stat(author: Author):
-    author_with_stat = get_with_stat(select(Author).where(Author.id == author.id))
+async def update_author_stat(author_id: int):
+    author_with_stat = get_with_stat(select(Author).where(Author.id == author_id))
     if isinstance(author_with_stat, Author):
         author_dict = author_with_stat.dict()
         await cache_author(author_dict)

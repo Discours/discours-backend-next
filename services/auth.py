@@ -1,10 +1,22 @@
+import json
 from functools import wraps
 
 import httpx
-from starlette.exceptions import HTTPException
 
 from services.logger import root_logger as logger
+from services.rediscache import redis
 from settings import ADMIN_SECRET, AUTH_URL
+
+
+async def get_author_by_user(user: str):
+    author = None
+    redis_key = f"user:{user}"
+
+    result = await redis.execute("GET", redis_key)
+    if isinstance(result, str):
+        author = json.loads(result)
+
+    return author
 
 
 async def request_data(gql, headers=None):
@@ -78,32 +90,13 @@ def login_required(f):
     async def decorated_function(*args, **kwargs):
         info = args[1]
         req = info.context.get("request")
-        authorized = await check_auth(req)
-        if authorized:
-            logger.info(authorized)
-            user_id, user_roles = authorized
-            if user_id and user_roles:
-                logger.info(f" got {user_id} roles: {user_roles}")
-                info.context["user_id"] = user_id.strip()
-                info.context["roles"] = user_roles
+        user_id, user_roles = await check_auth(req)
+        if user_id and user_roles:
+            logger.info(f" got {user_id} roles: {user_roles}")
+            info.context["user_id"] = user_id.strip()
+            info.context["roles"] = user_roles
+            author = await get_author_by_user(user_id)
+            info.context["author"] = author
         return await f(*args, **kwargs)
-
-    return decorated_function
-
-
-def auth_request(f):
-    @wraps(f)
-    async def decorated_function(*args, **kwargs):
-        req = args[0]
-        authorized = await check_auth(req)
-        if authorized:
-            user_id, user_roles = authorized
-            if user_id and user_roles:
-                logger.info(f" got {user_id} roles: {user_roles}")
-                req["user_id"] = user_id.strip()
-                req["roles"] = user_roles
-            return await f(*args, **kwargs)
-        else:
-            raise HTTPException(status_code=401, detail="Unauthorized")
 
     return decorated_function

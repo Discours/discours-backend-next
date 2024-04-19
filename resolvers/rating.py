@@ -12,17 +12,17 @@ from services.schema import mutation
 @mutation.field("rate_author")
 @login_required
 async def rate_author(_, info, rated_slug, value):
-    user_id = info.context["user_id"]
-
+    info.context["user_id"]
+    rater_id = info.context.get("author", {}).get("id")
     with local_session() as session:
+        rater_id = int(rater_id)
         rated_author = session.query(Author).filter(Author.slug == rated_slug).first()
-        rater = session.query(Author).filter(Author.slug == user_id).first()
-        if rater and rated_author:
+        if rater_id and rated_author:
             rating: AuthorRating = (
                 session.query(AuthorRating)
                 .filter(
                     and_(
-                        AuthorRating.rater == rater.id,
+                        AuthorRating.rater == rater_id,
                         AuthorRating.author == rated_author.id,
                     )
                 )
@@ -36,7 +36,7 @@ async def rate_author(_, info, rated_slug, value):
             else:
                 try:
                     rating = AuthorRating(
-                        rater=rater.id, author=rated_author.id, plus=value > 0
+                        rater=rater_id, author=rated_author.id, plus=value > 0
                     )
                     session.add(rating)
                     session.commit()

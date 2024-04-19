@@ -1,8 +1,5 @@
 import json
 
-
-from orm.author import Author
-from orm.topic import Topic
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
 
@@ -67,55 +64,57 @@ async def cache_author(author: dict):
                 followed_author_followers.append(author)
 
 
-async def cache_follows(follower: Author, entity_type: str, entity, is_insert=True):
+async def cache_follows(follower: dict, entity_type: str, entity: dict, is_insert=True):
     # prepare
     follows = []
-    redis_key = f"author:{follower.id}:follows-{entity_type}s"
-    follows_str = await redis.execute("GET", redis_key)
-    if isinstance(follows_str, str):
-        follows = json.loads(follows_str)
-    if is_insert:
-        follows.append(entity)
-    else:
-        entity_id = entity.get("id")
-        if not entity_id:
-            raise Exception("wrong entity")
-        # Remove the entity from follows
-        follows = [e for e in follows if e["id"] != entity_id]
+    follower_id = follower.get("id")
+    if follower_id:
+        redis_key = f"author:{follower_id}:follows-{entity_type}s"
+        follows_str = await redis.execute("GET", redis_key)
+        if isinstance(follows_str, str):
+            follows = json.loads(follows_str)
+        if is_insert:
+            follows.append(entity)
+        else:
+            entity_id = entity.get("id")
+            if not entity_id:
+                raise Exception("wrong entity")
+            # Remove the entity from follows
+            follows = [e for e in follows if e["id"] != entity_id]
 
-    # update follows cache
-    updated_data = [t.dict() if isinstance(t, Topic) else t for t in follows]
-    payload = json.dumps(updated_data, cls=CustomJSONEncoder)
-    await redis.execute("SET", redis_key, payload)
+        # update follows cache
+        payload = json.dumps(follows, cls=CustomJSONEncoder)
+        await redis.execute("SET", redis_key, payload)
 
-    # update follower's stats everywhere
-    author_str = await redis.execute("GET", f"author:{follower.id}")
-    if isinstance(author_str, str):
-        author = json.loads(author_str)
-        author["stat"][f"{entity_type}s"] = len(updated_data)
-        await cache_author(author)
+        # update follower's stats everywhere
+        author_str = await redis.execute("GET", f"author:{follower_id}")
+        if isinstance(author_str, str):
+            author = json.loads(author_str)
+            author["stat"][f"{entity_type}s"] = len(follows)
+            await cache_author(author)
     return follows
 
 
-async def cache_follower(follower: Author, author: Author, is_insert=True):
-    redis_key = f"author:{author.id}:followers"
-    followers_str = await redis.execute("GET", redis_key)
+async def cache_follower(follower: dict, author: dict, is_insert=True):
+    author_id = author.get("id")
+    follower_id = follower.get("id")
     followers = []
-    if isinstance(followers_str, str):
-        followers = json.loads(followers_str)
-    if is_insert:
-        # Remove the entity from followers
-        followers = [e for e in followers if e["id"] != author.id]
-    else:
-        followers.append(follower)
-        updated_followers = [
-            f.dict() if isinstance(f, Author) else f for f in followers
-        ]
-        payload = json.dumps(updated_followers, cls=CustomJSONEncoder)
-        await redis.execute("SET", redis_key, payload)
-        author_str = await redis.execute("GET", f"author:{follower.id}")
-        if isinstance(author_str, str):
-            author = json.loads(author_str)
-            author["stat"]["followers"] = len(updated_followers)
-            await cache_author(author)
+    if author_id and follower_id:
+        redis_key = f"author:{author_id}:followers"
+        followers_str = await redis.execute("GET", redis_key)
+        followers = []
+        if isinstance(followers_str, str):
+            followers = json.loads(followers_str)
+        if is_insert:
+            # Remove the entity from followers
+            followers = [e for e in followers if e["id"] != author_id]
+        else:
+            followers.append(follower)
+            payload = json.dumps(followers, cls=CustomJSONEncoder)
+            await redis.execute("SET", redis_key, payload)
+            author_str = await redis.execute("GET", f"author:{follower_id}")
+            if isinstance(author_str, str):
+                author = json.loads(author_str)
+                author["stat"]["followers"] = len(followers)
+                await cache_author(author)
     return followers

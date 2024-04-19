@@ -1,6 +1,7 @@
 from sqlalchemy import bindparam, distinct, or_, text
 from sqlalchemy.orm import aliased, joinedload
-from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
+from sqlalchemy.sql.expression import (and_, asc, case, desc, func, nulls_last,
+                                       select)
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
@@ -25,31 +26,26 @@ def query_shouts():
 
 
 def filter_my(info, session, q):
-    reader_id = None
-    user_id = None
-    if isinstance(info.context, dict):
-        user_id = info.context.get("user_id")
-    if user_id:
-        reader = session.query(Author).filter(Author.user == user_id).first()
-        if reader:
-            reader_followed_authors = select(AuthorFollower.author).where(
-                AuthorFollower.follower == reader.id
-            )
-            reader_followed_topics = select(TopicFollower.topic).where(
-                TopicFollower.follower == reader.id
-            )
+    user_id = info.context.get("user_id")
+    reader_id = info.context.get("author", {}).get("id")
+    if user_id and reader_id:
+        reader_followed_authors = select(AuthorFollower.author).where(
+            AuthorFollower.follower == reader_id
+        )
+        reader_followed_topics = select(TopicFollower.topic).where(
+            TopicFollower.follower == reader_id
+        )
 
-            subquery = (
-                select(Shout.id)
-                .where(Shout.id == ShoutAuthor.shout)
-                .where(Shout.id == ShoutTopic.shout)
-                .where(
-                    (ShoutAuthor.author.in_(reader_followed_authors))
-                    | (ShoutTopic.topic.in_(reader_followed_topics))
-                )
+        subquery = (
+            select(Shout.id)
+            .where(Shout.id == ShoutAuthor.shout)
+            .where(Shout.id == ShoutTopic.shout)
+            .where(
+                (ShoutAuthor.author.in_(reader_followed_authors))
+                | (ShoutTopic.topic.in_(reader_followed_topics))
             )
-            q = q.filter(Shout.id.in_(subquery))
-            reader_id = reader.id
+        )
+        q = q.filter(Shout.id.in_(subquery))
     return q, reader_id
 
 

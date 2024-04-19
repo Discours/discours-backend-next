@@ -2,8 +2,8 @@ import json
 
 from orm.notification import Notification
 from services.db import local_session
-from services.rediscache import redis
 from services.logger import root_logger as logger
+from services.rediscache import redis
 
 
 def save_notification(action: str, entity: str, payload):

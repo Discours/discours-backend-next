@@ -8,12 +8,8 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import not_
 
 from orm.author import Author
-from orm.notification import (
-    Notification,
-    NotificationAction,
-    NotificationEntity,
-    NotificationSeen,
-)
+from orm.notification import (Notification, NotificationAction,
+                              NotificationEntity, NotificationSeen)
 from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
@@ -213,7 +209,8 @@ def get_notifications_grouped(
 @query.field("load_notifications")
 @login_required
 async def load_notifications(_, info, after: int, limit: int = 50, offset=0):
-    author_id = info.context.get("author_id")
+    author_dict = info.context.get("author")
+    author_id = author_dict.get("id")
     error = None
     total = 0
     unread = 0
@@ -238,7 +235,7 @@ async def load_notifications(_, info, after: int, limit: int = 50, offset=0):
 @mutation.field("notification_mark_seen")
 @login_required
 async def notification_mark_seen(_, info, notification_id: int):
-    author_id = info.context.get("author_id")
+    author_id = info.context.get("author", {}).get("id")
     if author_id:
         with local_session() as session:
             try:
@@ -258,7 +255,7 @@ async def notifications_seen_after(_, info, after: int):
     # TODO: use latest loaded notification_id as input offset parameter
     error = None
     try:
-        author_id = info.context.get("author_id")
+        author_id = info.context.get("author", {}).get("id")
         if author_id:
             with local_session() as session:
                 nnn = (
@@ -283,7 +280,7 @@ async def notifications_seen_after(_, info, after: int):
 @login_required
 async def notifications_seen_thread(_, info, thread: str, after: int):
     error = None
-    author_id = info.context.get("author_id")
+    author_id = info.context.get("author", {}).get("id")
     if author_id:
         [shout_id, reply_to_id] = thread.split(":")
         with local_session() as session:

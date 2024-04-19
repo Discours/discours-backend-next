@@ -1,6 +1,5 @@
 from orm.reaction import ReactionKind
 
-
 PROPOSAL_REACTIONS = [
     ReactionKind.ACCEPT.value,
     ReactionKind.REJECT.value,

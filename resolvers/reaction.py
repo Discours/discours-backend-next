@@ -1,17 +1,18 @@
 import time
 from typing import List
 
-from resolvers.stat import update_author_stat
 from sqlalchemy import and_, asc, case, desc, func, select, text
 from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
 from orm.author import Author
-from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_positive
+from orm.rating import (PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative,
+                        is_positive)
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from resolvers.editor import handle_proposing
 from resolvers.follower import reactions_follow
+from resolvers.stat import update_author_stat
 from services.auth import add_user_role, login_required
 from services.db import local_session
 from services.logger import root_logger as logger
@@ -116,7 +117,7 @@ def set_unfeatured(session, shout_id):
     session.commit()
 
 
-async def _create_reaction(session, shout, author, reaction):
+async def _create_reaction(session, shout, author_id: int, reaction):
     r = Reaction(**reaction)
     session.add(r)
     session.commit()
@@ -124,38 +125,38 @@ async def _create_reaction(session, shout, author, reaction):
 
     # пересчет счетчика комментариев
     if str(r.kind) == ReactionKind.COMMENT.value:
-        await update_author_stat(author)
+        await update_author_stat(author_id)
 
     # collaborative editing
     if (
         rdict.get("reply_to")
         and r.kind in PROPOSAL_REACTIONS
-        and author.id in shout.authors
+        and author_id in shout.authors
     ):
         handle_proposing(session, r, shout)
 
     # рейтинг и саморегуляция
     if r.kind in RATING_REACTIONS:
         # self-regultaion mechanics
-        if check_to_unfeature(session, author.id, r):
+        if check_to_unfeature(session, author_id, r):
             set_unfeatured(session, shout.id)
-        elif check_to_feature(session, author.id, r):
+        elif check_to_feature(session, author_id, r):
             await set_featured(session, shout.id)
 
         # follow if liked
         if r.kind == ReactionKind.LIKE.value:
             try:
                 # reactions auto-following
-                reactions_follow(author.id, reaction["shout"], True)
+                reactions_follow(author_id, reaction["shout"], True)
             except Exception:
                 pass
 
     # обновление счетчика комментариев в кеше
     if str(r.kind) == ReactionKind.COMMENT.value:
-        await update_author_stat(author)
+        await update_author_stat(author_id)
 
     rdict["shout"] = shout.dict()
-    rdict["created_by"] = author.id
+    rdict["created_by"] = author_id
     rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
     # notifications call
@@ -164,7 +165,7 @@ async def _create_reaction(session, shout, author, reaction):
     return rdict
 
 
-def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
+def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
     kind = reaction.get("kind")
     opposite_kind = (
         ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
@@ -173,7 +174,7 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
     q = select(Reaction).filter(
         and_(
             Reaction.shout == shout_id,
-            Reaction.created_by == author.id,
+            Reaction.created_by == author_id,
             Reaction.kind.in_(RATING_REACTIONS),
         )
     )
@@ -182,18 +183,18 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
         q = q.filter(Reaction.reply_to == reply_to)
     rating_reactions = session.execute(q).all()
     same_rating = filter(
-        lambda r: r.created_by == author.id and r.kind == opposite_kind,
+        lambda r: r.created_by == author_id and r.kind == opposite_kind,
         rating_reactions,
     )
     opposite_rating = filter(
-        lambda r: r.created_by == author.id and r.kind == opposite_kind,
+        lambda r: r.created_by == author_id and r.kind == opposite_kind,
         rating_reactions,
     )
     if same_rating:
         return {"error": "You can't rate the same thing twice"}
     elif opposite_rating:
         return {"error": "Remove opposite vote first"}
-    elif filter(lambda r: r.created_by == author.id, rating_reactions):
+    elif filter(lambda r: r.created_by == author_id, rating_reactions):
         return {"error": "You can't rate your own thing"}
     return
 
@@ -202,7 +203,8 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author: Author):
 @login_required
 async def create_reaction(_, info, reaction):
     logger.debug(f"{info.context} for {reaction}")
-    user_id = info.context.get("user_id")
+    info.context.get("user_id")
+    author_id = info.context.get("author", {}).get("id")
     shout_id = reaction.get("shout")
 
     if not shout_id:
@@ -211,9 +213,8 @@ async def create_reaction(_, info, reaction):
     try:
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if shout and author:
-                reaction["created_by"] = author.id
+            if shout and author_id:
+                reaction["created_by"] = int(author_id)
                 kind = reaction.get("kind")
 
                 if not kind and isinstance(reaction.get("body"), str):
@@ -224,12 +225,12 @@ async def create_reaction(_, info, reaction):
 
                 if kind in RATING_REACTIONS:
                     error_result = prepare_new_rating(
-                        reaction, shout_id, session, author
+                        reaction, shout_id, session, author_id
                     )
                     if error_result:
                         return error_result
 
-                rdict = await _create_reaction(session, shout, author, reaction)
+                rdict = await _create_reaction(session, shout, author_id, reaction)
 
                 # TODO: call recount ratings periodically
 
@@ -315,13 +316,14 @@ async def update_reaction(_, info, reaction):
 async def delete_reaction(_, info, reaction_id: int):
     logger.debug(f"{info.context} for {reaction_id}")
     user_id = info.context.get("user_id")
+    author_id = info.context.get("author", {}).get("id")
     roles = info.context.get("roles", [])
     if user_id:
         with local_session() as session:
             try:
                 author = session.query(Author).filter(Author.user == user_id).one()
                 r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
-                if r.created_by != author.id and "editor" not in roles:
+                if r.created_by != author_id and "editor" not in roles:
                     return {"error": "access denied"}
 
                 logger.debug(f"{user_id} user removing his #{reaction_id} reaction")

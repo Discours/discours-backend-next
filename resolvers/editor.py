@@ -4,7 +4,6 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from orm.author import Author
 from orm.rating import is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
@@ -24,6 +23,8 @@ from services.search import search_service
 async def get_my_shout(_, info, shout_id: int):
     with local_session() as session:
         user_id = info.context.get("user_id", "")
+        author_dict = info.context["author"]
+        author_id = author_dict.get("id")
         if not user_id:
             return {"error": "unauthorized", "shout": None}
         shout = (
@@ -36,12 +37,11 @@ async def get_my_shout(_, info, shout_id: int):
         if not shout:
             return {"error": "no shout found", "shout": None}
         if not bool(shout.published_at):
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if not author:
+            if not author_id:
                 return {"error": "no author found", "shout": None}
             roles = info.context.get("roles", [])
             if "editor" not in roles and not filter(
-                lambda x: x.id == author.id, [x for x in shout.authors]
+                lambda x: x.id == int(author_id), [x for x in shout.authors]
             ):
                 return {"error": "forbidden", "shout": None}
         return {"error": None, "shout": shout}
@@ -50,15 +50,18 @@ async def get_my_shout(_, info, shout_id: int):
 @query.field("get_shouts_drafts")
 @login_required
 async def get_shouts_drafts(_, info):
-    user_id = info.context.get("user_id")
+    info.context.get("user_id")
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
     shouts = []
     with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
+        if author_id:
             q = (
                 select(Shout)
                 .options(joinedload(Shout.authors), joinedload(Shout.topics))
-                .filter(and_(Shout.deleted_at.is_(None), Shout.created_by == author.id))
+                .filter(
+                    and_(Shout.deleted_at.is_(None), Shout.created_by == int(author_id))
+                )
                 .filter(Shout.published_at.is_(None))
                 .order_by(desc(coalesce(Shout.updated_at, Shout.created_at)))
                 .group_by(Shout.id)
@@ -71,67 +74,68 @@ async def get_shouts_drafts(_, info):
 @login_required
 async def create_shout(_, info, inp):
     user_id = info.context.get("user_id")
-    if user_id:
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
+    if user_id and author_id:
         with local_session() as session:
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if isinstance(author, Author):
-                current_time = int(time.time())
-                slug = inp.get("slug") or f"draft-{current_time}"
-                shout_dict = {
-                    "title": inp.get("title", ""),
-                    "subtitle": inp.get("subtitle", ""),
-                    "lead": inp.get("lead", ""),
-                    "description": inp.get("description", ""),
-                    "body": inp.get("body", ""),
-                    "layout": inp.get("layout", "article"),
-                    "created_by": author.id,
-                    "authors": [],
-                    "slug": slug,
-                    "topics": inp.get("topics", []),
-                    "published_at": None,
-                    "created_at": current_time,  # Set created_at as Unix timestamp
-                }
+            author_id = int(author_id)
+            current_time = int(time.time())
+            slug = inp.get("slug") or f"draft-{current_time}"
+            shout_dict = {
+                "title": inp.get("title", ""),
+                "subtitle": inp.get("subtitle", ""),
+                "lead": inp.get("lead", ""),
+                "description": inp.get("description", ""),
+                "body": inp.get("body", ""),
+                "layout": inp.get("layout", "article"),
+                "created_by": author_id,
+                "authors": [],
+                "slug": slug,
+                "topics": inp.get("topics", []),
+                "published_at": None,
+                "created_at": current_time,  # Set created_at as Unix timestamp
+            }
+            same_slug_shout = (
+                session.query(Shout)
+                .filter(Shout.slug == shout_dict.get("slug"))
+                .first()
+            )
+            c = 1
+            while same_slug_shout is not None:
                 same_slug_shout = (
                     session.query(Shout)
                     .filter(Shout.slug == shout_dict.get("slug"))
                     .first()
                 )
-                c = 1
-                while same_slug_shout is not None:
-                    same_slug_shout = (
-                        session.query(Shout)
-                        .filter(Shout.slug == shout_dict.get("slug"))
-                        .first()
-                    )
-                    c += 1
-                    shout_dict["slug"] += f"-{c}"
-                new_shout = Shout(**shout_dict)
-                session.add(new_shout)
+                c += 1
+                shout_dict["slug"] += f"-{c}"
+            new_shout = Shout(**shout_dict)
+            session.add(new_shout)
+            session.commit()
+
+            # NOTE: requesting new shout back
+            shout = session.query(Shout).where(Shout.slug == slug).first()
+            if shout:
+                sa = ShoutAuthor(shout=shout.id, author=author_id)
+                session.add(sa)
+
+                topics = (
+                    session.query(Topic)
+                    .filter(Topic.slug.in_(inp.get("topics", [])))
+                    .all()
+                )
+                for topic in topics:
+                    t = ShoutTopic(topic=topic.id, shout=shout.id)
+                    session.add(t)
+
                 session.commit()
 
-                # NOTE: requesting new shout back
-                shout = session.query(Shout).where(Shout.slug == slug).first()
-                if shout:
-                    sa = ShoutAuthor(shout=shout.id, author=author.id)
-                    session.add(sa)
+                reactions_follow(author_id, shout.id, True)
 
-                    topics = (
-                        session.query(Topic)
-                        .filter(Topic.slug.in_(inp.get("topics", [])))
-                        .all()
-                    )
-                    for topic in topics:
-                        t = ShoutTopic(topic=topic.id, shout=shout.id)
-                        session.add(t)
+                # notifier
+                # await notify_shout(shout_dict, 'create')
 
-                    session.commit()
-
-                    reactions_follow(author.id, shout.id, True)
-
-                    # notifier
-                    # await notify_shout(shout_dict, 'create')
-
-                    return {"shout": shout}
+                return {"shout": shout}
 
     return {"error": "cant create shout" if user_id else "unauthorized"}
 
@@ -220,6 +224,8 @@ def patch_topics(session, shout, topics_input):
 async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     user_id = info.context.get("user_id")
     roles = info.context.get("roles", [])
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
     shout_input = shout_input or {}
     current_time = int(time.time())
     shout_id = shout_id or shout_input.get("id", shout_id)
@@ -228,9 +234,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
         return {"error": "unauthorized"}
     try:
         with local_session() as session:
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if author:
-                logger.info(f"author for shout#{shout_id} detected {author.dict()}")
+            if author_id:
+                logger.info(f"author for shout#{shout_id} detected author #{author_id}")
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
                 if not shout_by_id:
                     return {"error": "shout not found"}
@@ -249,7 +254,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 
                 if (
                     filter(
-                        lambda x: x.id == author.id, [x for x in shout_by_id.authors]
+                        lambda x: x.id == author_id, [x for x in shout_by_id.authors]
                     )
                     or "editor" in roles
                 ):
@@ -297,28 +302,29 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 @login_required
 async def delete_shout(_, info, shout_id: int):
     user_id = info.context.get("user_id")
-    roles = info.context.get("roles")
-    if user_id:
+    roles = info.context.get("roles", [])
+    author_dict = info.context["author"]
+    author_id = author_dict.get("id")
+    if user_id and author_id:
+        author_id = int(author_id)
         with local_session() as session:
-            author = session.query(Author).filter(Author.user == user_id).first()
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
-            if not shout:
+            if not isinstance(shout, Shout):
                 return {"error": "invalid shout id"}
-            if author and shout:
-                # NOTE: only owner and editor can mark the shout as deleted
-                if shout.created_by == author.id or "editor" in roles:
-                    for author_id in shout.authors:
-                        reactions_unfollow(author_id, shout_id)
+            shout_dict = shout.dict()
+            # NOTE: only owner and editor can mark the shout as deleted
+            if shout_dict["created_by"] == author_id or "editor" in roles:
+                for author_id in shout.authors:
+                    reactions_unfollow(author_id, shout_id)
 
-                    shout_dict = shout.dict()
-                    shout_dict["deleted_at"] = int(time.time())
-                    Shout.update(shout, shout_dict)
-                    session.add(shout)
-                    session.commit()
-                    await notify_shout(shout_dict, "delete")
-                    return {"error": None}
-                else:
-                    return {"error": "access denied"}
+                shout_dict["deleted_at"] = int(time.time())
+                Shout.update(shout, shout_dict)
+                session.add(shout)
+                session.commit()
+                await notify_shout(shout_dict, "delete")
+                return {"error": None}
+            else:
+                return {"error": "access denied"}
 
 
 def handle_proposing(session, r, shout):
