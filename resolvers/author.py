@@ -8,8 +8,7 @@ from sqlalchemy_searchable import search
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.stat import (author_follows_authors, author_follows_topics,
-                            get_with_stat)
+from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
 from services.auth import login_required
 from services.cache import cache_author, cache_follower
 from services.db import local_session

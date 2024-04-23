@@ -2,6 +2,7 @@
 - feat: sentry integration enabled with glitchtip
 - fix: reindex on update shout
 - packages upgrade, isort
+- separated stats queries for author and topic
 
 [0.3.2]
 - redis cache for what author follows

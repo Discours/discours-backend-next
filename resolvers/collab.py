@@ -139,10 +139,9 @@ async def remove_invite(_, info, invite_id: int):
 
     author_dict = info.context["author"]
     author_id = author_dict.get("id")
-    if author_id:
+    if isinstance(author_id, int):
         # Check if the user exists
         with local_session() as session:
-            author_id == int(author_id)
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
             if isinstance(invite, Invite):

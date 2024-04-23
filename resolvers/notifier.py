@@ -8,8 +8,12 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import not_
 
 from orm.author import Author
-from orm.notification import (Notification, NotificationAction,
-                              NotificationEntity, NotificationSeen)
+from orm.notification import (
+    Notification,
+    NotificationAction,
+    NotificationEntity,
+    NotificationSeen,
+)
 from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
@@ -142,10 +146,10 @@ def get_notifications_grouped(
 
         elif str(notification.entity) == NotificationEntity.REACTION.value:
             reaction = payload
-            if not isinstance(shout, dict):
+            if not isinstance(reaction, dict):
                 raise ValueError("reaction data is not consistent")
-            shout_id = shout.get("shout")
-            author_id = shout.get("created_by", 0)
+            shout_id = reaction.get("shout")
+            author_id = reaction.get("created_by", 0)
             if shout_id and author_id:
                 with local_session() as session:
                     author = (
