@@ -1,5 +1,4 @@
 import logging
-
 import colorlog
 
 # Define the color scheme
@@ -9,6 +8,7 @@ color_scheme = {
     "WARNING": "yellow",
     "ERROR": "red",
     "CRITICAL": "red,bg_white",
+    "DEFAULT": "white",
 }
 
 # Define secondary log colors
@@ -17,7 +17,7 @@ secondary_colors = {
     "asctime": {"DEBUG": "cyan"},
     "process": {"DEBUG": "purple"},
     "module": {"DEBUG": "cyan,bg_blue"},
-    "funcName": {"DEBUG": "light_white,bg_blue"},  # Add this line
+    "funcName": {"DEBUG": "light_white,bg_blue"},
 }
 
 # Define the log format string
@@ -59,16 +59,6 @@ formatter = MultilineColoredFormatter(fmt_string, **fmt_config)
 # Create a stream handler for logging output
 stream = logging.StreamHandler()
 stream.setFormatter(formatter)
-
-
-def get_colorful_logger(name="main"):
-    # Create and configure the logger
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(stream)
-
-    return logger
-
 
 # Set up the root logger with the same formatting
 root_logger = logging.getLogger()
