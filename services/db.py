@@ -5,7 +5,8 @@ import traceback
 import warnings
 from typing import Any, Callable, Dict, TypeVar
 
-from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, inspect
+from sqlalchemy import (JSON, Column, Engine, Integer, create_engine, event,
+                        exc, inspect)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table

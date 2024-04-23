@@ -6,7 +6,8 @@ from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 
 from orm.author import Author
-from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_positive
+from orm.rating import (PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative,
+                        is_positive)
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from resolvers.editor import handle_proposing

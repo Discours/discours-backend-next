@@ -1,6 +1,7 @@
 from sqlalchemy import bindparam, distinct, or_, text
 from sqlalchemy.orm import aliased, joinedload
-from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
+from sqlalchemy.sql.expression import (and_, asc, case, desc, func, nulls_last,
+                                       select)
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
