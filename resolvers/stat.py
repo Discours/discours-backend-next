@@ -119,6 +119,7 @@ def get_author_comments_stat(author_id: int):
         select(
             Author.id, func.coalesce(func.count(Reaction.id)).label("comments_count")
         )
+        .select_from(Author) # явно указываем левый элемент join'а
         .outerjoin(
             Reaction,
             and_(
