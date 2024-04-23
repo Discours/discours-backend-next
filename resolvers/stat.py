@@ -10,6 +10,37 @@ from services.db import local_session
 from services.logger import root_logger as logger
 
 
+def add_topic_stat_columns(q):
+    aliased_shout = aliased(ShoutTopic)
+    q = q.outerjoin(aliased_shout).add_columns(
+        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
+    )
+    aliased_follower = aliased(TopicFollower)
+    q = q.outerjoin(aliased_follower, aliased_follower.follower == Author.id
+    ).add_columns(
+        func.count(distinct(aliased_follower.follower)).label("followers_stat")
+    )
+
+    q = q.group_by(Author.id)
+
+    return q
+
+
+def add_author_stat_columns(q):
+    aliased_shout = aliased(ShoutAuthor)
+    q = q.outerjoin(aliased_shout).add_columns(
+        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
+    )
+    aliased_follower = aliased(AuthorFollower)
+    q = q.outerjoin(aliased_follower, aliased_follower.follower == Author.id
+    ).add_columns(
+        func.count(distinct(aliased_follower.follower)).label("followers_stat")
+    )
+
+    q = q.group_by(Author.id)
+
+    return q
+
 def get_topic_shouts_stat(topic_id: int):
     q = (
         select(func.count(distinct(ShoutTopic.shout)))
@@ -143,26 +174,19 @@ def get_with_stat(q):
         is_author = f"{q}".lower().startswith("select author")
         # is_topic = f"{q}".lower().startswith("select topic")
         result = []
+        add_stat_handler = add_author_stat_columns if is_author else add_topic_stat_columns
         with local_session() as session:
-            result = session.execute(q)
+            result = session.execute(add_stat_handler(q))
 
         for cols in result:
             entity = cols[0]
             stat = dict()
-            stat["shouts"] = (
-                get_author_shouts_stat(entity.id)
-                if is_author
-                else get_topic_shouts_stat(entity.id)
-            )
+            stat["shouts"] = cols[1]
+            stat["followers"] = cols[2]
             stat["authors"] = (
                 get_author_authors_stat(entity.id)
                 if is_author
                 else get_topic_authors_stat(entity.id)
-            )
-            stat["followers"] = (
-                get_author_followers_stat(entity.id)
-                if is_author
-                else get_topic_followers_stat(entity.id)
             )
             if is_author:
                 stat["comments"] = get_author_comments_stat(entity.id)
