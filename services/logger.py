@@ -4,7 +4,7 @@ import colorlog
 
 # Define the color scheme
 color_scheme = {
-    "DEBUG": "light_black",
+    "DEBUG": "cyan",
     "INFO": "green",
     "WARNING": "yellow",
     "ERROR": "red",
@@ -16,7 +16,7 @@ secondary_colors = {
     "log_name": {"DEBUG": "blue"},
     "asctime": {"DEBUG": "cyan"},
     "process": {"DEBUG": "purple"},
-    "module": {"DEBUG": "light_black,bg_blue"},
+    "module": {"DEBUG": "cyan,bg_blue"},
     "funcName": {"DEBUG": "light_white,bg_blue"},  # Add this line
 }
 
