@@ -141,7 +141,7 @@ def get_with_stat(q):
     records = []
     try:
         is_author = f"{q}".lower().startswith("select author")
-        f"{q}".lower().startswith("select topic")
+        # is_topic = f"{q}".lower().startswith("select topic")
         result = []
         with local_session() as session:
             result = session.execute(q)
