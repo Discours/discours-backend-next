@@ -15,7 +15,6 @@ from services.cache import cache_author, cache_follower
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
-from services.memorycache import cache_region
 from services.rediscache import redis
 from services.schema import mutation, query
 
@@ -126,43 +125,36 @@ async def get_author_id(_, _info, user: str):
 
 @query.field("load_authors_by")
 def load_authors_by(_, _info, by, limit, offset):
-    cache_key = f"{json.dumps(by)}_{limit}_{offset}"
+    logger.debug(f"loading authors by {by}")
+    q = select(Author)
+    if by.get("slug"):
+        q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
+    elif by.get("name"):
+        q = q.filter(Author.name.ilike(f"%{by['name']}%"))
+    elif by.get("topic"):
+        q = (
+            q.join(ShoutAuthor)
+            .join(ShoutTopic)
+            .join(Topic)
+            .where(Topic.slug == str(by["topic"]))
+        )
 
-    @cache_region.cache_on_arguments(cache_key)
-    def _load_authors_by():
-        logger.debug(f"loading authors by {by}")
-        q = select(Author)
-        if by.get("slug"):
-            q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
-        elif by.get("name"):
-            q = q.filter(Author.name.ilike(f"%{by['name']}%"))
-        elif by.get("topic"):
-            q = (
-                q.join(ShoutAuthor)
-                .join(ShoutTopic)
-                .join(Topic)
-                .where(Topic.slug == str(by["topic"]))
-            )
+    if by.get("last_seen"):  # in unix time
+        before = int(time.time()) - by["last_seen"]
+        q = q.filter(Author.last_seen > before)
+    elif by.get("created_at"):  # in unix time
+        before = int(time.time()) - by["created_at"]
+        q = q.filter(Author.created_at > before)
 
-        if by.get("last_seen"):  # in unix time
-            before = int(time.time()) - by["last_seen"]
-            q = q.filter(Author.last_seen > before)
-        elif by.get("created_at"):  # in unix time
-            before = int(time.time()) - by["created_at"]
-            q = q.filter(Author.created_at > before)
+    order = by.get("order")
+    if order in ["likes", "shouts", "followers"]:
+        q = q.order_by(desc(text(f"{order}_stat")))
 
-        order = by.get("order")
-        if order in ["likes", "shouts", "followers"]:
-            q = q.order_by(desc(text(f"{order}_stat")))
+    q = q.limit(limit).offset(offset)
 
-        # q = q.distinct()
-        q = q.limit(limit).offset(offset)
+    authors = get_with_stat(q)
 
-        authors = get_with_stat(q)
-
-        return authors
-
-    return _load_authors_by()
+    return authors
 
 
 @query.field("get_author_follows")
@@ -185,30 +177,31 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
             if author and isinstance(author, Author):
                 # logger.debug(author.dict())
                 author_id = author.id if not author_id else author_id
-                rkey = f"author:{author_id}:follows-authors"
-                logger.debug(f"getting {author_id} follows authors")
-                cached = await redis.execute("GET", rkey)
-                authors = []
-                if not cached:
-                    authors = author_follows_authors(author_id)
-                    prepared = [author.dict() for author in authors]
-                    await redis.execute(
-                        "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)
-                    )
-                elif isinstance(cached, str):
-                    authors = json.loads(cached)
-
-                rkey = f"author:{author_id}:follows-topics"
-                cached = await redis.execute("GET", rkey)
                 topics = []
-                if cached and isinstance(cached, str):
-                    topics = json.loads(cached)
-                if not cached:
-                    topics = author_follows_topics(author_id)
-                    prepared = [topic.dict() for topic in topics]
-                    await redis.execute(
-                        "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)
-                    )
+                authors = []
+                if author_id:
+                    rkey = f"author:{author_id}:follows-authors"
+                    logger.debug(f"getting {author_id} follows authors")
+                    cached = await redis.execute("GET", rkey)
+                    if not cached:
+                        authors = author_follows_authors(author_id)
+                        prepared = [author.dict() for author in authors]
+                        await redis.execute(
+                            "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)
+                        )
+                    elif isinstance(cached, str):
+                        authors = json.loads(cached)
+
+                    rkey = f"author:{author_id}:follows-topics"
+                    cached = await redis.execute("GET", rkey)
+                    if cached and isinstance(cached, str):
+                        topics = json.loads(cached)
+                    if not cached:
+                        topics = author_follows_topics(author_id)
+                        prepared = [topic.dict() for topic in topics]
+                        await redis.execute(
+                            "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)
+                        )
                 return {
                     "topics": topics,
                     "authors": authors,
