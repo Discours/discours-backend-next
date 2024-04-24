@@ -178,20 +178,20 @@ def get_with_stat(q):
         with local_session() as session:
             result = session.execute(add_stat_handler(q))
 
-        for cols in result:
-            entity = cols[0]
-            stat = dict()
-            stat["shouts"] = cols[1]
-            stat["followers"] = cols[2]
-            stat["authors"] = (
-                get_author_authors_stat(entity.id)
-                if is_author
-                else get_topic_authors_stat(entity.id)
-            )
-            if is_author:
-                stat["comments"] = get_author_comments_stat(entity.id)
-            entity.stat = stat
-            records.append(entity)
+            for cols in result:
+                entity = cols[0]
+                stat = dict()
+                stat["shouts"] = cols[1]
+                stat["followers"] = cols[2]
+                stat["authors"] = (
+                    get_author_authors_stat(entity.id)
+                    if is_author
+                    else get_topic_authors_stat(entity.id)
+                )
+                if is_author:
+                    stat["comments"] = get_author_comments_stat(entity.id)
+                entity.stat = stat
+                records.append(entity)
     except Exception as exc:
         logger.error(exc, exc_info=True)
     return records
