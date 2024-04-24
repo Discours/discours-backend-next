@@ -16,7 +16,8 @@ def add_topic_stat_columns(q):
         func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
     aliased_follower = aliased(TopicFollower)
-    q = q.outerjoin(aliased_follower, aliased_follower.follower == Author.id
+    q = q.outerjoin(
+        aliased_follower, aliased_follower.follower == Author.id
     ).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
@@ -32,7 +33,8 @@ def add_author_stat_columns(q):
         func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
     aliased_follower = aliased(AuthorFollower)
-    q = q.outerjoin(aliased_follower, aliased_follower.follower == Author.id
+    q = q.outerjoin(
+        aliased_follower, aliased_follower.follower == Author.id
     ).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
@@ -40,6 +42,7 @@ def add_author_stat_columns(q):
     q = q.group_by(Author.id)
 
     return q
+
 
 def get_topic_shouts_stat(topic_id: int):
     q = (
@@ -150,7 +153,7 @@ def get_author_comments_stat(author_id: int):
         select(
             Author.id, func.coalesce(func.count(Reaction.id)).label("comments_count")
         )
-        .select_from(Author) # явно указываем левый элемент join'а
+        .select_from(Author)  # явно указываем левый элемент join'а
         .outerjoin(
             Reaction,
             and_(
@@ -174,7 +177,9 @@ def get_with_stat(q):
         is_author = f"{q}".lower().startswith("select author")
         # is_topic = f"{q}".lower().startswith("select topic")
         result = []
-        add_stat_handler = add_author_stat_columns if is_author else add_topic_stat_columns
+        add_stat_handler = (
+            add_author_stat_columns if is_author else add_topic_stat_columns
+        )
         with local_session() as session:
             result = session.execute(add_stat_handler(q))
 

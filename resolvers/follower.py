@@ -11,8 +11,7 @@ from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import (author_follows_authors, author_follows_topics,
-                            get_with_stat)
+from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
 from services.auth import login_required
 from services.cache import DEFAULT_FOLLOWS, cache_follower
 from services.db import local_session
