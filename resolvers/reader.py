@@ -189,7 +189,6 @@ async def load_shouts_by(_, _info, options):
     q = q.limit(limit).offset(offset)
 
     shouts = []
-    logger.debug(q)
     with local_session() as session:
         for [
             shout,
@@ -263,7 +262,7 @@ async def load_shouts_feed(_, info, options):
             .offset(offset)
         )
 
-        # print(q.compile(compile_kwargs={"literal_binds": True}))
+        logger.debug(q.compile(compile_kwargs={"literal_binds": True}))
 
         for [
             shout,
