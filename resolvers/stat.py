@@ -15,18 +15,17 @@ def add_topic_stat_columns(q):
     q = q.outerjoin(aliased_shout).add_columns(
         func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
-    # Join the Topic table with the Author table
-    q = q.join(Author, TopicFollower.follower == Author.id)
     aliased_follower = aliased(TopicFollower)
     q = q.outerjoin(
-        aliased_follower, aliased_follower.follower == Author.id
+        aliased_follower, aliased_follower.topic_id == Topic.id
     ).add_columns(
-        func.count(distinct(aliased_follower.follower)).label("followers_stat")
+        func.count(distinct(aliased_follower.follower_id)).label("followers_stat")
     )
 
-    q = q.group_by(Author.id)
+    q = q.group_by(Topic.id)
 
     return q
+
 
 
 
