@@ -59,8 +59,7 @@ def apply_filters(q, filters, author_id=None):
                 ),
             )
 
-        by_featured = filters.get("featured")
-        if by_featured:
+        if filters.get("featured"):
             q = q.filter(Shout.featured_at.is_not(None))
         by_layouts = filters.get("layouts")
         if by_layouts:
@@ -190,6 +189,7 @@ async def load_shouts_by(_, _info, options):
     q = q.limit(limit).offset(offset)
 
     shouts = []
+    logger.debug(q)
     with local_session() as session:
         for [
             shout,
