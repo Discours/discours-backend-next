@@ -53,9 +53,12 @@ def apply_filters(q, filters, author_id=None):
         if filters.get("reacted"):
             q.join(Reaction, Reaction.created_by == author_id)
 
-        by_featured = filters.get("featured")
-        if by_featured:
-            q = q.filter(Shout.featured_at.is_not(None))
+        by_featured = filters.get("featured", "not set")
+        if isinstance(by_featured, bool):
+            if by_featured:
+                q = q.filter(Shout.featured_at.is_not(None))
+            else:
+                q = q.filter(Shout.featured_at.is_(None))
         by_layouts = filters.get("layouts")
         if by_layouts:
             q = q.filter(Shout.layout.in_(by_layouts))

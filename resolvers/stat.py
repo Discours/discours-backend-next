@@ -16,17 +16,13 @@ def add_topic_stat_columns(q):
         func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
     aliased_follower = aliased(TopicFollower)
-    q = q.outerjoin(
-        aliased_follower, aliased_follower.topic == Topic.id
-    ).add_columns(
+    q = q.outerjoin(aliased_follower, aliased_follower.topic == Topic.id).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
 
     q = q.group_by(Topic.id)
 
     return q
-
-
 
 
 def add_author_stat_columns(q):
@@ -115,6 +111,7 @@ def get_topic_comments_stat(topic_id: int):
 
     result = local_session().execute(q).first()
     return result[0] if result else 0
+
 
 def get_author_shouts_stat(author_id: int):
     aliased_shout_author = aliased(ShoutAuthor)
