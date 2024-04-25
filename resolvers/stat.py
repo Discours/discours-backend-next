@@ -17,7 +17,7 @@ def add_topic_stat_columns(q):
     )
     aliased_follower = aliased(TopicFollower)
     q = q.outerjoin(
-        aliased_follower, aliased_follower.topic_id == Topic.id
+        aliased_follower, aliased_follower.topic == Topic.id
     ).add_columns(
         func.count(distinct(aliased_follower.follower_id)).label("followers_stat")
     )
