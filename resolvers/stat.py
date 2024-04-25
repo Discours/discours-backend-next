@@ -16,7 +16,7 @@ def add_topic_stat_columns(q):
         func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
     # Join the Topic table with the Author table
-    q = q.join(Author, TopicFollower.author == Author.id)
+    q = q.join(Author, TopicFollower.follower == Author.id)
     aliased_follower = aliased(TopicFollower)
     q = q.outerjoin(
         aliased_follower, aliased_follower.follower == Author.id
