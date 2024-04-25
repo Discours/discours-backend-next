@@ -51,14 +51,17 @@ def filter_my(info, session, q):
 def apply_filters(q, filters, author_id=None):
     if isinstance(filters, dict):
         if filters.get("reacted"):
-            q.join(Reaction, Reaction.created_by == author_id)
+            q = q.join(
+                Reaction,
+                and_(
+                    Reaction.shout == Shout.id,
+                    Reaction.created_by == author_id,
+                ),
+            )
 
-        by_featured = filters.get("featured", "not set")
-        if isinstance(by_featured, bool):
-            if by_featured:
-                q = q.filter(Shout.featured_at.is_not(None))
-            else:
-                q = q.filter(Shout.featured_at.is_(None))
+        by_featured = filters.get("featured", "")
+        if isinstance(by_featured, bool) and by_featured:
+            q = q.filter(Shout.featured_at > Shout.published_at)
         by_layouts = filters.get("layouts")
         if by_layouts:
             q = q.filter(Shout.layout.in_(by_layouts))
