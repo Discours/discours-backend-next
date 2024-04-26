@@ -23,7 +23,7 @@ from services.search import search_service
 async def get_my_shout(_, info, shout_id: int):
     with local_session() as session:
         user_id = info.context.get("user_id", "")
-        author_dict = info.context["author"]
+        author_dict = info.context.get("author", {})
         author_id = author_dict.get("id")
         if not user_id:
             return {"error": "unauthorized", "shout": None}
