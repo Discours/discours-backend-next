@@ -35,7 +35,7 @@ class ViewedStorage:
     analytics_client: BetaAnalyticsDataClient | None = None
     auth_result = None
     disabled = False
-    start_date = str(int(time.time()))
+    start_date = datetime.now().strftime("%Y-%m-%d")
 
     @staticmethod
     async def init():
