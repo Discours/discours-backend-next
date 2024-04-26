@@ -31,7 +31,7 @@ async def get_my_shout(_, info, shout_id: int):
             session.query(Shout)
             .filter(Shout.id == shout_id)
             .options(joinedload(Shout.authors), joinedload(Shout.topics))
-            .filter(and_(Shout.deleted_at.is_(None), Shout.published_at.is_(None)))
+            .filter(Shout.deleted_at.is_(None))
             .first()
         )
         if not shout:
