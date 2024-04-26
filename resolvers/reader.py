@@ -80,62 +80,67 @@ def apply_filters(q, filters, author_id=None):
 
 @query.field("get_shout")
 async def get_shout(_, info, slug: str):
-    with local_session() as session:
-        q = query_shouts()
-        aliased_reaction = aliased(Reaction)
-        q = add_reaction_stat_columns(q, aliased_reaction)
-        q = q.filter(Shout.slug == slug)
-        q = q.group_by(Shout.id)
+    try:
+        with local_session() as session:
+            q = query_shouts()
+            aliased_reaction = aliased(Reaction)
+            q = add_reaction_stat_columns(q, aliased_reaction)
+            q = q.filter(Shout.slug == slug)
+            q = q.group_by(Shout.id)
 
-        results = session.execute(q).first()
-        if results:
-            [
-                shout,
-                reacted_stat,
-                commented_stat,
-                likes_stat,
-                dislikes_stat,
-                last_comment,
-            ] = results
+            results = session.execute(q).first()
+            if results:
+                [
+                    shout,
+                    reacted_stat,
+                    commented_stat,
+                    likes_stat,
+                    dislikes_stat,
+                    last_comment,
+                ] = results
 
-            shout.stat = {
-                "viewed": await ViewedStorage.get_shout(shout.slug),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                "last_comment": last_comment,
-            }
+                shout.stat = {
+                    "viewed": await ViewedStorage.get_shout(shout.slug),
+                    "reacted": reacted_stat,
+                    "commented": commented_stat,
+                    "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                    "last_comment": last_comment,
+                }
 
-            for author_caption in (
-                session.query(ShoutAuthor)
-                .join(Shout)
-                .where(
-                    and_(
-                        Shout.slug == slug,
-                        Shout.published_at.is_not(None),
-                        Shout.deleted_at.is_(None),
+                for author_caption in (
+                    session.query(ShoutAuthor)
+                    .join(Shout)
+                    .where(
+                        and_(
+                            Shout.slug == slug,
+                            Shout.published_at.is_not(None),
+                            Shout.deleted_at.is_(None),
+                        )
                     )
+                ):
+                    for author in shout.authors:
+                        if author.id == author_caption.author:
+                            author.caption = author_caption.caption
+                main_topic = (
+                    session.query(Topic.slug)
+                    .join(
+                        ShoutTopic,
+                        and_(
+                            ShoutTopic.topic == Topic.id,
+                            ShoutTopic.shout == shout.id,
+                            ShoutTopic.main.is_(True),
+                        ),
+                    )
+                    .first()
                 )
-            ):
-                for author in shout.authors:
-                    if author.id == author_caption.author:
-                        author.caption = author_caption.caption
-            main_topic = (
-                session.query(Topic.slug)
-                .join(
-                    ShoutTopic,
-                    and_(
-                        ShoutTopic.topic == Topic.id,
-                        ShoutTopic.shout == shout.id,
-                        ShoutTopic.main.is_(True),
-                    ),
-                )
-                .first()
-            )
 
-            if main_topic:
-                shout.main_topic = main_topic[0]
-            return shout
+                if main_topic:
+                    shout.main_topic = main_topic[0]
+                return shout
+    except Exception as _exc:
+        import traceback
+
+        logger.error(traceback.format_exc())
 
 
 @query.field("load_shouts_by")
