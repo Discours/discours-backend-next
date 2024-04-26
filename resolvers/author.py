@@ -310,7 +310,7 @@ async def get_author_followers(_, _info, slug: str):
                 results = get_with_stat(q)
                 if isinstance(results, list):
                     for follower in results:
-                        await cache_follower(follower, author)
+                        await cache_follower(follower.dict(), author.dict())
                     logger.debug(f"@{slug} cache updated with {len(results)} followers")
                 return results
             else:
