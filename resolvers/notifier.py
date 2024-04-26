@@ -8,7 +8,12 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import not_
 
 from orm.author import Author
-from orm.notification import Notification, NotificationAction, NotificationEntity, NotificationSeen
+from orm.notification import (
+    Notification,
+    NotificationAction,
+    NotificationEntity,
+    NotificationSeen,
+)
 from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session

@@ -172,24 +172,23 @@ def get_with_stat(q):
         is_author = f"{q}".lower().startswith("select author")
         # is_topic = f"{q}".lower().startswith("select topic")
         result = []
-        add_stat_handler = (
-            add_author_stat_columns if is_author else add_topic_stat_columns
-        )
+        if is_author:
+            q = add_author_stat_columns(q)
+        else:
+            q = add_topic_stat_columns(q)
         with local_session() as session:
-            result = session.execute(add_stat_handler(q))
+            result = session.execute(q)
 
             for cols in result:
                 entity = cols[0]
                 stat = dict()
                 stat["shouts"] = cols[1]
                 stat["followers"] = cols[2]
-                stat["authors"] = (
-                    get_author_authors_stat(entity.id)
-                    if is_author
-                    else get_topic_authors_stat(entity.id)
-                )
                 if is_author:
+                    stat["authors"] = get_author_authors_stat(entity.id)
                     stat["comments"] = get_author_comments_stat(entity.id)
+                else:
+                    stat["authors"] = get_topic_authors_stat(entity.id)
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:

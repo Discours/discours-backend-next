@@ -3,7 +3,6 @@ import time
 
 from sqlalchemy import and_, desc, or_, select, text
 from sqlalchemy.orm import aliased
-from sqlalchemy_searchable import search
 
 from orm.author import Author, AuthorFollower
 from orm.shout import ShoutAuthor, ShoutTopic
@@ -323,9 +322,3 @@ async def get_author_followers(_, _info, slug: str):
         logger.error(exc)
         logger.error(traceback.format_exc())
         return []
-
-
-@query.field("search_authors")
-async def search_authors(_, _info, what: str):
-    q = search(select(Author), what)
-    return get_with_stat(q)

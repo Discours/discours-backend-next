@@ -4,7 +4,7 @@ type Query {
   get_author_id(user: String!): Author
   get_authors_all: [Author]
   load_authors_by(by: AuthorsBy!, limit: Int, offset: Int): [Author]
-  search_authors(what: String!): [Author]
+  # search_authors(what: String!): [Author]
 
   # community
   get_community: Community

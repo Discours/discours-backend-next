@@ -9,10 +9,12 @@ from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc,
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
-from sqlalchemy_searchable import make_searchable
 
 from services.logger import root_logger as logger
 from settings import DB_URL
+
+# from sqlalchemy_searchable import make_searchable
+
 
 # Подключение к базе данных SQLAlchemy
 engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
@@ -69,7 +71,7 @@ class Base(declarative_base()):
                 setattr(self, key, value)
 
 
-make_searchable(Base.metadata)
+# make_searchable(Base.metadata)
 Base.metadata.create_all(bind=engine)
 
 

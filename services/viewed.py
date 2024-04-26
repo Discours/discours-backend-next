@@ -7,7 +7,12 @@ from typing import Dict
 
 # ga
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
+from google.analytics.data_v1beta.types import (
+    DateRange,
+    Dimension,
+    Metric,
+    RunReportRequest,
+)
 
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
@@ -59,10 +64,9 @@ class ViewedStorage:
         self = ViewedStorage
         try:
             if os.path.exists(VIEWS_FILEPATH):
-                self.file_modification_timestamp = os.path.getmtime(VIEWS_FILEPATH)
-                self.start_date = datetime.fromtimestamp(
-                    self.file_modification_timestamp
-                ).strftime("%Y-%m-%d")
+                start_date_int = os.path.getmtime(VIEWS_FILEPATH)
+                start_date_str = datetime.fromtimestamp(start_date_int).strftime('%Y-%m-%d')
+                self.start_date = start_date_str
                 now_date = datetime.now().strftime("%Y-%m-%d")
 
                 if now_date == self.start_date:
