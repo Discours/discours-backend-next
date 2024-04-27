@@ -65,7 +65,9 @@ class ViewedStorage:
         try:
             if os.path.exists(VIEWS_FILEPATH):
                 start_date_int = os.path.getmtime(VIEWS_FILEPATH)
-                start_date_str = datetime.fromtimestamp(start_date_int).strftime('%Y-%m-%d')
+                start_date_str = datetime.fromtimestamp(start_date_int).strftime(
+                    "%Y-%m-%d"
+                )
                 self.start_date = start_date_str
                 now_date = datetime.now().strftime("%Y-%m-%d")
 
