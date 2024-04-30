@@ -21,12 +21,12 @@ from services.search import search_service
 @query.field("get_my_shout")
 @login_required
 async def get_my_shout(_, info, shout_id: int):
+    user_id = info.context.get("user_id", "")
+    author_dict = info.context.get("author", {})
+    author_id = author_dict.get("id")
+    if not user_id or not author_id:
+        return {"error": "unauthorized", "shout": None}
     with local_session() as session:
-        user_id = info.context.get("user_id", "")
-        author_dict = info.context.get("author", {})
-        author_id = author_dict.get("id")
-        if not user_id:
-            return {"error": "unauthorized", "shout": None}
         shout = (
             session.query(Shout)
             .filter(Shout.id == shout_id)
@@ -41,7 +41,9 @@ async def get_my_shout(_, info, shout_id: int):
                 return {"error": "no author found", "shout": None}
             roles = info.context.get("roles", [])
             is_editor = "editor" in roles
+            logger.debug('viewer is editor')
             is_author = filter(lambda x: x.id == int(author_id), [x for x in shout.authors])
+            logger.debug('viewer is author')
             can_edit = is_editor or is_author
             if not can_edit:
                 return {"error": "forbidden", "shout": None}
