@@ -145,12 +145,22 @@ def load_authors_by(_, _info, by, limit, offset):
         q = q.filter(Author.created_at > before)
 
     order = by.get("order")
-    if order in ["likes", "shouts", "followers"]:
+    if order in ["shouts", "followers"]:
         q = q.order_by(desc(text(f"{order}_stat")))
 
     q = q.limit(limit).offset(offset)
 
-    authors = get_with_stat(q)
+    authors_nostat = local_session().session(q)
+    authors = []
+    if authors_nostat:
+        for [a] in authors_nostat:
+            if isinstance(a, Author):
+                author_id = a.id
+                if author_id:
+                    cached_result = await redis.execute("GET", f"author:{author_id}")
+                    if isinstance(cached_result, str):
+                        author_dict = json.loads(cached_result)
+                        authors.append(author_dict)
 
     return authors
 
