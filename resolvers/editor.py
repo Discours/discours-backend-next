@@ -40,9 +40,10 @@ async def get_my_shout(_, info, shout_id: int):
             if not author_id:
                 return {"error": "no author found", "shout": None}
             roles = info.context.get("roles", [])
-            if "editor" not in roles and not filter(
-                lambda x: x.id == int(author_id), [x for x in shout.authors]
-            ):
+            is_editor = "editor" in roles
+            is_author = filter(lambda x: x.id == int(author_id), [x for x in shout.authors])
+            can_edit = is_editor or is_author
+            if not can_edit:
                 return {"error": "forbidden", "shout": None}
         return {"error": None, "shout": shout}
 
