@@ -23,7 +23,7 @@ type Query {
   load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
 
   # reader
-  get_shout(slug: String, shout_id: Int): Shout
+  get_shout(slug: String): Shout
   load_shouts_by(options: LoadShoutsOptions): [Shout]
   load_shouts_search(text: String!, limit: Int, offset: Int): [SearchResult]
   load_shouts_feed(options: LoadShoutsOptions): [Shout]
