@@ -15,8 +15,9 @@ async def get_author_by_user(user: str):
     result = await redis.execute("GET", redis_key)
     if isinstance(result, str):
         author = json.loads(result)
-
-    return author
+        if author:
+            return author
+    return
 
 
 async def request_data(gql, headers=None):
@@ -99,6 +100,8 @@ def login_required(f):
             info.context["user_id"] = user_id.strip()
             info.context["roles"] = user_roles
             author = await get_author_by_user(user_id)
+            if not author:
+                logger.error(f'author profile not found for user {user_id}')
             info.context["author"] = author
         return await f(*args, **kwargs)
 
