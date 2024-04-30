@@ -50,8 +50,12 @@ async def get_my_shout(_, info, shout_id: int):
 @query.field("get_shouts_drafts")
 @login_required
 async def get_shouts_drafts(_, info):
-    info.context.get("user_id")
-    author_dict = info.context["author"]
+    # user_id = info.context.get("user_id")
+    author_dict = info.context.get("author")
+    if not author_dict:
+        logger.error("trying to get drafts failed")
+        logger.debug(info)
+        return []
     author_id = author_dict.get("id")
     shouts = []
     with local_session() as session:
