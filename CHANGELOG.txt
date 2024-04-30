@@ -1,3 +1,6 @@
+[0.3.4]
+- load_authors_by from cache
+
 [0.3.3]
 - feat: sentry integration enabled with glitchtip
 - fix: reindex on update shout

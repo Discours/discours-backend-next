@@ -122,7 +122,7 @@ async def get_author_id(_, _info, user: str):
 
 
 @query.field("load_authors_by")
-def load_authors_by(_, _info, by, limit, offset):
+async def load_authors_by(_, _info, by, limit, offset):
     logger.debug(f"loading authors by {by}")
     q = select(Author)
     if by.get("slug"):
