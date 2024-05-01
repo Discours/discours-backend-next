@@ -60,11 +60,12 @@ def apply_filters(q, filters, author_id=None):
             )
 
         featured_filter = filters.get("featured", "")
-        if isinstance(featured_filter, bool):
-            if featured_filter:
-                q = q.filter(Shout.featured_at.is_not(None))
-            else:
-                q = q.filter(Shout.featured_at.is_(None))
+        if featured_filter:
+            q = q.filter(Shout.featured_at.is_not(None))
+        elif "featured" in filters:
+            q = q.filter(Shout.featured_at.is_(None))
+        else:
+            pass
         by_layouts = filters.get("layouts")
         if by_layouts and isinstance(by_layouts, list):
             q = q.filter(Shout.layout.in_(by_layouts))
