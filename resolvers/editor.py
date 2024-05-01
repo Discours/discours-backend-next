@@ -40,7 +40,7 @@ async def get_my_shout(_, info, shout_id: int):
         if not shout:
             return {"error": "no shout found", "shout": None}
 
-        logger.debug('got shout')
+        logger.debug(f'got shout authors: {shout.authors} created by {shout.created_by}')
         is_editor = "editor" in roles
         logger.debug(f'viewer is{'' if is_editor else ' not'} editor')
         is_creator = author_id == shout.created_by
