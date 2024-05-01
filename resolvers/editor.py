@@ -25,6 +25,8 @@ async def get_my_shout(_, info, shout_id: int):
     user_id = info.context.get("user_id", "")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
+    roles = info.context.get("roles", [])
+    shout = None
     if not user_id or not author_id:
         return {"error": "unauthorized", "shout": None}
     with local_session() as session:
@@ -37,17 +39,20 @@ async def get_my_shout(_, info, shout_id: int):
         )
         if not shout:
             return {"error": "no shout found", "shout": None}
-        if not bool(shout.published_at):
-            if not author_id:
-                return {"error": "no author found", "shout": None}
-            roles = info.context.get("roles", [])
-            is_editor = "editor" in roles
-            logger.debug('viewer is editor')
-            is_author = filter(lambda x: x.id == int(author_id), [x for x in shout.authors])
-            logger.debug('viewer is author')
-            can_edit = is_editor or is_author
-            if not can_edit:
-                return {"error": "forbidden", "shout": None}
+
+        logger.debug('got shout')
+        is_editor = "editor" in roles
+        logger.debug('viewer is editor')
+        is_creator = author_id == shout.created_by
+        logger.debug('viewer is creator')
+        is_author = filter(lambda x: x.id == int(author_id), [x for x in shout.authors])
+        logger.debug('viewer is author')
+        can_edit = is_editor or is_author or is_creator
+
+        if not can_edit:
+            return {"error": "forbidden", "shout": None}
+
+        logger.debug('got shout editor with data')
         return {"error": None, "shout": shout}
 
 
