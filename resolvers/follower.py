@@ -49,11 +49,11 @@ async def follow(_, info, what, slug):
                 [author] = result
                 if author:
                     author_dict = author.dict()
-                    await cache_follower(follower_dict, author_dict)
-                    await notify_follower(follower_dict, author.id, "follow")
-                    if not any(a["id"] == author.id for a in follows):
-                        if author_dict not in follows:
-                            follows.append(author_dict)
+                    follows_ids = [a.id for a in follows]
+                    if author.id not in follows_ids:
+                        await cache_follower(follower_dict, author_dict)
+                        await notify_follower(follower_dict, author.id, "follow")
+                        follows.append(author_dict)
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)
@@ -93,10 +93,10 @@ async def unfollow(_, info, what, slug):
             author = local_session().query(Author).where(Author.slug == slug).first()
             if isinstance(author, Author):
                 author_dict = author.dict()
-                await cache_follower(follower_dict, author_dict, False)
-                await notify_follower(follower_dict, author.id, "unfollow")
                 for idx, item in enumerate(follows):
                     if item["id"] == author.id:
+                        await cache_follower(follower_dict, author_dict, False)
+                        await notify_follower(follower_dict, author.id, "unfollow")
                         follows.pop(idx)  # Remove the author_dict from the follows list
                         break
 
