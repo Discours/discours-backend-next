@@ -101,7 +101,7 @@ def login_required(f):
             info.context["roles"] = user_roles
             author = await get_author_by_user(user_id)
             if not author:
-                logger.error(f'author profile not found for user {user_id}')
+                logger.error(f"author profile not found for user {user_id}")
             info.context["author"] = author
         return await f(*args, **kwargs)
 

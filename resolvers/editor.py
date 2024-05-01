@@ -40,19 +40,23 @@ async def get_my_shout(_, info, shout_id: int):
         if not shout:
             return {"error": "no shout found", "shout": None}
 
-        logger.debug(f'got shout authors: {shout.authors} created by {shout.created_by}')
+        logger.debug(
+            f"got shout authors: {shout.authors} created by {shout.created_by}"
+        )
         is_editor = "editor" in roles
         logger.debug(f'viewer is{'' if is_editor else ' not'} editor')
         is_creator = author_id == shout.created_by
         logger.debug(f'viewer is{'' if is_creator else ' not'} creator')
-        is_author = bool(list(filter(lambda x: x.id == int(author_id), [x for x in shout.authors])))
+        is_author = bool(
+            list(filter(lambda x: x.id == int(author_id), [x for x in shout.authors]))
+        )
         logger.debug(f'viewer is{'' if is_creator else ' not'} author')
         can_edit = is_editor or is_author or is_creator
 
         if not can_edit:
             return {"error": "forbidden", "shout": None}
 
-        logger.debug('got shout editor with data')
+        logger.debug("got shout editor with data")
         return {"error": None, "shout": shout}
 
 
