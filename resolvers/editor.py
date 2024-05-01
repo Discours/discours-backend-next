@@ -21,6 +21,7 @@ from services.search import search_service
 @query.field("get_my_shout")
 @login_required
 async def get_my_shout(_, info, shout_id: int):
+    logger.debug(info)
     user_id = info.context.get("user_id", "")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
