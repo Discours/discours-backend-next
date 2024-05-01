@@ -48,10 +48,12 @@ async def follow(_, info, what, slug):
             if result:
                 [author] = result
                 if author:
-                    await cache_follower(follower_dict, author.dict())
+                    author_dict = author.dict()
+                    await cache_follower(follower_dict, author_dict)
                     await notify_follower(follower_dict, author.id, "follow")
                     if not any(a["id"] == author.id for a in follows):
-                        follows.append(author.dict())
+                        if author_dict not in follows:
+                            follows.append(author_dict)
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)
@@ -90,7 +92,8 @@ async def unfollow(_, info, what, slug):
             logger.info(f"@{follower_dict.get('slug')} unfollowed @{slug}")
             author = local_session().query(Author).where(Author.slug == slug).first()
             if isinstance(author, Author):
-                await cache_follower(follower_dict, author.dict(), False)
+                author_dict = author.dict()
+                await cache_follower(follower_dict, author_dict, False)
                 await notify_follower(follower_dict, author.id, "unfollow")
                 for idx, item in enumerate(follows):
                     if item["id"] == author.id:
