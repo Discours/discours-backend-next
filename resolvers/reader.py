@@ -59,10 +59,14 @@ def apply_filters(q, filters, author_id=None):
                 ),
             )
 
-        if filters.get("featured"):
-            q = q.filter(Shout.featured_at.is_not(None))
+        featured_filter = filters.get("featured", "")
+        if isinstance(featured_filter, bool):
+            if featured_filter:
+                q = q.filter(Shout.featured_at.is_not(None))
+            else:
+                q = q.filter(Shout.featured_at.is_(None))
         by_layouts = filters.get("layouts")
-        if by_layouts:
+        if by_layouts and isinstance(by_layouts, list):
             q = q.filter(Shout.layout.in_(by_layouts))
         by_author = filters.get("author")
         if by_author:
@@ -181,7 +185,7 @@ async def load_shouts_by(_, _info, options):
     # order
     order_by = Shout.featured_at if filters.get("featured") else Shout.published_at
     order_str = options.get("order_by")
-    if order_str in ["likes", "shouts", "followers", "comments", "last_comment"]:
+    if order_str in ["likes", "followers", "comments", "last_comment"]:
         q = q.order_by(desc(text(f"{order_str}_stat")))
     query_order_by = (
         desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
