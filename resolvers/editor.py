@@ -67,7 +67,7 @@ async def get_shouts_drafts(_, info):
     author_dict = info.context.get("author")
     if not author_dict:
         logger.error("trying to get drafts failed")
-        logger.debug(info)
+        # logger.debug(info)
         return []
     author_id = author_dict.get("id")
     shouts = []
