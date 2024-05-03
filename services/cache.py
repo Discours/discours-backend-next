@@ -1,7 +1,10 @@
 import json
 
+
+from orm.topic import TopicFollower
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
+from services.db import local_session
 
 DEFAULT_FOLLOWS = {
     "topics": [],
@@ -118,3 +121,43 @@ async def cache_follower(follower: dict, author: dict, is_insert=True):
                 author["stat"]["followers"] = len(followers)
                 await cache_author(author)
     return followers
+
+
+async def cache_topic(topic_dict: str):
+    # update stat all field for followers' caches in <topics> list
+    followers = (
+        local_session()
+        .query(TopicFollower)
+        .filter(TopicFollower.topic == topic_dict.get("id"))
+        .all()
+    )
+    for tf in followers:
+        follower_id = tf.follower
+        follower_follows_topics = []
+        follower_follows_topics_str = await redis.execute(
+            "GET", f"author:{follower_id}:follows-topics"
+        )
+        if isinstance(follower_follows_topics, str):
+            follower_follows_topics = json.loads(follower_follows_topics_str)
+            c = 0
+            for old_topic in follower_follows_topics:
+                if int(old_topic.get("id")) == int(topic_dict.get("id", 0)):
+                    follower_follows_topics[c] = topic_dict
+                    break  # exit the loop since we found and updated the topic
+                c += 1
+        else:
+            # topic not found in the list, so add the new topic with the updated stat field
+            follower_follows_topics.append(topic_dict)
+
+        await redis.set(
+            "SET",
+            f"author:{follower_id}:follows-topics",
+            json.dumps(follower_follows_topics),
+        )
+
+    # update topic's stat
+    topic_dict["stat"]["followers"] = len(followers)
+
+    # save in cache
+    payload = json.dumps(topic_dict, cls=CustomJSONEncoder)
+    await redis.execute("SET", f'topic:{topic_dict.get("slug")}', payload)
