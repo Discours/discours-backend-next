@@ -182,7 +182,7 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
         q = q.filter(Reaction.reply_to == reply_to)
     rating_reactions = session.execute(q).all()
     same_rating = filter(
-        lambda r: r.created_by == author_id and r.kind == opposite_kind,
+        lambda r: r.created_by == author_id and r.kind == kind,
         rating_reactions,
     )
     opposite_rating = filter(
