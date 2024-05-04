@@ -150,7 +150,7 @@ async def load_authors_by(_, _info, by, limit, offset):
 
     q = q.limit(limit).offset(offset)
 
-    authors_nostat = local_session().session(q)
+    authors_nostat = local_session().execute(q)
     authors = []
     if authors_nostat:
         for [a] in authors_nostat:

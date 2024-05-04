@@ -175,26 +175,28 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
             Reaction.shout == shout_id,
             Reaction.created_by == author_id,
             Reaction.kind.in_(RATING_REACTIONS),
+            Reaction.deleted_at.is_not(None),
         )
     )
     reply_to = reaction.get("reply_to")
     if reply_to and isinstance(reply_to, int):
         q = q.filter(Reaction.reply_to == reply_to)
     rating_reactions = session.execute(q).all()
-    same_rating = filter(
-        lambda r: r.created_by == author_id and r.kind == kind,
-        rating_reactions,
-    )
-    opposite_rating = filter(
-        lambda r: r.created_by == author_id and r.kind == opposite_kind,
-        rating_reactions,
-    )
-    if same_rating:
-        return {"error": "You can't rate the same thing twice"}
-    elif opposite_rating:
-        return {"error": "Remove opposite vote first"}
-    elif filter(lambda r: r.created_by == author_id, rating_reactions):
-        return {"error": "You can't rate your own thing"}
+    if rating_reactions:
+        same_rating = filter(
+            lambda r: r.created_by == author_id and r.kind == kind,
+            rating_reactions,
+        )
+        opposite_rating = filter(
+            lambda r: r.created_by == author_id and r.kind == opposite_kind,
+            rating_reactions,
+        )
+        if same_rating:
+            return {"error": "You can't rate the same thing twice"}
+        elif opposite_rating:
+            return {"error": "Remove opposite vote first"}
+        elif filter(lambda r: r.created_by == author_id, rating_reactions):
+            return {"error": "You can't rate your own thing"}
     return
 
 
