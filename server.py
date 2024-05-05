@@ -1,4 +1,3 @@
-import subprocess
 from granian.constants import Interfaces
 from granian.server import Granian
 
@@ -13,15 +12,12 @@ def is_docker_container_running(name):
 if __name__ == "__main__":
     logger.info("started")
 
-    if is_docker_container_running('uploader'):
-        granian_instance = Granian(
-            "main:app",
-            address="0.0.0.0",  # noqa S104
-            port=PORT,
-            threads=4,
-            websockets=False,
-            interface=Interfaces.ASGI,
-        )
-        granian_instance.serve()
-    else:
-        logger.info("'uploader' is not running. But very needed !!! \(^.^'\)")
+    granian_instance = Granian(
+        "main:app",
+        address="0.0.0.0",  # noqa S104
+        port=PORT,
+        threads=4,
+        websockets=False,
+        interface=Interfaces.ASGI,
+    )
+    granian_instance.serve()
