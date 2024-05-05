@@ -1,0 +1,35 @@
+root@v2:~/robo_script# dokku config:show discoursio-api
+=====> discoursio-api env vars
+ACKEE_TOKEN:             f69b4a62-79db-49f5-b8a1-4e157d4079b8
+BACKEND_URL:             https://v2.discours.io
+CDN_DOMAIN:              cdn.discours.io
+COOKIE_DOMAIN:           .discours.io
+DATABASE_URL:            postgresql://postgres:ea4a46965ec298f75e4a28bb2057823e@172.17.0.9:5432/discoursio_db_2024_04_21
+DOKKU_APP_RESTORE:       1
+DOKKU_APP_TYPE:          dockerfile
+DOKKU_DOCKERFILE_PORTS:  8080
+DOKKU_PROXY_PORT:        80
+DOKKU_PROXY_SSL_PORT:    443
+FACEBOOK_OAUTH_ID:       1140141389943829
+FACEBOOK_OAUTH_KEY:      4e9db2db988151b403a43a554065d23b
+FRONTEND_URL:            https://discoursio-webapp-git-feature-googleoauth-discoursio.vercel.app/
+GITHUB_OAUTH_ID:         b285bf5ed53a2bceb899
+GITHUB_OAUTH_KEY:        b374027774e439123179265314aabf646fea1a55
+GIT_REV:                 fbd0e03a3396ec5d1e8c5a0cc658467cec566a6c
+GOOGLE_OAUTH_ID:         648983473866-2hd6v2eqqk6hhqabfhuqq2slb2fkfvve.apps.googleusercontent.com
+GOOGLE_OAUTH_KEY:        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
+JWT_SECRET_KEY:          03vntirucmw309p4p8tvuca0w4
+MAILGUN_API_KEY:         key-ab6609e797cf6bea695c39079d5e1dba
+MAILGUN_DOMAIN:          discours.io
+OAUTH_CALLBACK_URL:      https://new.discours.io/confirm
+OAUTH_REDIRECT_URL:      https://v2.discours.io/oauth-authorize
+REDIS_URL:               redis://:a932edc3ec57b3df7bc3120473774b500c0ec6174e08654434986ec3f77b3e49@dokku-redis-discoursio-redis:6379
+SENTRY_DSN:              https://b537b9504258427dae86502e2bb9c4ce@glitchtip.discours.io/2
+SENTRY_ID:               393bd0b9713245089fb2c1df0e45cbfc
+SESSION_SECRET_KEY:      PwMhr8e5ZneKuNe5
+STORJ_ACCESS_KEY:        jwroxpcugy4x2t7f2zghgsqnwvaq
+STORJ_BUCKET_NAME:       discours-io
+STORJ_END_POINT:         https://gateway.storjshare.io
+STORJ_SECRET_KEY:        jyo6b2xc3bd65u3vw7x3gm3f3gcu4khmdrtaz2sxaez44wsd2zyum
+VK_OAUTH_ID:             55L7N3U8SilJWaE1kEwr
+VK_OAUTH_KEY:            782c7cce782c7cce782c7cce337b3df5447782c782c7cce1b549757d0c219fb895bde1d
