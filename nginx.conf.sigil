@@ -65,8 +65,8 @@ server {
     }
 
     # Custom location block for /upload
-    location /connect/ {
-        http://uploader-8080/;
+    location /upload/ {
+        proxy_pass http://uploader-8080/;
         {{ $proxy_settings }}
         {{ $gzip_settings }}
         {{ $cors_headers_options }}
