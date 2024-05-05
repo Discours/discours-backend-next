@@ -32,7 +32,7 @@ jobs:
           host: staging.discours.io
           username: dokku
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: dokku ps:report uploader | grep 'Processes:' | awk '{print $2}' | grep '^1$'
+          script: ps:report uploader | grep 'Processes:' | awk '{print $2}' | grep '^1$'
 
       - name: Push to dokku for dev branch
         if: github.ref == 'refs/heads/dev' && steps.check_container.outcome == 'success'
