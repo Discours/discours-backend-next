@@ -13,7 +13,7 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
 from services.auth import login_required
-from services.cache import DEFAULT_FOLLOWS, cache_follower, cache_topic
+from services.cache import DEFAULT_FOLLOWS, cache_author, cache_topic
 from services.db import local_session
 from services.logger import root_logger as logger
 from services.notify import notify_follower
@@ -30,8 +30,10 @@ async def cache_by_slug(what: str, slug: str):
         return
 
     d = x.dict()  # convert object to dictionary
-    cache_handler = cache_follower if is_author else cache_topic
-    await cache_handler(d)
+    if is_author:
+        await cache_author(d)
+    else:
+        await cache_topic(d)
     return d
 
 
@@ -59,12 +61,14 @@ async def follow(_, info, what, slug):
         error = author_follow(follower_id, slug)
         if not error:
             author_dict = await cache_by_slug(what, slug)
-            author_id = author_dict.get("id")
-            follows_ids = [a.id for a in follows]
-            if author_id not in follows_ids:
-                await cache_follower(follower_dict, author_dict)
-                await notify_follower(follower_dict, author_id, "follow")
-                follows.append(author_dict)
+            if isinstance(author_dict, dict):
+                author_id = author_dict.get("id")
+                if author_id:
+                    follows_ids = [a.id for a in follows]
+                    if author_id not in follows_ids:
+                        await cache_author(follower_dict)
+                        await notify_follower(follower_dict, author_id, "follow")
+                        follows.append(author_dict)
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)
@@ -109,13 +113,17 @@ async def unfollow(_, info, what, slug):
         if not error:
             logger.info(f"@{follower_dict.get('slug')} unfollowed @{slug}")
             author_dict = await cache_by_slug(what, slug)
-            author_id = author_dict.get("id")
-            for idx, item in enumerate(follows):
-                if item["id"] == author_id:
-                    await cache_follower(follower_dict, author_dict, False)
-                    await notify_follower(follower_dict, author_id, "unfollow")
-                    follows.pop(idx)  # Remove the author_dict from the follows list
-                    break
+            if isinstance(author_dict, dict):
+                author_id = author_dict.get("id")
+                if author_id:
+                    for idx, item in enumerate(follows):
+                        if item["id"] == author_id:
+                            await cache_author(follower_dict)
+                            await notify_follower(follower_dict, author_id, "unfollow")
+                            follows.pop(
+                                idx
+                            )  # Remove the author_dict from the follows list
+                            break
 
     elif what == "TOPIC":
         error = topic_unfollow(follower_id, slug)

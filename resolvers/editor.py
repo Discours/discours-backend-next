@@ -8,14 +8,33 @@ from orm.rating import is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
+from orm.author import Author
 from resolvers.follower import reactions_follow, reactions_unfollow
+from resolvers.stat import get_with_stat
 from services.auth import login_required
+from services.cache import cache_topic, cache_author
 from services.db import local_session
 from services.diff import apply_diff, get_diff
 from services.logger import root_logger as logger
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
+
+
+async def cache_by_id(what: str, entity_id: int):
+    is_author = what == "AUTHOR"
+    alias = Author if is_author else Topic
+    q = select(alias).filter(alias.id == entity_id)
+    [x] = get_with_stat(q)
+    if not x:
+        return
+
+    d = x.dict()  # convert object to dictionary
+    if is_author:
+        await cache_author(d)
+    else:
+        await cache_topic(d)
+    return d
 
 
 @query.field("get_my_shout")
@@ -280,6 +299,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     if topics_input:
                         patch_topics(session, shout_by_id, topics_input)
                         del shout_input["topics"]
+                        for tpc in topics_input:
+                            await cache_by_id("TOPIC", tpc["id"])
 
                     # main topic
                     main_topic = shout_input.get("main_topic")
@@ -300,6 +321,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         await notify_shout(shout_dict, "published")
                         # search service indexing
                         search_service.index(shout_by_id)
+                        for a in shout_by_id.authors:
+                            await cache_by_id("AUTHOR", a.id)
 
                     return {"shout": shout_dict, "error": None}
                 else:
@@ -331,13 +354,18 @@ async def delete_shout(_, info, shout_id: int):
             shout_dict = shout.dict()
             # NOTE: only owner and editor can mark the shout as deleted
             if shout_dict["created_by"] == author_id or "editor" in roles:
-                for author_id in shout.authors:
-                    reactions_unfollow(author_id, shout_id)
-
                 shout_dict["deleted_at"] = int(time.time())
                 Shout.update(shout, shout_dict)
                 session.add(shout)
                 session.commit()
+
+                for author_id in shout.authors:
+                    reactions_unfollow(author_id, shout_id)
+                    await cache_by_id("AUTHOR", author_id)
+
+                for topic_id in shout.topics:
+                    await cache_by_id("TOPIC", topic_id)
+
                 await notify_shout(shout_dict, "delete")
                 return {"error": None}
             else:

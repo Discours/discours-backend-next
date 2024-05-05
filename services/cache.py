@@ -123,7 +123,7 @@ async def cache_follower(follower: dict, author: dict, is_insert=True):
     return followers
 
 
-async def cache_topic(topic_dict: str):
+async def cache_topic(topic_dict: dict):
     # update stat all field for followers' caches in <topics> list
     followers = (
         local_session()
