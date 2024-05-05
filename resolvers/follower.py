@@ -64,7 +64,7 @@ async def follow(_, info, what, slug):
             if isinstance(author_dict, dict):
                 author_id = author_dict.get("id")
                 if author_id:
-                    follows_ids = [a.id for a in follows]
+                    follows_ids = [a.get('id') for a in follows]
                     if author_id not in follows_ids:
                         await cache_author(follower_dict)
                         await notify_follower(follower_dict, author_id, "follow")
