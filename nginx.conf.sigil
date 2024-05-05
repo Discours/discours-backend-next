@@ -27,6 +27,7 @@ server {
         server_name {{ $.NOSSL_SERVER_NAME }};
         access_log  /var/log/nginx/{{ $.APP }}-access.log;
         error_log   /var/log/nginx/{{ $.APP }}-error.log;
+        client_max_body_size 100M;
 
     {{ else if eq $scheme "https" }}
         listen [::]:{{ $listen_port }} ssl http2;
@@ -43,6 +44,7 @@ server {
         keepalive_requests 500;
         proxy_read_timeout 3600;
         limit_conn addr 1000;
+        client_max_body_size 100M;
     {{ end }}
 
 
