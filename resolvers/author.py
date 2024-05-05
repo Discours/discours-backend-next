@@ -156,7 +156,7 @@ async def load_authors_by(_, _info, by, limit, offset):
         for [a] in authors_nostat:
             if isinstance(a, Author):
                 author_id = a.id
-                if author_id:
+                if bool(author_id):
                     cached_result = await redis.execute("GET", f"author:{author_id}")
                     if isinstance(cached_result, str):
                         author_dict = json.loads(cached_result)
@@ -187,12 +187,12 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
                 author_id = author.id if not author_id else author_id
                 topics = []
                 authors = []
-                if author_id:
+                if bool(author_id):
                     rkey = f"author:{author_id}:follows-authors"
                     logger.debug(f"getting {author_id} follows authors")
                     cached = await redis.execute("GET", rkey)
                     if not cached:
-                        authors = author_follows_authors(author_id)
+                        authors = author_follows_authors(author_id) # type: ignore
                         prepared = [author.dict() for author in authors]
                         await redis.execute(
                             "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)
@@ -205,7 +205,7 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
                     if cached and isinstance(cached, str):
                         topics = json.loads(cached)
                     if not cached:
-                        topics = author_follows_topics(author_id)
+                        topics = author_follows_topics(author_id) # type: ignore
                         prepared = [topic.dict() for topic in topics]
                         await redis.execute(
                             "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)

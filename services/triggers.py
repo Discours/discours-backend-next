@@ -109,34 +109,35 @@ def after_author_update(_mapper, _connection, author: Author):
     result = get_with_stat(q)
     if result:
         [author_with_stat] = result
-        asyncio.create_task(cache_author(author_with_stat.dict()))
+        if author_with_stat:
+            _task = asyncio.create_task(cache_author(author_with_stat.dict()))
 
 
 def after_topic_follower_insert(_mapper, _connection, target: TopicFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_topic_follower_change(target.topic, target.follower, True)
+        handle_topic_follower_change(target.topic, target.follower, True) # type: ignore
     )
 
 
 def after_topic_follower_delete(_mapper, _connection, target: TopicFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_topic_follower_change(target.topic, target.follower, False)
+        handle_topic_follower_change(target.topic, target.follower, False) # type: ignore
     )
 
 
 def after_author_follower_insert(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, True)
+        handle_author_follower_change(target.author, target.follower, True) # type: ignore
     )
 
 
 def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, False)
+        handle_author_follower_change(target.author, target.follower, False) # type: ignore
     )
 
 

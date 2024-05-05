@@ -51,10 +51,7 @@ async def follow(_, info, what, slug):
     follows = []
     follows_str = await redis.execute("GET", f"author:{follower_id}:follows-{entity}s")
     if isinstance(follows_str, str):
-        follows = json.loads(follows_str)
-
-    if not follows:
-        return {"error": "cant find following cache"}
+        follows = json.loads(follows_str) or []
 
     if what == "AUTHOR":
         follower_id = int(follower_id)
@@ -105,7 +102,7 @@ async def unfollow(_, info, what, slug):
     follows = []
     follows_str = await redis.execute("GET", f"author:{follower_id}:follows-{entity}s")
     if isinstance(follows_str, str):
-        follows = json.loads(follows_str)
+        follows = json.loads(follows_str) or []
 
     if what == "AUTHOR":
         error = author_unfollow(follower_id, slug)
