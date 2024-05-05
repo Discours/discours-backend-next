@@ -2,7 +2,6 @@ import json
 import time
 from typing import List
 
-from psycopg2.errors import UniqueViolation
 from sqlalchemy import or_, select
 from sqlalchemy.sql import and_
 
@@ -176,12 +175,9 @@ def topic_follow(follower_id, slug):
             topic = session.query(Topic).where(Topic.slug == slug).one()
             _following = TopicFollower(topic=topic.id, follower=follower_id)
         return None
-    except UniqueViolation as error:
+    except Exception as error:
         logger.warn(error)
-        return "already followed"
-    except Exception as exc:
-        logger.error(exc)
-        return exc
+        return "cant follow"
 
 
 def topic_unfollow(follower_id, slug):
@@ -197,12 +193,9 @@ def topic_unfollow(follower_id, slug):
                 session.delete(sub)
                 session.commit()
         return None
-    except UniqueViolation as error:
+    except Exception as error:
         logger.warn(error)
-        return "already unfollowed"
-    except Exception as ex:
-        logger.debug(ex)
-        return ex
+        return "cant unfollow"
 
 
 def reactions_follow(author_id, shout_id, auto=False):
@@ -228,11 +221,9 @@ def reactions_follow(author_id, shout_id, auto=False):
                 session.add(following)
                 session.commit()
         return None
-    except UniqueViolation as error:
+    except Exception as error:
         logger.warn(error)
-        return "already followed"
-    except Exception as exc:
-        return exc
+        return "cant follow"
 
 
 def reactions_unfollow(author_id, shout_id: int):
@@ -255,14 +246,9 @@ def reactions_unfollow(author_id, shout_id: int):
                 session.delete(following)
                 session.commit()
         return None
-    except UniqueViolation as error:
+    except Exception as error:
         logger.warn(error)
-        return "already unfollowed"
-    except Exception as ex:
-        import traceback
-
-        traceback.print_exc()
-        return ex
+        return "cant unfollow"
 
 
 # for mutation.field("follow")
@@ -274,14 +260,9 @@ def author_follow(follower_id, slug):
             session.add(af)
             session.commit()
         return None
-    except UniqueViolation as error:
+    except Exception as error:
         logger.warn(error)
-        return "already followed"
-    except Exception as exc:
-        import traceback
-
-        traceback.print_exc()
-        return exc
+        return "cant follow"
 
 
 # for mutation.field("unfollow")
@@ -300,11 +281,9 @@ def author_unfollow(follower_id, slug):
                 session.delete(flw)
                 session.commit()
                 return None
-    except UniqueViolation as error:
+    except Exception as error:
         logger.warn(error)
-        return "already unfollowed"
-    except Exception as exc:
-        return exc
+        return "cant unfollow"
 
 
 @query.field("get_topic_followers")
