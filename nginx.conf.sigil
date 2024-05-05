@@ -64,6 +64,16 @@ server {
         proxy_cache_lock on;       
     }
 
+    # Custom location block for /upload
+    location /connect/ {
+        http://upload-8080/;
+        {{ $proxy_settings }}
+        {{ $gzip_settings }}
+        {{ $cors_headers_options }}
+        {{ $cors_headers_post }}
+        {{ $cors_headers_get }}
+    }
+
     location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
     expires 30d;  # This means that the client can cache these resources for 30 days.
     add_header Cache-Control "public, no-transform";
