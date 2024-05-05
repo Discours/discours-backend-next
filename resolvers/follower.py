@@ -56,15 +56,16 @@ async def follow(_, info, what, slug):
         follower_id = int(follower_id)
         error = author_follow(follower_id, slug)
         if not error:
-            author_dict = await cache_by_slug(what, slug)
-            if isinstance(author_dict, dict):
-                author_id = author_dict.get("id")
-                if author_id:
-                    follows_ids = [a.get("id") for a in follows]
-                    if author_id not in follows_ids:
-                        await cache_author(follower_dict)
-                        await notify_follower(follower_dict, author_id, "follow")
-                        follows.append(author_dict)
+            [author] = get_with_stat(select(Author).filter(Author.slug == slug))
+            if author:
+                author_dict = author.dict()
+                author_id = author.id
+                follows_ids = [a.get("id") for a in follows]
+                if author_id not in follows_ids:
+                    await cache_author(author_dict)
+                    await cache_author(follower_dict)
+                    await notify_follower(follower_dict, author_id, "follow")
+                    follows.append(author_dict)
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)
@@ -108,18 +109,17 @@ async def unfollow(_, info, what, slug):
         # NOTE: after triggers should update cached stats
         if not error:
             logger.info(f"@{follower_dict.get('slug')} unfollowed @{slug}")
-            author_dict = await cache_by_slug(what, slug)
-            if isinstance(author_dict, dict):
-                author_id = author_dict.get("id")
-                if author_id:
-                    for idx, item in enumerate(follows):
-                        if item["id"] == author_id:
-                            await cache_author(follower_dict)
-                            await notify_follower(follower_dict, author_id, "unfollow")
-                            follows.pop(
-                                idx
-                            )  # Remove the author_dict from the follows list
-                            break
+            [author] = get_with_stat(select(Author).filter(Author.slug == slug))
+            if author:
+                author_dict = author.dict()
+                author_id = author.id
+                await cache_author(author_dict)
+                for idx, item in enumerate(follows):
+                    if item["id"] == author_id:
+                        await cache_author(follower_dict)
+                        await notify_follower(follower_dict, author_id, "unfollow")
+                        follows.pop(idx)
+                        break
 
     elif what == "TOPIC":
         error = topic_unfollow(follower_id, slug)
