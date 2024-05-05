@@ -33,7 +33,6 @@ jobs:
           username: dokku
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: docker ps | grep 'uploader'
-        continue-on-error: true
 
       - name: Push to dokku for dev branch
         if: github.ref == 'refs/heads/dev' && steps.check_container.outcome == 'success'
