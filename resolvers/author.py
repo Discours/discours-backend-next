@@ -192,7 +192,7 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
                     logger.debug(f"getting {author_id} follows authors")
                     cached = await redis.execute("GET", rkey)
                     if not cached:
-                        authors = author_follows_authors(author_id) # type: ignore
+                        authors = author_follows_authors(author_id)  # type: ignore
                         prepared = [author.dict() for author in authors]
                         await redis.execute(
                             "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)
@@ -205,7 +205,7 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
                     if cached and isinstance(cached, str):
                         topics = json.loads(cached)
                     if not cached:
-                        topics = author_follows_topics(author_id) # type: ignore
+                        topics = author_follows_topics(author_id)  # type: ignore
                         prepared = [topic.dict() for topic in topics]
                         await redis.execute(
                             "SET", rkey, json.dumps(prepared, cls=CustomJSONEncoder)

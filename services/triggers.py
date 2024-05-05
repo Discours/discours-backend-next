@@ -116,28 +116,28 @@ def after_author_update(_mapper, _connection, author: Author):
 def after_topic_follower_insert(_mapper, _connection, target: TopicFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_topic_follower_change(target.topic, target.follower, True) # type: ignore
+        handle_topic_follower_change(target.topic, target.follower, True)  # type: ignore
     )
 
 
 def after_topic_follower_delete(_mapper, _connection, target: TopicFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_topic_follower_change(target.topic, target.follower, False) # type: ignore
+        handle_topic_follower_change(target.topic, target.follower, False)  # type: ignore
     )
 
 
 def after_author_follower_insert(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, True) # type: ignore
+        handle_author_follower_change(target.author, target.follower, True)  # type: ignore
     )
 
 
 def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
     asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, False) # type: ignore
+        handle_author_follower_change(target.author, target.follower, False)  # type: ignore
     )
 
 

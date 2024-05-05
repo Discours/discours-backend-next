@@ -149,7 +149,8 @@ async def cache_topic(topic_dict: dict):
             # topic not found in the list, so add the new topic with the updated stat field
             follower_follows_topics.append(topic_dict)
 
-        await redis.execute('SET',
+        await redis.execute(
+            "SET",
             "SET",
             f"author:{follower_id}:follows-topics",
             json.dumps(follower_follows_topics),
