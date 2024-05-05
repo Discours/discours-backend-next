@@ -1,6 +1,5 @@
 import json
 
-
 from orm.topic import TopicFollower
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
@@ -14,21 +13,20 @@ DEFAULT_FOLLOWS = {
 
 
 async def cache_author(author: dict):
+    author_id = author.get("id")
     payload = json.dumps(author, cls=CustomJSONEncoder)
     await redis.execute("SET", f'user:{author.get("user")}', payload)
-    await redis.execute("SET", f'author:{author.get("id")}', payload)
+    await redis.execute("SET", f'author:{author_id}', payload)
 
     # update stat all field for followers' caches in <authors> list
-    followers_str = await redis.execute("GET", f'author:{author.get("id")}:followers')
+    followers_str = await redis.execute("GET", f'author:{author_id}:followers')
     followers = []
     if isinstance(followers_str, str):
         followers = json.loads(followers_str)
     if isinstance(followers, list):
         for follower in followers:
             follower_follows_authors = []
-            follower_follows_authors_str = await redis.execute(
-                "GET", f'author:{author.get("id")}:follows-authors'
-            )
+            follower_follows_authors_str = await redis.execute("GET", f'author:{author_id}:follows-authors')
             if isinstance(follower_follows_authors_str, str):
                 follower_follows_authors = json.loads(follower_follows_authors_str)
                 c = 0
@@ -42,29 +40,26 @@ async def cache_author(author: dict):
                 follower_follows_authors.append(author)
 
     # update stat field for all authors' caches in <followers> list
-    follows_str = await redis.execute(
-        "GET", f'author:{author.get("id")}:follows-authors'
-    )
+    follows_str = await redis.execute("GET", f'author:{author_id}:follows-authors')
     follows_authors = []
     if isinstance(follows_str, str):
         follows_authors = json.loads(follows_str)
     if isinstance(follows_authors, list):
         for followed_author in follows_authors:
             followed_author_followers = []
-            followed_author_followers_str = await redis.execute(
-                "GET", f'author:{author.get("id")}:followers'
-            )
+            followed_author_followers_str = await redis.execute("GET", f'author:{author_id}:followers')
             if isinstance(followed_author_followers_str, str):
                 followed_author_followers = json.loads(followed_author_followers_str)
                 c = 0
                 for old_follower in followed_author_followers:
-                    if int(old_follower.get("id")) == int(author.get("id", 0)):
+                    old_follower_id = int(old_follower.get("id"))
+                    if old_follower_id == author_id:
                         followed_author_followers[c] = author
                         break  # exit the loop since we found and updated the author
                     c += 1
-            else:
-                # author not found in the list, so add the new author with the updated stat field
-                followed_author_followers.append(author)
+            # author not found in the list, so add the new author with the updated stat field
+            followed_author_followers.append(author)
+            await redis.execute("SET", f'author:{author_id}:followers', followed_author_followers)
 
 
 async def cache_follows(follower: dict, entity_type: str, entity: dict, is_insert=True):

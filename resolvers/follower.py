@@ -59,8 +59,8 @@ async def follow(_, info, what, slug):
             [author] = get_with_stat(select(Author).filter(Author.slug == slug))
             if author:
                 author_dict = author.dict()
-                author_id = author.id
-                follows_ids = [a.get("id") for a in follows]
+                author_id = int(author_dict.get('id', 0))
+                follows_ids = set(int(a.get('id')) for a in follows)
                 if author_id not in follows_ids:
                     await cache_author(author_dict)
                     await cache_author(follower_dict)
