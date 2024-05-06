@@ -315,7 +315,7 @@ async def get_author_followers(_, _info, slug: str):
             if isinstance(cached, str):
                 followers_cached = json.loads(cached)
                 if isinstance(followers_cached, list):
-                    logger.debug(f"@{slug} got {followers_cached} followers cached")
+                    logger.debug(f"@{slug} got {len(followers_cached)} followers cached")
                     for fc in followers_cached:
                         if fc["id"] not in followers_ids:
                             followers.append(fc)
