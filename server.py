@@ -1,13 +1,15 @@
 from granian.constants import Interfaces
 from granian.server import Granian
-
+import subprocess
 from services.logger import root_logger as logger
 from settings import PORT
 
+
 def is_docker_container_running(name):
-    cmd = ['docker', 'ps', '-f', f'name={name}']
+    cmd = ["docker", "ps", "-f", f"name={name}"]
     output = subprocess.run(cmd, capture_output=True, text=True).stdout
     return name in output
+
 
 if __name__ == "__main__":
     logger.info("started")
