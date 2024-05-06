@@ -99,7 +99,7 @@ async def get_shouts_drafts(_, info):
                 .group_by(Shout.id)
             )
             shouts = [shout for [shout] in session.execute(q).unique()]
-    return shouts
+    return { "shouts": shouts }
 
 
 @mutation.field("create_shout")
