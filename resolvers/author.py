@@ -154,13 +154,20 @@ async def load_authors_by(_, _info, by, limit, offset):
     authors = []
     if authors_nostat:
         for [a] in authors_nostat:
+            author_dict = None
             if isinstance(a, Author):
                 author_id = a.id
                 if bool(author_id):
                     cached_result = await redis.execute("GET", f"author:{author_id}")
                     if isinstance(cached_result, str):
                         author_dict = json.loads(cached_result)
-                        authors.append(author_dict)
+                if not author_dict or not isinstance(author_dict.get("shouts"), int):
+                    author_query = q.filter(Author.id == author_id)
+                    [author] = get_with_stat(author_query)
+                    if author:
+                        author_dict = author.dict()
+                if author_dict:
+                    authors.append(author_dict)
 
     return authors
 
@@ -315,7 +322,7 @@ async def get_author_followers(_, _info, slug: str):
                 if isinstance(followers_cached, list):
                     logger.debug(f"@{slug} got {followers_cached} followers cached")
                     for fc in followers_cached:
-                        if fc['id'] not in followers_ids:
+                        if fc["id"] not in followers_ids:
                             followers.append(fc)
                 return followers
 

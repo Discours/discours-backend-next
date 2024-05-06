@@ -124,7 +124,7 @@ def get_author_shouts_stat(author_id: int):
         .filter(
             and_(
                 aliased_shout_author.author == author_id,
-                aliased_shout.published_at.is_not(None)
+                aliased_shout.published_at.is_not(None),
             )
         )
     )
