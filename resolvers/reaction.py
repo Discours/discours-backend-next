@@ -334,7 +334,7 @@ async def delete_reaction(_, info, reaction_id: int):
 
                 # обновление счетчика комментариев в кеше
                 if str(r.kind) == ReactionKind.COMMENT.value:
-                    await update_author_stat(author)
+                    await update_author_stat(author.id)
                 await notify_reaction(reaction_dict, "delete")
 
                 return {"error": None, "reaction": reaction_dict}
