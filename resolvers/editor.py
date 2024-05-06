@@ -260,7 +260,9 @@ def patch_topics(session, shout, topics_input):
 async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     user_id = info.context.get("user_id")
     roles = info.context.get("roles", [])
-    author_dict = info.context["author"]
+    author_dict = info.context.get("author")
+    if not author_dict:
+        return {"error": "author profile was not found"}
     author_id = author_dict.get("id")
     shout_input = shout_input or {}
     current_time = int(time.time())
@@ -343,7 +345,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 async def delete_shout(_, info, shout_id: int):
     user_id = info.context.get("user_id")
     roles = info.context.get("roles", [])
-    author_dict = info.context["author"]
+    author_dict = info.context.get("author")
+    if not author_dict:
+        return {"error": "author profile was not found"}
     author_id = author_dict.get("id")
     if user_id and author_id:
         author_id = int(author_id)
