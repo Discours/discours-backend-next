@@ -233,7 +233,7 @@ def author_follows_topics(author_id: int):
 
 async def update_author_stat(author_id: int):
     try:
-        author_with_stat = get_with_stat(select(Author).where(Author.id == author_id))
+        [author_with_stat] = get_with_stat(select(Author).where(Author.id == author_id))
         if isinstance(author_with_stat, Author):
             author_dict = author_with_stat.dict()
             await cache_author(author_dict)
