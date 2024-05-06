@@ -32,7 +32,7 @@ def add_author_stat_columns(q):
     )
     aliased_follower = aliased(AuthorFollower)
     q = q.outerjoin(
-        aliased_follower, aliased_follower.follower == Author.id
+        aliased_follower, aliased_follower.author == Author.id
     ).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
