@@ -325,8 +325,7 @@ async def get_author_followers(_, _info, slug: str):
             else:
                 logger.debug(f"@{slug} got followers cached")
                 if isinstance(cached, str):
-                    data = json.loads(cached)
-                    return [dict(d) for d in set(tuple(d.items()) for d in data)]
+                    return json.loads(cached)
     except Exception as exc:
         import traceback
 

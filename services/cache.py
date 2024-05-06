@@ -112,7 +112,10 @@ async def cache_follower(follower: dict, author: dict, is_insert=True):
         else:
             followers = [e for e in followers if int(e["id"]) != author_id]
 
-        followers = [dict(d) for d in set(tuple(d.items()) for d in followers)]
+        followers = [
+            dict(d)
+            for d in set(tuple(tuple(k, v) for k, v in d.items()) for d in followers)
+        ]
 
         author_str = await redis.execute("GET", f"author:{follower_id}")
         if isinstance(author_str, str):
