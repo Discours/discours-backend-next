@@ -21,16 +21,14 @@ from services.schema import mutation, query
 from services.search import search_service
 
 
-async def cache_by_id(what: str, entity_id: int):
-    is_author = what == "AUTHOR"
-    alias = Author if is_author else Topic
-    q = select(alias).filter(alias.id == entity_id)
+async def cache_by_id(entity, entity_id: int):
+    q = select(entity).filter(entity.id == entity_id)
     [x] = get_with_stat(q)
     if not x:
         return
 
     d = x.dict()  # convert object to dictionary
-    if is_author:
+    if entity == Author:
         await cache_author(d)
     else:
         await cache_topic(d)
@@ -300,7 +298,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         patch_topics(session, shout_by_id, topics_input)
                         del shout_input["topics"]
                         for tpc in topics_input:
-                            await cache_by_id("TOPIC", tpc["id"])
+                            await cache_by_id(Topic, tpc["id"])
 
                     # main topic
                     main_topic = shout_input.get("main_topic")
@@ -322,7 +320,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         # search service indexing
                         search_service.index(shout_by_id)
                         for a in shout_by_id.authors:
-                            await cache_by_id("AUTHOR", a.id)
+                            await cache_by_id(Author, a.id)
 
                     return {"shout": shout_dict, "error": None}
                 else:
@@ -359,12 +357,12 @@ async def delete_shout(_, info, shout_id: int):
                 session.add(shout)
                 session.commit()
 
-                for author_id in shout.authors:
-                    reactions_unfollow(author_id, shout_id)
-                    await cache_by_id("AUTHOR", author_id)
+                for author in shout.authors:
+                    reactions_unfollow(author.id, shout_id)
+                    await cache_by_id(Author, author.id)
 
-                for topic_id in shout.topics:
-                    await cache_by_id("TOPIC", topic_id)
+                for topic in shout.topics:
+                    await cache_by_id(Topic, topic.id)
 
                 await notify_shout(shout_dict, "delete")
                 return {"error": None}
