@@ -115,10 +115,23 @@ def get_topic_comments_stat(topic_id: int):
 
 def get_author_shouts_stat(author_id: int):
     aliased_shout_author = aliased(ShoutAuthor)
-    q = select(func.count(distinct(aliased_shout_author.shout))).filter(
-        aliased_shout_author.author == author_id
+    aliased_shout = aliased(Shout)
+
+    q = (
+        select(func.count(distinct(aliased_shout.id)))
+        .select_from(aliased_shout)
+        .join(aliased_shout_author, aliased_shout.id == aliased_shout_author.shout)
+        .filter(
+            and_(
+                aliased_shout_author.author == author_id,
+                aliased_shout.published_at.is_not(None)
+            )
+        )
     )
-    result = local_session().execute(q).first()
+
+    with local_session() as session:
+        result = session.execute(q).first()
+
     return result[0] if result else 0
 
 
