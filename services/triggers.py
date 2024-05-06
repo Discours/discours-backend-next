@@ -30,8 +30,12 @@ async def handle_author_follower_change(
     [follower] = get_with_stat(follower_query)
     if follower and author:
         await cache_author(author.dict())
-        await cache_follows(follower.dict(), "author", author.dict(), is_insert) # cache_author(follower_dict) inside
-        await cache_follow_author_change(follower.dict(), author.dict(), is_insert) # cache_author(follower_dict) inside
+        await cache_follows(
+            follower.dict(), "author", author.dict(), is_insert
+        )  # cache_author(follower_dict) inside
+        await cache_follow_author_change(
+            follower.dict(), author.dict(), is_insert
+        )  # cache_author(follower_dict) inside
 
 
 async def handle_topic_follower_change(

@@ -315,10 +315,13 @@ async def get_author_followers(_, _info, slug: str):
             if isinstance(cached, str):
                 followers_cached = json.loads(cached)
                 if isinstance(followers_cached, list):
-                    logger.debug(f"@{slug} got {len(followers_cached)} followers cached")
+                    logger.debug(
+                        f"@{slug} got {len(followers_cached)} followers cached"
+                    )
                     for fc in followers_cached:
-                        if fc["id"] not in followers_ids:
+                        if fc["id"] not in followers_ids and fc["id"] != author_id:
                             followers.append(fc)
+                            followers_ids.append(fc["id"])
                 return followers
 
         author_follower_alias = aliased(AuthorFollower, name="af")
@@ -327,12 +330,16 @@ async def get_author_followers(_, _info, slug: str):
             and_(
                 author_follower_alias.author == author_id,
                 author_follower_alias.follower == Author.id,
+                Author.id != author_id,  # exclude the author from the followers
             ),
         )
         results = get_with_stat(q)
         if isinstance(results, list):
+            followers_ids = [r.id for r in results]
             for follower in results:
-                await cache_follow_author_change(follower.dict(), author.dict())
+                if follower.id not in followers_ids:
+                    await cache_follow_author_change(follower.dict(), author.dict())
+                followers_ids.append(follower.id)
             logger.debug(f"@{slug} cache updated with {len(results)} followers")
         return results
     except Exception as exc:

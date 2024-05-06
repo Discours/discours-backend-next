@@ -1,6 +1,8 @@
+import subprocess
+
 from granian.constants import Interfaces
 from granian.server import Granian
-import subprocess
+
 from services.logger import root_logger as logger
 from settings import PORT
 

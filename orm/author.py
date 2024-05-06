@@ -1,9 +1,11 @@
 import time
 
 from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
-# from sqlalchemy_utils import TSVectorType
 
 from services.db import Base
+
+# from sqlalchemy_utils import TSVectorType
+
 
 
 class AuthorRating(Base):

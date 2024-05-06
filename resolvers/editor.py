@@ -4,15 +4,15 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
+from orm.author import Author
 from orm.rating import is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from orm.author import Author
 from resolvers.follower import reactions_follow, reactions_unfollow
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from services.cache import cache_topic, cache_author
+from services.cache import cache_author, cache_topic
 from services.db import local_session
 from services.diff import apply_diff, get_diff
 from services.logger import root_logger as logger
@@ -99,7 +99,7 @@ async def get_shouts_drafts(_, info):
                 .group_by(Shout.id)
             )
             shouts = [shout for [shout] in session.execute(q).unique()]
-    return { "shouts": shouts }
+    return {"shouts": shouts}
 
 
 @mutation.field("create_shout")

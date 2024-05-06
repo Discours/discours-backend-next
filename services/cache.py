@@ -1,9 +1,9 @@
 import json
 
 from orm.topic import TopicFollower
+from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
-from services.db import local_session
 
 DEFAULT_FOLLOWS = {
     "topics": [],
@@ -64,10 +64,9 @@ async def cache_author(author: dict):
             # author not found in the list, so add the new author with the updated stat field
             followed_author_followers.append(author)
             await redis.execute(
-                "SET", f"author:{author_id}:followers", json.dumps(
-                    followed_author_followers,
-                    cls=CustomJSONEncoder
-                )
+                "SET",
+                f"author:{author_id}:followers",
+                json.dumps(followed_author_followers, cls=CustomJSONEncoder),
             )
 
 
@@ -136,7 +135,6 @@ async def cache_follow_author_change(follower: dict, author: dict, is_insert=Tru
         await redis.execute("SET", redis_key, payload)
 
     return followers
-
 
 
 async def cache_topic(topic_dict: dict):
