@@ -108,7 +108,9 @@ async def get_shouts_drafts(_, info):
 @login_required
 async def create_shout(_, info, inp):
     user_id = info.context.get("user_id")
-    author_dict = info.context["author"]
+    author_dict = info.context.get("author")
+    if not author_dict:
+        return {"error": "author profile was not found"}
     author_id = author_dict.get("id")
     if user_id and author_id:
         with local_session() as session:
