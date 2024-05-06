@@ -151,3 +151,5 @@ poetry.lock
 .ruff_cache
 .jj
 .zed
+
+dokku_config
