@@ -64,7 +64,10 @@ async def cache_author(author: dict):
             # author not found in the list, so add the new author with the updated stat field
             followed_author_followers.append(author)
             await redis.execute(
-                "SET", f"author:{author_id}:followers", followed_author_followers
+                "SET", f"author:{author_id}:followers", json.dumps(
+                    followed_author_followers,
+                    cls=CustomJSONEncoder
+                )
             )
 
 
@@ -157,7 +160,7 @@ async def cache_topic(topic_dict: dict):
             "SET",
             "SET",
             f"author:{follower_id}:follows-topics",
-            json.dumps(follower_follows_topics),
+            json.dumps(follower_follows_topics, cls=CustomJSONEncoder),
         )
 
     # update topic's stat
