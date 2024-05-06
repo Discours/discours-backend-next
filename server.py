@@ -8,6 +8,7 @@ from settings import PORT
 def is_docker_container_running(name):
     cmd = ["docker", "ps", "-f", f"name={name}"]
     output = subprocess.run(cmd, capture_output=True, text=True).stdout
+    logger.info(output)
     return name in output
 
 
