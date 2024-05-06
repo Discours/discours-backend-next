@@ -106,19 +106,19 @@ async def cache_follower(follower: dict, author: dict, is_insert=True):
     if author_id and follower_id:
         redis_key = f"author:{author_id}:followers"
         followers_str = await redis.execute("GET", redis_key)
-        followers = []
-        if isinstance(followers_str, str):
-            followers = json.loads(followers_str)
+        followers = json.loads(followers_str) if isinstance(followers_str, str) else []
         if is_insert and not any([int(f["id"]) == author_id for f in followers]):
             followers.append(follower)
-            author_str = await redis.execute("GET", f"author:{follower_id}")
-            if isinstance(author_str, str):
-                author = json.loads(author_str)
-                author["stat"]["followers"] = len(followers)
-                await cache_author(author)
         else:
-            followers = list(set([e for e in followers if int(e["id"]) != author_id]))
+            followers = [e for e in followers if int(e["id"]) != author_id]
 
+        followers = list(set(followers))
+
+        author_str = await redis.execute("GET", f"author:{follower_id}")
+        if isinstance(author_str, str):
+            author = json.loads(author_str)
+            author["stat"]["followers"] = len(followers)
+            await cache_author(author)
         payload = json.dumps(followers, cls=CustomJSONEncoder)
         await redis.execute("SET", redis_key, payload)
     return followers
