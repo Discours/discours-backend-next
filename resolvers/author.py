@@ -124,14 +124,14 @@ async def get_author_id(_, _info, user: str):
 @query.field("load_authors_by")
 async def load_authors_by(_, _info, by, limit, offset):
     logger.debug(f"loading authors by {by}")
-    q = select(Author)
+    authors_query = select(Author)
     if by.get("slug"):
-        q = q.filter(Author.slug.ilike(f"%{by['slug']}%"))
+        authors_query = authors_query.filter(Author.slug.ilike(f"%{by['slug']}%"))
     elif by.get("name"):
-        q = q.filter(Author.name.ilike(f"%{by['name']}%"))
+        authors_query = authors_query.filter(Author.name.ilike(f"%{by['name']}%"))
     elif by.get("topic"):
-        q = (
-            q.join(ShoutAuthor)
+        authors_query = (
+            authors_query.join(ShoutAuthor)
             .join(ShoutTopic)
             .join(Topic)
             .where(Topic.slug == str(by["topic"]))
@@ -139,18 +139,12 @@ async def load_authors_by(_, _info, by, limit, offset):
 
     if by.get("last_seen"):  # in unix time
         before = int(time.time()) - by["last_seen"]
-        q = q.filter(Author.last_seen > before)
+        authors_query = authors_query.filter(Author.last_seen > before)
     elif by.get("created_at"):  # in unix time
         before = int(time.time()) - by["created_at"]
-        q = q.filter(Author.created_at > before)
-
-    order = by.get("order")
-    if order in ["shouts", "followers"]:
-        q = q.order_by(desc(text(f"{order}_stat")))
-
-    q = q.limit(limit).offset(offset)
-
-    authors_nostat = local_session().execute(q)
+        authors_query = authors_query.filter(Author.created_at > before)
+    authors_query = authors_query.limit(limit).offset(offset)
+    authors_nostat = local_session().execute(authors_query)
     authors = []
     if authors_nostat:
         for [a] in authors_nostat:
@@ -162,14 +156,16 @@ async def load_authors_by(_, _info, by, limit, offset):
                     if isinstance(cached_result, str):
                         author_dict = json.loads(cached_result)
                 if not author_dict or not isinstance(author_dict.get("shouts"), int):
-                    author_query = q.filter(Author.id == author_id)
-                    [author] = get_with_stat(author_query)
-                    if author:
-                        author_dict = author.dict()
-                if author_dict:
-                    authors.append(author_dict)
+                    break
 
-    return authors
+    # order
+    order = by.get("order")
+    if order in ["shouts", "followers"]:
+        authors_query = authors_query.order_by(desc(text(f"{order}_stat")))
+    # group by
+    [authors] = get_with_stat(authors_query)
+    if authors:
+        return authors
 
 
 @query.field("get_author_follows")

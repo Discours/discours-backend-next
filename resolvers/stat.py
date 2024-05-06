@@ -205,6 +205,9 @@ def get_with_stat(q):
                 entity.stat = stat
                 records.append(entity)
     except Exception as exc:
+        import traceback
+
+        traceback.print_exc()
         logger.error(exc, exc_info=True)
     return records
 
