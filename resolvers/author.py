@@ -163,9 +163,8 @@ async def load_authors_by(_, _info, by, limit, offset):
     if order in ["shouts", "followers"]:
         authors_query = authors_query.order_by(desc(text(f"{order}_stat")))
     # group by
-    [authors] = get_with_stat(authors_query)
-    if authors:
-        return authors
+    authors = get_with_stat(authors_query)
+    return authors or []
 
 
 @query.field("get_author_follows")
