@@ -8,7 +8,7 @@ from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
-from services.cache import cache_author, cache_follower, cache_follows
+from services.cache import cache_author, cache_follow_author_change, cache_follows
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
 from services.rediscache import redis
@@ -30,9 +30,8 @@ async def handle_author_follower_change(
     [follower] = get_with_stat(follower_query)
     if follower and author:
         await cache_author(author.dict())
-        await cache_author(follower.dict())
-        await cache_follows(follower.dict(), "author", author.dict(), is_insert)
-        await cache_follower(follower.dict(), author.dict(), is_insert)
+        await cache_follows(follower.dict(), "author", author.dict(), is_insert) # cache_author(follower_dict) inside
+        await cache_follow_author_change(follower.dict(), author.dict(), is_insert) # cache_author(follower_dict) inside
 
 
 async def handle_topic_follower_change(

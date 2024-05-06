@@ -9,7 +9,7 @@ from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
 from services.auth import login_required
-from services.cache import cache_author, cache_follower
+from services.cache import cache_author, cache_follow_author_change
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
@@ -332,7 +332,7 @@ async def get_author_followers(_, _info, slug: str):
         results = get_with_stat(q)
         if isinstance(results, list):
             for follower in results:
-                await cache_follower(follower.dict(), author.dict())
+                await cache_follow_author_change(follower.dict(), author.dict())
             logger.debug(f"@{slug} cache updated with {len(results)} followers")
         return results
     except Exception as exc:

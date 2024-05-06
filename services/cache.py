@@ -94,15 +94,15 @@ async def cache_follows(follower: dict, entity_type: str, entity: dict, is_inser
         await redis.execute("SET", redis_key, payload)
 
         # update follower's stats everywhere
-        author_str = await redis.execute("GET", f"author:{follower_id}")
-        if isinstance(author_str, str):
-            author = json.loads(author_str)
-            author["stat"][f"{entity_type}s"] = len(follows)
-            await cache_author(author)
+        follower_str = await redis.execute("GET", f"author:{follower_id}")
+        if isinstance(follower_str, str):
+            follower = json.loads(follower_str)
+            follower["stat"][f"{entity_type}s"] = len(follows)
+            await cache_author(follower)
     return follows
 
 
-async def cache_follower(follower: dict, author: dict, is_insert=True):
+async def cache_follow_author_change(follower: dict, author: dict, is_insert=True):
     author_id = author.get("id")
     follower_id = follower.get("id")
     followers = []
@@ -110,24 +110,33 @@ async def cache_follower(follower: dict, author: dict, is_insert=True):
         redis_key = f"author:{author_id}:followers"
         followers_str = await redis.execute("GET", redis_key)
         followers = json.loads(followers_str) if isinstance(followers_str, str) else []
-        if is_insert and not any([int(f["id"]) == author_id for f in followers]):
+
+        # Remove the author from the list of followers, if present
+        followers = [f for f in followers if f["id"] != author_id]
+
+        # If inserting, add the new follower to the list if not already present
+        if is_insert and not any(f["id"] == follower_id for f in followers):
             followers.append(follower)
+
+        # Remove the follower from the list if not inserting and present
         else:
-            followers = [e for e in followers if int(e["id"]) != author_id]
+            followers = [f for f in followers if f["id"] != follower_id]
 
-        followers = [
-            dict(d)
-            for d in set(tuple(tuple(k, v) for k, v in d.items()) for d in followers)
-        ]
+        # Ensure followers are unique based on their 'id' field
+        followers = list({f["id"]: f for f in followers}.values())
 
-        author_str = await redis.execute("GET", f"author:{follower_id}")
-        if isinstance(author_str, str):
-            author = json.loads(author_str)
-            author["stat"]["followers"] = len(followers)
-            await cache_author(author)
+        # Update follower's stats everywhere
+        follower_str = await redis.execute("GET", f"author:{follower_id}")
+        if isinstance(follower_str, str):
+            follower = json.loads(follower_str)
+            follower["stat"]["followers"] = len(followers)
+            await cache_author(follower)
+
         payload = json.dumps(followers, cls=CustomJSONEncoder)
         await redis.execute("SET", redis_key, payload)
+
     return followers
+
 
 
 async def cache_topic(topic_dict: dict):
