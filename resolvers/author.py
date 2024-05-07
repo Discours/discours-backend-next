@@ -305,43 +305,44 @@ async def get_author_followers(_, _info, slug: str):
         author_alias = aliased(Author)
         author_query = select(author_alias).filter(author_alias.slug == slug)
         result = local_session().execute(author_query).first()
+        followers = []
+        if result:
+            [author] = result
+            author_id = author.id
+            cached = await redis.execute("GET", f"author:{author_id}:followers")
+            if cached:
+                followers_ids = []
+                followers = []
+                if isinstance(cached, str):
+                    followers_cached = json.loads(cached)
+                    if isinstance(followers_cached, list):
+                        logger.debug(
+                            f"@{slug} got {len(followers_cached)} followers cached"
+                        )
+                        for fc in followers_cached:
+                            if fc["id"] not in followers_ids and fc["id"] != author_id:
+                                followers.append(fc)
+                                followers_ids.append(fc["id"])
+                    return followers
 
-        [author] = result
-        author_id = author.id
-        cached = await redis.execute("GET", f"author:{author_id}:followers")
-        if cached:
-            followers_ids = []
-            followers = []
-            if isinstance(cached, str):
-                followers_cached = json.loads(cached)
-                if isinstance(followers_cached, list):
-                    logger.debug(
-                        f"@{slug} got {len(followers_cached)} followers cached"
-                    )
-                    for fc in followers_cached:
-                        if fc["id"] not in followers_ids and fc["id"] != author_id:
-                            followers.append(fc)
-                            followers_ids.append(fc["id"])
-                return followers
-
-        author_follower_alias = aliased(AuthorFollower, name="af")
-        q = select(Author).join(
-            author_follower_alias,
-            and_(
-                author_follower_alias.author == author_id,
-                author_follower_alias.follower == Author.id,
-                Author.id != author_id,  # exclude the author from the followers
-            ),
-        )
-        results = get_with_stat(q)
-        if isinstance(results, list):
-            followers_ids = [r.id for r in results]
-            for follower in results:
-                if follower.id not in followers_ids:
-                    await cache_follow_author_change(follower.dict(), author.dict())
-                followers_ids.append(follower.id)
-            logger.debug(f"@{slug} cache updated with {len(results)} followers")
-        return results
+            author_follower_alias = aliased(AuthorFollower, name="af")
+            q = select(Author).join(
+                author_follower_alias,
+                and_(
+                    author_follower_alias.author == author_id,
+                    author_follower_alias.follower == Author.id,
+                    Author.id != author_id,  # exclude the author from the followers
+                ),
+            )
+            followers = get_with_stat(q)
+            if isinstance(followers, list):
+                followers_ids = [r.id for r in followers]
+                for follower in followers:
+                    if follower.id not in followers_ids:
+                        await cache_follow_author_change(follower.dict(), author.dict())
+                    followers_ids.append(follower.id)
+                logger.debug(f"@{slug} cache updated with {len(followers)} followers")
+        return followers
     except Exception as exc:
         import traceback
 

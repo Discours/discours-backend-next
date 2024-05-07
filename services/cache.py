@@ -165,7 +165,6 @@ async def cache_topic(topic_dict: dict):
 
         await redis.execute(
             "SET",
-            "SET",
             f"author:{follower_id}:follows-topics",
             json.dumps(follower_follows_topics, cls=CustomJSONEncoder),
         )
