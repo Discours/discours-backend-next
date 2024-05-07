@@ -179,8 +179,8 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
             author_query = author_query.filter(Author.id == author_id)
         else:
             raise ValueError("One of slug, user, or author_id must be provided")
-        [result] = local_session().execute(author_query)
-        if len(result) > 0:
+        result = local_session().execute(author_query)
+        if result:
             # logger.debug(result)
             [author] = result
             # logger.debug(author)
