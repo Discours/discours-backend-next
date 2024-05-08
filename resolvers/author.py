@@ -54,9 +54,13 @@ async def get_author(_, _info, slug="", author_id=0):
     author_dict = None
     try:
         # lookup for cached author
-        author_query = select(Author).filter(
-            or_(Author.slug == slug, Author.id == author_id)
-        )
+        author_query = select(Author)
+        if slug:
+            author_query = author_query.filter(Author.slug == slug)
+        elif author_id:
+            author_query = author_query.filter(Author.id == author_id)
+        else:
+            raise ValueError("Author not found")
         lookup_result = local_session().execute(author_query).first()
         if lookup_result:
             [found_author] = lookup_result
