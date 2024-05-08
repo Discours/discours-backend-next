@@ -60,7 +60,7 @@ async def get_author(_, _info, slug="", author_id=0):
         lookup_result = local_session().execute(author_query).first()
         if lookup_result:
             [found_author] = lookup_result
-            logger.debug(found_author)
+            # logger.debug(found_author)
             if found_author:
                 logger.debug(f"found author id: {found_author.id}")
                 author_id = found_author.id if found_author.id else author_id
