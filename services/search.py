@@ -40,7 +40,7 @@ index_settings = {
             "title": {"type": "text", "analyzer": "ru"},
             "subtitle": {"type": "text", "analyzer": "ru"},
             "lead": {"type": "text", "analyzer": "ru"},
-            "media": {"type": "text", "analyzer": "ru"}
+            "media": {"type": "text", "analyzer": "ru"},
         }
     },
 }
@@ -138,12 +138,21 @@ class SearchService:
                     result = json.loads(result)
                 if isinstance(result, dict):
                     mapping = result.get(self.index_name, {}).get("mappings")
-                    if mapping and mapping['properties'].keys() != expected_mapping['properties'].keys():
+                    if (
+                        mapping
+                        and mapping["properties"].keys()
+                        != expected_mapping["properties"].keys()
+                    ):
                         logger.debug("Найдена структура индексации:")
-                        logger.debug("\n" + json.dumps(mapping, indent=2, ensure_ascii=False))
+                        logger.debug(
+                            "\n" + json.dumps(mapping, indent=2, ensure_ascii=False)
+                        )
 
                         logger.debug("Ожидаемая структура индексации:")
-                        logger.debug("\n" + json.dumps(expected_mapping, indent=2, ensure_ascii=False))
+                        logger.debug(
+                            "\n"
+                            + json.dumps(expected_mapping, indent=2, ensure_ascii=False)
+                        )
 
                         logger.warn(
                             "[!!!] Требуется другая структура индексации и переиндексация всех данных"

@@ -6,8 +6,12 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from sqlalchemy import select
+
 from orm.author import Author
 from services.db import local_session
+from services.cache import cache_author
+from resolvers.stat import get_with_stat
 
 
 class WebhookEndpoint(HTTPEndpoint):
@@ -56,6 +60,11 @@ class WebhookEndpoint(HTTPEndpoint):
                         author = Author(user=user_id, slug=slug, name=name, pic=pic)
                         session.add(author)
                         session.commit()
+                        [author_with_stat] = get_with_stat(
+                            select(Author).filter(Author.id == author.id)
+                        )
+                        if author_with_stat:
+                            await cache_author(author_with_stat)
 
             return JSONResponse({"status": "success"})
         except HTTPException as e:
