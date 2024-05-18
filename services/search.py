@@ -120,8 +120,6 @@ class SearchService:
         if isinstance(self.client, OpenSearch):
             logger.info("Поиск подключен")
             get_indices_stats()
-        else:
-            logger.warning("Задайте переменные среды для подключения к серверу поиска")
 
     def delete_index(self):
         if self.client:
@@ -154,6 +152,7 @@ class SearchService:
                     if mapping and mapping != expected_mapping:
                         logger.debug(f"Найдена структура индексации: {mapping}")
                         logger.warn("[!!!] Требуется другая структура индексации и переиндексация всех данных")
+                        self.delete_index()
                         self.client = None
         else:
             logger.error("клиент не инициализован, невозможно проверить индекс")
