@@ -7,7 +7,6 @@ from services.db import Base
 # from sqlalchemy_utils import TSVectorType
 
 
-
 class AuthorRating(Base):
     __tablename__ = "author_rating"
 

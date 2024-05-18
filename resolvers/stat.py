@@ -31,9 +31,7 @@ def add_author_stat_columns(q):
         func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
     aliased_follower = aliased(AuthorFollower)
-    q = q.outerjoin(
-        aliased_follower, aliased_follower.author == Author.id
-    ).add_columns(
+    q = q.outerjoin(aliased_follower, aliased_follower.author == Author.id).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
 

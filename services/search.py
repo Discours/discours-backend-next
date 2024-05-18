@@ -12,7 +12,10 @@ ELASTIC_HOST = os.environ.get("ELASTIC_HOST", "").replace("https://", "")
 ELASTIC_USER = os.environ.get("ELASTIC_USER", "")
 ELASTIC_PASSWORD = os.environ.get("ELASTIC_PASSWORD", "")
 ELASTIC_PORT = os.environ.get("ELASTIC_PORT", 9200)
-ELASTIC_URL = os.environ.get("ELASTIC_URL", f"https://{ELASTIC_USER}:{ELASTIC_PASSWORD}@{ELASTIC_HOST}:{ELASTIC_PORT}")
+ELASTIC_URL = os.environ.get(
+    "ELASTIC_URL",
+    f"https://{ELASTIC_USER}:{ELASTIC_PASSWORD}@{ELASTIC_HOST}:{ELASTIC_PORT}",
+)
 REDIS_TTL = 86400  # 1 день в секундах
 
 index_settings = {
@@ -113,7 +116,9 @@ class SearchService:
                     mapping = result.get(self.index_name, {}).get("mappings")
                     if mapping and mapping != expected_mapping:
                         logger.debug(f"Найдена структура индексации: {mapping}")
-                        logger.warn("Требуется другая структура индексации, переиндексация")
+                        logger.warn(
+                            "Требуется другая структура индексации, переиндексация"
+                        )
                         await self.recreate_index()
         else:
             logger.error("клиент не инициализован, невозможно проверить индекс")
@@ -121,7 +126,9 @@ class SearchService:
     async def recreate_index(self):
         if self.client:
             async with self.lock:
-                self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
+                self.client.indices.delete(
+                    index=self.index_name, ignore_unavailable=True
+                )
                 await self.check_index()
         else:
             logger.error("клиент не инициализован, невозможно пересоздать индекс")
@@ -136,7 +143,9 @@ class SearchService:
 
     async def perform_index(self, shout):
         if self.client:
-            self.client.index(index=self.index_name, id=str(shout.id), body=shout.dict())
+            self.client.index(
+                index=self.index_name, id=str(shout.id), body=shout.dict()
+            )
 
     async def search(self, text, limit, offset):
         logger.debug(f"Ищем: {text}")
