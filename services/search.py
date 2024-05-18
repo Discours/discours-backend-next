@@ -12,11 +12,8 @@ ELASTIC_HOST = os.environ.get("ELASTIC_HOST", "").replace("https://", "")
 ELASTIC_USER = os.environ.get("ELASTIC_USER", "")
 ELASTIC_PASSWORD = os.environ.get("ELASTIC_PASSWORD", "")
 ELASTIC_PORT = os.environ.get("ELASTIC_PORT", 9200)
-ELASTIC_AUTH = f"{ELASTIC_USER}:{ELASTIC_PASSWORD}" if ELASTIC_USER else ""
-ELASTIC_URL = os.environ.get(
-    "ELASTIC_URL", f"https://{ELASTIC_AUTH}@{ELASTIC_HOST}:{ELASTIC_PORT}"
-)
-REDIS_TTL = 86400  # 1 day in seconds
+ELASTIC_URL = os.environ.get("ELASTIC_URL", f"https://{ELASTIC_USER}:{ELASTIC_PASSWORD}@{ELASTIC_HOST}:{ELASTIC_PORT}")
+REDIS_TTL = 86400  # 1 день в секундах
 
 index_settings = {
     "settings": {
@@ -47,7 +44,7 @@ index_settings = {
 
 expected_mapping = index_settings["mappings"]
 
-# Create an event loop
+# Создание цикла событий
 search_loop = asyncio.get_event_loop()
 
 
@@ -55,9 +52,9 @@ class SearchService:
     def __init__(self, index_name="search_index"):
         self.index_name = index_name
         self.client = None
-        self.lock = asyncio.Lock()  # Create an asyncio lock
+        self.lock = asyncio.Lock()
 
-        # Only initialize the instance if it's not already initialized
+        # Инициализация клиента OpenSearch
         if ELASTIC_HOST:
             try:
                 self.client = OpenSearch(
@@ -70,23 +67,25 @@ class SearchService:
                     ssl_show_warn=False,
                     # ca_certs = ca_certs_path
                 )
-                logger.info(" Клиент OpenSearch.org подключен")
+                logger.info("Клиент OpenSearch.org подключен")
 
-                # Create a task and run it in the event loop
+                # Создание задачи и запуск в цикле событий
                 search_loop.create_task(self.check_index())
             except Exception as exc:
-                logger.error(f" {exc}")
+                logger.error(f"Ошибка подключения к OpenSearch: {exc}")
                 self.client = None
+        else:
+            logger.warning("Задайте переменные среды для подключения к серверу поиска")
 
     def info(self):
         if isinstance(self.client, OpenSearch):
-            logger.info(" Поиск подключен")  # : {self.client.info()}')
+            logger.info("Поиск подключен")
         else:
-            logger.info(" * Задайте переменные среды для подключения к серверу поиска")
+            logger.warning("Задайте переменные среды для подключения к серверу поиска")
 
     def delete_index(self):
         if self.client:
-            logger.debug(f" Удаляем индекс {self.index_name}")
+            logger.debug(f"Удаляем индекс {self.index_name}")
             self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
     def create_index(self):
@@ -98,49 +97,49 @@ class SearchService:
 
     async def check_index(self):
         if self.client:
-            logger.debug(f" Проверяем индекс {self.index_name}...")
+            logger.debug(f"Проверяем индекс {self.index_name}...")
             if not self.client.indices.exists(index=self.index_name):
                 self.create_index()
                 self.client.indices.put_mapping(
                     index=self.index_name, body=expected_mapping
                 )
             else:
-                logger.info(f"найден существующий индекс {self.index_name}")
-                # Check if the mapping is correct, and recreate the index if needed
+                logger.info(f"Найден существующий индекс {self.index_name}")
+                # Проверка и обновление структуры индекса, если необходимо
                 result = self.client.indices.get_mapping(index=self.index_name)
                 if isinstance(result, str):
                     result = json.loads(result)
                 if isinstance(result, dict):
-                    mapping = result.get("mapping")
+                    mapping = result.get(self.index_name, {}).get("mappings")
                     if mapping and mapping != expected_mapping:
-                        logger.debug(f" найдена структура индексации: {mapping}")
-                        logger.warn(
-                            " требуется другая структура индексации, переиндексация"
-                        )
+                        logger.debug(f"Найдена структура индексации: {mapping}")
+                        logger.warn("Требуется другая структура индексации, переиндексация")
                         await self.recreate_index()
+        else:
+            logger.error("клиент не инициализован, невозможно проверить индекс")
 
     async def recreate_index(self):
         if self.client:
             async with self.lock:
-                self.client.indices.delete(
-                    index=self.index_name, ignore_unavailable=True
-                )
+                self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
                 await self.check_index()
+        else:
+            logger.error("клиент не инициализован, невозможно пересоздать индекс")
 
     def index(self, shout):
         if self.client:
             id_ = str(shout.id)
-            logger.debug(f" Индексируем пост {id_}")
+            logger.debug(f"Индексируем пост {id_}")
             asyncio.create_task(self.perform_index(shout))
+        else:
+            logger.error("клиент не инициализован, невозможно проидексировать")
 
     async def perform_index(self, shout):
         if self.client:
-            self.client.index(
-                index=self.index_name, id=str(shout.id), body=shout.dict()
-            )
+            self.client.index(index=self.index_name, id=str(shout.id), body=shout.dict())
 
     async def search(self, text, limit, offset):
-        logger.debug(f" Ищем: {text}")
+        logger.debug(f"Ищем: {text}")
         search_body = {"query": {"match": {"_all": text}}}
         if self.client:
             search_response = self.client.search(
@@ -150,14 +149,17 @@ class SearchService:
 
             results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]
 
-            # Use Redis as cache with TTL
-            redis_key = f"search:{text}"
-            await redis.execute(
-                "SETEX",
-                redis_key,
-                REDIS_TTL,
-                json.dumps(results, cls=CustomJSONEncoder),
-            )
+            # если результаты не пустые
+            if results:
+                # Кэширование в Redis с TTL
+                redis_key = f"search:{text}"
+                await redis.execute(
+                    "SETEX",
+                    redis_key,
+                    REDIS_TTL,
+                    json.dumps(results, cls=CustomJSONEncoder),
+                )
+            return results
         return []
 
 
@@ -167,6 +169,6 @@ search_service = SearchService()
 async def search_text(text: str, limit: int = 50, offset: int = 0):
     payload = []
     if search_service.client:
-        # Use OpenSearchService.search_post method
+        # Использование метода search_post из OpenSearchService
         payload = await search_service.search(text, limit, offset)
     return payload
