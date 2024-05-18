@@ -60,9 +60,8 @@ class WebhookEndpoint(HTTPEndpoint):
                         author = Author(user=user_id, slug=slug, name=name, pic=pic)
                         session.add(author)
                         session.commit()
-                        [author_with_stat] = get_with_stat(
-                            select(Author).filter(Author.id == author.id)
-                        )
+                        author_query = select(Author).filter(Author.user == user_id)
+                        [author_with_stat] = get_with_stat(author_query)
                         if author_with_stat:
                             await cache_author(author_with_stat)
 

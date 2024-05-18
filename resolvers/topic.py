@@ -16,7 +16,8 @@ def get_topics_all(_, _info):
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_all():
-        return get_with_stat(select(Topic))
+        topics_query = select(Topic)
+        return get_with_stat(topics_query)
 
     return _get_topics_all()
 
@@ -27,29 +28,35 @@ def get_topics_by_community(_, _info, community_id: int):
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_by_community():
-        q = select(Topic).where(Topic.community == community_id)
-        return get_with_stat(q)
+        topics_by_community_query = select(Topic).where(Topic.community == community_id)
+        return get_with_stat(topics_by_community_query)
 
     return _get_topics_by_community()
 
 
 @query.field("get_topics_by_author")
 async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
-    q = select(Topic)
+    topics_by_author_query = select(Topic)
     if author_id:
-        q = q.join(Author).where(Author.id == author_id)
+        topics_by_author_query = topics_by_author_query.join(Author).where(
+            Author.id == author_id
+        )
     elif slug:
-        q = q.join(Author).where(Author.slug == slug)
+        topics_by_author_query = topics_by_author_query.join(Author).where(
+            Author.slug == slug
+        )
     elif user:
-        q = q.join(Author).where(Author.user == user)
+        topics_by_author_query = topics_by_author_query.join(Author).where(
+            Author.user == user
+        )
 
-    return get_with_stat(q)
+    return get_with_stat(topics_by_author_query)
 
 
 @query.field("get_topic")
 def get_topic(_, _info, slug: str):
-    q = select(Topic).filter(Topic.slug == slug)
-    result = get_with_stat(q)
+    topic_query = select(Topic).filter(Topic.slug == slug)
+    result = get_with_stat(topic_query)
     for topic in result:
         return topic
 

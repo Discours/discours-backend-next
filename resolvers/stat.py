@@ -205,6 +205,7 @@ def get_with_stat(q):
     except Exception as exc:
         import traceback
 
+        logger.debug(q)
         traceback.print_exc()
         logger.error(exc, exc_info=True)
     return records
@@ -212,26 +213,27 @@ def get_with_stat(q):
 
 def author_follows_authors(author_id: int):
     af = aliased(AuthorFollower, name="af")
-    q = (
+    author_follows_authors_query = (
         select(Author)
         .select_from(join(Author, af, Author.id == af.author))
         .where(af.follower == author_id)
     )
-    return get_with_stat(q)
+    return get_with_stat(author_follows_authors_query)
 
 
 def author_follows_topics(author_id: int):
-    q = (
+    author_follows_topics_query = (
         select(Topic)
         .select_from(join(Topic, TopicFollower, Topic.id == TopicFollower.topic))
         .where(TopicFollower.follower == author_id)
     )
-    return get_with_stat(q)
+    return get_with_stat(author_follows_topics_query)
 
 
 async def update_author_stat(author_id: int):
+    author_query = select(Author).where(Author.id == author_id)
     try:
-        [author_with_stat] = get_with_stat(select(Author).where(Author.id == author_id))
+        [author_with_stat] = get_with_stat(author_query)
         if isinstance(author_with_stat, Author):
             author_dict = author_with_stat.dict()
             await cache_author(author_dict)

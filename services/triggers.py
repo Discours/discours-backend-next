@@ -107,8 +107,8 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
 
 def after_author_update(_mapper, _connection, author: Author):
     logger.info("after author update")
-    q = select(Author).where(Author.id == author.id)
-    result = get_with_stat(q)
+    author_query = select(Author).where(Author.id == author.id)
+    result = get_with_stat(author_query)
     if result:
         [author_with_stat] = result
         if author_with_stat:

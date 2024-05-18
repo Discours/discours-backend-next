@@ -23,8 +23,8 @@ from services.schema import mutation, query
 async def cache_by_slug(what: str, slug: str):
     is_author = what == "AUTHOR"
     alias = Author if is_author else Topic
-    q = select(alias).filter(alias.slug == slug)
-    [x] = get_with_stat(q)
+    caching_query = select(alias).filter(alias.slug == slug)
+    [x] = get_with_stat(caching_query)
     if not x:
         return
 
@@ -56,7 +56,8 @@ async def follow(_, info, what, slug):
         follower_id = int(follower_id)
         error = author_follow(follower_id, slug)
         if not error:
-            [author] = get_with_stat(select(Author).filter(Author.slug == slug))
+            author_query = select(Author).filter(Author.slug == slug)
+            [author] = get_with_stat(author_query)
             if author:
                 author_dict = author.dict()
                 author_id = int(author_dict.get("id", 0))
@@ -109,7 +110,8 @@ async def unfollow(_, info, what, slug):
         # NOTE: after triggers should update cached stats
         if not error:
             logger.info(f"@{follower_dict.get('slug')} unfollowed @{slug}")
-            [author] = get_with_stat(select(Author).filter(Author.slug == slug))
+            author_query = select(Author).filter(Author.slug == slug)
+            [author] = get_with_stat(author_query)
             if author:
                 author_dict = author.dict()
                 author_id = author.id
@@ -288,13 +290,13 @@ def author_unfollow(follower_id, slug):
 
 @query.field("get_topic_followers")
 async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
-    q = select(Author)
-    q = (
-        q.join(TopicFollower, TopicFollower.follower == Author.id)
+    topic_followers_query = select(Author)
+    topic_followers_query = (
+        topic_followers_query.join(TopicFollower, TopicFollower.follower == Author.id)
         .join(Topic, Topic.id == TopicFollower.topic)
         .filter(or_(Topic.slug == slug, Topic.id == topic_id))
     )
-    return get_with_stat(q)
+    return get_with_stat(topic_followers_query)
 
 
 @query.field("get_shout_followers")

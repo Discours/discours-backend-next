@@ -30,8 +30,10 @@ async def update_author(_, info, profile):
                 Author.update(author, profile)
                 session.add(author)
                 session.commit()
-                [author] = get_with_stat(select(Author).where(Author.user == user_id))
-                await cache_author(author.dict())
+                author_query = select(Author).where(Author.user == user_id)
+                [author] = get_with_stat(author_query)
+                if author:
+                    await cache_author(author.dict())
                 return {"error": None, "author": author}
     except Exception as exc:
         import traceback
@@ -330,7 +332,7 @@ async def get_author_followers(_, _info, slug: str):
                     return followers
 
             author_follower_alias = aliased(AuthorFollower, name="af")
-            q = select(Author).join(
+            followers_query = select(Author).join(
                 author_follower_alias,
                 and_(
                     author_follower_alias.author == author_id,
@@ -338,7 +340,7 @@ async def get_author_followers(_, _info, slug: str):
                     Author.id != author_id,  # exclude the author from the followers
                 ),
             )
-            followers = get_with_stat(q)
+            followers = get_with_stat(followers_query)
             if isinstance(followers, list):
                 followers_ids = [r.id for r in followers]
                 for follower in followers:

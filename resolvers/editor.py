@@ -22,8 +22,8 @@ from services.search import search_service
 
 
 async def cache_by_id(entity, entity_id: int):
-    q = select(entity).filter(entity.id == entity_id)
-    [x] = get_with_stat(q)
+    caching_query = select(entity).filter(entity.id == entity_id)
+    [x] = get_with_stat(caching_query)
     if not x:
         return
 
