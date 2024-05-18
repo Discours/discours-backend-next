@@ -118,7 +118,6 @@ class SearchService:
     def create_index(self):
         if self.client:
             logger.debug(f"Создается индекс: {self.index_name}")
-            self.delete_index()
             self.client.indices.create(index=self.index_name, body=index_settings)
             logger.debug(f"Индекс {self.index_name} создан")
 
