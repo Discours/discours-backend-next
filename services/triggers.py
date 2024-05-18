@@ -1,8 +1,7 @@
 import asyncio
 import json
 
-from sqlalchemy import event, select, union
-from sqlalchemy.orm import aliased
+from sqlalchemy import event, select
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
@@ -75,19 +74,19 @@ def after_shout_update(_mapper, _connection, shout: Shout):
 def after_reaction_update(mapper, connection, reaction: Reaction):
     logger.info("after reaction update")
     try:
+        # reaction author
         author_subquery = select(Author).where(Author.id == reaction.created_by)
+        [author_with_stat] = get_with_stat(author_subquery)
+        if isinstance(author_with_stat, Author):
+            asyncio.create_task(cache_author(author_with_stat.dict()))
+
+        # reaction repliers
         replied_author_subquery = (
             select(Author)
             .join(Reaction, Author.id == Reaction.created_by)
             .where(Reaction.id == reaction.reply_to)
         )
-
-        author_aliased_query = aliased(union(author_subquery, replied_author_subquery))
-
-        # Get authors with stat
-        authors_with_stat = get_with_stat(author_aliased_query)
-
-        # Cache authors
+        authors_with_stat = get_with_stat(replied_author_subquery)
         for author_with_stat in authors_with_stat:
             asyncio.create_task(cache_author(author_with_stat.dict()))
 
