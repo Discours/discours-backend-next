@@ -1,7 +1,8 @@
 import asyncio
 import json
 
-from sqlalchemy import event, select
+from sqlalchemy import event, select, union
+from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
@@ -81,17 +82,13 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
             .where(Reaction.id == reaction.reply_to)
         )
 
-        author_query = (
-            select(author_subquery.subquery())
-            .select_from(author_subquery.subquery())
-            .union(
-                select(replied_author_subquery.subquery()).select_from(
-                    replied_author_subquery.subquery()
-                )
-            )
-        )
+        author_aliased_query = aliased(union(author_subquery, replied_author_subquery))
 
-        for author_with_stat in get_with_stat(author_query):
+        # Get authors with stat
+        authors_with_stat = get_with_stat(author_aliased_query)
+
+        # Cache authors
+        for author_with_stat in authors_with_stat:
             asyncio.create_task(cache_author(author_with_stat.dict()))
 
         shout_query = select(Shout).select_from(Shout).where(Shout.id == reaction.shout)

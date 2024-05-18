@@ -1,4 +1,4 @@
-from sqlalchemy import and_, distinct, func, join, select, CompoundSelect
+from sqlalchemy import and_, distinct, func, join, select
 from sqlalchemy.orm import aliased
 
 from orm.author import Author, AuthorFollower
@@ -181,12 +181,10 @@ def get_with_stat(q):
     records = []
     try:
         with local_session() as session:
-            # Convert the CompoundSelect object to a Query object
-            if isinstance(q, CompoundSelect):
-                q = session.query().from_statement(q)
-
             # detect author
             is_author = f"{q}".lower().startswith("select author")
+
+            # Add stat columns to the query
             q = add_author_stat_columns(q) if is_author else add_topic_stat_columns(q)
 
             # execute query
