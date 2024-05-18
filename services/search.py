@@ -40,6 +40,7 @@ index_settings = {
             "title": {"type": "text", "analyzer": "ru"},
             "subtitle": {"type": "text", "analyzer": "ru"},
             "lead": {"type": "text", "analyzer": "ru"},
+            "media": {"type": "text", "analyzer": "ru"}
         }
     },
 }
