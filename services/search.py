@@ -143,16 +143,8 @@ class SearchService:
                         and mapping["properties"].keys()
                         != expected_mapping["properties"].keys()
                     ):
-                        logger.debug("Найдена структура индексации:")
-                        logger.debug(
-                            "\n" + json.dumps(mapping, indent=2, ensure_ascii=False)
-                        )
-
-                        logger.debug("Ожидаемая структура индексации:")
-                        logger.debug(
-                            "\n"
-                            + json.dumps(expected_mapping, indent=2, ensure_ascii=False)
-                        )
+                        logger.debug(f"Найдена структура индексации: {mapping['properties'].keys()}")
+                        logger.debug(f"Ожидаемая структура индексации: {expected_mapping}")
 
                         logger.warn(
                             "[!!!] Требуется другая структура индексации и переиндексация всех данных"
