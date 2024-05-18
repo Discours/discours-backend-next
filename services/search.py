@@ -53,6 +53,7 @@ search_loop = asyncio.get_event_loop()
 
 class SearchService:
     def __init__(self, index_name="search_index"):
+        logger.info("Инициализируем поиск...")
         self.index_name = index_name
         self.client = None
         self.lock = asyncio.Lock()
@@ -80,9 +81,11 @@ class SearchService:
         else:
             logger.warning("Задайте переменные среды для подключения к серверу поиска")
 
-    def info(self):
+    async def info(self):
         if isinstance(self.client, OpenSearch):
             logger.info("Поиск подключен")
+            indices_stats = await self.client.cat.indices(format="json")
+            logger.info(indices_stats)
         else:
             logger.warning("Задайте переменные среды для подключения к серверу поиска")
 
