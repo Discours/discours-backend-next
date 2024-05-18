@@ -12,7 +12,7 @@ type Query {
 
   # follower
   get_shout_followers(slug: String, shout_id: Int): [Author]
-  get_topic_followers(slug: String, topic_id: Int): [Author]
+  get_topic_followers(slug: String): [Author]
   get_author_followers(slug: String, user: String, author_id: Int): [Author]
   get_author_follows(slug: String, user: String, author_id: Int): CommonResult!
   get_author_follows_topics(slug: String, user: String, author_id: Int): [Topic]

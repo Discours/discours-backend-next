@@ -2,7 +2,7 @@ import json
 import time
 from typing import List
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.sql import and_
 
 from orm.author import Author, AuthorFollower
@@ -289,12 +289,12 @@ def author_unfollow(follower_id, slug):
 
 
 @query.field("get_topic_followers")
-async def get_topic_followers(_, _info, slug: str, topic_id: int) -> List[Author]:
+async def get_topic_followers(_, _info, slug: str) -> List[Author]:
     topic_followers_query = select(Author)
     topic_followers_query = (
         topic_followers_query.join(TopicFollower, TopicFollower.follower == Author.id)
         .join(Topic, Topic.id == TopicFollower.topic)
-        .filter(or_(Topic.slug == slug, Topic.id == topic_id))
+        .filter(Topic.slug == slug)
     )
     return get_with_stat(topic_followers_query)
 
