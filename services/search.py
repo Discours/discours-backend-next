@@ -37,10 +37,21 @@ index_settings = {
     "mappings": {
         "properties": {
             "body": {"type": "text", "analyzer": "ru"},
-            "title": {"type": "text", "analyzer": "ru"},
-            "subtitle": {"type": "text", "analyzer": "ru"},
+            #"cover": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            #"created_at": {"type": "long"},
+            #"created_by": {"type": "long"},
+            #"featured_at": {"type": "long"},
+            #"id": {"type": "long"},
+            #"lang": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            #"layout": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
             "lead": {"type": "text", "analyzer": "ru"},
-            # 'author': {'type': 'text'},
+            "media": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            # "oid": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            # "published_at": {"type": "long"},
+            # "slug": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            "subtitle": {"type": "text", "analyzer": "ru"},
+            "title": {"type": "text", "analyzer": "ru"},
+            # "updated_at": {"type": "long"}
         }
     },
 }
@@ -151,16 +162,23 @@ class SearchService:
     def index(self, shout):
         if self.client:
             logger.debug(f"Индексируем пост {shout.id}")
-            asyncio.create_task(self.perform_index(shout))
+            index_body = {
+                "body": shout.body,
+                "title": shout.title,
+                "subtitle": shout.subtitle,
+                "lead": shout.lead,
+                "media": shout.media,
+            }
+            asyncio.create_task(self.perform_index(shout, index_body))
         else:
             logger.error("клиент не инициализован, невозможно проидексировать")
 
-    async def perform_index(self, shout):
+    async def perform_index(self, shout, index_body):
         if self.client:
             self.client.index(
                 index=self.index_name,
                 id=str(shout.id),
-                body=shout.dict()
+                body=index_body
             )
 
     async def search(self, text, limit, offset):
