@@ -138,7 +138,7 @@ class SearchService:
                     result = json.loads(result)
                 if isinstance(result, dict):
                     mapping = result.get(self.index_name, {}).get("mappings")
-                    if mapping and mapping != expected_mapping:
+                    if mapping and mapping['properties'].keys() != expected_mapping['properties'].keys():
                         logger.debug("Найдена структура индексации:")
                         logger.debug("\n" + json.dumps(mapping, indent=2, ensure_ascii=False))
 
