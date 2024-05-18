@@ -91,7 +91,7 @@ class SearchService:
 
     def delete_index(self):
         if self.client:
-            logger.debug(f"Удаляем индекс {self.index_name}")
+            logger.warning(f"[!!!] Удаляем индекс {self.index_name}")
             self.client.indices.delete(index=self.index_name, ignore_unavailable=True)
 
     def create_index(self):
@@ -119,22 +119,11 @@ class SearchService:
                     mapping = result.get(self.index_name, {}).get("mappings")
                     if mapping and mapping != expected_mapping:
                         logger.debug(f"Найдена структура индексации: {mapping}")
-                        logger.warn(
-                            "Требуется другая структура индексации, переиндексация"
-                        )
-                        await self.recreate_index()
+                        logger.warn("[!!!] Требуется другая структура индексации и переиндексация данных")
+                        self.client = None
         else:
             logger.error("клиент не инициализован, невозможно проверить индекс")
 
-    async def recreate_index(self):
-        if self.client:
-            async with self.lock:
-                self.client.indices.delete(
-                    index=self.index_name, ignore_unavailable=True
-                )
-                await self.check_index()
-        else:
-            logger.error("клиент не инициализован, невозможно пересоздать индекс")
 
     def index(self, shout):
         if self.client:
