@@ -67,7 +67,9 @@ def after_shout_update(_mapper, _connection, shout: Shout):
         .filter(ShoutAuthor.shout == shout.id)  # Filter by shout.id
     )
 
-    for author_with_stat in get_with_stat(authors_query):
+    authors_updated = get_with_stat(authors_query)
+
+    for author_with_stat in authors_updated:
         asyncio.create_task(cache_author(author_with_stat.dict()))
 
 

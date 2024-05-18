@@ -155,7 +155,6 @@ async def _create_reaction(session, shout, author_id: int, reaction):
         await update_author_stat(author_id)
 
     rdict["shout"] = shout.dict()
-    rdict["created_by"] = author_id
     rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
 
     # notifications call
@@ -203,12 +202,13 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
 @mutation.field("create_reaction")
 @login_required
 async def create_reaction(_, info, reaction):
-    logger.debug(f"{info.context} for {reaction}")
+    # logger.debug(f"{info.context} for {reaction}")
     info.context.get("user_id")
-    author_id = info.context.get("author", {}).get("id")
-    shout_id = reaction.get("shout")
-    if not author_id:
+    author_dict = info.context.get("author", {})
+    if not isinstance(author_dict, dict):
         return {"error": "Unauthorized"}
+    author_id = author_dict.get("id")
+    shout_id = reaction.get("shout")
     if not shout_id:
         return {"error": "Shout ID is required to create a reaction."}
 
@@ -235,7 +235,7 @@ async def create_reaction(_, info, reaction):
                 rdict = await _create_reaction(session, shout, author_id, reaction)
 
                 # TODO: call recount ratings periodically
-
+                rdict["created_by"] = author_dict
                 return {"reaction": rdict}
     except Exception as e:
         import traceback
