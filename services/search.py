@@ -20,10 +20,7 @@ REDIS_TTL = 86400  # 1 день в секундах
 
 index_settings = {
     "settings": {
-        "index": {
-            "number_of_shards": 1,
-            "auto_expand_replicas": "0-all"
-        },
+        "index": {"number_of_shards": 1, "auto_expand_replicas": "0-all"},
         "analysis": {
             "analyzer": {
                 "ru": {
@@ -40,21 +37,9 @@ index_settings = {
     "mappings": {
         "properties": {
             "body": {"type": "text", "analyzer": "ru"},
-            # "cover": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            # "created_at": {"type": "long"},
-            # "created_by": {"type": "long"},
-            # "featured_at": {"type": "long"},
-            # "id": {"type": "long"},
-            # "lang": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            # "layout": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            "lead": {"type": "text", "analyzer": "ru"},
-            "media": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            # "oid": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            # "published_at": {"type": "long"},
-            # "slug": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            "subtitle": {"type": "text", "analyzer": "ru"},
             "title": {"type": "text", "analyzer": "ru"},
-            # "updated_at": {"type": "long"}
+            "subtitle": {"type": "text", "analyzer": "ru"},
+            "lead": {"type": "text", "analyzer": "ru"},
         }
     },
 }
@@ -64,11 +49,12 @@ expected_mapping = index_settings["mappings"]
 # Создание цикла событий
 search_loop = asyncio.get_event_loop()
 
+
 def get_indices_stats():
     indices_stats = search_service.client.cat.indices(format="json")
     for index_info in indices_stats:
         index_name = index_info["index"]
-        if not index_name.startswith('.'):
+        if not index_name.startswith("."):
             index_health = index_info["health"]
             index_status = index_info["status"]
             pri_shards = index_info["pri"]
@@ -154,12 +140,13 @@ class SearchService:
                     mapping = result.get(self.index_name, {}).get("mappings")
                     if mapping and mapping != expected_mapping:
                         logger.debug(f"Найдена структура индексации: {mapping}")
-                        logger.warn("[!!!] Требуется другая структура индексации и переиндексация всех данных")
+                        logger.warn(
+                            "[!!!] Требуется другая структура индексации и переиндексация всех данных"
+                        )
                         self.delete_index()
                         self.client = None
         else:
             logger.error("клиент не инициализован, невозможно проверить индекс")
-
 
     def index(self, shout):
         if self.client:
@@ -177,11 +164,7 @@ class SearchService:
 
     async def perform_index(self, shout, index_body):
         if self.client:
-            self.client.index(
-                index=self.index_name,
-                id=str(shout.id),
-                body=index_body
-            )
+            self.client.index(index=self.index_name, id=str(shout.id), body=index_body)
 
     async def search(self, text, limit, offset):
         logger.debug(f"Ищем: {text}")
