@@ -207,7 +207,8 @@ async def create_reaction(_, info, reaction):
     info.context.get("user_id")
     author_id = info.context.get("author", {}).get("id")
     shout_id = reaction.get("shout")
-
+    if not author_id:
+        return {"error": "Unauthorized"}
     if not shout_id:
         return {"error": "Shout ID is required to create a reaction."}
 

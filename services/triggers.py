@@ -94,9 +94,8 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
         for author_with_stat in get_with_stat(author_query):
             asyncio.create_task(cache_author(author_with_stat.dict()))
 
-        shout = connection.execute(
-            select(Shout).select_from(Shout).where(Shout.id == reaction.shout)
-        ).first()
+        shout_query = select(Shout).select_from(Shout).where(Shout.id == reaction.shout)
+        [shout] = connection.execute(shout_query)
         if shout:
             after_shout_update(mapper, connection, shout)
     except Exception as exc:

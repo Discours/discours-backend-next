@@ -20,7 +20,10 @@ REDIS_TTL = 86400  # 1 день в секундах
 
 index_settings = {
     "settings": {
-        "index": {"number_of_shards": 1, "auto_expand_replicas": "0-all"},
+        "index": {
+            "number_of_shards": 1,
+            "auto_expand_replicas": "0-all"
+        },
         "analysis": {
             "analyzer": {
                 "ru": {
@@ -37,13 +40,13 @@ index_settings = {
     "mappings": {
         "properties": {
             "body": {"type": "text", "analyzer": "ru"},
-            #"cover": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            #"created_at": {"type": "long"},
-            #"created_by": {"type": "long"},
-            #"featured_at": {"type": "long"},
-            #"id": {"type": "long"},
-            #"lang": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
-            #"layout": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            # "cover": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            # "created_at": {"type": "long"},
+            # "created_by": {"type": "long"},
+            # "featured_at": {"type": "long"},
+            # "id": {"type": "long"},
+            # "lang": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+            # "layout": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
             "lead": {"type": "text", "analyzer": "ru"},
             "media": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
             # "oid": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
