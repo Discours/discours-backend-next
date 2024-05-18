@@ -50,6 +50,30 @@ expected_mapping = index_settings["mappings"]
 # Создание цикла событий
 search_loop = asyncio.get_event_loop()
 
+def get_indices_stats():
+    indices_stats = search_service.client.cat.indices(format="json")
+    for index_info in indices_stats:
+        index_name = index_info["index"]
+        if not index_name.startswith('.'):
+            index_health = index_info["health"]
+            index_status = index_info["status"]
+            pri_shards = index_info["pri"]
+            rep_shards = index_info["rep"]
+            docs_count = index_info["docs.count"]
+            docs_deleted = index_info["docs.deleted"]
+            store_size = index_info["store.size"]
+            pri_store_size = index_info["pri.store.size"]
+
+            logger.info(f"Index: {index_name}")
+            logger.info(f"Health: {index_health}")
+            logger.info(f"Status: {index_status}")
+            logger.info(f"Primary Shards: {pri_shards}")
+            logger.info(f"Replica Shards: {rep_shards}")
+            logger.info(f"Documents Count: {docs_count}")
+            logger.info(f"Deleted Documents: {docs_deleted}")
+            logger.info(f"Store Size: {store_size}")
+            logger.info(f"Primary Store Size: {pri_store_size}")
+
 
 class SearchService:
     def __init__(self, index_name="search_index"):
@@ -84,8 +108,7 @@ class SearchService:
     async def info(self):
         if isinstance(self.client, OpenSearch):
             logger.info("Поиск подключен")
-            indices_stats = await self.client.cat.indices(format="json")
-            logger.info(indices_stats)
+            get_indices_stats()
         else:
             logger.warning("Задайте переменные среды для подключения к серверу поиска")
 
@@ -119,7 +142,7 @@ class SearchService:
                     mapping = result.get(self.index_name, {}).get("mappings")
                     if mapping and mapping != expected_mapping:
                         logger.debug(f"Найдена структура индексации: {mapping}")
-                        logger.warn("[!!!] Требуется другая структура индексации и переиндексация данных")
+                        logger.warn("[!!!] Требуется другая структура индексации и переиндексация всех данных")
                         self.client = None
         else:
             logger.error("клиент не инициализован, невозможно проверить индекс")
@@ -127,8 +150,7 @@ class SearchService:
 
     def index(self, shout):
         if self.client:
-            id_ = str(shout.id)
-            logger.debug(f"Индексируем пост {id_}")
+            logger.debug(f"Индексируем пост {shout.id}")
             asyncio.create_task(self.perform_index(shout))
         else:
             logger.error("клиент не инициализован, невозможно проидексировать")
@@ -136,7 +158,9 @@ class SearchService:
     async def perform_index(self, shout):
         if self.client:
             self.client.index(
-                index=self.index_name, id=str(shout.id), body=shout.dict()
+                index=self.index_name,
+                id=str(shout.id),
+                body=shout.dict()
             )
 
     async def search(self, text, limit, offset):
