@@ -1,17 +1,16 @@
 import os
 import re
 
+from sqlalchemy import select
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from sqlalchemy import select
-
 from orm.author import Author
-from services.db import local_session
-from services.cache import cache_author
 from resolvers.stat import get_with_stat
+from services.cache import cache_author
+from services.db import local_session
 
 
 class WebhookEndpoint(HTTPEndpoint):
