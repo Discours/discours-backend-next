@@ -41,10 +41,10 @@ async def cache_by_slug(what: str, slug: str):
 async def follow(_, info, what, slug):
     error = None
     user_id = info.context.get("user_id")
-    follower_dict = info.context["author"]
-    follower_id = follower_dict.get("id")
-    if not user_id or not follower_id:
+    follower_dict = info.context.get("author")
+    if not user_id or not follower_dict:
         return {"error": "unauthorized"}
+    follower_id = follower_dict.get("id")
 
     entity = what.lower()
     follows = []
@@ -91,13 +91,10 @@ async def unfollow(_, info, what, slug):
     follows = []
     error = None
     user_id = info.context.get("user_id")
-    follower_dict = info.context["author"]
-    follower_id = follower_dict.get("id")
-    if not user_id:
+    follower_dict = info.context.get("author")
+    if not user_id or not follower_dict:
         return {"error": "unauthorized"}
-
-    if not follower_id:
-        return {"error": "cant find follower account"}
+    follower_id = follower_dict.get("id")
 
     entity = what.lower()
     follows = []
