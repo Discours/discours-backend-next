@@ -215,7 +215,7 @@ async def get_author_follows_topics(_, _info, slug="", user=None, author_id=None
             author_id = author_id_result[0] if author_id_result else None
         if not author_id:
             raise ValueError("Author not found")
-        return get_author_follows_topics(author_id)
+        return get_cached_author_follows_topics(author_id)
 
 
 @query.field("get_author_follows_authors")

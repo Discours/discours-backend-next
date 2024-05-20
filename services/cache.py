@@ -17,70 +17,19 @@ DEFAULT_FOLLOWS = {
 
 
 async def cache_topic(topic: dict):
-    await redis.execute(
-        "SET",
-        f"topic:id:{topic.get('id')}",
-        json.dumps(topic.dict(), cls=CustomJSONEncoder),
-    )
-    await redis.execute("SET", f"topic:slug:{topic.get('slug')}", topic.id)
+    topic_id = topic.get("id")
+    topic_slug = topic.get("slug")
+    payload = json.dumps(topic.dict(), cls=CustomJSONEncoder)
+    await redis.execute("SET", f"topic:id:{topic_id}", payload)
+    await redis.execute("SET", f"topic:slug:{topic_slug}", topic.id)
 
 
 async def cache_author(author: dict):
     author_id = author.get("id")
+    user_id = author.get("user")
     payload = json.dumps(author, cls=CustomJSONEncoder)
-    await redis.execute("SET", f'user:id:{author.get("user")}', author_id)
+    await redis.execute("SET", f"user:id:{user_id}", author_id)
     await redis.execute("SET", f"author:id:{author_id}", payload)
-
-    # update stat all field for followers' caches in <authors> list
-    followers_str = await redis.execute("GET", f"author:{author_id}:followers")
-    followers = []
-    if isinstance(followers_str, str):
-        followers = json.loads(followers_str)
-    if isinstance(followers, list):
-        for follower in followers:
-            follower_follows_authors = []
-            follower_follows_authors_str = await redis.execute(
-                "GET", f"author:{author_id}:follows-authors"
-            )
-            if isinstance(follower_follows_authors_str, str):
-                follower_follows_authors = json.loads(follower_follows_authors_str)
-                c = 0
-                for old_author in follower_follows_authors:
-                    if int(old_author.get("id")) == int(author.get("id", 0)):
-                        follower_follows_authors[c] = author
-                        break  # exit the loop since we found and updated the author
-                    c += 1
-            else:
-                # author not found in the list, so add the new author with the updated stat field
-                follower_follows_authors.append(author)
-
-    # update stat field for all authors' caches in <followers> list
-    follows_str = await redis.execute("GET", f"author:{author_id}:follows-authors")
-    follows_authors = []
-    if isinstance(follows_str, str):
-        follows_authors = json.loads(follows_str)
-    if isinstance(follows_authors, list):
-        for followed_author in follows_authors:
-            followed_author_followers = []
-            followed_author_followers_str = await redis.execute(
-                "GET", f"author:{author_id}:followers"
-            )
-            if isinstance(followed_author_followers_str, str):
-                followed_author_followers = json.loads(followed_author_followers_str)
-                c = 0
-                for old_follower in followed_author_followers:
-                    old_follower_id = int(old_follower.get("id"))
-                    if old_follower_id == author_id:
-                        followed_author_followers[c] = author
-                        break  # exit the loop since we found and updated the author
-                    c += 1
-            # author not found in the list, so add the new author with the updated stat field
-            followed_author_followers.append(author)
-            await redis.execute(
-                "SET",
-                f"author:{author_id}:followers",
-                json.dumps(followed_author_followers, cls=CustomJSONEncoder),
-            )
 
 
 async def cache_follows(
@@ -111,7 +60,6 @@ async def cache_follows(
         follower = json.loads(follower_str)
         follower["stat"][f"{entity_type}s"] = len(follows)
         await cache_author(follower)
-    return follows
 
 
 async def get_cached_author(author_id: int, get_with_stat):
@@ -148,7 +96,18 @@ async def get_cached_author_follows_topics(author_id: int):
             .all()
         )
         await redis.execute("SET", rkey, json.dumps(topics))
-    return topics
+
+        topics_objects = []
+        for topic_id in topics:
+            topic_str = await redis.execute("GET", f"topic:id:{topic_id}")
+            if topic_str:
+                topic = json.loads(topic_str)
+                if topic and topic not in topics_objects:
+                    topics_objects.append(topic)
+        logger.debug(
+            f"author#{author_id} cache updated with {len(topics_objects)} topics"
+        )
+        return topics_objects
 
 
 async def get_cached_author_follows_authors(author_id: int):
@@ -156,19 +115,26 @@ async def get_cached_author_follows_authors(author_id: int):
     rkey = f"author:follows-authors:{author_id}"
     cached = await redis.execute("GET", rkey)
     if not cached:
-        with local_session() as session:
-            authors = (
-                session.query(Author.id)
-                .select_from(
-                    join(Author, AuthorFollower, Author.id == AuthorFollower.author)
-                )
-                .where(AuthorFollower.follower == author_id)
-                .all()
+        authors_query = (
+            select(Author.id)
+            .select_from(
+                join(Author, AuthorFollower, Author.id == AuthorFollower.author)
             )
-            await redis.execute("SET", rkey, json.dumps(authors))
+            .where(AuthorFollower.follower == author_id)
+            .all()
+        )
+        authors = local_session().execute(authors_query)
+        await redis.execute("SET", rkey, json.dumps([aid for aid in authors]))
     elif isinstance(cached, str):
         authors = json.loads(cached)
-    return authors
+    authors_objects = []
+    for author_id in authors:
+        author_str = await redis.execute("GET", f"author:id:{author_id}")
+        if author_str:
+            author = json.loads(author_str)
+            if author and author not in authors_objects:
+                authors_objects.append(author)
+    return authors_objects
 
 
 async def get_cached_author_followers(author_id: int):
@@ -193,10 +159,18 @@ async def get_cached_author_followers(author_id: int):
         )
         .all()
     )
-    if followers:
-        await redis.execute("SET", rkey, json.dumps(followers))
+
+    await redis.execute("SET", rkey, json.dumps(followers))
+
+    followers_objects = []
+    for follower_id in followers:
+        follower_str = await redis.execute("GET", f"author:id:{follower_id}")
+        if follower_str:
+            follower = json.loads(follower_str)
+            if follower and follower not in followers_objects:
+                followers_objects.append(follower)
     logger.debug(f"author#{author_id} cache updated with {len(followers)} followers")
-    return followers
+    return followers_objects
 
 
 async def get_cached_topic_followers(topic_id: int):
@@ -217,10 +191,18 @@ async def get_cached_topic_followers(topic_id: int):
         )
         .all()
     )
+    followers_objects = []
     if followers:
         await redis.execute("SET", rkey, json.dumps(followers))
-    logger.debug(f"topic#{topic_id} cache updated with {len(followers)} followers")
-    return followers
+
+        for follower_id in followers:
+            follower_str = await redis.execute("GET", f"author:id:{follower_id}")
+            if follower_str:
+                follower = json.loads(follower_str)
+                if follower and follower not in followers_objects:
+                    followers_objects.append(follower)
+        logger.debug(f"topic#{topic_id} cache updated with {len(followers)} followers")
+    return followers_objects
 
 
 async def get_cached_topic_authors(topic_id: int, topic_authors_query):
@@ -233,8 +215,14 @@ async def get_cached_topic_authors(topic_id: int, topic_authors_query):
             return authors
 
     authors = local_session().execute(topic_authors_query)
-    # should be id list
+    authors_objects = []
     if authors:
         await redis.execute("SET", rkey, json.dumps(authors))
-    logger.debug(f"topic#{topic_id} cache updated with {len(authors)} authors")
-    return authors
+        for author_id in authors:
+            author_str = await redis.execute("GET", f"author:id:{author_id}")
+            if author_str:
+                author = json.loads(author_str)
+                if author and author not in authors_objects:
+                    authors_objects.append(author)
+        logger.debug(f"topic#{topic_id} cache updated with {len(authors)} authors")
+    return authors_objects
