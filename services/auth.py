@@ -1,23 +1,10 @@
-import json
 from functools import wraps
 
 import httpx
 
+from services.cache import get_cached_author_by_user_id
 from services.logger import root_logger as logger
-from services.rediscache import redis
 from settings import ADMIN_SECRET, AUTH_URL
-
-
-async def get_author_by_user(user: str):
-    author = None
-    redis_key = f"user:{user}"
-
-    result = await redis.execute("GET", redis_key)
-    if isinstance(result, str):
-        author = json.loads(result)
-        if author:
-            return author
-    return
 
 
 async def request_data(gql, headers=None):
@@ -99,7 +86,7 @@ def login_required(f):
             logger.info(f" got {user_id} roles: {user_roles}")
             info.context["user_id"] = user_id.strip()
             info.context["roles"] = user_roles
-            author = await get_author_by_user(user_id)
+            author = await get_cached_author_by_user_id(user_id)
             if not author:
                 logger.error(f"author profile not found for user {user_id}")
             info.context["author"] = author

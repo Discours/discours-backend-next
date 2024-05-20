@@ -9,8 +9,8 @@ type Mutation {
   delete_shout(shout_id: Int!): CommonResult!
 
   # follower
-  follow(what: FollowingEntity!, slug: String!): CommonResult!
-  unfollow(what: FollowingEntity!, slug: String!): CommonResult!
+  follow(what: FollowingEntity!, slug: String!): AuthorFollowsResult!
+  unfollow(what: FollowingEntity!, slug: String!): AuthorFollowsResult!
 
   # topic
   create_topic(input: TopicInput!): CommonResult!

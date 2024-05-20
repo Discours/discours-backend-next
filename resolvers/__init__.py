@@ -11,7 +11,7 @@ from resolvers.author import (  # search_authors,
 )
 from resolvers.community import get_communities_all, get_community
 from resolvers.editor import create_shout, delete_shout, update_shout
-from resolvers.follower import follow, get_shout_followers, get_topic_followers, unfollow
+from resolvers.follower import follow, get_shout_followers, unfollow
 from resolvers.notifier import (
     load_notifications,
     notification_mark_seen,
@@ -35,7 +35,14 @@ from resolvers.reader import (
     load_shouts_search,
     load_shouts_unrated,
 )
-from resolvers.topic import get_topic, get_topics_all, get_topics_by_author, get_topics_by_community
+from resolvers.topic import (
+    get_topic,
+    get_topic_authors,
+    get_topic_followers,
+    get_topics_all,
+    get_topics_by_author,
+    get_topics_by_community,
+)
 from services.triggers import events_register
 
 events_register()
@@ -44,6 +51,7 @@ __all__ = [
     # author
     "get_author",
     "get_author_id",
+    "get_author_followers",
     "get_author_follows",
     "get_author_follows_topics",
     "get_author_follows_authors",
@@ -60,6 +68,8 @@ __all__ = [
     "get_topics_all",
     "get_topics_by_community",
     "get_topics_by_author",
+    "get_topic_followers",
+    "get_topic_authors",
     # reader
     "get_shout",
     "load_shouts_by",
@@ -72,9 +82,7 @@ __all__ = [
     # follower
     "follow",
     "unfollow",
-    "get_topic_followers",
     "get_shout_followers",
-    "get_author_followers",
     # editor
     "create_shout",
     "update_shout",

@@ -1,5 +1,3 @@
-import json
-import time
 from typing import List
 
 from sqlalchemy import select
@@ -10,13 +8,18 @@ from orm.community import Community
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import author_follows_authors, author_follows_topics, get_with_stat
+from resolvers.stat import get_with_stat
 from services.auth import login_required
-from services.cache import DEFAULT_FOLLOWS, cache_author, cache_topic
+from services.cache import (
+    cache_author,
+    cache_topic,
+    get_cached_author_by_user_id,
+    get_cached_author_follows_authors,
+    get_cached_author_follows_topics,
+)
 from services.db import local_session
 from services.logger import root_logger as logger
 from services.notify import notify_follower
-from services.rediscache import redis
 from services.schema import mutation, query
 
 
@@ -47,30 +50,28 @@ async def follow(_, info, what, slug):
     follower_id = follower_dict.get("id")
 
     entity = what.lower()
-    follows = []
-    follows_str = await redis.execute("GET", f"author:{follower_id}:follows-{entity}s")
-    if isinstance(follows_str, str):
-        follows = json.loads(follows_str) or []
 
     if what == "AUTHOR":
+        follows = await get_cached_author_follows_authors(follower_id)
         follower_id = int(follower_id)
         error = author_follow(follower_id, slug)
         if not error:
-            author_query = select(Author).filter(Author.slug == slug)
-            [author] = get_with_stat(author_query)
-            if author:
-                author_dict = author.dict()
-                author_id = int(author_dict.get("id", 0))
-                follows_ids = set(int(a.get("id")) for a in follows)
-                if author_id not in follows_ids:
+            [author_id] = (
+                local_session().query(Author.id).filter(Author.slug == slug).first()
+            )
+            if author_id and author_id not in follows:
+                follows.append(author_id)
+                await cache_author(follower_dict)
+                await notify_follower(follower_dict, author_id, "follow")
+                [author] = get_with_stat(select(Author).filter(Author.id == author_id))
+                if author:
+                    author_dict = author.dict()
                     await cache_author(author_dict)
-                    await cache_author(follower_dict)
-                    await notify_follower(follower_dict, author_id, "follow")
-                    follows.append(author_dict)
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)
-        _topic_dict = await cache_by_slug(what, slug)
+        topic_dict = await cache_by_slug(what, slug)
+        await cache_topic(topic_dict)
 
     elif what == "COMMUNITY":
         # FIXME: when more communities
@@ -95,31 +96,32 @@ async def unfollow(_, info, what, slug):
 
     entity = what.lower()
     follows = []
-    follows_str = await redis.execute("GET", f"author:{follower_id}:follows-{entity}s")
-    if isinstance(follows_str, str):
-        follows = json.loads(follows_str) or []
 
     if what == "AUTHOR":
+        follows = await get_cached_author_follows_authors(follower_id)
+        follower_id = int(follower_id)
         error = author_unfollow(follower_id, slug)
         # NOTE: after triggers should update cached stats
         if not error:
             logger.info(f"@{follower_dict.get('slug')} unfollowed @{slug}")
-            author_query = select(Author).filter(Author.slug == slug)
-            [author] = get_with_stat(author_query)
-            if author:
-                author_dict = author.dict()
-                author_id = author.id
-                await cache_author(author_dict)
-                for idx, item in enumerate(follows):
-                    if item["id"] == author_id:
-                        await cache_author(follower_dict)
-                        await notify_follower(follower_dict, author_id, "unfollow")
-                        follows.pop(idx)
-                        break
+            [author_id] = (
+                local_session().query(Author.id).filter(Author.slug == slug).first()
+            )
+            if author_id and author_id in follows:
+                follows.remove(author_id)
+                await cache_author(follower_dict)
+                await notify_follower(follower_dict, author_id, "follow")
+                [author] = get_with_stat(select(Author).filter(Author.id == author_id))
+                if author:
+                    author_dict = author.dict()
+                    await cache_author(author_dict)
 
     elif what == "TOPIC":
         error = topic_unfollow(follower_id, slug)
-        _topic_dict = await cache_by_slug(what, slug)
+        if not error:
+            follows = await get_cached_author_follows_topics(follower_id)
+            topic_dict = await cache_by_slug(what, slug)
+            await cache_topic(topic_dict)
 
     elif what == "COMMUNITY":
         follows = local_session().execute(select(Community))
@@ -133,36 +135,23 @@ async def unfollow(_, info, what, slug):
 async def get_follows_by_user_id(user_id: str):
     if not user_id:
         return {"error": "unauthorized"}
-    author = await redis.execute("GET", f"user:{user_id}")
-    if isinstance(author, str):
-        author = json.loads(author)
+    author = await get_cached_author_by_user_id(user_id)
     if not author:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
             if not author:
                 return {"error": "cant find author"}
             author = author.dict()
-    last_seen = author.get("last_seen", 0) if isinstance(author, dict) else 0
-    follows = DEFAULT_FOLLOWS
-    day_old = int(time.time()) - last_seen > 24 * 60 * 60
-    if day_old:
-        author_id = json.loads(str(author)).get("id")
-        if author_id:
-            topics = author_follows_topics(author_id)
-            authors = author_follows_authors(author_id)
-            follows = {
-                "topics": topics,
-                "authors": authors,
-                "communities": [
-                    {"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}
-                ],
-            }
-    else:
-        logger.debug(f"getting follows for {user_id} from redis")
-        res = await redis.execute("GET", f"user:{user_id}:follows")
-        if isinstance(res, str):
-            follows = json.loads(res)
-    return follows
+
+    author_id = author.get("id")
+    if author_id:
+        topics = await get_cached_author_follows_topics(author_id)
+        authors = await get_cached_author_follows_authors(author_id)
+    return {
+        "topics": topics or [],
+        "authors": authors or [],
+        "communities": [{"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}],
+    }
 
 
 def topic_follow(follower_id, slug):
@@ -280,17 +269,6 @@ def author_unfollow(follower_id, slug):
     except Exception as error:
         logger.warn(error)
         return "cant unfollow"
-
-
-@query.field("get_topic_followers")
-async def get_topic_followers(_, _info, slug: str) -> List[Author]:
-    topic_followers_query = select(Author)
-    topic_followers_query = (
-        topic_followers_query.join(TopicFollower, TopicFollower.follower == Author.id)
-        .join(Topic, Topic.id == TopicFollower.topic)
-        .filter(Topic.slug == slug)
-    )
-    return get_with_stat(topic_followers_query)
 
 
 @query.field("get_shout_followers")

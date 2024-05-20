@@ -56,10 +56,9 @@ def get_topic_shouts_stat(topic_id: int):
     return result[0] if result else 0
 
 
-def get_topic_authors_stat(topic_id: int):
-    # authors
-    q = (
-        select(func.count(distinct(ShoutAuthor.author)))
+def get_topic_authors_query(topic_id):
+    return (
+        select(ShoutAuthor.author)
         .select_from(join(ShoutTopic, Shout, ShoutTopic.shout == Shout.id))
         .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
         .filter(
@@ -70,8 +69,18 @@ def get_topic_authors_stat(topic_id: int):
             )
         )
     )
-    result = local_session().execute(q).first()
-    return result[0] if result else 0
+
+
+def get_topic_authors_stat(topic_id: int):
+    # authors query
+    topic_authors_query = get_topic_authors_query(topic_id)
+
+    # Оборачиваем запрос в другой запрос, чтобы посчитать уникальных авторов
+    count_query = select(func.count(distinct(topic_authors_query.subquery().c.author)))
+
+    # Выполняем запрос и получаем результат
+    result = local_session().execute(count_query).scalar()
+    return result if result is not None else 0
 
 
 def get_topic_followers_stat(topic_id: int):

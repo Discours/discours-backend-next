@@ -5,7 +5,9 @@ from orm.shout import ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
+from services.cache import get_cached_topic_authors, get_cached_topic_followers
 from services.db import local_session
+from services.logger import root_logger as logger
 from services.memorycache import cache_region
 from services.schema import mutation, query
 
@@ -124,3 +126,23 @@ def get_topics_random(_, _info, amount=12):
             topics.append(topic)
 
     return topics
+
+
+@query.field("get_topic_followers")
+async def get_topic_followers(_, _info, slug: str):
+    logger.debug(f"getting followers for @{slug}")
+    topic_query = select(Topic.id).filter(Topic.slug == slug).first()
+    topic_id_result = local_session().execute(topic_query)
+    topic_id = topic_id_result[0] if topic_id_result else None
+    followers = await get_cached_topic_followers(topic_id)
+    return followers
+
+
+@query.field("get_topic_authors")
+async def get_topic_authors(_, _info, slug: str):
+    logger.debug(f"getting authors for @{slug}")
+    topic_query = select(Topic.id).filter(Topic.slug == slug).first()
+    topic_id_result = local_session().execute(topic_query)
+    topic_id = topic_id_result[0] if topic_id_result else None
+    authors = await get_cached_topic_authors(topic_id)
+    return authors
