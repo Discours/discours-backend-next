@@ -79,10 +79,7 @@ async def follow(_, info, what, slug):
     elif what == "SHOUT":
         error = reactions_follow(follower_id, slug)
 
-    if error:
-        return {"error": error}
-
-    return {f"{entity}s": follows}
+    return {f"{entity}s": follows, "error": error}
 
 
 @mutation.field("unfollow")
