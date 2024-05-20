@@ -4,7 +4,6 @@ from sqlalchemy import and_, join, select
 
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
-from resolvers.stat import get_topic_authors_query, get_with_stat
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
@@ -115,7 +114,7 @@ async def cache_follows(
     return follows
 
 
-async def get_cached_author(author_id: int):
+async def get_cached_author(author_id: int, get_with_stat):
     if author_id:
         rkey = f"author:id:{author_id}"
         cached_result = await redis.execute("GET", rkey)
@@ -128,10 +127,10 @@ async def get_cached_author(author_id: int):
                 await cache_author(author.dict())
 
 
-async def get_cached_author_by_user_id(user_id: str):
+async def get_cached_author_by_user_id(user_id: str, get_with_stat):
     author_id = await redis.execute("GET", f"user:id:{user_id}")
     if author_id:
-        return await get_cached_author(int(author_id))
+        return await get_cached_author(int(author_id), get_with_stat)
 
 
 async def get_cached_author_follows_topics(author_id: int):
@@ -224,7 +223,7 @@ async def get_cached_topic_followers(topic_id: int):
     return followers
 
 
-async def get_cached_topic_authors(topic_id: int):
+async def get_cached_topic_authors(topic_id: int, topic_authors_query):
     authors = []
     rkey = f"topic:authors:{topic_id}"
     cached = await redis.execute("GET", rkey)
@@ -233,7 +232,7 @@ async def get_cached_topic_authors(topic_id: int):
         if isinstance(authors, list):
             return authors
 
-    authors = local_session().execute(get_topic_authors_query(topic_id))
+    authors = local_session().execute(topic_authors_query)
     # should be id list
     if authors:
         await redis.execute("SET", rkey, json.dumps(authors))

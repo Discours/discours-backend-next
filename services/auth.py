@@ -2,6 +2,7 @@ from functools import wraps
 
 import httpx
 
+from resolvers.stat import get_with_stat
 from services.cache import get_cached_author_by_user_id
 from services.logger import root_logger as logger
 from settings import ADMIN_SECRET, AUTH_URL
@@ -86,7 +87,7 @@ def login_required(f):
             logger.info(f" got {user_id} roles: {user_roles}")
             info.context["user_id"] = user_id.strip()
             info.context["roles"] = user_roles
-            author = await get_cached_author_by_user_id(user_id)
+            author = await get_cached_author_by_user_id(user_id, get_with_stat)
             if not author:
                 logger.error(f"author profile not found for user {user_id}")
             info.context["author"] = author

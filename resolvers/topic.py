@@ -1,7 +1,7 @@
-from sqlalchemy import distinct, func, select
+from sqlalchemy import and_, distinct, func, join, select
 
 from orm.author import Author
-from orm.shout import ShoutTopic
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
@@ -144,5 +144,17 @@ async def get_topic_authors(_, _info, slug: str):
     topic_query = select(Topic.id).filter(Topic.slug == slug).first()
     topic_id_result = local_session().execute(topic_query)
     topic_id = topic_id_result[0] if topic_id_result else None
-    authors = await get_cached_topic_authors(topic_id)
+    topic_authors_query = (
+        select(ShoutAuthor.author)
+        .select_from(join(ShoutTopic, Shout, ShoutTopic.shout == Shout.id))
+        .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
+        .filter(
+            and_(
+                ShoutTopic.topic == topic_id,
+                Shout.published_at.is_not(None),
+                Shout.deleted_at.is_(None),
+            )
+        )
+    )
+    authors = await get_cached_topic_authors(topic_id, topic_authors_query)
     return authors

@@ -73,7 +73,7 @@ async def get_author(_, _info, slug="", author_id=0):
             if found_author:
                 logger.debug(f"found author id: {found_author.id}")
                 author_id = found_author.id if found_author.id else author_id
-                author_dict = await get_cached_author(author_id)
+                author_dict = await get_cached_author(int(author_id), get_with_stat)
 
         # update stat from db
         if not author_dict or not author_dict.get("stat"):
@@ -99,7 +99,7 @@ async def get_author_by_user_id(user_id: str):
     logger.info(f"getting author id for {user_id}")
     author = None
     try:
-        author = await get_cached_author_by_user_id(user_id)
+        author = await get_cached_author_by_user_id(user_id, get_with_stat)
         if author:
             return author
 
@@ -150,7 +150,7 @@ async def load_authors_by(_, _info, by, limit, offset):
         for [a] in authors_nostat:
             author_dict = None
             if isinstance(a, Author):
-                author_dict = await get_cached_author(a.id)
+                author_dict = await get_cached_author(a.id, get_with_stat)
                 if not author_dict or not isinstance(author_dict.get("shouts"), int):
                     break
 

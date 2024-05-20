@@ -135,7 +135,7 @@ async def unfollow(_, info, what, slug):
 async def get_follows_by_user_id(user_id: str):
     if not user_id:
         return {"error": "unauthorized"}
-    author = await get_cached_author_by_user_id(user_id)
+    author = await get_cached_author_by_user_id(user_id, get_with_stat)
     if not author:
         with local_session() as session:
             author = session.query(Author).filter(Author.user == user_id).first()
