@@ -254,7 +254,8 @@ def create_author(user_id: str, slug: str, name: str = ""):
 async def get_author_followers(_, _info, slug: str):
     logger.debug(f"getting followers for @{slug}")
     author_query = select(Author.id).filter(Author.slug == slug)
-    author_id_result = local_session().execute(author_query)
-    author_id = author_id_result[0] if author_id_result else None
-    followers = await get_cached_author_followers(author_id)
+    author_id_result = local_session().execute(author_query).scalar()
+    if author_id_result:
+        author_id = author_id_result[0] if author_id_result else None
+        followers = await get_cached_author_followers(author_id)
     return followers
