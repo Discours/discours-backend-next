@@ -148,7 +148,7 @@ async def get_cached_author_followers(author_id: int):
 
     followers = (
         local_session()
-        .query(Author.id)
+        .query(Author)
         .join(
             AuthorFollower,
             and_(
@@ -160,7 +160,7 @@ async def get_cached_author_followers(author_id: int):
         .all()
     )
 
-    await redis.execute("SET", rkey, json.dumps([x[0] for x in followers]))
+    await redis.execute("SET", rkey, json.dumps([a.id for a in followers]))
 
     followers_objects = []
     for follower_id in followers:
@@ -184,7 +184,7 @@ async def get_cached_topic_followers(topic_id: int):
 
     followers = (
         local_session()
-        .query(Author.id)
+        .query(Author)
         .join(
             TopicFollower,
             and_(TopicFollower.topic == topic_id, TopicFollower.follower == Author.id),
@@ -193,7 +193,7 @@ async def get_cached_topic_followers(topic_id: int):
     )
     followers_objects = []
     if followers:
-        await redis.execute("SET", rkey, json.dumps([x[0] for x in followers]))
+        await redis.execute("SET", rkey, json.dumps([a.id for a in followers]))
 
         for follower_id in followers:
             follower_str = await redis.execute("GET", f"author:id:{follower_id}")
