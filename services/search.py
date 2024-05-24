@@ -180,6 +180,8 @@ class SearchService:
             search_response = self.client.search(
                 index=self.index_name, body=search_body, size=limit, from_=offset
             )
+
+            logger.debug(f"Ищsearch_response: {search_response}")
             hits = search_response["hits"]["hits"]
 
             results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]
