@@ -139,11 +139,15 @@ async def get_cached_author_follows_authors(author_id: int):
 
 async def get_cached_author_followers(author_id: int):
     followers = []
-    rkey = f"author:followers:{author_id}"
-    cached = await redis.execute("GET", rkey)
-    if isinstance(cached, str):
+    followers_rkey = f"author:followers:{author_id}"
+    cached = await redis.execute("GET", followers_rkey)
+    cached_author = await redis.execute("GET", f"author:followers:{author_id}")
+    if isinstance(cached, str) and isinstance(cached_author, str):
         followers = json.loads(cached)
-        if isinstance(followers, list):
+        author = json.loads(cache_author)
+        if isinstance(followers, list) and str(len(followers)) == str(
+            author["stat"]["followers"]
+        ):
             return followers
 
     followers = (
@@ -160,7 +164,7 @@ async def get_cached_author_followers(author_id: int):
         .all()
     )
 
-    await redis.execute("SET", rkey, json.dumps([a.id for a in followers]))
+    await redis.execute("SET", followers_rkey, json.dumps([a.id for a in followers]))
 
     followers_objects = []
     for follower_id in followers:
