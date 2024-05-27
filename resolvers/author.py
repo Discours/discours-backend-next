@@ -330,7 +330,7 @@ async def get_author_followers(_, _info, slug: str):
             cached = await redis.execute("GET", f"author:{author_id}:followers")
             if cached:
                 followers_cached = json.loads(cached)
-                if isinstance(followers_cached, list):
+                if isinstance(followers_cached, list) and len(followers_cached) > 0:
                     logger.debug(
                         f"@{slug} got {len(followers_cached)} followers cached"
                     )
