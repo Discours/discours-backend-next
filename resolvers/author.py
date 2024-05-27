@@ -334,8 +334,7 @@ async def get_author_followers(_, _info, slug: str):
                     logger.debug(
                         f"@{slug} got {len(followers_cached)} followers cached"
                     )
-                    followers = [fc for fc in followers_cached if str(fc["id"]) != str(author_id)]
-                    return followers
+                    return followers_cached
 
             author_follower_alias = aliased(AuthorFollower, name="af")
             followers_query = select(Author).join(
