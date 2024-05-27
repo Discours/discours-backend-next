@@ -328,13 +328,15 @@ async def get_author_followers(_, _info, slug: str):
             author_id = author.id
 
             cached = await redis.execute("GET", f"author:{author_id}:followers")
-            if cached:
-                followers_cached = json.loads(cached)
-                if isinstance(followers_cached, list) and len(followers_cached) > 0:
-                    logger.debug(
-                        f"@{slug} got {len(followers_cached)} followers cached"
-                    )
-                    return followers_cached
+            cached_author = await redis.execute("GET", f"author:{author_id}")
+            if cached and cached_author:
+                followers = json.loads(cached)
+                author_dict = json.loads(cached_author)
+                if isinstance(followers, list) and str(len(followers)) == str(
+                    author_dict["stat"]["followers"]
+                ):
+                    logger.debug(f"@{slug} got {len(followers)} followers cached")
+                    return followers
 
             author_follower_alias = aliased(AuthorFollower, name="af")
             followers_query = select(Author).join(
