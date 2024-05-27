@@ -346,7 +346,7 @@ async def get_author_followers(_, _info, slug: str):
                     Author.id != author_id,
                 ),
             )
-            followers_result = await session.execute(followers_query)
+            followers_result = session.execute(followers_query)
             followers = followers_result.scalars().all()
 
             if isinstance(followers, list):
