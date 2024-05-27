@@ -319,7 +319,7 @@ async def get_author_followers(_, _info, slug: str):
     try:
         author_alias = aliased(Author)
         author_query = select(author_alias).filter_by(slug=slug)
-        async with local_session() as session:
+        with local_session() as session:
             result = await session.execute(author_query).first()
             if not result:
                 return []
@@ -358,6 +358,7 @@ async def get_author_followers(_, _info, slug: str):
             return followers
     except Exception as exc:
         import traceback
+
         logger.error(exc)
         logger.error(traceback.format_exc())
         return []
