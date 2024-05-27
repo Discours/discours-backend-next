@@ -320,7 +320,7 @@ async def get_author_followers(_, _info, slug: str):
         author_alias = aliased(Author)
         author_query = select(author_alias).filter_by(slug=slug)
         with local_session() as session:
-            result = await session.execute(author_query).first()
+            result = session.execute(author_query).first()
             if not result:
                 return []
 
