@@ -74,8 +74,8 @@ async def follow(_, info, what, slug):
         await cache_topic(topic_dict)
 
     elif what == "COMMUNITY":
-        # FIXME: when more communities
-        follows = local_session().execute(select(Community))
+        with local_session() as session:
+            follows = session.execute(select(Community))
 
     elif what == "SHOUT":
         error = reactions_follow(follower_id, slug)
@@ -124,7 +124,8 @@ async def unfollow(_, info, what, slug):
             await cache_topic(topic_dict)
 
     elif what == "COMMUNITY":
-        follows = local_session().execute(select(Community))
+        with local_session() as session:
+            follows = session.execute(select(Community))
 
     elif what == "SHOUT":
         error = reactions_unfollow(follower_id, slug)

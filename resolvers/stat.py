@@ -52,7 +52,8 @@ def get_topic_shouts_stat(topic_id: int):
             )
         )
     )
-    result = local_session().execute(q).first()
+    with local_session() as session:
+        result = session.execute(q).first()
     return result[0] if result else 0
 
 
@@ -71,8 +72,9 @@ def get_topic_authors_stat(topic_id: int):
     )
 
     # Выполняем запрос и получаем результат
-    result = local_session().execute(count_query).scalar()
-    return result if result is not None else 0
+    with local_session() as session:
+        result = session.execute(count_query).first()
+    return result[0] if result else 0
 
 
 def get_topic_followers_stat(topic_id: int):
@@ -80,7 +82,8 @@ def get_topic_followers_stat(topic_id: int):
     q = select(func.count(distinct(aliased_followers.follower))).filter(
         aliased_followers.topic == topic_id
     )
-    result = local_session().execute(q).first()
+    with local_session() as session:
+        result = session.execute(q).first()
     return result[0] if result else 0
 
 
@@ -107,8 +110,8 @@ def get_topic_comments_stat(topic_id: int):
         ShoutTopic.topic == topic_id
     )
     q = q.outerjoin(sub_comments, ShoutTopic.shout == sub_comments.c.shout_id)
-
-    result = local_session().execute(q).first()
+    with local_session() as session:
+        result = session.execute(q).first()
     return result[0] if result else 0
 
 
@@ -142,7 +145,8 @@ def get_author_authors_stat(author_id: int):
             aliased_authors.author != author_id,
         )
     )
-    result = local_session().execute(q).first()
+    with local_session() as session:
+        result = session.execute(q).first()
     return result[0] if result else 0
 
 
@@ -151,7 +155,8 @@ def get_author_followers_stat(author_id: int):
     q = select(func.count(distinct(aliased_followers.follower))).filter(
         aliased_followers.author == author_id
     )
-    result = local_session().execute(q).first()
+    with local_session() as session:
+        result = session.execute(q).first()
     return result[0] if result else 0
 
 
@@ -173,8 +178,8 @@ def get_author_comments_stat(author_id: int):
         .subquery()
     )
     q = select(sub_comments.c.comments_count).filter(sub_comments.c.id == author_id)
-
-    result = local_session().execute(q).first()
+    with local_session() as session:
+        result = session.execute(q).first()
     return result[0] if result else 0
 
 
