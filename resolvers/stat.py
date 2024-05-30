@@ -12,11 +12,17 @@ from services.logger import root_logger as logger
 
 def add_topic_stat_columns(q):
     aliased_shout = aliased(ShoutTopic)
-    q = q.outerjoin(aliased_shout, and_(aliased_shout.shout == Shout.id, Shout.deleted_at.is_(None))).add_columns(
-        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
+    q = (
+        q.select_from(Topic)
+        .outerjoin(
+            aliased_shout,
+            and_(aliased_shout.shout == Shout.id, Shout.deleted_at.is_(None), aliased_shout.topic == Topic.id),
+        )
+        .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
     )
+
     aliased_follower = aliased(TopicFollower)
-    q = q.outerjoin(aliased_follower, aliased_follower.topic == Topic.id).add_columns(
+    q = q.outerjoin(aliased_follower, and_(aliased_follower.topic == Topic.id)).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
 
@@ -27,8 +33,13 @@ def add_topic_stat_columns(q):
 
 def add_author_stat_columns(q):
     aliased_shout = aliased(ShoutAuthor)
-    q = q.outerjoin(aliased_shout, and_(aliased_shout.shout == Shout.id, Shout.deleted_at.is_(None))).add_columns(
-        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
+    q = (
+        q.select_from(Author)
+        .outerjoin(
+            aliased_shout,
+            and_(aliased_shout.shout == Shout.id, Shout.deleted_at.is_(None), aliased_shout.author == Author.id),
+        )
+        .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
     )
     aliased_follower = aliased(AuthorFollower)
     q = q.outerjoin(aliased_follower, aliased_follower.author == Author.id).add_columns(
