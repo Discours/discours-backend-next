@@ -64,7 +64,7 @@ async def get_cached_author(author_id: int, get_with_stat):
         if isinstance(cached_result, str):
             return json.loads(cached_result)
         elif get_with_stat:
-            async with local_session() as session:
+            with local_session() as session:
                 author_query = select(Author).filter(Author.id == author_id)
                 [author] = get_with_stat(session.execute(author_query))
                 if author:
@@ -98,7 +98,7 @@ async def get_cached_topic_authors(topic_id: int, topic_authors_query):
     if isinstance(cached, str):
         authors_ids = json.loads(cached)
     else:
-        async with local_session() as session:
+        with local_session() as session:
             authors_ids = [aid for (aid,) in session.execute(topic_authors_query)]
     await redis.execute("SET", rkey, json.dumps(authors_ids))
     authors = await get_cached_authors_by_ids(authors_ids)
