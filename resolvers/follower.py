@@ -55,15 +55,16 @@ async def follow(_, info, what, slug):
         error = author_follow(follower_id, slug)
         if not error:
             follows = await get_cached_follower_authors(follower_id)
-            [author_id] = local_session().query(Author.id).filter(Author.slug == slug).first()
-            if author_id and author_id not in follows:
-                follows.append(author_id)
-                await cache_author(follower_dict)
-                await notify_follower(follower_dict, author_id, "follow")
-                [author] = get_with_stat(select(Author).filter(Author.id == author_id))
-                if author:
-                    author_dict = author.dict()
-                    await cache_author(author_dict)
+            with local_session() as session:
+                [author_id] = session.query(Author.id).filter(Author.slug == slug).first()
+                if author_id and author_id not in follows:
+                    follows.append(author_id)
+                    await cache_author(follower_dict)
+                    await notify_follower(follower_dict, author_id, "follow")
+                    [author] = get_with_stat(select(Author).filter(Author.id == author_id))
+                    if author:
+                        author_dict = author.dict()
+                        await cache_author(author_dict)
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)

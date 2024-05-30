@@ -114,32 +114,36 @@ async def get_cached_topic_followers(topic_id: int):
         followers = json.loads(cached)
         if isinstance(followers, list):
             return followers
-
-    followers_ids = (
-        local_session()
-        .query(Author.id)
-        .join(
-            TopicFollower,
-            and_(TopicFollower.topic == topic_id, TopicFollower.follower == Author.id),
+    with local_session() as session:
+        result = (
+            session.query(Author.id)
+            .join(
+                TopicFollower,
+                and_(TopicFollower.topic == topic_id, TopicFollower.follower == Author.id),
+            )
+            .all()
         )
-        .all()
-    )
+        followers_ids = [f[0] for f in result]
     followers = await get_cached_authors_by_ids(followers_ids)
     logger.debug(f"topic#{topic_id} cache updated with {len(followers)} followers")
     return followers
 
 
 async def get_cached_author_followers(author_id: int):
-    followers = []
+    # follower profile
+    cached_author = await redis.execute("GET", f"author:id:{author_id}")
+    author = json.loads(cache_author)
+    if not author:
+        return []
+
+    followers_ids = []
     followers_rkey = f"author:followers:{author_id}"
     cached = await redis.execute("GET", followers_rkey)
-    cached_author = await redis.execute("GET", f"author:followers:{author_id}")
     if isinstance(cached, str) and isinstance(cached_author, str):
-        followers_ids = json.loads(cached)
-        author = json.loads(cache_author)
-        if not isinstance(followers_ids, list) or not str(len(followers_ids)) == str(author["stat"]["followers"]):
+        followers_ids = json.loads(cached) or []
+        if not str(len(followers_ids)) == str(author["stat"]["followers"]):
             with local_session() as session:
-                followers_ids = (
+                followers_result = (
                     session.query(Author.id)
                     .join(
                         AuthorFollower,
@@ -151,9 +155,10 @@ async def get_cached_author_followers(author_id: int):
                     )
                     .all()
                 )
-
-    await redis.execute("SET", followers_rkey, json.dumps([a.id for a in followers_ids]))
-    followers = await get_cached_authors_by_ids(followers_ids)
+                followers_ids = [a[0] for a in followers_result]
+                await redis.execute("SET", followers_rkey, json.dumps(followers_ids))
+        else:
+            followers = await get_cached_authors_by_ids(followers_ids)
 
     logger.debug(f"author#{author_id} cache updated with {len(followers)} followers")
     return followers
