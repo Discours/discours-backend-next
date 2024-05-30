@@ -19,7 +19,7 @@ async def precache_data():
     topics_by_id = {}
 
     # authors precache
-    authors = get_with_stat(select(Author))
+    authors = get_with_stat(select(Author).filter(Author.user.is_not(None)))
     for a in authors:
         profile = a.dict() if not isinstance(a, dict) else a
         author_id = profile.get("id")
