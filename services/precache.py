@@ -4,15 +4,11 @@ from sqlalchemy import and_, join, select
 
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
+from resolvers.stat import get_with_stat
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
 from services.rediscache import redis
-from resolvers.stat import (
-    get_with_stat,
-    get_author_shouts_stat,
-    get_author_comments_stat,
-)
 
 
 async def precache_data():
@@ -21,8 +17,8 @@ async def precache_data():
 
     authors_by_id = {}
     topics_by_id = {}
+
     # authors precache
-    logger.info("Precaching authors")
     authors = get_with_stat(select(Author))
     for a in authors:
         profile = a.dict() if not isinstance(a, dict) else a
@@ -35,18 +31,18 @@ async def precache_data():
                 f"user:{profile['user']}",
                 json.dumps(profile, cls=CustomJSONEncoder),
             )
+    logger.info(f"{len(authors)} authors precached")
 
     # topics precache
-    logger.info("Precaching topics")
     topics = get_with_stat(select(Topic))
     for t in topics:
         topic = t.dict() if not isinstance(t, dict) else t
         topic_id = topic.get("id")
         topics_by_id[topic_id] = topic
         await redis.execute("SET", f"topic:{topic_id}", json.dumps(topic, cls=CustomJSONEncoder))
+    logger.info(f"{len(topics)} topics precached")
 
     authors_keys = authors_by_id.keys()
-    logger.info("Precaching following data")
     for author_id in authors_keys:
         with local_session() as session:
             # follows topics precache
@@ -93,10 +89,6 @@ async def precache_data():
                 if follower:
                     followers.add(follower)
 
-            # shouts and comments precache
-            shouts_stat = get_author_shouts_stat(author_id)
-            comments_stat = get_author_comments_stat(author_id)
-
             authors_payload = json.dumps(
                 [f.dict() if isinstance(f, Author) else f for f in follows_authors],
                 cls=CustomJSONEncoder,
@@ -112,6 +104,4 @@ async def precache_data():
                 cls=CustomJSONEncoder,
             )
             await redis.execute("SET", f"author:{author_id}:followers", followers_payload)
-            await redis.execute("SET", f"author:{author_id}:shouts-stat", shouts_stat)
-            await redis.execute("SET", f"author:{author_id}:comments-stat", comments_stat)
-    logger.info(f"{len(authors)} authors were precached")
+    logger.info("followers precached")

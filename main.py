@@ -7,8 +7,8 @@ from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
 
-from services.rediscache import redis
 from services.precache import precache_data
+from services.rediscache import redis
 from services.schema import resolvers
 from services.search import search_service
 from services.sentry import start_sentry
