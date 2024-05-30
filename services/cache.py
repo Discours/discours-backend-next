@@ -177,17 +177,6 @@ async def get_cached_follower_authors(author_id: int):
     return await get_cached_authors_by_ids(authors_ids)
 
 
-async def get_cached_topics_by_ids(topics_ids: List[int]):
-    topics_objects = []
-    for topic_id in topics_ids:
-        topic_str = await redis.execute("GET", f"topic:id:{topic_id}")
-        if topic_str:
-            topic = json.loads(topic_str)
-            if topic and topic not in topics_objects:
-                topics_objects.append(topic)
-    return topics_objects
-
-
 async def get_cached_follower_topics(author_id: int):
     rkey = f"author:follows-topics:{author_id}"
     topics_ids = []
@@ -205,6 +194,14 @@ async def get_cached_follower_topics(author_id: int):
         topics_ids = [topic.id for topic in topics]
 
     await redis.execute("SET", rkey, json.dumps(topics_ids))
-    topics = await get_cached_topics_by_ids(topics_ids)
+    if not topics:
+        topics_objects = []
+        for topic_id in topics_ids:
+            topic_str = await redis.execute("GET", f"topic:id:{topic_id}")
+            if topic_str:
+                topic = json.loads(topic_str)
+                if topic and topic not in topics_objects:
+                    topics_objects.append(topic.dict())
+
     logger.debug(f"author#{author_id} cache updated with {len(topics)} topics")
     return topics
