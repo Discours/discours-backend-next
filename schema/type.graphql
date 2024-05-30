@@ -174,9 +174,9 @@ type Invite {
 }
 
 type AuthorFollowsResult {
-  topics: [Int]
-  authors: [Int]
-  communities: [Int]
+  topics: [Topic]
+  authors: [Author]
+  communities: [Community]
   error: String
 }
 

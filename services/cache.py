@@ -1,6 +1,6 @@
 import json
-
 from typing import List
+
 from sqlalchemy import and_, join, select
 
 from orm.author import Author, AuthorFollower
@@ -78,7 +78,7 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat):
         return await get_cached_author(int(author_id), get_with_stat)
 
 
-async def get_cached_authors_by_ids(authors_ids: List[int]):
+async def get_cached_authors_by_ids(authors_ids: List[int]) -> List[Author | dict]:
     authors = []
     for author_id in authors_ids:
         if author_id:
@@ -159,7 +159,7 @@ async def get_cached_author_followers(author_id: int):
     return followers
 
 
-async def get_cached_author_follows_authors(author_id: int):
+async def get_cached_follower_authors(author_id: int):
     rkey = f"author:follows-authors:{author_id}"
     authors_ids = []
     cached = await redis.execute("GET", rkey)
@@ -188,7 +188,7 @@ async def get_cached_topics_by_ids(topics_ids: List[int]):
     return topics_objects
 
 
-async def get_cached_author_follows_topics(author_id: int):
+async def get_cached_follower_topics(author_id: int):
     rkey = f"author:follows-topics:{author_id}"
     topics_ids = []
     cached = await redis.execute("GET", rkey)

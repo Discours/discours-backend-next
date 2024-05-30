@@ -12,8 +12,8 @@ from services.cache import (
     get_cached_author,
     get_cached_author_by_user_id,
     get_cached_author_followers,
-    get_cached_author_follows_authors,
-    get_cached_author_follows_topics,
+    get_cached_follower_authors,
+    get_cached_follower_topics,
 )
 from services.db import local_session
 from services.logger import root_logger as logger
@@ -176,8 +176,8 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
 
         if bool(author_id):
             logger.debug(f"getting {author_id} follows authors")
-            authors = await get_cached_author_follows_authors(author_id)
-            topics = await get_cached_author_follows_topics(author_id)
+            authors = await get_cached_follower_authors(author_id)
+            topics = await get_cached_follower_topics(author_id)
         return {
             "topics": topics,
             "authors": authors,
@@ -193,8 +193,8 @@ async def get_author_follows(_, _info, slug="", user=None, author_id=0):
 @query.field("get_author_follows_topics")
 async def get_author_follows_topics(_, _info, slug="", user=None, author_id=None):
     try:
-        author_id = get_author_id_from(slug, user, author_id)
-        topics = await get_cached_author_follows_topics(author_id)
+        follower_id = get_author_id_from(slug, user, author_id)
+        topics = await get_cached_follower_topics(follower_id)
         return topics
     except Exception:
         import traceback
@@ -205,8 +205,8 @@ async def get_author_follows_topics(_, _info, slug="", user=None, author_id=None
 @query.field("get_author_follows_authors")
 async def get_author_follows_authors(_, _info, slug="", user=None, author_id=None):
     try:
-        author_id = get_author_id_from(slug, user, author_id)
-        return await get_cached_author_follows_authors(author_id)
+        follower_id = get_author_id_from(slug, user, author_id)
+        return await get_cached_follower_authors(follower_id)
     except Exception:
         import traceback
 

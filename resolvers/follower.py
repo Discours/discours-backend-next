@@ -14,8 +14,8 @@ from services.cache import (
     cache_author,
     cache_topic,
     get_cached_author_by_user_id,
-    get_cached_author_follows_authors,
-    get_cached_author_follows_topics,
+    get_cached_follower_authors,
+    get_cached_follower_topics,
 )
 from services.db import local_session
 from services.logger import root_logger as logger
@@ -48,14 +48,13 @@ async def follow(_, info, what, slug):
     if not user_id or not follower_dict:
         return {"error": "unauthorized"}
     follower_id = follower_dict.get("id")
-
     entity = what.lower()
 
     if what == "AUTHOR":
-        follows = await get_cached_author_follows_authors(follower_id)
         follower_id = int(follower_id)
         error = author_follow(follower_id, slug)
         if not error:
+            follows = await get_cached_follower_authors(follower_id)
             [author_id] = local_session().query(Author.id).filter(Author.slug == slug).first()
             if author_id and author_id not in follows:
                 follows.append(author_id)
@@ -68,8 +67,10 @@ async def follow(_, info, what, slug):
 
     elif what == "TOPIC":
         error = topic_follow(follower_id, slug)
-        topic_dict = await cache_by_slug(what, slug)
-        await cache_topic(topic_dict)
+        if not error:
+            follows = await get_cached_follower_topics(follower_id)
+            topic_dict = await cache_by_slug(what, slug)
+            await cache_topic(topic_dict)
 
     elif what == "COMMUNITY":
         with local_session() as session:
@@ -77,6 +78,11 @@ async def follow(_, info, what, slug):
 
     elif what == "SHOUT":
         error = reactions_follow(follower_id, slug)
+        if not error:
+            # TODO: follows = await get_cached_follower_reactions(follower_id)
+            # shout_dict = await cache_shout_by_slug(what, slug)
+            # await cache_topic(topic_dict)
+            pass
 
     return {f"{entity}s": follows, "error": error}
 
@@ -96,7 +102,7 @@ async def unfollow(_, info, what, slug):
     follows = []
 
     if what == "AUTHOR":
-        follows = await get_cached_author_follows_authors(follower_id)
+        follows = await get_cached_follower_authors(follower_id)
         follower_id = int(follower_id)
         error = author_unfollow(follower_id, slug)
         # NOTE: after triggers should update cached stats
@@ -115,7 +121,7 @@ async def unfollow(_, info, what, slug):
     elif what == "TOPIC":
         error = topic_unfollow(follower_id, slug)
         if not error:
-            follows = await get_cached_author_follows_topics(follower_id)
+            follows = await get_cached_follower_topics(follower_id)
             topic_dict = await cache_by_slug(what, slug)
             await cache_topic(topic_dict)
 
@@ -125,6 +131,8 @@ async def unfollow(_, info, what, slug):
 
     elif what == "SHOUT":
         error = reactions_unfollow(follower_id, slug)
+        if not error:
+            pass
 
     return {"error": error, f"{entity}s": follows}
 
@@ -142,8 +150,8 @@ async def get_follows_by_user_id(user_id: str):
 
     author_id = author.get("id")
     if author_id:
-        topics = await get_cached_author_follows_topics(author_id)
-        authors = await get_cached_author_follows_authors(author_id)
+        topics = await get_cached_follower_topics(author_id)
+        authors = await get_cached_follower_authors(author_id)
     return {
         "topics": topics or [],
         "authors": authors or [],
