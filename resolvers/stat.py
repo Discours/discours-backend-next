@@ -12,17 +12,28 @@ from services.logger import root_logger as logger
 
 def add_topic_stat_columns(q):
     aliased_shout = aliased(ShoutTopic)
+
+    # Соединяем таблицу Topic с таблицами ShoutTopic и Shout, используя INNER JOIN
     q = (
         q.select_from(Topic)
-        .outerjoin(
+        .join(
             aliased_shout,
-            and_(aliased_shout.shout == Shout.id, Shout.deleted_at.is_(None), aliased_shout.topic == Topic.id),
+            aliased_shout.topic == Topic.id,
+        )
+        .join(
+            Shout,
+            and_(
+                aliased_shout.shout == Shout.id,
+                Shout.deleted_at.is_(None),
+            ),
         )
         .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
     )
 
     aliased_follower = aliased(TopicFollower)
-    q = q.outerjoin(aliased_follower, and_(aliased_follower.topic == Topic.id)).add_columns(
+
+    # Соединяем таблицу Topic с таблицей TopicFollower, используя LEFT OUTER JOIN
+    q = q.outerjoin(aliased_follower, aliased_follower.topic == Topic.id).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
 
@@ -32,18 +43,26 @@ def add_topic_stat_columns(q):
 
 
 def add_author_stat_columns(q):
-    aliased_shout = aliased(ShoutAuthor)
+    # Соединяем таблицу Author с таблицей ShoutAuthor и таблицей Shout с использованием INNER JOIN
     q = (
         q.select_from(Author)
-        .outerjoin(
-            aliased_shout,
-            and_(aliased_shout.shout == Shout.id, Shout.deleted_at.is_(None), aliased_shout.author == Author.id),
+        .join(
+            ShoutAuthor,
+            ShoutAuthor.author == Author.id,
         )
-        .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
+        .join(
+            Shout,
+            and_(
+                Shout.id == ShoutAuthor.shout,
+                Shout.deleted_at.is_(None),
+            ),
+        )
+        .add_columns(func.count(distinct(Shout.id)).label("shouts_stat"))
     )
-    aliased_follower = aliased(AuthorFollower)
-    q = q.outerjoin(aliased_follower, aliased_follower.author == Author.id).add_columns(
-        func.count(distinct(aliased_follower.follower)).label("followers_stat")
+
+    # Соединяем таблицу Author с таблицей AuthorFollower с использованием LEFT OUTER JOIN
+    q = q.outerjoin(AuthorFollower, AuthorFollower.author == Author.id).add_columns(
+        func.count(distinct(AuthorFollower.follower)).label("followers_stat")
     )
 
     q = q.group_by(Author.id)
