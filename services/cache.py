@@ -171,7 +171,7 @@ async def get_cached_author_follows_authors(author_id: int):
         )
         with local_session() as session:
             authors_ids = session.execute(authors_query)
-            await redis.execute("SET", rkey, json.dumps([aid for aid in authors_ids]))
+            await redis.execute("SET", rkey, json.dumps([int(f"{aid}") for aid in authors_ids]))
     elif isinstance(cached, str):
         authors_ids = json.loads(cached)
     return await get_cached_authors_by_ids(authors_ids)
