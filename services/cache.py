@@ -87,7 +87,7 @@ async def get_cached_authors_by_ids(authors_ids: List[int]) -> List[Author | dic
             if isinstance(cached_result, str):
                 author = json.loads(cached_result)
                 if author:
-                    authors.push(author)
+                    authors.append(author)
     return authors
 
 
