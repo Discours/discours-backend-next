@@ -180,7 +180,8 @@ def get_with_stat(q):
     try:
         with local_session() as session:
             # detect author
-            is_author = f"{q}".lower().startswith(["select author", "select * from author"])
+            author_prefixes = ("select author", "select * from author")
+            is_author = f"{q}".lower().startswith(author_prefixes)
 
             # Add stat columns to the query
             q = add_author_stat_columns(q) if is_author else add_topic_stat_columns(q)
