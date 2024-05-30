@@ -73,7 +73,7 @@ async def follow(_, info, what, slug):
 
     elif what == "COMMUNITY":
         with local_session() as session:
-            follows = session.execute(select(Community))
+            follows = session.query(Community).all()
 
     elif what == "SHOUT":
         error = reactions_follow(follower_id, slug)
