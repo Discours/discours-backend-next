@@ -170,8 +170,8 @@ async def get_cached_follower_authors(author_id: int):
             .where(AuthorFollower.follower == author_id)
         )
         with local_session() as session:
-            authors_ids = session.execute(authors_query)
-            await redis.execute("SET", rkey, json.dumps([int(f"{aid}") for aid in authors_ids]))
+            [authors_ids] = session.execute(authors_query)
+            await redis.execute("SET", rkey, json.dumps([int(aid) for aid in authors_ids]))
     elif isinstance(cached, str):
         authors_ids = json.loads(cached)
     return await get_cached_authors_by_ids(authors_ids)
