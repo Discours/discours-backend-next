@@ -184,14 +184,15 @@ async def get_cached_follower_topics(author_id: int):
     if cached and isinstance(cached, str):
         topics_ids = json.loads(cached)
     else:
-        topics = (
-            local_session()
-            .query(Topic)
-            .select_from(join(Topic, TopicFollower, Topic.id == TopicFollower.topic))
-            .where(TopicFollower.follower == author_id)
-            .all()
-        )
-        topics_ids = [topic.id for topic in topics]
+        with local_session() as session:
+            topics = (
+                session.query(Topic)
+                .select_from(join(Topic, TopicFollower, Topic.id == TopicFollower.topic))
+                .where(TopicFollower.follower == author_id)
+                .all()
+            )
+
+            topics_ids = [topic.id for topic in topics]
 
     await redis.execute("SET", rkey, json.dumps(topics_ids))
     if not topics:
