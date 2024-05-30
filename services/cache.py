@@ -132,7 +132,9 @@ async def get_cached_topic_followers(topic_id: int):
 async def get_cached_author_followers(author_id: int):
     # follower profile
     cached_author = await redis.execute("GET", f"author:id:{author_id}")
-    author = json.loads(cache_author)
+    author = None
+    if cache_author:
+        author = json.loads(cache_author)
     if not author:
         return []
 
