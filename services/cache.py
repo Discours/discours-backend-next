@@ -1,6 +1,6 @@
 import json
 
-from pydantic import List
+from typing import List
 from sqlalchemy import and_, join, select
 
 from orm.author import Author, AuthorFollower
