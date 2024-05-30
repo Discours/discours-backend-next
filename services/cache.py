@@ -26,9 +26,7 @@ async def cache_author(author: dict):
     if isinstance(followers, list):
         for follower in followers:
             follower_follows_authors = []
-            follower_follows_authors_str = await redis.execute(
-                "GET", f"author:{author_id}:follows-authors"
-            )
+            follower_follows_authors_str = await redis.execute("GET", f"author:{author_id}:follows-authors")
             if isinstance(follower_follows_authors_str, str):
                 follower_follows_authors = json.loads(follower_follows_authors_str)
                 c = 0
@@ -49,9 +47,7 @@ async def cache_author(author: dict):
     if isinstance(follows_authors, list):
         for followed_author in follows_authors:
             followed_author_followers = []
-            followed_author_followers_str = await redis.execute(
-                "GET", f"author:{author_id}:followers"
-            )
+            followed_author_followers_str = await redis.execute("GET", f"author:{author_id}:followers")
             if isinstance(followed_author_followers_str, str):
                 followed_author_followers = json.loads(followed_author_followers_str)
                 c = 0
@@ -139,18 +135,11 @@ async def cache_follow_author_change(follower: dict, author: dict, is_insert=Tru
 
 async def cache_topic(topic_dict: dict):
     # update stat all field for followers' caches in <topics> list
-    followers = (
-        local_session()
-        .query(TopicFollower)
-        .filter(TopicFollower.topic == topic_dict.get("id"))
-        .all()
-    )
+    followers = local_session().query(TopicFollower).filter(TopicFollower.topic == topic_dict.get("id")).all()
     for tf in followers:
         follower_id = tf.follower
         follower_follows_topics = []
-        follower_follows_topics_str = await redis.execute(
-            "GET", f"author:{follower_id}:follows-topics"
-        )
+        follower_follows_topics_str = await redis.execute("GET", f"author:{follower_id}:follows-topics")
         if isinstance(follower_follows_topics_str, str):
             follower_follows_topics = json.loads(follower_follows_topics_str)
             c = 0

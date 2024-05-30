@@ -23,15 +23,9 @@ from services.viewed import ViewedStorage
 def add_reaction_stat_columns(q, aliased_reaction):
     q = q.outerjoin(aliased_reaction).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(
-            case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)
-        ).label("comments_stat"),
-        func.sum(
-            case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)
-        ).label("likes_stat"),
-        func.sum(
-            case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)
-        ).label("dislikes_stat"),
+        func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
+        func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
+        func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
         func.max(
             case(
                 (aliased_reaction.kind != str(ReactionKind.COMMENT.value), None),
@@ -60,9 +54,7 @@ def check_to_feature(session, approver_id, reaction):
         if is_featured_author(session, approver_id):
             approvers = [approver_id]
             # now count how many approvers are voted already
-            reacted_readers = (
-                session.query(Reaction).where(Reaction.shout == reaction.shout).all()
-            )
+            reacted_readers = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
             for reacted_reader in reacted_readers:
                 if is_featured_author(session, reacted_reader.id):
                     approvers.append(reacted_reader.id)
@@ -87,9 +79,7 @@ def check_to_unfeature(session, rejecter_id, reaction):
             )
             rejects = 0
             for r in reactions:
-                approver = (
-                    session.query(Author).filter(Author.id == r.created_by).first()
-                )
+                approver = session.query(Author).filter(Author.id == r.created_by).first()
                 if is_featured_author(session, approver):
                     if is_negative(r.kind):
                         rejects += 1
@@ -127,11 +117,7 @@ async def _create_reaction(session, shout, author_id: int, reaction):
         await update_author_stat(author_id)
 
     # collaborative editing
-    if (
-        rdict.get("reply_to")
-        and r.kind in PROPOSAL_REACTIONS
-        and author_id in shout.authors
-    ):
+    if rdict.get("reply_to") and r.kind in PROPOSAL_REACTIONS and author_id in shout.authors:
         handle_proposing(session, r, shout)
 
     # рейтинг и саморегуляция
@@ -165,9 +151,7 @@ async def _create_reaction(session, shout, author_id: int, reaction):
 
 def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
     kind = reaction.get("kind")
-    opposite_kind = (
-        ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
-    )
+    opposite_kind = ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
 
     q = select(Reaction).filter(
         and_(
@@ -226,9 +210,7 @@ async def create_reaction(_, info, reaction):
                     return {"error": "cannot create reaction without a kind"}
 
                 if kind in RATING_REACTIONS:
-                    error_result = prepare_new_rating(
-                        reaction, shout_id, session, author_id
-                    )
+                    error_result = prepare_new_rating(reaction, shout_id, session, author_id)
                     if error_result:
                         return error_result
 
@@ -275,9 +257,7 @@ async def update_reaction(_, info, reaction):
                     if not r:
                         return {"error": "invalid reaction id"}
 
-                    author = (
-                        session.query(Author).filter(Author.user == user_id).first()
-                    )
+                    author = session.query(Author).filter(Author.user == user_id).first()
                     if author:
                         if r.created_by != author.id and "editor" not in roles:
                             return {"error": "access denied"}
@@ -460,9 +440,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 select(Shout)
                 .outerjoin(
                     Reaction,
-                    and_(
-                        Reaction.shout == Shout.id, Reaction.created_by == follower_id
-                    ),
+                    and_(Reaction.shout == Shout.id, Reaction.created_by == follower_id),
                 )
                 .outerjoin(Author, Shout.authors.any(id=follower_id))
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
@@ -481,12 +459,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             q2 = add_reaction_stat_columns(q2, aliased(Reaction))
 
             # Sort shouts by the `last_comment` field
-            combined_query = (
-                union(q1, q2)
-                .order_by(desc(text("last_comment_stat")))
-                .limit(limit)
-                .offset(offset)
-            )
+            combined_query = union(q1, q2).order_by(desc(text("last_comment_stat"))).limit(limit).offset(offset)
 
             results = session.execute(combined_query).scalars()
             for [

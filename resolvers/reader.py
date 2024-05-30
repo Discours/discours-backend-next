@@ -28,21 +28,14 @@ def filter_my(info, session, q):
     user_id = info.context.get("user_id")
     reader_id = info.context.get("author", {}).get("id")
     if user_id and reader_id:
-        reader_followed_authors = select(AuthorFollower.author).where(
-            AuthorFollower.follower == reader_id
-        )
-        reader_followed_topics = select(TopicFollower.topic).where(
-            TopicFollower.follower == reader_id
-        )
+        reader_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == reader_id)
+        reader_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == reader_id)
 
         subquery = (
             select(Shout.id)
             .where(Shout.id == ShoutAuthor.shout)
             .where(Shout.id == ShoutTopic.shout)
-            .where(
-                (ShoutAuthor.author.in_(reader_followed_authors))
-                | (ShoutTopic.topic.in_(reader_followed_topics))
-            )
+            .where((ShoutAuthor.author.in_(reader_followed_authors)) | (ShoutTopic.topic.in_(reader_followed_topics)))
         )
         q = q.filter(Shout.id.in_(subquery))
     return q, reader_id
@@ -188,9 +181,7 @@ async def load_shouts_by(_, _info, options):
     order_str = options.get("order_by")
     if order_str in ["likes", "followers", "comments", "last_comment"]:
         q = q.order_by(desc(text(f"{order_str}_stat")))
-    query_order_by = (
-        desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
-    )
+    query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
     q = q.order_by(nulls_last(query_order_by))
 
     # limit offset
@@ -257,20 +248,13 @@ async def load_shouts_feed(_, info, options):
             Shout.featured_at if filters.get("featured") else Shout.published_at,
         )
 
-        query_order_by = (
-            desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
-        )
+        query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
 
         # pagination
         offset = options.get("offset", 0)
         limit = options.get("limit", 10)
 
-        q = (
-            q.group_by(Shout.id)
-            .order_by(nulls_last(query_order_by))
-            .limit(limit)
-            .offset(offset)
-        )
+        q = q.group_by(Shout.id).order_by(nulls_last(query_order_by)).limit(limit).offset(offset)
 
         logger.debug(q.compile(compile_kwargs={"literal_binds": True}))
 
@@ -328,9 +312,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
             and_(
                 Reaction.shout == Shout.id,
                 Reaction.reply_to.is_(None),
-                Reaction.kind.in_(
-                    [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
-                ),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
         .outerjoin(Author, Author.user == bindparam("user_id"))
@@ -403,9 +385,7 @@ async def load_shouts_random_top(_, _info, options):
     aliased_reaction = aliased(Reaction)
 
     subquery = (
-        select(Shout.id)
-        .outerjoin(aliased_reaction)
-        .where(and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None)))
+        select(Shout.id).outerjoin(aliased_reaction).where(and_(Shout.deleted_at.is_(None), Shout.layout.is_not(None)))
     )
 
     subquery = apply_filters(subquery, options.get("filters", {}))
@@ -428,11 +408,7 @@ async def load_shouts_random_top(_, _info, options):
     if random_limit:
         subquery = subquery.limit(random_limit)
 
-    q = (
-        select(Shout)
-        .options(joinedload(Shout.authors), joinedload(Shout.topics))
-        .where(Shout.id.in_(subquery))
-    )
+    q = select(Shout).options(joinedload(Shout.authors), joinedload(Shout.topics)).where(Shout.id.in_(subquery))
 
     q = add_reaction_stat_columns(q, aliased_reaction)
 

@@ -12,9 +12,7 @@ from services.logger import root_logger as logger
 
 def add_topic_stat_columns(q):
     aliased_shout = aliased(ShoutTopic)
-    q = q.outerjoin(aliased_shout).add_columns(
-        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
-    )
+    q = q.outerjoin(aliased_shout).add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
     aliased_follower = aliased(TopicFollower)
     q = q.outerjoin(aliased_follower, aliased_follower.topic == Topic.id).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
@@ -27,9 +25,7 @@ def add_topic_stat_columns(q):
 
 def add_author_stat_columns(q):
     aliased_shout = aliased(ShoutAuthor)
-    q = q.outerjoin(aliased_shout).add_columns(
-        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
-    )
+    q = q.outerjoin(aliased_shout).add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
     aliased_follower = aliased(AuthorFollower)
     q = q.outerjoin(aliased_follower, aliased_follower.author == Author.id).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
@@ -79,9 +75,7 @@ def get_topic_authors_stat(topic_id: int):
 
 def get_topic_followers_stat(topic_id: int):
     aliased_followers = aliased(TopicFollower)
-    q = select(func.count(distinct(aliased_followers.follower))).filter(
-        aliased_followers.topic == topic_id
-    )
+    q = select(func.count(distinct(aliased_followers.follower))).filter(aliased_followers.topic == topic_id)
     with local_session() as session:
         result = session.execute(q).first()
     return result[0] if result else 0
@@ -106,9 +100,7 @@ def get_topic_comments_stat(topic_id: int):
         .group_by(Shout.id)
         .subquery()
     )
-    q = select(func.coalesce(func.sum(sub_comments.c.comments_count), 0)).filter(
-        ShoutTopic.topic == topic_id
-    )
+    q = select(func.coalesce(func.sum(sub_comments.c.comments_count), 0)).filter(ShoutTopic.topic == topic_id)
     q = q.outerjoin(sub_comments, ShoutTopic.shout == sub_comments.c.shout_id)
     with local_session() as session:
         result = session.execute(q).first()
@@ -152,9 +144,7 @@ def get_author_authors_stat(author_id: int):
 
 def get_author_followers_stat(author_id: int):
     aliased_followers = aliased(AuthorFollower)
-    q = select(func.count(distinct(aliased_followers.follower))).filter(
-        aliased_followers.author == author_id
-    )
+    q = select(func.count(distinct(aliased_followers.follower))).filter(aliased_followers.author == author_id)
     with local_session() as session:
         result = session.execute(q).first()
     return result[0] if result else 0
@@ -162,9 +152,7 @@ def get_author_followers_stat(author_id: int):
 
 def get_author_comments_stat(author_id: int):
     sub_comments = (
-        select(
-            Author.id, func.coalesce(func.count(Reaction.id)).label("comments_count")
-        )
+        select(Author.id, func.coalesce(func.count(Reaction.id)).label("comments_count"))
         .select_from(Author)  # явно указываем левый элемент join'а
         .outerjoin(
             Reaction,
@@ -219,9 +207,7 @@ def get_with_stat(q):
 def author_follows_authors(author_id: int):
     af = aliased(AuthorFollower, name="af")
     author_follows_authors_query = (
-        select(Author)
-        .select_from(join(Author, af, Author.id == af.author))
-        .where(af.follower == author_id)
+        select(Author).select_from(join(Author, af, Author.id == af.author)).where(af.follower == author_id)
     )
     return get_with_stat(author_follows_authors_query)
 

@@ -14,9 +14,7 @@ def get_communities_from_query(q):
         for [c, shouts_stat, followers_stat] in session.execute(q):
             c.stat = {
                 "shouts": session.execute(
-                    select(func.count(distinct(ShoutCommunity.shout))).filter(
-                        ShoutCommunity.community == c.id
-                    )
+                    select(func.count(distinct(ShoutCommunity.shout))).filter(ShoutCommunity.community == c.id)
                 ),
                 # "authors": session.execute(select(func.count(distinct(ShoutCommunity.shout))).filter(ShoutCommunity.community == c.id)),
                 # "followers": session.execute(select(func.count(distinct(ShoutCommunity.shout))).filter(ShoutCommunity.community == c.id)),

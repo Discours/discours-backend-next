@@ -154,9 +154,7 @@ async def get_follows_by_user_id(user_id: str):
             follows = {
                 "topics": topics,
                 "authors": authors,
-                "communities": [
-                    {"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}
-                ],
+                "communities": [{"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}],
             }
     else:
         logger.debug(f"getting follows for {user_id} from redis")
@@ -212,9 +210,7 @@ def reactions_follow(author_id, shout_id, auto=False):
             )
 
             if not following:
-                following = ShoutReactionsFollower(
-                    follower=author_id, shout=shout.id, auto=auto
-                )
+                following = ShoutReactionsFollower(follower=author_id, shout=shout.id, auto=auto)
                 session.add(following)
                 session.commit()
         return None
@@ -269,9 +265,7 @@ def author_unfollow(follower_id, slug):
             flw = (
                 session.query(AuthorFollower)
                 .join(Author, Author.id == AuthorFollower.author)
-                .filter(
-                    and_(AuthorFollower.follower == follower_id, Author.slug == slug)
-                )
+                .filter(and_(AuthorFollower.follower == follower_id, Author.slug == slug))
                 .first()
             )
             if flw:
@@ -295,9 +289,7 @@ async def get_topic_followers(_, _info, slug: str) -> List[Author]:
 
 
 @query.field("get_shout_followers")
-def get_shout_followers(
-    _, _info, slug: str = "", shout_id: int | None = None
-) -> List[Author]:
+def get_shout_followers(_, _info, slug: str = "", shout_id: int | None = None) -> List[Author]:
     followers = []
     with local_session() as session:
         shout = None

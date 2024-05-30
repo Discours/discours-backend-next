@@ -127,9 +127,7 @@ class SearchService:
             logger.debug(f"Проверяем индекс {self.index_name}...")
             if not self.client.indices.exists(index=self.index_name):
                 self.create_index()
-                self.client.indices.put_mapping(
-                    index=self.index_name, body=expected_mapping
-                )
+                self.client.indices.put_mapping(index=self.index_name, body=expected_mapping)
             else:
                 logger.info(f"Найден существующий индекс {self.index_name}")
                 # Проверка и обновление структуры индекса, если необходимо
@@ -138,17 +136,9 @@ class SearchService:
                     result = json.loads(result)
                 if isinstance(result, dict):
                     mapping = result.get(self.index_name, {}).get("mappings")
-                    logger.debug(
-                        f"Найдена структура индексации: {mapping['properties'].keys()}"
-                    )
-                    if (
-                        mapping
-                        and mapping["properties"].keys()
-                        != expected_mapping["properties"].keys()
-                    ):
-                        logger.debug(
-                            f"Ожидаемая структура индексации: {expected_mapping}"
-                        )
+                    logger.debug(f"Найдена структура индексации: {mapping['properties'].keys()}")
+                    if mapping and mapping["properties"].keys() != expected_mapping["properties"].keys():
+                        logger.debug(f"Ожидаемая структура индексации: {expected_mapping}")
                         logger.warn("[!!!] Требуется переиндексация всех данных")
                         self.delete_index()
                         self.client = None
@@ -177,9 +167,7 @@ class SearchService:
         logger.debug(f"Ищем: {text}")
         search_body = {"query": {"match": {"_all": text}}}
         if self.client:
-            search_response = self.client.search(
-                index=self.index_name, body=search_body, size=limit, from_=offset
-            )
+            search_response = self.client.search(index=self.index_name, body=search_body, size=limit, from_=offset)
             hits = search_response["hits"]["hits"]
 
             results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]

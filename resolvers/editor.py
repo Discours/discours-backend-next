@@ -57,16 +57,12 @@ async def get_my_shout(_, info, shout_id: int):
         if not shout:
             return {"error": "no shout found", "shout": None}
 
-        logger.debug(
-            f"got shout authors: {shout.authors} created by {shout.created_by}"
-        )
+        logger.debug(f"got shout authors: {shout.authors} created by {shout.created_by}")
         is_editor = "editor" in roles
         logger.debug(f'viewer is{'' if is_editor else ' not'} editor')
         is_creator = author_id == shout.created_by
         logger.debug(f'viewer is{'' if is_creator else ' not'} creator')
-        is_author = bool(
-            list(filter(lambda x: x.id == int(author_id), [x for x in shout.authors]))
-        )
+        is_author = bool(list(filter(lambda x: x.id == int(author_id), [x for x in shout.authors])))
         logger.debug(f'viewer is{'' if is_creator else ' not'} author')
         can_edit = is_editor or is_author or is_creator
 
@@ -91,9 +87,7 @@ async def get_shouts_drafts(_, info):
             q = (
                 select(Shout)
                 .options(joinedload(Shout.authors), joinedload(Shout.topics))
-                .filter(
-                    and_(Shout.deleted_at.is_(None), Shout.created_by == int(author_id))
-                )
+                .filter(and_(Shout.deleted_at.is_(None), Shout.created_by == int(author_id)))
                 .filter(Shout.published_at.is_(None))
                 .order_by(desc(coalesce(Shout.updated_at, Shout.created_at)))
                 .group_by(Shout.id)
@@ -129,18 +123,10 @@ async def create_shout(_, info, inp):
                 "published_at": None,
                 "created_at": current_time,  # Set created_at as Unix timestamp
             }
-            same_slug_shout = (
-                session.query(Shout)
-                .filter(Shout.slug == shout_dict.get("slug"))
-                .first()
-            )
+            same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
             c = 1
             while same_slug_shout is not None:
-                same_slug_shout = (
-                    session.query(Shout)
-                    .filter(Shout.slug == shout_dict.get("slug"))
-                    .first()
-                )
+                same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
                 c += 1
                 shout_dict["slug"] += f"-{c}"
             new_shout = Shout(**shout_dict)
@@ -153,11 +139,7 @@ async def create_shout(_, info, inp):
                 sa = ShoutAuthor(shout=shout.id, author=author_id)
                 session.add(sa)
 
-                topics = (
-                    session.query(Topic)
-                    .filter(Topic.slug.in_(inp.get("topics", [])))
-                    .all()
-                )
+                topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
                 for topic in topics:
                     t = ShoutTopic(topic=topic.id, shout=shout.id)
                     session.add(t)
@@ -176,18 +158,11 @@ async def create_shout(_, info, inp):
 
 def patch_main_topic(session, main_topic, shout):
     with session.begin():
-        shout = (
-            session.query(Shout)
-            .options(joinedload(Shout.topics))
-            .filter(Shout.id == shout.id)
-            .first()
-        )
+        shout = session.query(Shout).options(joinedload(Shout.topics)).filter(Shout.id == shout.id).first()
         if not shout:
             return
         old_main_topic = (
-            session.query(ShoutTopic)
-            .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main.is_(True)))
-            .first()
+            session.query(ShoutTopic).filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main.is_(True))).first()
         )
 
         main_topic = session.query(Topic).filter(Topic.slug == main_topic).first()
@@ -195,19 +170,11 @@ def patch_main_topic(session, main_topic, shout):
         if main_topic:
             new_main_topic = (
                 session.query(ShoutTopic)
-                .filter(
-                    and_(
-                        ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id
-                    )
-                )
+                .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
                 .first()
             )
 
-            if (
-                old_main_topic
-                and new_main_topic
-                and old_main_topic is not new_main_topic
-            ):
+            if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
                 ShoutTopic.update(old_main_topic, {"main": False})
                 session.add(old_main_topic)
 
@@ -216,9 +183,7 @@ def patch_main_topic(session, main_topic, shout):
 
 
 def patch_topics(session, shout, topics_input):
-    new_topics_to_link = [
-        Topic(**new_topic) for new_topic in topics_input if new_topic["id"] < 0
-    ]
+    new_topics_to_link = [Topic(**new_topic) for new_topic in topics_input if new_topic["id"] < 0]
     if new_topics_to_link:
         session.add_all(new_topics_to_link)
         session.commit()
@@ -227,9 +192,7 @@ def patch_topics(session, shout, topics_input):
         created_unlinked_topic = ShoutTopic(shout=shout.id, topic=new_topic_to_link.id)
         session.add(created_unlinked_topic)
 
-    existing_topics_input = [
-        topic_input for topic_input in topics_input if topic_input.get("id", 0) > 0
-    ]
+    existing_topics_input = [topic_input for topic_input in topics_input if topic_input.get("id", 0) > 0]
     existing_topic_to_link_ids = [
         existing_topic_input["id"]
         for existing_topic_input in existing_topics_input
@@ -237,9 +200,7 @@ def patch_topics(session, shout, topics_input):
     ]
 
     for existing_topic_to_link_id in existing_topic_to_link_ids:
-        created_unlinked_topic = ShoutTopic(
-            shout=shout.id, topic=existing_topic_to_link_id
-        )
+        created_unlinked_topic = ShoutTopic(shout=shout.id, topic=existing_topic_to_link_id)
         session.add(created_unlinked_topic)
 
     topic_to_unlink_ids = [
@@ -276,24 +237,15 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                 if not shout_by_id:
                     return {"error": "shout not found"}
                 if slug != shout_by_id.slug:
-                    same_slug_shout = (
-                        session.query(Shout).filter(Shout.slug == slug).first()
-                    )
+                    same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     c = 1
                     while same_slug_shout is not None:
                         c += 1
                         slug = f"{slug}-{c}"
-                        same_slug_shout = (
-                            session.query(Shout).filter(Shout.slug == slug).first()
-                        )
+                        same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     shout_input["slug"] = slug
 
-                if (
-                    filter(
-                        lambda x: x.id == author_id, [x for x in shout_by_id.authors]
-                    )
-                    or "editor" in roles
-                ):
+                if filter(lambda x: x.id == author_id, [x for x in shout_by_id.authors]) or "editor" in roles:
                     # topics patch
                     topics_input = shout_input.get("topics")
                     if topics_input:
@@ -376,17 +328,9 @@ async def delete_shout(_, info, shout_id: int):
 
 def handle_proposing(session, r, shout):
     if is_positive(r.kind):
-        replied_reaction = (
-            session.query(Reaction)
-            .filter(Reaction.id == r.reply_to, Reaction.shout == r.shout)
-            .first()
-        )
+        replied_reaction = session.query(Reaction).filter(Reaction.id == r.reply_to, Reaction.shout == r.shout).first()
 
-        if (
-            replied_reaction
-            and replied_reaction.kind is ReactionKind.PROPOSE.value
-            and replied_reaction.quote
-        ):
+        if replied_reaction and replied_reaction.kind is ReactionKind.PROPOSE.value and replied_reaction.quote:
             # patch all the proposals' quotes
             proposals = (
                 session.query(Reaction)
@@ -403,9 +347,7 @@ def handle_proposing(session, r, shout):
                 if proposal.quote:
                     proposal_diff = get_diff(shout.body, proposal.quote)
                     proposal_dict = proposal.dict()
-                    proposal_dict["quote"] = apply_diff(
-                        replied_reaction.quote, proposal_diff
-                    )
+                    proposal_dict["quote"] = apply_diff(replied_reaction.quote, proposal_diff)
                     Reaction.update(proposal, proposal_dict)
                     session.add(proposal)
 

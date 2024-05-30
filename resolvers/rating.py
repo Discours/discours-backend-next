@@ -35,9 +35,7 @@ async def rate_author(_, info, rated_slug, value):
                 return {}
             else:
                 try:
-                    rating = AuthorRating(
-                        rater=rater_id, author=rated_author.id, plus=value > 0
-                    )
+                    rating = AuthorRating(rater=rater_id, author=rated_author.id, plus=value > 0)
                     session.add(rating)
                     session.commit()
                 except Exception as err:
@@ -105,9 +103,7 @@ def count_author_shouts_rating(session, author_id) -> int:
 
 def get_author_rating_old(session, author: Author):
     likes_count = (
-        session.query(AuthorRating)
-        .filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True)))
-        .count()
+        session.query(AuthorRating).filter(and_(AuthorRating.author == author.id, AuthorRating.plus.is_(True))).count()
     )
     dislikes_count = (
         session.query(AuthorRating)
@@ -167,9 +163,7 @@ def get_author_rating_comments(session, author: Author) -> int:
             and_(
                 replied_comment.kind == ReactionKind.COMMENT.value,
                 replied_comment.created_by == author.id,
-                Reaction.kind.in_(
-                    [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
-                ),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
                 Reaction.reply_to == replied_comment.id,
                 Reaction.deleted_at.is_(None),
             ),
@@ -184,9 +178,7 @@ def add_author_rating_columns(q, group_list):
 
     # old karma
     q = q.outerjoin(AuthorRating, AuthorRating.author == Author.id)
-    q = q.add_columns(
-        func.sum(case((AuthorRating.plus == true(), 1), else_=-1)).label("rating")
-    )
+    q = q.add_columns(func.sum(case((AuthorRating.plus == true(), 1), else_=-1)).label("rating"))
 
     # by shouts rating
     shout_reaction = aliased(Reaction)
@@ -243,9 +235,7 @@ def add_author_rating_columns(q, group_list):
             and_(
                 replied_comment.kind == ReactionKind.COMMENT.value,
                 replied_comment.created_by == Author.id,
-                reaction_2.kind.in_(
-                    [ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]
-                ),
+                reaction_2.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
                 reaction_2.reply_to == replied_comment.id,
                 reaction_2.deleted_at.is_(None),
             ),
