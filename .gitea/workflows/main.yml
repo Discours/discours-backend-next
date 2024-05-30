@@ -41,3 +41,12 @@ jobs:
           branch: 'dev'
           git_remote_url: 'ssh://dokku@staging.discours.io:22/core'
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Restart AUTHORIZER
+        id: restart_authorizer
+        uses: appleboy/ssh-action@master
+        with:
+          host: staging.discours.io
+          username: dokku
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: ps:restart authorizer
