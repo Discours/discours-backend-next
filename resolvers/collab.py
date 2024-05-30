@@ -18,18 +18,12 @@ async def accept_invite(_, info, invite_id: int):
         with local_session() as session:
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
-            if (
-                invite
-                and invite.author_id is author_id
-                and invite.status is InviteStatus.PENDING.value
-            ):
+            if invite and invite.author_id is author_id and invite.status is InviteStatus.PENDING.value:
                 # Add the user to the shout authors
                 shout = session.query(Shout).filter(Shout.id == invite.shout_id).first()
                 if shout:
                     if author_id not in shout.authors:
-                        author = (
-                            session.query(Author).filter(Author.id == author_id).first()
-                        )
+                        author = session.query(Author).filter(Author.id == author_id).first()
                         if author:
                             shout.authors.append(author)
                             session.add(shout)
@@ -57,11 +51,7 @@ async def reject_invite(_, info, invite_id: int):
             author_id = int(author_id)
             # Check if the invite exists
             invite = session.query(Invite).filter(Invite.id == invite_id).first()
-            if (
-                invite
-                and invite.author_id is author_id
-                and invite.status is InviteStatus.PENDING.value
-            ):
+            if invite and invite.author_id is author_id and invite.status is InviteStatus.PENDING.value:
                 # Delete the invite
                 session.delete(invite)
                 session.commit()
@@ -124,9 +114,7 @@ async def remove_author(_, info, slug: str = "", author_id: int = 0):
             shout = session.query(Shout).filter(Shout.slug == slug).first()
             # NOTE: owner should be first in a list
             if shout and author.id is shout.created_by:
-                shout.authors = [
-                    author for author in shout.authors if author.id != author_id
-                ]
+                shout.authors = [author for author in shout.authors if author.id != author_id]
                 session.commit()
                 return {}
     return {"error": "Access denied"}

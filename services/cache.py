@@ -32,9 +32,7 @@ async def cache_author(author: dict):
     await redis.execute("SET", f"author:id:{author_id}", payload)
 
 
-async def cache_follows(
-    follower_id: int, entity_type: str, entity_id: int, is_insert=True
-):
+async def cache_follows(follower_id: int, entity_type: str, entity_id: int, is_insert=True):
     # prepare
     follows = []
     redis_key = f"author:follows-{entity_type}s:{follower_id}"
@@ -104,9 +102,7 @@ async def get_cached_author_follows_topics(author_id: int):
                 topic = json.loads(topic_str)
                 if topic and topic not in topics_objects:
                     topics_objects.append(topic)
-        logger.debug(
-            f"author#{author_id} cache updated with {len(topics_objects)} topics"
-        )
+        logger.debug(f"author#{author_id} cache updated with {len(topics_objects)} topics")
         return topics_objects
 
 
@@ -117,9 +113,7 @@ async def get_cached_author_follows_authors(author_id: int):
     if not cached:
         authors_query = (
             select(Author.id)
-            .select_from(
-                join(Author, AuthorFollower, Author.id == AuthorFollower.author)
-            )
+            .select_from(join(Author, AuthorFollower, Author.id == AuthorFollower.author))
             .where(AuthorFollower.follower == author_id)
             .all()
         )
@@ -145,9 +139,7 @@ async def get_cached_author_followers(author_id: int):
     if isinstance(cached, str) and isinstance(cached_author, str):
         followers = json.loads(cached)
         author = json.loads(cache_author)
-        if isinstance(followers, list) and str(len(followers)) == str(
-            author["stat"]["followers"]
-        ):
+        if isinstance(followers, list) and str(len(followers)) == str(author["stat"]["followers"]):
             return followers
 
     followers = (

@@ -60,25 +60,19 @@ class ViewedStorage:
         try:
             if os.path.exists(VIEWS_FILEPATH):
                 start_date_int = os.path.getmtime(VIEWS_FILEPATH)
-                start_date_str = datetime.fromtimestamp(start_date_int).strftime(
-                    "%Y-%m-%d"
-                )
+                start_date_str = datetime.fromtimestamp(start_date_int).strftime("%Y-%m-%d")
                 self.start_date = start_date_str
                 now_date = datetime.now().strftime("%Y-%m-%d")
 
                 if now_date == self.start_date:
                     logger.info(" * Данные актуализованы!")
                 else:
-                    logger.warn(
-                        f" * Файл просмотров {VIEWS_FILEPATH} устарел: {self.start_date}"
-                    )
+                    logger.warn(f" * Файл просмотров {VIEWS_FILEPATH} устарел: {self.start_date}")
 
                 with open(VIEWS_FILEPATH, "r") as file:
                     precounted_views = json.load(file)
                     self.views_by_shout.update(precounted_views)
-                    logger.info(
-                        f" * {len(precounted_views)} публикаций с просмотрами успешно загружены."
-                    )
+                    logger.info(f" * {len(precounted_views)} публикаций с просмотрами успешно загружены.")
             else:
                 logger.info(" * Файл просмотров не найден.")
         except Exception as e:
@@ -99,9 +93,7 @@ class ViewedStorage:
                             property=f"properties/{GOOGLE_PROPERTY_ID}",
                             dimensions=[Dimension(name="pagePath")],
                             metrics=[Metric(name="screenPageViews")],
-                            date_ranges=[
-                                DateRange(start_date=self.start_date, end_date="today")
-                            ],
+                            date_ranges=[DateRange(start_date=self.start_date, end_date="today")],
                         )
                         response = self.analytics_client.run_report(request)
                         if response and isinstance(response.rows, list):
@@ -118,9 +110,7 @@ class ViewedStorage:
                                     views_count = int(row.metric_values[0].value)
 
                                     # Обновление данных в хранилище
-                                    self.views_by_shout[slug] = self.views_by_shout.get(
-                                        slug, 0
-                                    )
+                                    self.views_by_shout[slug] = self.views_by_shout.get(slug, 0)
                                     self.views_by_shout[slug] += views_count
                                     self.update_topics(slug)
 
@@ -179,20 +169,12 @@ class ViewedStorage:
 
             # Обновление тем и авторов с использованием вспомогательной функции
             for [_shout_topic, topic] in (
-                session.query(ShoutTopic, Topic)
-                .join(Topic)
-                .join(Shout)
-                .where(Shout.slug == shout_slug)
-                .all()
+                session.query(ShoutTopic, Topic).join(Topic).join(Shout).where(Shout.slug == shout_slug).all()
             ):
                 update_groups(self.shouts_by_topic, topic.slug, shout_slug)
 
             for [_shout_topic, author] in (
-                session.query(ShoutAuthor, Author)
-                .join(Author)
-                .join(Shout)
-                .where(Shout.slug == shout_slug)
-                .all()
+                session.query(ShoutAuthor, Author).join(Author).join(Shout).where(Shout.slug == shout_slug).all()
             ):
                 update_groups(self.shouts_by_author, author.slug, shout_slug)
 
@@ -219,8 +201,7 @@ class ViewedStorage:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
                 logger.info(
-                    "       ⎩ Следующее обновление: %s"
-                    % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
+                    "       ⎩ Следующее обновление: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
                 )
                 await asyncio.sleep(self.period)
             else:

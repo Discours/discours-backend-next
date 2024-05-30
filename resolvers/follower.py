@@ -56,9 +56,7 @@ async def follow(_, info, what, slug):
         follower_id = int(follower_id)
         error = author_follow(follower_id, slug)
         if not error:
-            [author_id] = (
-                local_session().query(Author.id).filter(Author.slug == slug).first()
-            )
+            [author_id] = local_session().query(Author.id).filter(Author.slug == slug).first()
             if author_id and author_id not in follows:
                 follows.append(author_id)
                 await cache_author(follower_dict)
@@ -104,9 +102,7 @@ async def unfollow(_, info, what, slug):
         # NOTE: after triggers should update cached stats
         if not error:
             logger.info(f"@{follower_dict.get('slug')} unfollowed @{slug}")
-            [author_id] = (
-                local_session().query(Author.id).filter(Author.slug == slug).first()
-            )
+            [author_id] = local_session().query(Author.id).filter(Author.slug == slug).first()
             if author_id and author_id in follows:
                 follows.remove(author_id)
                 await cache_author(follower_dict)
@@ -201,9 +197,7 @@ def reactions_follow(author_id, shout_id, auto=False):
             )
 
             if not following:
-                following = ShoutReactionsFollower(
-                    follower=author_id, shout=shout.id, auto=auto
-                )
+                following = ShoutReactionsFollower(follower=author_id, shout=shout.id, auto=auto)
                 session.add(following)
                 session.commit()
         return None
@@ -258,9 +252,7 @@ def author_unfollow(follower_id, slug):
             flw = (
                 session.query(AuthorFollower)
                 .join(Author, Author.id == AuthorFollower.author)
-                .filter(
-                    and_(AuthorFollower.follower == follower_id, Author.slug == slug)
-                )
+                .filter(and_(AuthorFollower.follower == follower_id, Author.slug == slug))
                 .first()
             )
             if flw:
@@ -273,9 +265,7 @@ def author_unfollow(follower_id, slug):
 
 
 @query.field("get_shout_followers")
-def get_shout_followers(
-    _, _info, slug: str = "", shout_id: int | None = None
-) -> List[Author]:
+def get_shout_followers(_, _info, slug: str = "", shout_id: int | None = None) -> List[Author]:
     followers = []
     with local_session() as session:
         shout = None

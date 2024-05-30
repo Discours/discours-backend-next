@@ -40,17 +40,11 @@ def get_topics_by_community(_, _info, community_id: int):
 async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
     topics_by_author_query = select(Topic)
     if author_id:
-        topics_by_author_query = topics_by_author_query.join(Author).where(
-            Author.id == author_id
-        )
+        topics_by_author_query = topics_by_author_query.join(Author).where(Author.id == author_id)
     elif slug:
-        topics_by_author_query = topics_by_author_query.join(Author).where(
-            Author.slug == slug
-        )
+        topics_by_author_query = topics_by_author_query.join(Author).where(Author.slug == slug)
     elif user:
-        topics_by_author_query = topics_by_author_query.join(Author).where(
-            Author.user == user
-        )
+        topics_by_author_query = topics_by_author_query.join(Author).where(Author.user == user)
 
     return get_with_stat(topics_by_author_query)
 

@@ -17,9 +17,7 @@ DEFAULT_FOLLOWS = {
 }
 
 
-async def handle_author_follower_change(
-    author_id: int, follower_id: int, is_insert: bool
-):
+async def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
     logger.info(author_id)
     author_query = select(Author).select_from(Author).filter(Author.id == author_id)
     [author] = get_with_stat(author_query)
@@ -30,9 +28,7 @@ async def handle_author_follower_change(
         await cache_follows(follower.id, "author", author.id, is_insert)
 
 
-async def handle_topic_follower_change(
-    topic_id: int, follower_id: int, is_insert: bool
-):
+async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
     logger.info(topic_id)
     topic_query = select(Topic).filter(Topic.id == topic_id)
     [topic] = get_with_stat(topic_query)
@@ -74,9 +70,7 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
 
         # reaction repliers
         replied_author_subquery = (
-            select(Author)
-            .join(Reaction, Author.id == Reaction.created_by)
-            .where(Reaction.id == reaction.reply_to)
+            select(Author).join(Reaction, Author.id == Reaction.created_by).where(Reaction.id == reaction.reply_to)
         )
         authors_with_stat = get_with_stat(replied_author_subquery)
         for author_with_stat in authors_with_stat:
