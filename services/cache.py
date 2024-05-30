@@ -134,7 +134,7 @@ async def get_cached_author_followers(author_id: int):
     cached_author = await redis.execute("GET", f"author:id:{author_id}")
     author = None
     if cache_author:
-        author = json.loads(cache_author)
+        author = json.loads(cached_author)
     if not author:
         return []
 
