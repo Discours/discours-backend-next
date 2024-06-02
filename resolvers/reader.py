@@ -310,7 +310,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         shouts_query = query_shouts().filter(Shout.id.in_(hits_ids))
         shouts = []
         with local_session() as session:
-            result = session.execute(shouts_query).all()
+            result = session.execute(shouts_query).unique().all()
             if result:
                 logger.debug(result)
                 logger.debug(len(result))
