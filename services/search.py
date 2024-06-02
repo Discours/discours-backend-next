@@ -1,13 +1,12 @@
 import asyncio
 import json
-import os
 import logging
+import os
 
 from opensearchpy import OpenSearch
 
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
-
 
 # Set redis logging level to suppress DEBUG messages
 logger = logging.getLogger("search")
