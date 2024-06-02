@@ -174,7 +174,12 @@ class SearchService:
         }
 
         if self.client:
-            search_response = self.client.search(index=self.index_name, body=search_body, size=limit, from_=offset)
+            search_response = self.client.search(
+                index=self.index_name,
+                body=search_body,
+                size=limit,
+                from_=offset,
+                _source_includes=["_id", "_score"])
             hits = search_response["hits"]["hits"]
             results = [{"id": hit["_id"], "score": hit["_score"]} for hit in hits]
             # results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]
