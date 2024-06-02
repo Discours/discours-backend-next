@@ -73,9 +73,7 @@ ignore_logs = [
     "_trace.atrace",
     "aiohttp",
     "_client",
-    "._make_request",
-    "base._log_request_response",
-    "_log_request_response"
+    "base"
 ]
 for lgr in ignore_logs:
     loggr = logging.getLogger(lgr)
