@@ -307,11 +307,13 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
         result = local_session().execute(query_shouts()).unique()
-        shouts = []
-        for shout in result:
-            shout.score = scores[f"{shout.id}"]
-            shouts.append(shout)
-        shouts.sort(key=lambda x: x.score, reverse=True)
+        if result:
+            logger.debug(result)
+            shouts = []
+            for shout in result:
+                shout.score = scores[f"{shout.id}"]
+                shouts.append(shout)
+            shouts.sort(key=lambda x: x.score, reverse=True)
         return shouts
     return []
 

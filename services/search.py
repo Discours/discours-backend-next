@@ -179,10 +179,9 @@ class SearchService:
                 body=search_body,
                 size=limit,
                 from_=offset,
-                _source_includes=["_id", "_score"])
+                _source_excludes=["title", "body", "subtitle", "media", "lead"])
             hits = search_response["hits"]["hits"]
             results = [{"id": hit["_id"], "score": hit["_score"]} for hit in hits]
-            # results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]
 
             # если результаты не пустые
             if results:
