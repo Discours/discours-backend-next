@@ -169,7 +169,7 @@ class SearchService:
             "query": {
                 "multi_match": {
                     "query": text,
-                    "fields": ["title", "lead", "subtitle", "body"]
+                    "fields": ["title", "lead", "subtitle", "body", "media"]
                 }
             }
         }
