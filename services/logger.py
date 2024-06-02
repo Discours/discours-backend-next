@@ -74,6 +74,7 @@ ignore_logs = [
     "aiohttp",
     "_client",
     "._make_request",
+    "._log_request_response"
 ]
 for lgr in ignore_logs:
     loggr = logging.getLogger(lgr)
