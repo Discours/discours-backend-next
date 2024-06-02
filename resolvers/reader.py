@@ -315,7 +315,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 logger.debug(result)
                 logger.debug(len(result))
                 for [shout,] in result:
-                    logger.debug(shout)
+                    # logger.debug(shout)
                     shout.score = scores[f"{shout.id}"]
                     shouts.append(shout)
                 shouts.sort(key=lambda x: x.score, reverse=True)
