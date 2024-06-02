@@ -312,7 +312,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             shouts = session.execute(query_shouts())
             for shout in shouts:
                 shout.score = scores[int(shout.id)]
-        return shouts
+        return shouts.unique()
     return []
 
 
