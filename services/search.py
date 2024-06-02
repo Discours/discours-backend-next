@@ -177,8 +177,8 @@ class SearchService:
         if self.client:
             search_response = self.client.search(index=self.index_name, body=search_body, size=limit, from_=offset)
             hits = search_response["hits"]["hits"]
-
-            results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]
+            results = [{"id": hit["_id"], "score": hit["_score"]} for hit in hits]
+            # results = [{**hit["_source"], "score": hit["_score"]} for hit in hits]
 
             # если результаты не пустые
             if results:
