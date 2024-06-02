@@ -309,7 +309,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 assert "no id!!"
         shouts = []
         with local_session() as session:
-            shouts = session.query(Shout).filter(Shout.id.in_(hits_ids)).all()
+            shouts = session.execute(query_shouts())
             for shout in shouts:
                 shout.score = scores[int(shout.id)]
         return shouts
