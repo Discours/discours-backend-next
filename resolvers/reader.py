@@ -306,7 +306,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 shout_id = str(shout_id)
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
-        result = local_session().execute(query_shouts().filter(Shout.id.in_(hits_ids))).unique().first()
+        result = local_session().execute(query_shouts().filter(Shout.id.in_(hits_ids))).all()
         if result:
             logger.debug(result)
             logger.debug(len(result))
