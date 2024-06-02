@@ -168,7 +168,7 @@ class SearchService:
             self.client.index(index=self.index_name, id=str(shout.id), body=index_body)
 
     async def search(self, text, limit, offset):
-        logger.info(f"Ищем: {text}")
+        logger.info(f"Ищем: {text} {offset}+{limit}")
         search_body = {
             "query": {"multi_match": {"query": text, "fields": ["title", "lead", "subtitle", "body", "media"]}}
         }
