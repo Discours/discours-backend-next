@@ -75,6 +75,7 @@ ignore_logs = [
     "_client",
     "._make_request",
     "base._log_request_response",
+    "_log_request_response"
 ]
 for lgr in ignore_logs:
     loggr = logging.getLogger(lgr)
