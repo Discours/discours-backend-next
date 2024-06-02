@@ -1,12 +1,17 @@
 import asyncio
 import json
 import os
+import logging
 
 from opensearchpy import OpenSearch
 
 from services.encoders import CustomJSONEncoder
-from services.logger import root_logger as logger
 from services.rediscache import redis
+
+
+# Set redis logging level to suppress DEBUG messages
+logger = logging.getLogger("search")
+logger.setLevel(logging.WARNING)
 
 ELASTIC_HOST = os.environ.get("ELASTIC_HOST", "").replace("https://", "")
 ELASTIC_USER = os.environ.get("ELASTIC_USER", "")
@@ -118,13 +123,13 @@ class SearchService:
 
     def create_index(self):
         if self.client:
-            logger.debug(f"Создается индекс: {self.index_name}")
+            logger.info(f"Создается индекс: {self.index_name}")
             self.client.indices.create(index=self.index_name, body=index_settings)
-            logger.debug(f"Индекс {self.index_name} создан")
+            logger.info(f"Индекс {self.index_name} создан")
 
     async def check_index(self):
         if self.client:
-            logger.debug(f"Проверяем индекс {self.index_name}...")
+            logger.info(f"Проверяем индекс {self.index_name}...")
             if not self.client.indices.exists(index=self.index_name):
                 self.create_index()
                 self.client.indices.put_mapping(index=self.index_name, body=expected_mapping)
@@ -136,9 +141,9 @@ class SearchService:
                     result = json.loads(result)
                 if isinstance(result, dict):
                     mapping = result.get(self.index_name, {}).get("mappings")
-                    logger.debug(f"Найдена структура индексации: {mapping['properties'].keys()}")
+                    logger.info(f"Найдена структура индексации: {mapping['properties'].keys()}")
                     if mapping and mapping["properties"].keys() != expected_mapping["properties"].keys():
-                        logger.debug(f"Ожидаемая структура индексации: {expected_mapping}")
+                        logger.info(f"Ожидаемая структура индексации: {expected_mapping}")
                         logger.warn("[!!!] Требуется переиндексация всех данных")
                         self.delete_index()
                         self.client = None
@@ -147,7 +152,7 @@ class SearchService:
 
     def index(self, shout):
         if self.client:
-            logger.debug(f"Индексируем пост {shout.id}")
+            logger.info(f"Индексируем пост {shout.id}")
             index_body = {
                 "body": shout.body,
                 "title": shout.title,
@@ -164,7 +169,7 @@ class SearchService:
             self.client.index(index=self.index_name, id=str(shout.id), body=index_body)
 
     async def search(self, text, limit, offset):
-        logger.debug(f"Ищем: {text}")
+        logger.info(f"Ищем: {text}")
         search_body = {
             "query": {"multi_match": {"query": text, "fields": ["title", "lead", "subtitle", "body", "media"]}}
         }
