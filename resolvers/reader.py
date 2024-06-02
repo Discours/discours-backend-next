@@ -308,10 +308,9 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 hits_ids.append(shout_id)
         result = local_session().execute(query_shouts()).unique()
         if result:
-            [shouts_result] = result
-            logger.debug(shouts_result)
+            logger.debug(result)
             shouts = []
-            for shout in shouts_result:
+            for shout in result.first():
                 logger.debug(shout)
                 shout.score = scores[f"{shout.id}"]
                 shouts.append(shout)
