@@ -179,6 +179,7 @@ class SearchService:
                 body=search_body,
                 size=limit,
                 from_=offset,
+                _source=False,
                 _source_excludes=["title", "body", "subtitle", "media", "lead", "_index"])
             hits = search_response["hits"]["hits"]
             results = [{"id": hit["_id"], "score": hit["_score"]} for hit in hits]
