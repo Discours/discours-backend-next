@@ -183,7 +183,7 @@ class SearchService:
             # если результаты не пустые
             if results:
                 # Кэширование в Redis с TTL
-                redis_key = f"search:{text}"
+                redis_key = f"search:{text}:{offset}+{limit}"
                 await redis.execute(
                     "SETEX",
                     redis_key,
