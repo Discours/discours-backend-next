@@ -25,14 +25,14 @@ class RedisCache:
     async def execute(self, command, *args, **kwargs):
         if self._client:
             try:
-                logger.debug(f"{command} {args} {kwargs}")
+                logger.debug(f"{command} {args[0]}") # {args} {kwargs}")
                 for arg in args:
                     if isinstance(arg, dict):
                         if arg.get("_sa_instance_state"):
                             del arg["_sa_instance_state"]
                 r = await self._client.execute_command(command, *args, **kwargs)
-                logger.debug(type(r))
-                logger.debug(r)
+                # logger.debug(type(r))
+                # logger.debug(r)
                 return r
             except Exception as e:
                 logger.error(e)

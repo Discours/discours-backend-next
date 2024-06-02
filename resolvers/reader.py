@@ -305,8 +305,6 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 shout_id = int(shout_id)
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
-            else:
-                assert "no id!!"
         shouts = []
         with local_session() as session:
             shouts = session.execute(query_shouts())
