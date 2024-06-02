@@ -21,6 +21,7 @@ def query_shouts():
         select(Shout)
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+
     )
 
 
@@ -305,7 +306,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 shout_id = int(shout_id)
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
-        shouts = local_session().execute(query_shouts())
+        shouts = local_session().execute(query_shouts().unique())
         for shout in shouts:
             shout.score = scores[int(shout.id)]
         shouts.sort(key=lambda x: x.score, reverse=True)
