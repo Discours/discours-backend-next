@@ -166,12 +166,7 @@ class SearchService:
     async def search(self, text, limit, offset):
         logger.debug(f"Ищем: {text}")
         search_body = {
-            "query": {
-                "multi_match": {
-                    "query": text,
-                    "fields": ["title", "lead", "subtitle", "body", "media"]
-                }
-            }
+            "query": {"multi_match": {"query": text, "fields": ["title", "lead", "subtitle", "body", "media"]}}
         }
 
         if self.client:

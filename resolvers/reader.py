@@ -297,14 +297,19 @@ async def load_shouts_feed(_, info, options):
 async def load_shouts_search(_, _info, text, limit=50, offset=0):
     if isinstance(text, str) and len(text) > 2:
         results = await search_text(text, limit, offset)
-        shouts_ids = []
+        scores = {}
+        hits_ids = []
         for sr in results:
             shout_id = sr.get("id")
             if shout_id:
-                shouts_ids.append(int(shout_id))
+                shout_id = int(shout_id)
+                scores[shout_id] = sr.get("score")
+                hits_ids.append(shout_id)
         shouts = []
         with local_session() as session:
-            shouts = session.query(Shout).filter(Shout.id.in_(shouts_ids)).all()
+            shouts = session.query(Shout).filter(Shout.id.in_(hits_ids)).all()
+            for shout in shouts:
+                shout["score"] = scores[int(shout.id)]
         return shouts
     return []
 
