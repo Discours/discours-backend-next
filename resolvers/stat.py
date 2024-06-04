@@ -13,33 +13,36 @@ from services.logger import root_logger as logger
 def add_topic_stat_columns(q):
     aliased_shout = aliased(ShoutTopic)
 
-    # Соединяем таблицу Topic с таблицами ShoutTopic и Shout, используя INNER JOIN
-    q = (
-        q.select_from(Topic)
-        .join(
-            aliased_shout,
-            aliased_shout.topic == Topic.id,
-        )
-        .join(
-            Shout,
-            and_(
-                aliased_shout.shout == Shout.id,
-                Shout.deleted_at.is_(None),
-            ),
-        )
-        .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
+    # Create a new query object
+    new_q = select(Topic)
+
+    # Apply the necessary filters to the new query object
+    new_q = new_q.join(
+        aliased_shout,
+        aliased_shout.topic == Topic.id,
+    ).join(
+        Shout,
+        and_(
+            aliased_shout.shout == Shout.id,
+            Shout.deleted_at.is_(None),
+        ),
+    ).add_columns(
+        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
     )
 
     aliased_follower = aliased(TopicFollower)
 
-    # Соединяем таблицу Topic с таблицей TopicFollower, используя LEFT OUTER JOIN
-    q = q.outerjoin(aliased_follower, aliased_follower.topic == Topic.id).add_columns(
+    new_q = new_q.outerjoin(
+        aliased_follower,
+        aliased_follower.topic == Topic.id
+    ).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
 
-    q = q.group_by(Topic.id)
+    new_q = new_q.group_by(Topic.id)
 
-    return q
+    return new_q
+
 
 
 def add_author_stat_columns(q):
