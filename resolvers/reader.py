@@ -21,7 +21,6 @@ def query_shouts():
         select(Shout)
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-
     )
 
 
@@ -314,7 +313,9 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
             if result:
                 logger.debug(result)
                 logger.debug(len(result))
-                for [shout,] in result:
+                for [
+                    shout,
+                ] in result:
                     # logger.debug(shout)
                     shout.score = scores[f"{shout.id}"]
                     shouts.append(shout)
