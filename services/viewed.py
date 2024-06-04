@@ -123,6 +123,7 @@ class ViewedStorage:
                         logger.info(" ⎪ Обновление страниц заняло %fs " % (end - start))
             except Exception as error:
                 logger.error(error)
+                self.disabled = True
 
     @staticmethod
     async def get_shout(shout_slug) -> int:
