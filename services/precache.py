@@ -3,6 +3,7 @@ import json
 from sqlalchemy import and_, join, select
 
 from orm.author import Author, AuthorFollower
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
 from services.db import local_session
@@ -11,97 +12,135 @@ from services.logger import root_logger as logger
 from services.rediscache import redis
 
 
+async def precache_authors_followers(author_id, session):
+    # Precache author followers
+    authors_followers = set()
+    followers_query = select(AuthorFollower.follower).where(AuthorFollower.author == author_id)
+    result = session.execute(followers_query)
+
+    for row in result:
+        follower_id = row[0]
+        if follower_id:
+            authors_followers.add(follower_id)
+
+    followers_payload = json.dumps(
+        [f for f in authors_followers],
+        cls=CustomJSONEncoder,
+    )
+    await redis.execute("SET", f"author:followers:{author_id}", followers_payload)
+
+
+async def precache_authors_follows(author_id, session):
+    # Precache topics followed by author
+    follows_topics = set()
+    follows_topics_query = select(TopicFollower.topic).where(TopicFollower.follower == author_id)
+    result = session.execute(follows_topics_query)
+
+    for row in result:
+        followed_topic_id = row[0]
+        if followed_topic_id:
+            follows_topics.add(followed_topic_id)
+
+    topics_payload = json.dumps([t for t in follows_topics], cls=CustomJSONEncoder)
+    await redis.execute("SET", f"author:follows-topics:{author_id}", topics_payload)
+
+    # Precache authors followed by author
+    follows_authors = set()
+    follows_authors_query = select(AuthorFollower.author).where(AuthorFollower.follower == author_id)
+    result = session.execute(follows_authors_query)
+
+    for row in result:
+        followed_author_id = row[0]
+        if followed_author_id:
+            follows_authors.add(followed_author_id)
+
+    authors_payload = json.dumps([a for a in follows_authors], cls=CustomJSONEncoder)
+    await redis.execute("SET", f"author:follows-authors:{author_id}", authors_payload)
+
+
+async def precache_topics_authors(topic_id: int, session):
+    # Precache topic authors
+    topic_authors = set()
+    topic_authors_query = (
+        select(ShoutAuthor.author)
+        .select_from(join(ShoutTopic, Shout, ShoutTopic.shout == Shout.id))
+        .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
+        .filter(
+            and_(
+                ShoutTopic.topic == topic_id,
+                Shout.published_at.is_not(None),
+                Shout.deleted_at.is_(None),
+            )
+        )
+    )
+    result = session.execute(topic_authors_query)
+
+    for row in result:
+        author_id = row[0]
+        if author_id:
+            topic_authors.add(author_id)
+
+    authors_payload = json.dumps([a for a in topic_authors], cls=CustomJSONEncoder)
+    await redis.execute("SET", f"topic:authors:{topic_id}", authors_payload)
+
+
+async def precache_topics_followers(topic_id: int, session):
+    # Precache topic followers
+    topic_followers = set()
+    followers_query = select(TopicFollower.follower).where(TopicFollower.topic == topic_id)
+    result = session.execute(followers_query)
+
+    for row in result:
+        follower_id = row[0]
+        if follower_id:
+            topic_followers.add(follower_id)
+
+    followers_payload = json.dumps([f for f in topic_followers], cls=CustomJSONEncoder)
+    await redis.execute("SET", f"topic:followers:{topic_id}", followers_payload)
+
+
 async def precache_data():
-    # Удаляем все кэшированные данные
+    # cache reset
     await redis.execute("FLUSHDB")
+    logger.info("redis flushed")
 
+    # authors
     authors_by_id = {}
-    topics_by_id = {}
-
-    # authors precache
-    authors = get_with_stat(select(Author).filter(Author.user.is_not(None)))
-    for a in authors:
-        profile = a.dict() if not isinstance(a, dict) else a
+    authors = get_with_stat(select(Author).where(Author.user.is_not(None)))
+    for author in authors:
+        profile = author.dict() if not isinstance(author, dict) else author
         author_id = profile.get("id")
         if author_id:
             authors_by_id[author_id] = profile
-            await redis.execute("SET", f"author:{author_id}", json.dumps(profile, cls=CustomJSONEncoder))
-            await redis.execute(
-                "SET",
-                f"user:{profile['user']}",
-                json.dumps(profile, cls=CustomJSONEncoder),
-            )
+            user_id = profile["user"]
+            author_payload = json.dumps(profile, cls=CustomJSONEncoder)
+            await redis.execute("SET", f"author:id:{author_id}", author_payload)
+            await redis.execute("SET", f"author:user:{user_id}", author_payload)
     logger.info(f"{len(authors)} authors precached")
 
-    # topics precache
+    # followings for authors
+    with local_session() as session:
+        for author_id in authors_by_id.keys():
+            await precache_authors_followers(author_id, session)
+            await precache_authors_follows(author_id, session)
+    logger.info("authors followings precached")
+
+    # topics
+    topics_by_id = {}
     topics = get_with_stat(select(Topic))
-    for t in topics:
-        topic = t.dict() if not isinstance(t, dict) else t
-        topic_id = topic.get("id")
-        topics_by_id[topic_id] = topic
-        await redis.execute("SET", f"topic:{topic_id}", json.dumps(topic, cls=CustomJSONEncoder))
+    for topic in topics:
+        topic_profile = topic.dict() if not isinstance(topic, dict) else topic
+        topic_id = topic_profile.get("id")
+        topics_by_id[topic_id] = topic_profile
+        topic_slug = topic_profile["slug"]
+        topic_payload = json.dumps(topic_profile, cls=CustomJSONEncoder)
+        await redis.execute("SET", f"topic:id:{topic_id}", topic_payload)
+        await redis.execute("SET", f"topic:slug:{topic_slug}", topic_payload)
     logger.info(f"{len(topics)} topics precached")
 
-    authors_keys = authors_by_id.keys()
-    for author_id in authors_keys:
-        with local_session() as session:
-            # follows topics precache
-            follows_topics = set()
-            follows_topics_query = (
-                select(Topic.id)
-                .select_from(join(Topic, TopicFollower, Topic.id == TopicFollower.topic))
-                .where(TopicFollower.follower == author_id)
-            )
-            for followed_topic_id in session.execute(follows_topics_query):
-                ft = topics_by_id.get(followed_topic_id)
-                if ft:
-                    follows_topics.add(ft)
-
-            # follows authors precache
-            follows_authors = set()
-            follows_authors_query = (
-                select(Author.id)
-                .select_from(
-                    join(
-                        Author,
-                        AuthorFollower,
-                        Author.id == AuthorFollower.author,
-                    )
-                )
-                .where(AuthorFollower.follower == author_id)
-            )
-            for followed_author_id in session.execute(follows_authors_query):
-                followed_author = authors_by_id.get(followed_author_id)
-                if followed_author:
-                    follows_authors.add(followed_author)
-
-            # followers precache
-            followers = set()
-            followers_query = select(Author.id).join(
-                AuthorFollower,
-                and_(
-                    AuthorFollower.author == author_id,
-                    AuthorFollower.follower == Author.id,
-                ),
-            )
-            for follower_id in session.execute(followers_query):
-                follower = authors_by_id.get(follower_id)
-                if follower:
-                    followers.add(follower)
-
-            authors_payload = json.dumps(
-                [f.dict() if isinstance(f, Author) else f for f in follows_authors],
-                cls=CustomJSONEncoder,
-            )
-            await redis.execute("SET", f"author:{author_id}:follows-authors", authors_payload)
-            topics_payload = json.dumps(
-                [t.dict() if isinstance(t, Topic) else t for t in follows_topics],
-                cls=CustomJSONEncoder,
-            )
-            await redis.execute("SET", f"author:{author_id}:follows-topics", topics_payload)
-            followers_payload = json.dumps(
-                [f.dict() if isinstance(f, Author) else f for f in followers],
-                cls=CustomJSONEncoder,
-            )
-            await redis.execute("SET", f"author:{author_id}:followers", followers_payload)
-    logger.info("followers precached")
+    # followings for topics
+    with local_session() as session:
+        for topic_id in topics_by_id.keys():
+            await precache_topics_followers(topic_id, session)
+            await precache_topics_authors(topic_id, session)
+    logger.info("topics followings precached")
