@@ -30,7 +30,7 @@ async def cache_author(author: dict):
     author_id = author.get("id")
     user_id = author.get("user", "").strip()
     payload = json.dumps(author, cls=CustomJSONEncoder)
-    await redis.execute("SET", f"author:user:{user_id}", payload)
+    await redis.execute("SET", f"author:user:{user_id}", author_id)
     await redis.execute("SET", f"author:id:{author_id}", payload)
 
 
@@ -76,9 +76,9 @@ async def get_cached_author(author_id: int, get_with_stat):
 
 
 async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
-    author_str = await redis.execute("GET", f"author:user:{user_id.strip()}")
+    author_id = await redis.execute("GET", f"author:user:{user_id.strip()}")
     author_dict = None
-    if not author_str:
+    if not author_id:
         author_query = select(Author).filter(Author.user == user_id)
         result = get_with_stat(author_query)
         if result:
@@ -87,7 +87,9 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
                 await cache_author(author_with_stat.dict())
                 author_dict = author_with_stat.dict()
     else:
-        author_dict = json.loads(author_str)
+        author_str = await redis.execute("GET", f"author:id:{author_id}")
+        if author_str:
+            author_dict = json.loads(author_str)
     return author_dict
 
 
