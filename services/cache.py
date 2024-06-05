@@ -66,10 +66,12 @@ async def get_cached_author(author_id: int, get_with_stat):
         elif get_with_stat:
             with local_session() as session:
                 author_query = select(Author).filter(Author.id == author_id)
-                [author] = get_with_stat(session.execute(author_query))
-                if author:
-                    await cache_author(author)
-                    return author
+                result = get_with_stat(session.execute(author_query))
+                if result:
+                    [author] = result
+                    if author:
+                        await cache_author(author)
+                        return author
 
 
 async def get_cached_author_by_user_id(user_id: str, get_with_stat):
