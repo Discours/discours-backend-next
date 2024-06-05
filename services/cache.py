@@ -75,18 +75,17 @@ async def get_cached_author(author_id: int, get_with_stat):
                         return author
 
 
-async def get_cached_author_by_user_id(user_id: str, get_with_stat):
+async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
     author_str = await redis.execute("GET", f"author:user:{user_id}")
-    author_id = None
+    author_dict = None
     if not author_str:
         with local_session() as session:
-            author_id = session.query(Author.id).filter(Author.user == user_id).first()
+            author = session.query(Author).filter(Author.user == user_id).first()
+            await cache_author(author.dict())
+            author_dict = author.dict()
     else:
         author_dict = json.loads(author_str)
-        author_id = author_dict.get("id")
-    if author_id:
-        cached_author = await get_cached_author(int(author_id), get_with_stat)
-        return cached_author
+    return author_dict
 
 
 async def get_cached_topic_by_slug(slug: str, get_with_stat):
