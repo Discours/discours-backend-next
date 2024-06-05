@@ -1,10 +1,9 @@
-from sqlalchemy import and_, distinct, func, select
+from sqlalchemy import distinct, func, select
 
 from orm.author import Author
-from orm.community import Community, CommunityAuthor
+from orm.community import Community
 from orm.shout import ShoutCommunity
 from services.db import local_session
-from services.logger import root_logger as logger
 from services.schema import query
 
 
@@ -23,37 +22,6 @@ def get_communities_from_query(q):
             ccc.append(c)
 
     return ccc
-
-
-# for mutation.field("follow")
-def community_follow(follower_id, slug):
-    try:
-        with local_session() as session:
-            community = session.query(Community).where(Community.slug == slug).first()
-            if isinstance(community, Community):
-                cf = CommunityAuthor(author=follower_id, community=community.id)
-                session.add(cf)
-                session.commit()
-                return True
-    except Exception as ex:
-        logger.debug(ex)
-    return False
-
-
-# for mutation.field("unfollow")
-def community_unfollow(follower_id, slug):
-    with local_session() as session:
-        flw = (
-            session.query(CommunityAuthor)
-            .join(Community, Community.id == CommunityAuthor.community)
-            .filter(and_(CommunityAuthor.author == follower_id, Community.slug == slug))
-            .first()
-        )
-        if flw:
-            session.delete(flw)
-            session.commit()
-            return True
-    return False
 
 
 @query.field("get_communities_all")

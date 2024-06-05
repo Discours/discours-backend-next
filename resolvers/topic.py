@@ -1,11 +1,11 @@
-from sqlalchemy import and_, distinct, func, join, select
+from sqlalchemy import distinct, func, select
 
 from orm.author import Author
-from orm.shout import Shout, ShoutAuthor, ShoutTopic
+from orm.shout import ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from services.cache import get_cached_topic_authors, get_cached_topic_followers
+from services.cache import get_cached_topic_authors, get_cached_topic_by_slug, get_cached_topic_followers
 from services.db import local_session
 from services.logger import root_logger as logger
 from services.memorycache import cache_region
@@ -50,10 +50,9 @@ async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
 
 
 @query.field("get_topic")
-def get_topic(_, _info, slug: str):
-    topic_query = select(Topic).filter(Topic.slug == slug)
-    result = get_with_stat(topic_query)
-    for topic in result:
+async def get_topic(_, _info, slug: str):
+    topic = await get_cached_topic_by_slug(slug)
+    if topic:
         return topic
 
 
@@ -125,9 +124,8 @@ def get_topics_random(_, _info, amount=12):
 @query.field("get_topic_followers")
 async def get_topic_followers(_, _info, slug: str):
     logger.debug(f"getting followers for @{slug}")
-    topic_query = select(Topic.id).filter(Topic.slug == slug).first()
-    topic_id_result = local_session().execute(topic_query)
-    topic_id = topic_id_result[0] if topic_id_result else None
+    topic = await get_cached_topic_by_slug(slug)
+    topic_id = topic.id if isinstance(topic, Topic) else topic.get("id")
     followers = await get_cached_topic_followers(topic_id)
     return followers
 
@@ -135,20 +133,7 @@ async def get_topic_followers(_, _info, slug: str):
 @query.field("get_topic_authors")
 async def get_topic_authors(_, _info, slug: str):
     logger.debug(f"getting authors for @{slug}")
-    topic_query = select(Topic.id).filter(Topic.slug == slug).first()
-    topic_id_result = local_session().execute(topic_query)
-    topic_id = topic_id_result[0] if topic_id_result else None
-    topic_authors_query = (
-        select(ShoutAuthor.author)
-        .select_from(join(ShoutTopic, Shout, ShoutTopic.shout == Shout.id))
-        .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
-        .filter(
-            and_(
-                ShoutTopic.topic == topic_id,
-                Shout.published_at.is_not(None),
-                Shout.deleted_at.is_(None),
-            )
-        )
-    )
-    authors = await get_cached_topic_authors(topic_id, topic_authors_query)
+    topic = await get_cached_topic_by_slug(slug)
+    topic_id = topic.id if isinstance(topic, Topic) else topic.get("id")
+    authors = await get_cached_topic_authors(topic_id)
     return authors

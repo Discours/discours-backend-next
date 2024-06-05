@@ -17,32 +17,30 @@ def add_topic_stat_columns(q):
     new_q = select(Topic)
 
     # Apply the necessary filters to the new query object
-    new_q = new_q.join(
-        aliased_shout,
-        aliased_shout.topic == Topic.id,
-    ).join(
-        Shout,
-        and_(
-            aliased_shout.shout == Shout.id,
-            Shout.deleted_at.is_(None),
-        ),
-    ).add_columns(
-        func.count(distinct(aliased_shout.shout)).label("shouts_stat")
+    new_q = (
+        new_q.join(
+            aliased_shout,
+            aliased_shout.topic == Topic.id,
+        )
+        .join(
+            Shout,
+            and_(
+                aliased_shout.shout == Shout.id,
+                Shout.deleted_at.is_(None),
+            ),
+        )
+        .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat"))
     )
 
     aliased_follower = aliased(TopicFollower)
 
-    new_q = new_q.outerjoin(
-        aliased_follower,
-        aliased_follower.topic == Topic.id
-    ).add_columns(
+    new_q = new_q.outerjoin(aliased_follower, aliased_follower.topic == Topic.id).add_columns(
         func.count(distinct(aliased_follower.follower)).label("followers_stat")
     )
 
     new_q = new_q.group_by(Topic.id)
 
     return new_q
-
 
 
 def add_author_stat_columns(q):

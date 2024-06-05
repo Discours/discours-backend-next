@@ -4,6 +4,7 @@ from typing import List
 from sqlalchemy import and_, join, select
 
 from orm.author import Author, AuthorFollower
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
@@ -80,6 +81,21 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat):
         return await get_cached_author(int(author_id), get_with_stat)
 
 
+async def get_cached_topic_by_slug(slug: str, get_with_stat):
+    cached_result = await redis.execute("GET", f"topic:slug:{slug}")
+    if isinstance(cached_result, str):
+        return json.loads(cached_result)
+    elif get_with_stat:
+        with local_session() as session:
+            topic_query = select(Topic).filter(Topic.slug == slug)
+            result = get_with_stat(session.execute(topic_query))
+            if result:
+                [topic] = result
+                if topic:
+                    await cache_topic(topic)
+                    return topic
+
+
 async def get_cached_authors_by_ids(authors_ids: List[int]) -> List[Author | dict]:
     authors = []
     for author_id in authors_ids:
@@ -93,13 +109,25 @@ async def get_cached_authors_by_ids(authors_ids: List[int]) -> List[Author | dic
     return authors
 
 
-async def get_cached_topic_authors(topic_id: int, topic_authors_query):
+async def get_cached_topic_authors(topic_id: int):
     rkey = f"topic:authors:{topic_id}"
     cached = await redis.execute("GET", rkey)
     authors_ids = []
     if isinstance(cached, str):
         authors_ids = json.loads(cached)
     else:
+        topic_authors_query = (
+            select(ShoutAuthor.author)
+            .select_from(join(ShoutTopic, Shout, ShoutTopic.shout == Shout.id))
+            .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
+            .filter(
+                and_(
+                    ShoutTopic.topic == topic_id,
+                    Shout.published_at.is_not(None),
+                    Shout.deleted_at.is_(None),
+                )
+            )
+        )
         with local_session() as session:
             authors_ids = [aid for (aid,) in session.execute(topic_authors_query)]
     await redis.execute("SET", rkey, json.dumps(authors_ids))

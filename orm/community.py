@@ -7,7 +7,7 @@ from orm.author import Author
 from services.db import Base
 
 
-class CommunityAuthor(Base):
+class CommunityFollower(Base):
     __tablename__ = "community_author"
 
     id = None  # type: ignore
