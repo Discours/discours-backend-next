@@ -9,7 +9,7 @@ from orm.rating import is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.follower import reactions_follow, reactions_unfollow
+from resolvers.follower import follow, unfollow
 from resolvers.stat import get_with_stat
 from services.auth import login_required
 from services.cache import cache_author, cache_topic
@@ -146,7 +146,7 @@ async def create_shout(_, info, inp):
 
                 session.commit()
 
-                reactions_follow(author_id, shout.id, True)
+                follow(None, info, "shout", shout.slug)
 
                 # notifier
                 # await notify_shout(shout_dict, 'create')
@@ -314,8 +314,10 @@ async def delete_shout(_, info, shout_id: int):
                 session.commit()
 
                 for author in shout.authors:
-                    reactions_unfollow(author.id, shout_id)
                     await cache_by_id(Author, author.id)
+                    info.context["author"] = author.dict()
+                    info.context["user_id"] = author.user
+                    unfollow(None, info, "shout", shout.slug)
 
                 for topic in shout.topics:
                     await cache_by_id(Topic, topic.id)

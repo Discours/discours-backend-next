@@ -10,7 +10,7 @@ from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_pos
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from resolvers.editor import handle_proposing
-from resolvers.follower import reactions_follow
+from resolvers.follower import follow
 from resolvers.stat import update_author_stat
 from services.auth import add_user_role, login_required
 from services.db import local_session
@@ -106,7 +106,7 @@ def set_unfeatured(session, shout_id):
     session.commit()
 
 
-async def _create_reaction(session, shout, author_id: int, reaction):
+async def _create_reaction(session, info, shout, author_id: int, reaction):
     r = Reaction(**reaction)
     session.add(r)
     session.commit()
@@ -132,7 +132,7 @@ async def _create_reaction(session, shout, author_id: int, reaction):
         if r.kind == ReactionKind.LIKE.value:
             try:
                 # reactions auto-following
-                reactions_follow(author_id, reaction["shout"], True)
+                follow(None, info, "shout", shout.slug)
             except Exception:
                 pass
 
@@ -214,7 +214,7 @@ async def create_reaction(_, info, reaction):
                     if error_result:
                         return error_result
 
-                rdict = await _create_reaction(session, shout, author_id, reaction)
+                rdict = await _create_reaction(session, info, shout, author_id, reaction)
 
                 # TODO: call recount ratings periodically
                 rdict["created_by"] = author_dict
