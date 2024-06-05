@@ -30,7 +30,7 @@ async def cache_author(author: dict):
     author_id = author.get("id")
     user_id = author.get("user")
     payload = json.dumps(author, cls=CustomJSONEncoder)
-    await redis.execute("SET", f"author:user:{user_id}", author_id)
+    await redis.execute("SET", f"author:user:{user_id}", payload)
     await redis.execute("SET", f"author:id:{author_id}", payload)
 
 
