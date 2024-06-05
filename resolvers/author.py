@@ -10,10 +10,10 @@ from services.auth import login_required
 from services.cache import (
     cache_author,
     get_cached_author,
-    get_cached_author_by_user_id,
     get_cached_author_followers,
     get_cached_follower_authors,
     get_cached_follower_topics,
+    get_cached_author_by_user_id
 )
 from services.db import local_session
 from services.logger import root_logger as logger
@@ -79,7 +79,9 @@ async def get_author(_, _info, slug="", author_id=0):
     return author_dict
 
 
-async def get_author_by_user_id(user_id: str):
+@query.field("get_author_id")
+async def get_author_id(_, _info, user: str):
+    user_id = user.strip()
     logger.info(f"getting author id for {user_id}")
     author = None
     try:
@@ -93,17 +95,12 @@ async def get_author_by_user_id(user_id: str):
             [author] = result
             if author:
                 await cache_author(author.dict())
+                return author
     except Exception as exc:
         import traceback
 
         traceback.print_exc()
         logger.error(exc)
-    return author
-
-
-@query.field("get_author_id")
-async def get_author_id(_, _info, user: str):
-    return await get_author_by_user_id(user)
 
 
 @query.field("load_authors_by")
