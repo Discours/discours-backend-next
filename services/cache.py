@@ -23,7 +23,7 @@ async def cache_topic(topic: dict):
     topic_slug = topic.get("slug")
     payload = json.dumps(topic, cls=CustomJSONEncoder)
     await redis.execute("SET", f"topic:id:{topic_id}", payload)
-    await redis.execute("SET", f"topic:slug:{topic_slug}", topic_id)
+    await redis.execute("SET", f"topic:slug:{topic_slug}", payload)
 
 
 async def cache_author(author: dict):
