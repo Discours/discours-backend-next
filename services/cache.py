@@ -71,7 +71,7 @@ async def get_cached_author(author_id: int, get_with_stat):
                 if result:
                     [author] = result
                     if author:
-                        await cache_author(author)
+                        await cache_author(author.dict())
                         return author
 
 
@@ -79,10 +79,11 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
     author_str = await redis.execute("GET", f"author:user:{user_id}")
     author_dict = None
     if not author_str:
-        with local_session() as session:
-            author = session.query(Author).filter(Author.user == user_id).first()
-            await cache_author(author.dict())
-            author_dict = author.dict()
+        author_query = select(Author).filter(Author.user == user_id)
+        [author_with_stat] = get_with_stat(author_query)
+        if author_with_stat:
+            await cache_author(author_with_stat.dict())
+            author_dict = author_with_stat.dict()
     else:
         author_dict = json.loads(author_str)
     return author_dict

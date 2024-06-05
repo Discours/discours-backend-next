@@ -21,17 +21,14 @@ from services.schema import mutation, query
 from services.search import search_service
 
 
-async def cache_by_id(entity, entity_id: int):
+async def cache_by_id(entity, entity_id: int, cache_method):
     caching_query = select(entity).filter(entity.id == entity_id)
     [x] = get_with_stat(caching_query)
     if not x:
         return
 
     d = x.dict()  # convert object to dictionary
-    if entity == Author:
-        await cache_author(d)
-    else:
-        await cache_topic(d)
+    cache_method(d)
     return d
 
 
@@ -252,7 +249,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         patch_topics(session, shout_by_id, topics_input)
                         del shout_input["topics"]
                         for tpc in topics_input:
-                            await cache_by_id(Topic, tpc["id"])
+                            await cache_by_id(Topic, tpc["id"], cache_topic)
 
                     # main topic
                     main_topic = shout_input.get("main_topic")
@@ -274,7 +271,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         # search service indexing
                         search_service.index(shout_by_id)
                         for a in shout_by_id.authors:
-                            await cache_by_id(Author, a.id)
+                            await cache_by_id(Author, a.id, cache_author)
 
                     return {"shout": shout_dict, "error": None}
                 else:
@@ -314,13 +311,13 @@ async def delete_shout(_, info, shout_id: int):
                 session.commit()
 
                 for author in shout.authors:
-                    await cache_by_id(Author, author.id)
+                    await cache_by_id(Author, author.id, cache_author)
                     info.context["author"] = author.dict()
                     info.context["user_id"] = author.user
                     unfollow(None, info, "shout", shout.slug)
 
                 for topic in shout.topics:
-                    await cache_by_id(Topic, topic.id)
+                    await cache_by_id(Topic, topic.id, cache_topic)
 
                 await notify_shout(shout_dict, "delete")
                 return {"error": None}

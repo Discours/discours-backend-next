@@ -91,7 +91,8 @@ async def get_author_by_user_id(user_id: str):
         result = get_with_stat(author_query)
         if result:
             [author] = result
-            await cache_author(author.dict())
+            if author:
+                await cache_author(author.dict())
     except Exception as exc:
         import traceback
 
