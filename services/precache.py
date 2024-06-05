@@ -111,12 +111,14 @@ async def precache_data():
         for author in authors:
             profile = author.dict() if not isinstance(author, dict) else author
             author_id = profile.get("id")
-            if author_id:
+            user_id = profile.get("user")
+            if author_id and user_id:
                 authors_by_id[author_id] = profile
-                user_id = profile["user"]
                 author_payload = json.dumps(profile, cls=CustomJSONEncoder)
                 await redis.execute("SET", f"author:id:{author_id}", author_payload)
                 await redis.execute("SET", f"author:user:{user_id.strip()}", author_payload)
+            else:
+                logger.error(f"caching {author.dict()}")
         logger.info(f"{len(authors)} authors precached")
 
         # followings for authors
