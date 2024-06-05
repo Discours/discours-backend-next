@@ -116,7 +116,7 @@ async def precache_data():
                 user_id = profile["user"]
                 author_payload = json.dumps(profile, cls=CustomJSONEncoder)
                 await redis.execute("SET", f"author:id:{author_id}", author_payload)
-                await redis.execute("SET", f"author:user:{user_id}", author_payload)
+                await redis.execute("SET", f"author:user:{user_id.strip()}", author_payload)
         logger.info(f"{len(authors)} authors precached")
 
         # followings for authors
