@@ -76,7 +76,8 @@ async def get_cached_author(author_id: int, get_with_stat):
 
 
 async def get_cached_author_by_user_id(user_id: str, get_with_stat):
-    author_id = await redis.execute("GET", f"author:user:{user_id}")
+    author_dict = await redis.execute("GET", f"author:user:{user_id}")
+    author_id = author_dict.get("id")
     if author_id:
         return await get_cached_author(int(author_id), get_with_stat)
 
