@@ -105,6 +105,26 @@ async def precache_data():
         await redis.execute("FLUSHDB")
         logger.info("redis flushed")
 
+        # topics
+        topics_by_id = {}
+        topics = get_with_stat(select(Topic))
+        for topic in topics:
+            topic_profile = topic.dict() if not isinstance(topic, dict) else topic
+            topic_id = topic_profile.get("id")
+            topics_by_id[topic_id] = topic_profile
+            topic_slug = topic_profile["slug"]
+            topic_payload = json.dumps(topic_profile, cls=CustomJSONEncoder)
+            await redis.execute("SET", f"topic:id:{topic_id}", topic_payload)
+            await redis.execute("SET", f"topic:slug:{topic_slug}", topic_payload)
+        logger.info(f"{len(topics)} topics precached")
+
+        # followings for topics
+        with local_session() as session:
+            for topic_id in topics_by_id.keys():
+                await precache_topics_followers(topic_id, session)
+                await precache_topics_authors(topic_id, session)
+        logger.info("topics followings precached")
+
         # authors
         authors_by_id = {}
         authors = get_with_stat(select(Author).where(Author.user.is_not(None)))
@@ -127,25 +147,5 @@ async def precache_data():
                 await precache_authors_followers(author_id, session)
                 await precache_authors_follows(author_id, session)
         logger.info("authors followings precached")
-
-        # topics
-        topics_by_id = {}
-        topics = get_with_stat(select(Topic))
-        for topic in topics:
-            topic_profile = topic.dict() if not isinstance(topic, dict) else topic
-            topic_id = topic_profile.get("id")
-            topics_by_id[topic_id] = topic_profile
-            topic_slug = topic_profile["slug"]
-            topic_payload = json.dumps(topic_profile, cls=CustomJSONEncoder)
-            await redis.execute("SET", f"topic:id:{topic_id}", topic_payload)
-            await redis.execute("SET", f"topic:slug:{topic_slug}", topic_payload)
-        logger.info(f"{len(topics)} topics precached")
-
-        # followings for topics
-        with local_session() as session:
-            for topic_id in topics_by_id.keys():
-                await precache_topics_followers(topic_id, session)
-                await precache_topics_authors(topic_id, session)
-        logger.info("topics followings precached")
     except Exception as exc:
         logger.error(exc)
