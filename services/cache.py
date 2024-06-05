@@ -80,10 +80,12 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
     author_dict = None
     if not author_str:
         author_query = select(Author).filter(Author.user == user_id)
-        [author_with_stat] = get_with_stat(author_query)
-        if author_with_stat:
-            await cache_author(author_with_stat.dict())
-            author_dict = author_with_stat.dict()
+        result = get_with_stat(author_query)
+        if result:
+            [author_with_stat] = result
+            if author_with_stat:
+                await cache_author(author_with_stat.dict())
+                author_dict = author_with_stat.dict()
     else:
         author_dict = json.loads(author_str)
     return author_dict
