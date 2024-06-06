@@ -1,5 +1,6 @@
 type AuthorStat {
   shouts: Int
+  topics: Int
   authors: Int
   followers: Int
   rating: Int
