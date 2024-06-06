@@ -113,7 +113,11 @@ async def load_authors_by(_, _info, by, limit, offset):
         authors_query = authors_query.filter(Author.name.ilike(f"%{by['name']}%"))
     elif by.get("topic"):
         authors_query = (
-            authors_query.join(ShoutAuthor).join(ShoutTopic).join(Topic).where(Topic.slug == str(by["topic"]))
+            authors_query
+            .join(ShoutAuthor)
+            .join(ShoutTopic, ShoutAuthor.topic_id == ShoutTopic.id)
+            .join(Topic, ShoutTopic.topic_id == Topic.id)
+            .filter(Topic.slug == str(by["topic"]))
         )
 
     if by.get("last_seen"):  # in unix time
