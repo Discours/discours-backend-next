@@ -1,6 +1,5 @@
-from sqlalchemy import bindparam, distinct, or_, text
 from sqlalchemy.orm import aliased, joinedload
-from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
+from sqlalchemy.sql.expression import and_, asc, bindparam, case, desc, distinct, func, nulls_last, or_, select, text
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
@@ -329,12 +328,12 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
         q.outerjoin(
             Reaction,
             and_(
-                Reaction.shout == Shout.id,
+                Reaction.shout_id == Shout.id,
                 Reaction.reply_to.is_(None),
                 Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
-        .outerjoin(Author, Author.user == bindparam("user_id"))
+        .outerjoin(Author, and_(Author.user == bindparam("user_id"), Reaction.created_by == Author.id))
         .where(
             and_(
                 Shout.deleted_at.is_(None),

@@ -21,12 +21,11 @@ async def request_data(gql, headers=None):
                     logger.error(f"HTTP Errors: {errors}")
                 else:
                     return data
-    except Exception as e:
+    except Exception as _e:
         # Handling and logging exceptions during authentication check
         import traceback
 
-        logger.error(f"request_data error: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"request_data error: {traceback.format_exc()}")
     return None
 
 

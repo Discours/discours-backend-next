@@ -10,10 +10,10 @@ from services.auth import login_required
 from services.cache import (
     cache_author,
     get_cached_author,
+    get_cached_author_by_user_id,
     get_cached_author_followers,
     get_cached_follower_authors,
     get_cached_follower_topics,
-    get_cached_author_by_user_id
 )
 from services.db import local_session
 from services.logger import root_logger as logger
