@@ -129,6 +129,8 @@ async def precache_data():
             profile = author.dict() if not isinstance(author, dict) else author
             author_id = profile.get("id")
             user_id = profile.get("user", "").strip()
+            if user_id == "FyPGkAwnrXPiv2PxQ":
+                logger.warning(profile)
             if author_id and user_id:
                 authors_by_id[author_id] = profile
                 await cache_author(profile)
