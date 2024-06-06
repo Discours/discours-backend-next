@@ -138,7 +138,7 @@ async def precache_data():
             else:
                 logger.error(f"fail caching {author}")
 
-        logger.info(f"{len(authors)} authors precached")
+        logger.info(f"{c} authors precached")
 
         # followings for authors
         with local_session() as session:
