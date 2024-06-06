@@ -51,7 +51,7 @@ async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
 
 @query.field("get_topic")
 async def get_topic(_, _info, slug: str):
-    topic = await get_cached_topic_by_slug(slug)
+    topic = await get_cached_topic_by_slug(slug, get_with_stat)
     if topic:
         return topic
 
@@ -124,7 +124,7 @@ def get_topics_random(_, _info, amount=12):
 @query.field("get_topic_followers")
 async def get_topic_followers(_, _info, slug: str):
     logger.debug(f"getting followers for @{slug}")
-    topic = await get_cached_topic_by_slug(slug)
+    topic = await get_cached_topic_by_slug(slug, get_with_stat)
     topic_id = topic.id if isinstance(topic, Topic) else topic.get("id")
     followers = await get_cached_topic_followers(topic_id)
     return followers
@@ -133,7 +133,7 @@ async def get_topic_followers(_, _info, slug: str):
 @query.field("get_topic_authors")
 async def get_topic_authors(_, _info, slug: str):
     logger.debug(f"getting authors for @{slug}")
-    topic = await get_cached_topic_by_slug(slug)
+    topic = await get_cached_topic_by_slug(slug, get_with_stat)
     topic_id = topic.id if isinstance(topic, Topic) else topic.get("id")
     authors = await get_cached_topic_authors(topic_id)
     return authors
