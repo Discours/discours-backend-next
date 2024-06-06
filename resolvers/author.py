@@ -107,6 +107,7 @@ async def get_author_id(_, _info, user: str):
 async def load_authors_by(_, _info, by, limit, offset):
     logger.debug(f"loading authors by {by}")
     authors_query = select(Author)
+
     if by.get("slug"):
         authors_query = authors_query.filter(Author.slug.ilike(f"%{by['slug']}%"))
     elif by.get("name"):
@@ -114,36 +115,35 @@ async def load_authors_by(_, _info, by, limit, offset):
     elif by.get("topic"):
         authors_query = (
             authors_query
-            .join(ShoutAuthor)
+            .join(ShoutAuthor)  # Первое соединение ShoutAuthor
             .join(ShoutTopic, ShoutAuthor.shout == ShoutTopic.shout)
             .join(Topic, ShoutTopic.topic == Topic.id)
             .filter(Topic.slug == str(by["topic"]))
         )
 
-    if by.get("last_seen"):  # in unix time
+    if by.get("last_seen"):  # в unix time
         before = int(time.time()) - by["last_seen"]
         authors_query = authors_query.filter(Author.last_seen > before)
-    elif by.get("created_at"):  # in unix time
+    elif by.get("created_at"):  # в unix time
         before = int(time.time()) - by["created_at"]
         authors_query = authors_query.filter(Author.created_at > before)
 
-    authors = []
-
     authors_query = authors_query.limit(limit).offset(offset)
+
     with local_session() as session:
-        authors_nostat = session.execute(authors_query)
-        if authors_nostat:
-            for [a] in authors_nostat:
-                author_dict = None
-                if isinstance(a, Author):
-                    author_dict = await get_cached_author(a.id, get_with_stat)
-                    if not author_dict or not isinstance(author_dict.get("shouts"), int):
-                        break
+        authors_nostat = session.execute(authors_query).all()
+        authors = []
+        for a in authors_nostat:
+            if isinstance(a, Author):
+                author_dict = await get_cached_author(a.id, get_with_stat)
+                if author_dict and isinstance(author_dict.get("shouts"), int):
+                    authors.append(author_dict)
 
     # order
     order = by.get("order")
     if order in ["shouts", "followers"]:
         authors_query = authors_query.order_by(desc(text(f"{order}_stat")))
+
     # group by
     authors = get_with_stat(authors_query)
     return authors or []
