@@ -243,11 +243,8 @@ async def load_shouts_feed(_, info, options):
             q = apply_filters(q, filters, reader_id)
 
         # sort order
-        order_by = options.get(
-            "order_by",
-            Shout.featured_at if filters.get("featured") else Shout.published_at,
-        )
-
+        order_by = options.get("order_by")
+        order_by = text(order_by) if order_by else Shout.featured_at if filters.get("featured") else Shout.published_at
         query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
 
         # pagination
