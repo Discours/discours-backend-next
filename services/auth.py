@@ -18,7 +18,7 @@ async def request_data(gql, headers=None):
                 data = response.json()
                 errors = data.get("errors")
                 if errors:
-                    logger.error(f"HTTP Errors: {errors}")
+                    logger.error(f"{AUTH_URL} response: {data}")
                 else:
                     return data
     except Exception as _e:
