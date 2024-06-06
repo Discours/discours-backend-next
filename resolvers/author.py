@@ -115,7 +115,7 @@ async def load_authors_by(_, _info, by, limit, offset):
         authors_query = (
             authors_query
             .join(ShoutAuthor)
-            .join(ShoutTopic, ShoutAuthor.topic == ShoutTopic.id)
+            .join(ShoutTopic, ShoutAuthor.shout == ShoutTopic.shout)
             .join(Topic, ShoutTopic.topic == Topic.id)
             .filter(Topic.slug == str(by["topic"]))
         )
