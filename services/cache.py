@@ -101,11 +101,13 @@ async def get_cached_topic_by_slug(slug: str, get_with_stat):
         with local_session() as session:
             topic_query = select(Topic).filter(Topic.slug == slug)
             result = get_with_stat(session.execute(topic_query))
-            if result:
+            if isinstance(result, list) and len(result) > 0:
                 [topic] = result
-                if topic:
-                    await cache_topic(topic)
-                    return topic
+            elif isinstance(result, Topic):
+                topic = result
+            if topic:
+                await cache_topic(topic)
+                return topic
 
 
 async def get_cached_authors_by_ids(authors_ids: List[int]) -> List[Author | dict]:
