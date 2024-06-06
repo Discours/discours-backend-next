@@ -124,6 +124,7 @@ async def precache_data():
         # authors
         authors_by_id = {}
         authors = get_with_stat(select(Author).where(Author.user.is_not(None)))
+        logger.debug(f"{len(authors)} authors connected with authorizer")
         for author in authors:
             profile = author.dict() if not isinstance(author, dict) else author
             author_id = profile.get("id")
