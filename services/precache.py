@@ -6,6 +6,7 @@ from orm.author import Author, AuthorFollower
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
+from services.cache import cache_author, cache_topic
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.logger import root_logger as logger
@@ -110,12 +111,7 @@ async def precache_data():
         topics = get_with_stat(select(Topic))
         for topic in topics:
             topic_profile = topic.dict() if not isinstance(topic, dict) else topic
-            topic_id = topic_profile.get("id")
-            topics_by_id[topic_id] = topic_profile
-            topic_slug = topic_profile["slug"]
-            topic_payload = json.dumps(topic_profile, cls=CustomJSONEncoder)
-            await redis.execute("SET", f"topic:id:{topic_id}", topic_payload)
-            await redis.execute("SET", f"topic:slug:{topic_slug}", topic_payload)
+            await cache_topic(topic_profile)
         logger.info(f"{len(topics)} topics precached")
 
         # followings for topics
@@ -134,11 +130,9 @@ async def precache_data():
             user_id = profile.get("user","").strip()
             if author_id and user_id:
                 authors_by_id[author_id] = profile
-                author_payload = json.dumps(profile, cls=CustomJSONEncoder)
-                await redis.execute("SET", f"author:id:{author_id}", author_payload)
-                await redis.execute("SET", f"author:user:{user_id.strip()}", author_id)
+                await cache_author(profile)
             else:
-                logger.error(f"caching {author.dict()}")
+                logger.error(f"fail caching {author.dict()}")
         logger.info(f"{len(authors)} authors precached")
 
         # followings for authors
