@@ -124,18 +124,20 @@ async def precache_data():
         # authors
         authors_by_id = {}
         authors = get_with_stat(select(Author).where(Author.user.is_not(None)))
-        logger.debug(f"{len(authors)} authors connected with authorizer")
+        logger.debug(f"{len(authors)} authors found in database")
+        c = 0
         for author in authors:
-            profile = author.dict() if not isinstance(author, dict) else author
-            author_id = profile.get("id")
-            user_id = profile.get("user", "").strip()
-            if user_id == "FyPGkAwnrXPiv2PxQ":
-                logger.warning(profile)
-            if author_id and user_id:
-                authors_by_id[author_id] = profile
-                await cache_author(profile)
+            if isinstance(author, Author):
+                profile = author.dict()
+                author_id = profile.get("id")
+                user_id = profile.get("user", "").strip()
+                if author_id and user_id:
+                    authors_by_id[author_id] = profile
+                    await cache_author(profile)
+                    c += 1
             else:
-                logger.error(f"fail caching {author.dict()}")
+                logger.error(f"fail caching {author}")
+
         logger.info(f"{len(authors)} authors precached")
 
         # followings for authors
