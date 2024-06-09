@@ -31,10 +31,12 @@ async def handle_author_follower_change(author_id: int, follower_id: int, is_ins
 async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
     logger.info(topic_id)
     topic_query = select(Topic).filter(Topic.id == topic_id)
-    [topic] = get_with_stat(topic_query)
+    topic = get_with_stat(topic_query)
     follower_query = select(Author).filter(Author.id == follower_id)
-    [follower] = get_with_stat(follower_query)
-    if follower and topic:
+    follower = get_with_stat(follower_query)
+    if isinstance(follower[0],Author) and isinstance(topic[0], Topic):
+        topic = topic[0]
+        follower = follower[0]
         await cache_topic(topic.dict())
         await cache_author(follower.dict())
         await cache_follows(follower.id, "topic", topic.id, is_insert)
