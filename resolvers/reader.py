@@ -328,7 +328,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
         q.outerjoin(
             Reaction,
             and_(
-                Reaction.shout_id == Shout.id,
+                Reaction.shout == Shout.id,
                 Reaction.reply_to.is_(None),
                 Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
