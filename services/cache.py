@@ -104,7 +104,7 @@ async def get_cached_topic_by_slug(slug: str, get_with_stat):
             if result:
                 topic = result if isinstance(result, Topic) else result[0]
                 if topic:
-                    await cache_topic(topic)
+                    await cache_topic(topic.dict())
                     return topic
 
 
