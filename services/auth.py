@@ -12,6 +12,7 @@ async def request_data(gql, headers=None):
     if headers is None:
         headers = {"Content-Type": "application/json"}
     try:
+        logger.debug(AUTH_URL, gql, headers)
         async with httpx.AsyncClient() as client:
             response = await client.post(AUTH_URL, json=gql, headers=headers)
             if response.status_code == 200:
