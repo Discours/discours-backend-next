@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import List
 
@@ -81,11 +82,12 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
     if not author_id:
         author_query = select(Author).filter(Author.user == user_id)
         result = get_with_stat(author_query)
-        if result:
-            [author_with_stat] = result
-            if author_with_stat:
-                await cache_author(author_with_stat.dict())
+        if result and len(result) == 1:
+            author_with_stat = result[0]
+            if isinstance(author_with_stat, Author):
                 author_dict = author_with_stat.dict()
+                # await cache_author(author_dict)
+                asyncio.create_task(cache_author(author_dict))
     else:
         author_str = await redis.execute("GET", f"author:id:{author_id}")
         if author_str:

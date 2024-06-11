@@ -66,9 +66,14 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
     try:
         # reaction author
         author_subquery = select(Author).where(Author.id == reaction.created_by)
-        [author_with_stat] = get_with_stat(author_subquery)
-        if isinstance(author_with_stat, Author):
-            asyncio.create_task(cache_author(author_with_stat.dict()))
+
+        result = get_with_stat(author_subquery)
+        if result and len(result) == 1:
+            author_with_stat = result[0]
+            if isinstance(author_with_stat, Author):
+                author_dict = author_with_stat.dict()
+                # await cache_author(author_dict)
+                asyncio.create_task(cache_author(author_dict))
 
         # reaction repliers
         replied_author_subquery = (

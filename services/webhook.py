@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 
@@ -50,9 +51,12 @@ class WebhookEndpoint(HTTPEndpoint):
                         session.add(author)
                         session.commit()
                         author_query = select(Author).filter(Author.user == user_id)
-                        [author_with_stat] = get_with_stat(author_query)
-                        if author_with_stat:
-                            await cache_author(author_with_stat)
+                        result = get_with_stat(author_query)
+                        if result and len(result) == 1:
+                            author_with_stat = result[0]
+                            author_dict = author_with_stat.dict()
+                            # await cache_author(author_with_stat)
+                            asyncio.create_task(cache_author(author_dict))
 
             return JSONResponse({"status": "success"})
         except HTTPException as e:
