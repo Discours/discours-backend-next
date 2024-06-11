@@ -1,8 +1,7 @@
-from sqlalchemy import distinct, func, select
+from sqlalchemy import select
 
 from orm.author import Author
 from orm.community import Community
-from orm.shout import ShoutCommunity
 from services.db import local_session
 from services.schema import query
 
@@ -12,11 +11,9 @@ def get_communities_from_query(q):
     with local_session() as session:
         for [c, shouts_stat, followers_stat] in session.execute(q):
             c.stat = {
-                "shouts": session.execute(
-                    select(func.count(distinct(ShoutCommunity.shout))).filter(ShoutCommunity.community == c.id)
-                ),
+                "shouts": shouts_stat,
+                "followers": followers_stat,
                 # "authors": session.execute(select(func.count(distinct(ShoutCommunity.shout))).filter(ShoutCommunity.community == c.id)),
-                # "followers": session.execute(select(func.count(distinct(ShoutCommunity.shout))).filter(ShoutCommunity.community == c.id)),
                 # "commented": commented_stat,
             }
             ccc.append(c)

@@ -114,8 +114,7 @@ async def load_authors_by(_, _info, by, limit, offset):
         authors_query = authors_query.filter(Author.name.ilike(f"%{by['name']}%"))
     elif by.get("topic"):
         authors_query = (
-            authors_query
-            .join(ShoutAuthor)  # Первое соединение ShoutAuthor
+            authors_query.join(ShoutAuthor)  # Первое соединение ShoutAuthor
             .join(ShoutTopic, ShoutAuthor.shout == ShoutTopic.shout)
             .join(Topic, ShoutTopic.topic == Topic.id)
             .filter(Topic.slug == str(by["topic"]))
