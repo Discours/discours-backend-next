@@ -82,7 +82,7 @@ async def get_cached_author_by_user_id(user_id: str, get_with_stat) -> dict:
     if not author_id:
         author_query = select(Author).filter(Author.user == user_id)
         result = get_with_stat(author_query)
-        if result and len(result) == 1:
+        if result:
             author_with_stat = result[0]
             if isinstance(author_with_stat, Author):
                 author_dict = author_with_stat.dict()

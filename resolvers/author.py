@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 from sqlalchemy import desc, select, text
@@ -34,9 +35,13 @@ async def update_author(_, info, profile):
                 session.add(author)
                 session.commit()
                 author_query = select(Author).where(Author.user == user_id)
-                [author] = get_with_stat(author_query)
-                if author:
-                    await cache_author(author.dict())
+                result = get_with_stat(author_query)
+                if result:
+                    author_with_stat = result[0]
+                    if isinstance(author_with_stat, Author):
+                        author_dict = author_with_stat.dict()
+                        # await cache_author(author_dict)
+                        asyncio.create_task(cache_author(author_dict))
                 return {"error": None, "author": author}
     except Exception as exc:
         import traceback
@@ -54,7 +59,6 @@ def get_authors_all(_, _info):
 
 @query.field("get_author")
 async def get_author(_, _info, slug="", author_id=0):
-    author = None
     author_dict = None
     try:
         author_id = get_author_id_from(slug=slug, user="", author_id=author_id)
@@ -65,11 +69,13 @@ async def get_author(_, _info, slug="", author_id=0):
         if not author_dict or not author_dict.get("stat"):
             # update stat from db
             author_query = select(Author).filter(Author.id == author_id)
-            [author] = get_with_stat(author_query)
-            if isinstance(author, Author):
-                logger.debug(f"update @{author.slug} with id {author.id}")
-                author_dict = author.dict()
-                await cache_author(author_dict)
+            result = get_with_stat(author_query)
+            if result:
+                author_with_stat = result[0]
+                if isinstance(author_with_stat, Author):
+                    author_dict = author_with_stat.dict()
+                    # await cache_author(author_dict)
+                    asyncio.create_task(cache_author(author_dict))
     except ValueError:
         pass
     except Exception as exc:
@@ -92,10 +98,12 @@ async def get_author_id(_, _info, user: str):
         author_query = select(Author).filter(Author.user == user_id)
         result = get_with_stat(author_query)
         if result:
-            [author] = result
-            if author:
-                await cache_author(author.dict())
-                return author
+            author_with_stat = result[0]
+            if isinstance(author_with_stat, Author):
+                author_dict = author_with_stat.dict()
+                # await cache_author(author_dict)
+                asyncio.create_task(cache_author(author_dict))
+                return author_with_stat
     except Exception as exc:
         import traceback
 

@@ -17,15 +17,20 @@ DEFAULT_FOLLOWS = {
 }
 
 
-async def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
+def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
     logger.info(author_id)
     author_query = select(Author).select_from(Author).filter(Author.id == author_id)
-    [author] = get_with_stat(author_query)
+    author_result = get_with_stat(author_query)
     follower_query = select(Author).select_from(Author).filter(Author.id == follower_id)
-    [follower] = get_with_stat(follower_query)
-    if follower and author:
-        await cache_author(author.dict())
-        await cache_follows(follower.id, "author", author.id, is_insert)
+    follower_result = get_with_stat(follower_query)
+    if follower_result and author_result:
+        author_with_stat = author_result[0]
+        follower = follower_result[0]
+        if author_with_stat:
+            author_dict = author_with_stat.dict()
+            # await cache_author(author_with_stat)
+            asyncio.create_task(cache_author(author_dict))
+            asyncio.create_task(cache_follows(follower.id, "author", author_with_stat.id, is_insert))
 
 
 async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
@@ -68,7 +73,7 @@ def after_reaction_update(mapper, connection, reaction: Reaction):
         author_subquery = select(Author).where(Author.id == reaction.created_by)
 
         result = get_with_stat(author_subquery)
-        if result and len(result) == 1:
+        if result:
             author_with_stat = result[0]
             if isinstance(author_with_stat, Author):
                 author_dict = author_with_stat.dict()
@@ -99,9 +104,10 @@ def after_author_update(_mapper, _connection, author: Author):
     author_query = select(Author).where(Author.id == author.id)
     result = get_with_stat(author_query)
     if result:
-        [author_with_stat] = result
-        if author_with_stat:
-            _task = asyncio.create_task(cache_author(author_with_stat.dict()))
+        author_with_stat = result[0]
+        author_dict = author_with_stat.dict()
+        # await cache_author(author_with_stat)
+        asyncio.create_task(cache_author(author_dict))
 
 
 def after_topic_follower_insert(_mapper, _connection, target: TopicFollower):
@@ -120,16 +126,12 @@ def after_topic_follower_delete(_mapper, _connection, target: TopicFollower):
 
 def after_author_follower_insert(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
-    asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, True)  # type: ignore
-    )
+    handle_author_follower_change(target.author, target.follower, True)
 
 
 def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
-    asyncio.create_task(
-        handle_author_follower_change(target.author, target.follower, False)  # type: ignore
-    )
+    handle_author_follower_change(target.author, target.follower, False)
 
 
 def events_register():

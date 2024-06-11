@@ -114,7 +114,7 @@ async def _create_reaction(session, info, shout, author_id: int, reaction):
 
     # пересчет счетчика комментариев
     if str(r.kind) == ReactionKind.COMMENT.value:
-        await update_author_stat(author_id)
+        update_author_stat(author_id)
 
     # collaborative editing
     if rdict.get("reply_to") and r.kind in PROPOSAL_REACTIONS and author_id in shout.authors:
@@ -138,7 +138,7 @@ async def _create_reaction(session, info, shout, author_id: int, reaction):
 
     # обновление счетчика комментариев в кеше
     if str(r.kind) == ReactionKind.COMMENT.value:
-        await update_author_stat(author_id)
+        update_author_stat(author_id)
 
     rdict["shout"] = shout.dict()
     rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
@@ -315,7 +315,7 @@ async def delete_reaction(_, info, reaction_id: int):
 
                 # обновление счетчика комментариев в кеше
                 if str(r.kind) == ReactionKind.COMMENT.value:
-                    await update_author_stat(author.id)
+                    update_author_stat(author.id)
                 await notify_reaction(reaction_dict, "delete")
 
                 return {"error": None, "reaction": reaction_dict}

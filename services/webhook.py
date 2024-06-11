@@ -52,7 +52,7 @@ class WebhookEndpoint(HTTPEndpoint):
                         session.commit()
                         author_query = select(Author).filter(Author.user == user_id)
                         result = get_with_stat(author_query)
-                        if result and len(result) == 1:
+                        if result:
                             author_with_stat = result[0]
                             author_dict = author_with_stat.dict()
                             # await cache_author(author_with_stat)

@@ -259,11 +259,11 @@ def author_follows_topics(author_id: int):
     return get_with_stat(author_follows_topics_query)
 
 
-async def update_author_stat(author_id: int):
+def update_author_stat(author_id: int):
     author_query = select(Author).where(Author.id == author_id)
     try:
         result = get_with_stat(author_query)
-        if result and len(result) == 1:
+        if result:
             author_with_stat = result[0]
             if isinstance(author_with_stat, Author):
                 author_dict = author_with_stat.dict()

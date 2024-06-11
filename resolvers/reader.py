@@ -307,8 +307,6 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         with local_session() as session:
             result = session.execute(shouts_query).unique().all()
             if result:
-                logger.debug(result)
-                logger.debug(len(result))
                 for [
                     shout,
                 ] in result:
