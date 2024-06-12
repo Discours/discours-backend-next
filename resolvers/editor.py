@@ -133,13 +133,18 @@ async def create_shout(_, info, inp):
             # NOTE: requesting new shout back
             shout = session.query(Shout).where(Shout.slug == slug).first()
             if shout:
-                sa = ShoutAuthor(shout=shout.id, author=author_id)
-                session.add(sa)
+                # Проверка на существование записи
+                existing_sa = session.query(ShoutAuthor).filter_by(shout=shout.id, author=author_id).first()
+                if not existing_sa:
+                    sa = ShoutAuthor(shout=shout.id, author=author_id)
+                    session.add(sa)
 
                 topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
                 for topic in topics:
-                    t = ShoutTopic(topic=topic.id, shout=shout.id)
-                    session.add(t)
+                    existing_st = session.query(ShoutTopic).filter_by(shout=shout.id, author=topic.id).first()
+                    if not existing_st:
+                        t = ShoutTopic(topic=topic.id, shout=shout.id)
+                        session.add(t)
 
                 session.commit()
 
