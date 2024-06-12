@@ -46,31 +46,35 @@ def add_topic_stat_columns(q):
 
 
 def add_author_stat_columns(q):
-    # Соединяем таблицу Author с таблицей ShoutAuthor и таблицей Shout с использованием INNER JOIN
+    # Алиасирование таблиц для предотвращения конфликтов имен
+    aliased_shout_author = aliased(ShoutAuthor)
+    aliased_shout = aliased(Shout)
+    aliased_author_follower = aliased(AuthorFollower)
+
     q = (
         q.select_from(Author)
         .join(
-            ShoutAuthor,
-            ShoutAuthor.author == Author.id,
+            aliased_shout_author,
+            aliased_shout_author.author == Author.id,
         )
         .join(
-            Shout,
+            aliased_shout,
             and_(
-                Shout.id == ShoutAuthor.shout,
-                Shout.deleted_at.is_(None),
+                aliased_shout.id == aliased_shout_author.shout,
+                aliased_shout.deleted_at.is_(None),
             ),
         )
-        .add_columns(func.count(distinct(Shout.id)).label("shouts_stat"))
+        .add_columns(func.count(distinct(aliased_shout.id)).label("shouts_stat"))
     )
 
-    # Соединяем таблицу Author с таблицей AuthorFollower с использованием LEFT OUTER JOIN
-    q = q.outerjoin(AuthorFollower, AuthorFollower.author == Author.id).add_columns(
-        func.count(distinct(AuthorFollower.follower)).label("followers_stat")
+    q = q.outerjoin(aliased_author_follower, aliased_author_follower.author == Author.id).add_columns(
+        func.count(distinct(aliased_author_follower.follower)).label("followers_stat")
     )
 
     q = q.group_by(Author.id)
 
     return q
+
 
 
 def get_topic_shouts_stat(topic_id: int):
