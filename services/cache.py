@@ -187,6 +187,7 @@ async def get_cached_author_followers(author_id: int):
     cached = await redis.execute("GET", followers_rkey)
     if isinstance(cached, str) and isinstance(cached_author, str):
         followers_ids = json.loads(cached) or []
+        logger.debug(f"author#{author_id} cache updated with {len(followers_ids)} followers")
         if not str(len(followers_ids)) == str(author["stat"]["followers"]):
             with local_session() as session:
                 followers_result = (
@@ -206,8 +207,7 @@ async def get_cached_author_followers(author_id: int):
         else:
             followers = await get_cached_authors_by_ids(followers_ids)
 
-    logger.debug(f"author#{author_id} cache updated with {len(followers)} followers")
-    return followers
+    return followers or []
 
 
 async def get_cached_follower_authors(author_id: int):
