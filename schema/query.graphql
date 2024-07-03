@@ -18,7 +18,8 @@ type Query {
   get_author_follows(slug: String, user: String, author_id: Int): CommonResult!
   get_author_follows_topics(slug: String, user: String, author_id: Int): [Topic]
   get_author_follows_authors(slug: String, user: String, author_id: Int): [Author]
-  load_shouts_followed(limit: Int, offset: Int): [Shout] # userReactedShouts
+  load_shouts_followed(limit: Int, offset: Int): [Shout]
+  load_shouts_followed_by(slug: String, limit: Int, offset: Int): [Shout]
 
   # reaction
   load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]

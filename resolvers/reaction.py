@@ -496,3 +496,17 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
             except Exception as error:
                 logger.debug(error)
     return []
+
+
+@query.field("load_shouts_followed_by")
+async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> List[Shout]:
+    with local_session() as session:
+        author = session.query(Author).filter(Author.slug == slug).first()
+        if author:
+            try:
+                author_id: int = author.dict()["id"]
+                shouts = await reacted_shouts_updates(author_id, limit, offset)
+                return shouts
+            except Exception as error:
+                logger.debug(error)
+    return []
