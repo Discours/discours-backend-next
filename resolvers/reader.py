@@ -1,5 +1,17 @@
 from sqlalchemy.orm import aliased, joinedload
-from sqlalchemy.sql.expression import and_, asc, bindparam, case, desc, distinct, func, nulls_last, or_, select, text
+from sqlalchemy.sql.expression import (
+    and_,
+    asc,
+    bindparam,
+    case,
+    desc,
+    distinct,
+    func,
+    nulls_last,
+    or_,
+    select,
+    text,
+)
 
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
@@ -154,7 +166,7 @@ async def load_shouts_by(_, _info, options):
         }
         offset: 0
         limit: 50
-        order_by: 'created_at' | 'commented'  | 'likes_stat'
+        order_by: "likes" | "followers" | "comments" | "last_comment"
         order_by_desc: true
 
     }
@@ -331,7 +343,10 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
                 Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
-        .outerjoin(Author, and_(Author.user == bindparam("user_id"), Reaction.created_by == Author.id))
+        .outerjoin(
+            Author,
+            and_(Author.user == bindparam("user_id"), Reaction.created_by == Author.id),
+        )
         .where(
             and_(
                 Shout.deleted_at.is_(None),
@@ -471,3 +486,33 @@ def fetch_shouts_by_topic(topic, limit):
     shouts = get_shouts_from_query(q)
 
     return shouts
+
+
+@query.field("load_shouts_coauthored")
+@login_required
+async def load_shouts_coauthored(_, info, limit=50, offset=0):
+    author_id = info.context.get("author", {}).get("id")
+    shouts_query = query_shouts().filter(Shout.authors.any(id=author_id)).where(Shout.deleted_at.is_(None))
+    shouts = get_shouts_from_query(shouts_query.limit(limit).offset(offset))
+    return shouts
+
+
+@query.field("load_shouts_discussed")
+@login_required
+async def load_shouts_discussed(_, info, limit=50, offset=0):
+    author_id = info.context.get("author", {}).get("id")
+    q = query_shouts()
+    q = (
+        q.outerjoin(
+            Reaction,
+            and_(
+                Reaction.shout == Shout.id,
+                Reaction.created_by == author_id,
+                Reaction.kind.is_(ReactionKind.COMMENT.value),
+            ),
+        )
+        .outerjoin(Author, Reaction.created_by == Author.id)
+        .where(and_(Shout.deleted_at.is_(None), Shout.published_at.is_not(None)))
+    )
+    q = q.limit(limit).offset(offset)
+    return await get_shouts_from_query(q)

@@ -342,6 +342,7 @@ def apply_reaction_filters(by, q):
 
     if by.get("comment", False):
         q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)
+
     if by.get("rating", False):
         q = q.filter(Reaction.kind.in_(RATING_REACTIONS))
 
@@ -367,6 +368,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         :topic - to filter by topic
         :search - to search by reactions' body
         :comment - true if body.length > 0
+        :rating - true if kind is rating related
         :after - amount of time ago
         :sort - a fieldname to sort desc by default
     }

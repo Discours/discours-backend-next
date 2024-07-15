@@ -30,6 +30,8 @@ type Query {
   load_shouts_search(text: String!, limit: Int, offset: Int): [SearchResult]
   load_shouts_feed(options: LoadShoutsOptions): [Shout]
   load_shouts_unrated(limit: Int, offset: Int): [Shout]
+  load_shouts_coauthored(limit: Int, offset: Int): [Shout]
+  load_shouts_discussed(limit: Int, offset: Int): [Shout]
   load_shouts_random_top(options: LoadShoutsOptions): [Shout]
   load_shouts_random_topic(limit: Int!): CommonResult!  # { topic shouts }
 

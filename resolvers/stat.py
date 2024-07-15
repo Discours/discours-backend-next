@@ -76,7 +76,6 @@ def add_author_stat_columns(q):
     return q
 
 
-
 def get_topic_shouts_stat(topic_id: int):
     q = (
         select(func.count(distinct(ShoutTopic.shout)))
