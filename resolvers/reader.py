@@ -335,23 +335,22 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     if not author_id:
         return []
     q = query_shouts()
+    aliased_reaction = aliased(Reaction)
     q = (
         q.outerjoin(
-            Reaction,
+            aliased_reaction,
             and_(
-                Reaction.shout == Shout.id,
-                Reaction.reply_to.is_(None),
-                Reaction.created_by != author_id,
-                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+                aliased_reaction.shout == Shout.id,
+                aliased_reaction.reply_to.is_(None),
+                aliased_reaction.created_by != author_id,
+                aliased_reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
         .filter(Shout.deleted_at.is_(None))
         .filter(Shout.published_at.is_not(None))
     )
-
-    aliased_reaction = aliased(Reaction)
     q = add_reaction_stat_columns(q, aliased_reaction)
-    q = q.group_by(Shout.id).having(func.count(distinct(Reaction.id)) <= 4)  # 3 or fewer votes are taken
+    q = q.group_by(Shout.id).having(func.count(distinct(aliased_reaction.id)) <= 4)  # 3 or fewer votes are taken
     q = q.order_by(func.random()).limit(limit).offset(offset)
 
     return await get_shouts_from_query(q, author_id)
