@@ -76,6 +76,7 @@ input ReactionBy {
   rating: Boolean
   topic: String
   created_by: Int
+  author: String
   after: Int
   sort: ReactionSort
 }
