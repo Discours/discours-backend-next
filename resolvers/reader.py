@@ -2,13 +2,11 @@ from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql.expression import (
     and_,
     asc,
-    bindparam,
     case,
     desc,
     distinct,
     func,
     nulls_last,
-    or_,
     select,
     text,
 )
@@ -333,6 +331,9 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 @query.field("load_shouts_unrated")
 @login_required
 async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
+    author_id = info.context.get("author", {}).get("id")
+    if not author_id:
+        return []
     q = query_shouts()
     q = (
         q.outerjoin(
@@ -340,37 +341,20 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
             and_(
                 Reaction.shout == Shout.id,
                 Reaction.reply_to.is_(None),
+                Reaction.created_by != author_id,
                 Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
-        .outerjoin(
-            Author,
-            and_(Author.user == bindparam("user_id"), Reaction.created_by == Author.id),
-        )
-        .where(
-            and_(
-                Shout.deleted_at.is_(None),
-                Shout.layout.is_not(None),
-                or_(Author.id.is_(None), Reaction.created_by != Author.id),
-            )
-        )
+        .filter(Shout.deleted_at.is_(None))
+        .filter(Shout.published_at.is_not(None))
     )
-
-    # 3 or fewer votes is 0, 1, 2 or 3 votes (null, reaction id1, reaction id2, reaction id3)
-    q = q.having(func.count(distinct(Reaction.id)) <= 4)
 
     aliased_reaction = aliased(Reaction)
     q = add_reaction_stat_columns(q, aliased_reaction)
+    q = q.group_by(Shout.id).having(func.count(distinct(Reaction.id)) <= 4)  # 3 or fewer votes are taken
+    q = q.order_by(func.random()).limit(limit).offset(offset)
 
-    q = q.group_by(Shout.id).order_by(func.random()).limit(limit).offset(offset)
-    user_id = info.context.get("user_id") if isinstance(info.context, dict) else None
-    if user_id:
-        with local_session() as session:
-            author = session.query(Author).filter(Author.user == user_id).first()
-            if author:
-                return await get_shouts_from_query(q, author.id)
-    else:
-        return await get_shouts_from_query(q)
+    return await get_shouts_from_query(q, author_id)
 
 
 async def get_shouts_from_query(q, author_id=None):
@@ -492,6 +476,8 @@ def fetch_shouts_by_topic(topic, limit):
 @login_required
 async def load_shouts_coauthored(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
+    if not author_id:
+        return []
     shouts_query = query_shouts().filter(Shout.authors.any(id=author_id)).where(Shout.deleted_at.is_(None))
     shouts = get_shouts_from_query(shouts_query.limit(limit).offset(offset))
     return shouts
@@ -501,6 +487,8 @@ async def load_shouts_coauthored(_, info, limit=50, offset=0):
 @login_required
 async def load_shouts_discussed(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
+    if not author_id:
+        return []
     q = query_shouts()
     q = (
         q.outerjoin(
