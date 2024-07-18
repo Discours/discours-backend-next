@@ -336,6 +336,10 @@ def apply_reaction_filters(by, q):
     if created_by:
         q = q.filter(Author.id == created_by)
 
+    author_slug = by.get("author", None)
+    if author_slug:
+        q = q.filter(Author.slug == author_slug)
+
     topic = by.get("topic", None)
     if isinstance(topic, int):
         q = q.filter(Shout.topics.any(id=topic))
@@ -364,7 +368,8 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
     :param by: {
         :shout - filter by slug
         :shouts - filer by shout slug list
-        :created_by - to filter by author
+        :created_by - to filter by author ID
+        :author - to filter by author slug
         :topic - to filter by topic
         :search - to search by reactions' body
         :comment - true if body.length > 0
