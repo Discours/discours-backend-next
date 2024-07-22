@@ -27,7 +27,8 @@ from resolvers.reaction import (
     load_shouts_followed_by,
     update_reaction,
     load_shout_comments,
-    load_shout_ratings
+    load_shout_ratings,
+    load_comment_ratings,
 )
 from resolvers.reader import (
     get_shout,
@@ -102,6 +103,7 @@ __all__ = [
     "load_reactions_by",
     "load_shout_comments",
     "load_shout_ratings",
+    "load_comment_ratings",
     # notifier
     "load_notifications",
     "notifications_seen_thread",

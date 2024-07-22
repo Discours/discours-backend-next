@@ -29,6 +29,7 @@ type Query {
   load_shouts_by(options: LoadShoutsOptions): [Shout]
   load_shout_comments(shout: Int!, limit: Int, offset: Int): [Reaction]
   load_shout_ratings(shout: Int!, limit: Int, offset: Int): [Reaction]
+  load_comment_ratings(shout: Int!, limit: Int, offset: Int): [Reaction]
   load_shouts_search(text: String!, limit: Int, offset: Int): [SearchResult]
   load_shouts_feed(options: LoadShoutsOptions): [Shout]
   load_shouts_unrated(limit: Int, offset: Int): [Shout]

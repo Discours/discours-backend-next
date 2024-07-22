@@ -379,7 +379,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         :after - amount of time ago
         :sort - a fieldname to sort desc by default
     }
-    :param limit: int amount of shouts
+    :param limit: int amount of reactions
     :param offset: int offset in this order
     :return: Reaction[]
     """
@@ -528,7 +528,7 @@ async def load_shout_ratings(_, info, shout: int, limit=100, offset=0):
     get paginated reactions with no stats
     :param info: graphql meta
     :param shout: int shout id
-    :param limit: int amount of shouts
+    :param limit: int amount of reactions
     :param offset: int offset in this order
     :return: Reaction[]
     """
@@ -567,7 +567,7 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
     getting paginated comments with stats
     :param info: graphql meta
     :param shout: int shout id
-    :param limit: int amount of shouts
+    :param limit: int amount of reactions
     :param offset: int offset in this order
     :return: Reaction[]
     """
@@ -609,6 +609,45 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
                 "reacted": reacted_stat,
                 "commented": commented_stat,
             }
+            reactions.add(reaction)
+
+    return reactions
+
+
+@query.field("load_comment_ratings")
+async def load_comment_ratings(_, info, comment: int, limit=100, offset=0):
+    """
+    get paginated reactions with no stats
+    :param info: graphql meta
+    :param comment: int comment id
+    :param limit: int amount of reactions
+    :param offset: int offset in this order
+    :return: Reaction[]
+    """
+
+    q = (
+        select(Reaction, Author, Shout)
+        .select_from(Reaction)
+        .join(Author, Reaction.created_by == Author.id)
+        .join(Shout, Reaction.shout == Shout.id)
+    )
+
+    # filter, group, order, limit, offset
+    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.reply_to == comment, Reaction.kind.in_(RATING_REACTIONS)))
+    q = q.group_by(Reaction.id)
+    q = q.order_by(desc(Reaction.created_at))
+    q = q.limit(limit).offset(offset)
+
+    reactions = set()
+    with local_session() as session:
+        result_rows = session.execute(q)
+        for [
+            reaction,
+            author,
+            shout,
+        ] in result_rows:
+            reaction.created_by = author
+            reaction.shout = shout
             reactions.add(reaction)
 
     return reactions
