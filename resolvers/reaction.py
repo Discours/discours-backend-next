@@ -21,20 +21,22 @@ from services.viewed import ViewedStorage
 
 
 def add_reaction_stat_columns(q, aliased_reaction):
-    q = q.outerjoin(aliased_reaction).add_columns(
+    q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
         func.sum(aliased_reaction.id).label("reacted_stat"),
         func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
         func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
         func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
         func.max(
             case(
-                (aliased_reaction.kind != str(ReactionKind.COMMENT.value), None),
-                else_=aliased_reaction.created_at,
+                (aliased_reaction.kind == str(ReactionKind.COMMENT.value), aliased_reaction.created_at),
+                else_=None,
             )
         ).label("last_comment_stat"),
     )
 
     return q
+
+
 
 
 def is_featured_author(session, author_id):
@@ -432,7 +434,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
                 "reacted": reacted_stat,
                 "commented": commented_stat,
             }
-            reactions.add(reaction)  # Используем список для хранения реакций
+            reactions.add(reaction)
 
     return reactions
 
@@ -447,7 +449,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 select(Shout)
                 .outerjoin(
                     Reaction,
-                    and_(Reaction.shout == Shout.id, Reaction.created_by == follower_id),
+                    and_(Reaction.shout == Shout.id, Reaction.created_by == follower_id, Reaction.deleted_at.is_(None)),
                 )
                 .outerjoin(Author, Shout.authors.any(id=follower_id))
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
@@ -460,7 +462,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 select(Shout)
                 .join(Reaction, Reaction.shout == Shout.id)
                 .options(joinedload(Shout.reactions), joinedload(Shout.authors))
-                .filter(Reaction.created_by == follower_id)
+                .filter(and_(Reaction.created_by == follower_id, Reaction.deleted_at.is_(None)))
                 .group_by(Shout.id)
             )
             q2 = add_reaction_stat_columns(q2, aliased(Reaction))
@@ -517,3 +519,96 @@ async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> Lis
             except Exception as error:
                 logger.debug(error)
     return []
+
+
+
+@query.field("load_shout_ratings")
+async def load_shout_ratings(_, info, shout: int, limit=100, offset=0):
+    """
+    get paginated reactions with no stats
+    :param info: graphql meta
+    :param shout: int shout id
+    :param limit: int amount of shouts
+    :param offset: int offset in this order
+    :return: Reaction[]
+    """
+
+    q = (
+        select(Reaction, Author, Shout)
+        .select_from(Reaction)
+        .join(Author, Reaction.created_by == Author.id)
+        .join(Shout, Reaction.shout == Shout.id)
+    )
+
+    # filter, group, order, limit, offset
+    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.shout == shout, Reaction.kind.in_(RATING_REACTIONS)))
+    q = q.group_by(Reaction.id)
+    q = q.order_by(desc(Reaction.created_at))
+    q = q.limit(limit).offset(offset)
+
+    reactions = set()
+    with local_session() as session:
+        result_rows = session.execute(q)
+        for [
+            reaction,
+            author,
+            shout,
+        ] in result_rows:
+            reaction.created_by = author
+            reaction.shout = shout
+            reactions.add(reaction)
+
+    return reactions
+
+
+@query.field("load_shout_comments")
+async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
+    """
+    getting paginated comments with stats
+    :param info: graphql meta
+    :param shout: int shout id
+    :param limit: int amount of shouts
+    :param offset: int offset in this order
+    :return: Reaction[]
+    """
+
+    q = (
+        select(Reaction, Author, Shout)
+        .select_from(Reaction)
+        .join(Author, Reaction.created_by == Author.id)
+        .join(Shout, Reaction.shout == Shout.id)
+    )
+
+    # calculate counters
+    aliased_reaction = aliased(Reaction)
+    q = add_reaction_stat_columns(q, aliased_reaction)
+
+    # filter, group, order, limit, offset
+    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.shout == shout, Reaction.body.is_not(None)))
+    q = q.group_by(Reaction.id)
+    q = q.order_by(desc(Reaction.created_at))
+    q = q.limit(limit).offset(offset)
+
+    reactions = set()
+    with local_session() as session:
+        result_rows = session.execute(q)
+        for [
+            reaction,
+            author,
+            shout,
+            reacted_stat,
+            commented_stat,
+            likes_stat,
+            dislikes_stat,
+            _last_comment,
+        ] in result_rows:
+            reaction.created_by = author
+            reaction.shout = shout
+            reaction.stat = {
+                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                "reacted": reacted_stat,
+                "commented": commented_stat,
+            }
+            reactions.add(reaction)
+
+    return reactions
