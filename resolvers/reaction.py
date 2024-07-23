@@ -631,7 +631,7 @@ async def load_comment_ratings(_, info, comment: int, limit=100, offset=0):
 
     # filter, group, order, limit, offset
     q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.reply_to == comment, Reaction.kind.in_(RATING_REACTIONS)))
-    q = q.group_by(Reaction.id)
+    q = q.group_by(Reaction.id, Author.user, Shout.id)
     q = q.order_by(desc(Reaction.created_at))
     q = q.limit(limit).offset(offset)
 
