@@ -37,8 +37,6 @@ def add_reaction_stat_columns(q, aliased_reaction):
     return q
 
 
-
-
 def is_featured_author(session, author_id):
     """checks if author has at least one featured publication"""
     return (
@@ -521,7 +519,6 @@ async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> Lis
     return []
 
 
-
 @query.field("load_shout_ratings")
 async def load_shout_ratings(_, info, shout: int, limit=100, offset=0):
     """
@@ -585,7 +582,7 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
 
     # filter, group, order, limit, offset
     q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.shout == shout, Reaction.body.is_not(None)))
-    q = q.group_by(Reaction.id)
+    q = q.group_by(Reaction.id, Author.user, Shout.id)
     q = q.order_by(desc(Reaction.created_at))
     q = q.limit(limit).offset(offset)
 

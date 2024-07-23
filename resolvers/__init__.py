@@ -39,7 +39,7 @@ from resolvers.reader import (
     load_shouts_search,
     load_shouts_unrated,
     load_shouts_coauthored,
-    load_shouts_discussed
+    load_shouts_discussed,
 )
 from resolvers.topic import (
     get_topic,
