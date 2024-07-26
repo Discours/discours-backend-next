@@ -568,37 +568,33 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
     :param offset: int offset in this order
     :return: Reaction[]
     """
-
+    aliased_reaction = aliased(Reaction)
     q = (
-        select(Reaction, Author, Shout)
+        select(
+            Reaction,
+            Author,
+            Shout,
+            func.count(aliased_reaction.id).label("reacted_stat"),
+            func.count(aliased_reaction.body).label("commented_stat"),
+            func.sum(func.coalesce(aliased_reaction.likes, 0)).label("likes_stat"),
+            func.sum(func.coalesce(aliased_reaction.dislikes, 0)).label("dislikes_stat"),
+        )
         .select_from(Reaction)
         .join(Author, Reaction.created_by == Author.id)
         .join(Shout, Reaction.shout == Shout.id)
     )
 
-    # calculate counters
-    aliased_reaction = aliased(Reaction)
-    q = add_reaction_stat_columns(q, aliased_reaction)
-
     # filter, group, order, limit, offset
     q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.shout == shout, Reaction.body.is_not(None)))
-    q = q.group_by(Reaction.id, Author.name, Shout.id)
+    q = q.group_by(Reaction.id, Author.id, Shout.id)
     q = q.order_by(desc(Reaction.created_at))
     q = q.limit(limit).offset(offset)
 
     reactions = set()
     with local_session() as session:
         result_rows = session.execute(q)
-        for [
-            reaction,
-            author,
-            shout,
-            reacted_stat,
-            commented_stat,
-            likes_stat,
-            dislikes_stat,
-            _last_comment,
-        ] in result_rows:
+        for row in result_rows:
+            reaction, author, shout, reacted_stat, commented_stat, likes_stat, dislikes_stat = row
             reaction.created_by = author
             reaction.shout = shout
             reaction.stat = {
@@ -608,43 +604,4 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
             }
             reactions.add(reaction)
 
-    return reactions
-
-
-@query.field("load_comment_ratings")
-async def load_comment_ratings(_, info, comment: int, limit=100, offset=0):
-    """
-    get paginated reactions with no stats
-    :param info: graphql meta
-    :param comment: int comment id
-    :param limit: int amount of reactions
-    :param offset: int offset in this order
-    :return: Reaction[]
-    """
-
-    q = (
-        select(Reaction, Author, Shout)
-        .select_from(Reaction)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
-    )
-
-    # filter, group, order, limit, offset
-    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.reply_to == comment, Reaction.kind.in_(RATING_REACTIONS)))
-    q = q.group_by(Reaction.id, Author.user, Shout.id)
-    q = q.order_by(desc(Reaction.created_at))
-    q = q.limit(limit).offset(offset)
-
-    reactions = set()
-    with local_session() as session:
-        result_rows = session.execute(q)
-        for [
-            reaction,
-            author,
-            shout,
-        ] in result_rows:
-            reaction.created_by = author
-            reaction.shout = shout
-            reactions.add(reaction)
-
-    return reactions
+    return list(reactions)
