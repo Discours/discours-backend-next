@@ -32,9 +32,9 @@ class Reaction(Base):
     __tablename__ = "reaction"
 
     body = Column(String, default="", comment="Reaction Body")
-    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    updated_at = Column(Integer, nullable=True, comment="Updated at")
-    deleted_at = Column(Integer, nullable=True, comment="Deleted at")
+    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()), index=True)
+    updated_at = Column(Integer, nullable=True, comment="Updated at", index=True)
+    deleted_at = Column(Integer, nullable=True, comment="Deleted at", index=True)
     deleted_by = Column(ForeignKey("author.id"), nullable=True)
     reply_to = Column(ForeignKey("reaction.id"), nullable=True)
     quote = Column(String, nullable=True, comment="Original quoted text")

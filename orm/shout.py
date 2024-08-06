@@ -51,10 +51,10 @@ class Shout(Base):
     __tablename__ = "shout"
 
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    updated_at = Column(Integer, nullable=True)
-    published_at = Column(Integer, nullable=True)
-    featured_at = Column(Integer, nullable=True)
-    deleted_at = Column(Integer, nullable=True)
+    updated_at = Column(Integer, nullable=True, index=True)
+    published_at = Column(Integer, nullable=True, index=True)
+    featured_at = Column(Integer, nullable=True, index=True)
+    deleted_at = Column(Integer, nullable=True, index=True)
 
     created_by = Column(ForeignKey("author.id"), nullable=False)
     updated_by = Column(ForeignKey("author.id"), nullable=True)
