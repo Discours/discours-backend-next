@@ -1,7 +1,5 @@
 import asyncio
-
 from sqlalchemy import event, select
-
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor
@@ -16,19 +14,17 @@ DEFAULT_FOLLOWS = {
     "communities": [{"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}],
 }
 
-
-def run_background_task(coro):
-    """Запускает асинхронную задачу в фоне и обрабатывает исключения."""
-    task = asyncio.create_task(coro)
-    task.add_done_callback(handle_task_result)
+# Limit the number of concurrent tasks
+semaphore = asyncio.Semaphore(10)
 
 
-def handle_task_result(task):
-    """Обработка результата завершенной задачи."""
-    try:
-        task.result()
-    except Exception as e:
-        logger.error(f"Error in background task: {e}")
+async def run_background_task(coro):
+    """Runs an asynchronous task in the background with concurrency control."""
+    async with semaphore:
+        try:
+            await coro
+        except Exception as e:
+            logger.error(f"Error in background task: {e}")
 
 
 async def handle_author_follower_change(author_id: int, follower_id: int, is_insert: bool):
@@ -47,8 +43,8 @@ async def handle_author_follower_change(author_id: int, follower_id: int, is_ins
         follower = follower_result[0]
         if author_with_stat:
             author_dict = author_with_stat.dict()
-            run_background_task(cache_author(author_dict))
-            run_background_task(cache_follows(follower.id, "author", author_with_stat.id, is_insert))
+            await run_background_task(cache_author(author_dict))
+            await run_background_task(cache_follows(follower.id, "author", author_with_stat.id, is_insert))
 
 
 async def handle_topic_follower_change(topic_id: int, follower_id: int, is_insert: bool):
@@ -65,24 +61,22 @@ async def handle_topic_follower_change(topic_id: int, follower_id: int, is_inser
     if isinstance(follower[0], Author) and isinstance(topic[0], Topic):
         topic = topic[0]
         follower = follower[0]
-        run_background_task(cache_topic(topic.dict()))
-        run_background_task(cache_author(follower.dict()))
-        run_background_task(cache_follows(follower.id, "topic", topic.id, is_insert))
+        await run_background_task(cache_topic(topic.dict()))
+        await run_background_task(cache_author(follower.dict()))
+        await run_background_task(cache_follows(follower.id, "topic", topic.id, is_insert))
 
 
 async def after_shout_update(_mapper, _connection, shout: Shout):
     logger.info("after shout update")
 
     authors_query = (
-        select(Author)
-        .join(ShoutAuthor, ShoutAuthor.author == Author.id)  # Use join directly with Author
-        .filter(ShoutAuthor.shout == shout.id)
+        select(Author).join(ShoutAuthor, ShoutAuthor.author == Author.id).filter(ShoutAuthor.shout == shout.id)
     )
 
     authors_updated = await get_with_stat(authors_query)
 
-    for author_with_stat in authors_updated:
-        run_background_task(cache_author(author_with_stat.dict()))
+    tasks = [run_background_task(cache_author(author_with_stat.dict())) for author_with_stat in authors_updated]
+    await asyncio.gather(*tasks)
 
 
 async def after_reaction_update(mapper, connection, reaction: Reaction):
@@ -90,13 +84,15 @@ async def after_reaction_update(mapper, connection, reaction: Reaction):
     try:
         # reaction author
         author_subquery = select(Author).where(Author.id == reaction.created_by)
-
         result = await get_with_stat(author_subquery)
+
+        tasks = []
+
         if result:
             author_with_stat = result[0]
             if isinstance(author_with_stat, Author):
                 author_dict = author_with_stat.dict()
-                run_background_task(cache_author(author_dict))
+                tasks.append(run_background_task(cache_author(author_dict)))
 
         # reaction repliers
         replied_author_subquery = (
@@ -104,13 +100,15 @@ async def after_reaction_update(mapper, connection, reaction: Reaction):
         )
         authors_with_stat = await get_with_stat(replied_author_subquery)
         for author_with_stat in authors_with_stat:
-            run_background_task(cache_author(author_with_stat.dict()))
+            tasks.append(run_background_task(cache_author(author_with_stat.dict())))
 
         shout_query = select(Shout).where(Shout.id == reaction.shout)
         shout_result = await connection.execute(shout_query)
         shout = shout_result.scalar_one_or_none()
         if shout:
-            await after_shout_update(mapper, connection, shout)
+            tasks.append(after_shout_update(mapper, connection, shout))
+
+        await asyncio.gather(*tasks)
     except Exception as exc:
         logger.error(exc)
         import traceback
@@ -125,27 +123,27 @@ async def after_author_update(_mapper, _connection, author: Author):
     if result:
         author_with_stat = result[0]
         author_dict = author_with_stat.dict()
-        run_background_task(cache_author(author_dict))
+        await run_background_task(cache_author(author_dict))
 
 
 async def after_topic_follower_insert(_mapper, _connection, target: TopicFollower):
     logger.info(target)
-    run_background_task(handle_topic_follower_change(target.topic, target.follower, True))
+    await run_background_task(handle_topic_follower_change(target.topic, target.follower, True))
 
 
 async def after_topic_follower_delete(_mapper, _connection, target: TopicFollower):
     logger.info(target)
-    run_background_task(handle_topic_follower_change(target.topic, target.follower, False))
+    await run_background_task(handle_topic_follower_change(target.topic, target.follower, False))
 
 
 async def after_author_follower_insert(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
-    run_background_task(handle_author_follower_change(target.author, target.follower, True))
+    await run_background_task(handle_author_follower_change(target.author, target.follower, True))
 
 
 async def after_author_follower_delete(_mapper, _connection, target: AuthorFollower):
     logger.info(target)
-    run_background_task(handle_author_follower_change(target.author, target.follower, False))
+    await run_background_task(handle_author_follower_change(target.author, target.follower, False))
 
 
 def events_register():
