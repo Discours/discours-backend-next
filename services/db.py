@@ -17,7 +17,13 @@ from settings import DB_URL
 
 
 # Подключение к базе данных SQLAlchemy
-engine = create_engine(DB_URL, echo=False, pool_size=10, max_overflow=20)
+engine = create_engine(DB_URL,
+    echo=False,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,  # Время ожидания свободного соединения
+    pool_recycle=1800,  # Время жизни соединения
+)
 inspector = inspect(engine)
 configure_mappers()
 T = TypeVar("T")
@@ -88,7 +94,7 @@ warnings.simplefilter("always", exc.SAWarning)
 @event.listens_for(Engine, "before_cursor_execute")
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     conn.query_start_time = time.time()
-    conn.last_statement = ""
+    conn.last_statement = None
 
 
 @event.listens_for(Engine, "after_cursor_execute")

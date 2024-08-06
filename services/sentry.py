@@ -1,15 +1,8 @@
 import sentry_sdk
-import logging
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
 from settings import GLITCHTIP_DSN
-
-sentry_logging = LoggingIntegration(
-    level=logging.DEBUG,        # Capture info and above as breadcrumbs
-    event_level=logging.ERROR  # Send errors as events
-)
 
 
 def start_sentry():
@@ -28,8 +21,7 @@ def start_sentry():
             integrations=[
                 StarletteIntegration(),
                 AriadneIntegration(),
-                SqlalchemyIntegration(),
-                sentry_logging
+                SqlalchemyIntegration()
             ],
         )
     except Exception as e:
