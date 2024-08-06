@@ -24,6 +24,7 @@ engine = create_engine(
     max_overflow=20,
     pool_timeout=30,  # Время ожидания свободного соединения
     pool_recycle=1800,  # Время жизни соединения
+    connect_args={"sslmode": "disable"}
 )
 inspector = inspect(engine)
 configure_mappers()
