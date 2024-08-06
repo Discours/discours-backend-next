@@ -107,6 +107,7 @@ async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
             authors = [author.dict() for author in missing_authors]
     return authors
 
+
 async def get_cached_topic_followers(topic_id: int):
     # Попытка извлечь кэшированные данные
     cached = await redis.get(f"topic:followers:{topic_id}")
@@ -117,12 +118,17 @@ async def get_cached_topic_followers(topic_id: int):
 
     # Загрузка из базы данных и кэширование результатов
     with local_session() as session:
-        followers_ids = [f[0] for f in session.query(Author.id)
-                         .join(TopicFollower, TopicFollower.follower == Author.id)
-                         .filter(TopicFollower.topic == topic_id).all()]
+        followers_ids = [
+            f[0]
+            for f in session.query(Author.id)
+            .join(TopicFollower, TopicFollower.follower == Author.id)
+            .filter(TopicFollower.topic == topic_id)
+            .all()
+        ]
         await redis.set(f"topic:followers:{topic_id}", json.dumps(followers_ids))
         followers = await get_cached_authors_by_ids(followers_ids)
         return followers
+
 
 async def get_cached_author_followers(author_id: int):
     # Проверяем кэш на наличие данных
@@ -135,12 +141,17 @@ async def get_cached_author_followers(author_id: int):
 
     # Запрос в базу данных если кэш пуст
     with local_session() as session:
-        followers_ids = [f[0] for f in session.query(Author.id)
-                         .join(AuthorFollower, AuthorFollower.follower == Author.id)
-                         .filter(AuthorFollower.author == author_id, Author.id != author_id).all()]
+        followers_ids = [
+            f[0]
+            for f in session.query(Author.id)
+            .join(AuthorFollower, AuthorFollower.follower == Author.id)
+            .filter(AuthorFollower.author == author_id, Author.id != author_id)
+            .all()
+        ]
         await redis.set(f"author:followers:{author_id}", json.dumps(followers_ids))
         followers = await get_cached_authors_by_ids(followers_ids)
         return followers
+
 
 async def get_cached_follower_authors(author_id: int):
     # Попытка получить авторов из кэша
@@ -150,13 +161,19 @@ async def get_cached_follower_authors(author_id: int):
     else:
         # Запрос авторов из базы данных
         with local_session() as session:
-            authors_ids = [a[0] for a in session.execute(select(Author.id)
-                            .select_from(join(Author, AuthorFollower, Author.id == AuthorFollower.author))
-                            .where(AuthorFollower.follower == author_id)).all()]
+            authors_ids = [
+                a[0]
+                for a in session.execute(
+                    select(Author.id)
+                    .select_from(join(Author, AuthorFollower, Author.id == AuthorFollower.author))
+                    .where(AuthorFollower.follower == author_id)
+                ).all()
+            ]
             await redis.set(f"author:follows-authors:{author_id}", json.dumps(authors_ids))
 
     authors = await get_cached_authors_by_ids(authors_ids)
     return authors
+
 
 async def get_cached_follower_topics(author_id: int):
     # Попытка получить темы из кэша
@@ -166,9 +183,13 @@ async def get_cached_follower_topics(author_id: int):
     else:
         # Загрузка тем из базы данных и их кэширование
         with local_session() as session:
-            topics_ids = [t[0] for t in session.query(Topic.id)
-                          .join(TopicFollower, TopicFollower.topic == Topic.id)
-                          .where(TopicFollower.follower == author_id).all()]
+            topics_ids = [
+                t[0]
+                for t in session.query(Topic.id)
+                .join(TopicFollower, TopicFollower.topic == Topic.id)
+                .where(TopicFollower.follower == author_id)
+                .all()
+            ]
             await redis.set(f"author:follows-topics:{author_id}", json.dumps(topics_ids))
 
     topics = []
@@ -181,3 +202,38 @@ async def get_cached_follower_topics(author_id: int):
 
     logger.debug(f"Cached topics for author#{author_id}: {len(topics)}")
     return topics
+
+
+async def get_cached_author_by_user_id(user_id: str):
+    """
+    Получает информацию об авторе по его user_id, сначала проверяя кэш, а затем базу данных.
+
+    Args:
+        user_id (str): Идентификатор пользователя, по которому нужно получить автора.
+
+    Returns:
+        dict: Словарь с данными автора или None, если автор не найден.
+    """
+    # Пытаемся найти ID автора по user_id в кэше Redis
+    author_id = await redis.get(f"author:user:{user_id.strip()}")
+    if author_id:
+        # Если ID найден, получаем полные данные автора по его ID
+        author_data = await redis.get(f"author:id:{author_id}")
+        if author_data:
+            return json.loads(author_data)
+
+    # Если данные в кэше не найдены, выполняем запрос к базе данных
+    with local_session() as session:
+        author = session.execute(select(Author).where(Author.user == user_id)).scalar_one_or_none()
+
+        if author:
+            # Кэшируем полученные данные автора
+            author_dict = author.dict()
+            await asyncio.gather(
+                redis.set(f"author:user:{user_id.strip()}", str(author.id)),
+                redis.set(f"author:id:{author.id}", json.dumps(author_dict)),
+            )
+            return author_dict
+
+    # Возвращаем None, если автор не найден
+    return None
