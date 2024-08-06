@@ -30,6 +30,7 @@ def query_shouts():
         select(Shout)
         .options(joinedload(Shout.authors), joinedload(Shout.topics))
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        .execution_options(populate_existing=True)
     )
 
 
@@ -37,9 +38,11 @@ def filter_my(info, session, q):
     user_id = info.context.get("user_id")
     reader_id = info.context.get("author", {}).get("id")
     if user_id and reader_id:
+        # Предварительный расчет ID для автора и темы
         reader_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == reader_id)
         reader_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == reader_id)
 
+        # Используйте подзапросы для фильтрации
         subquery = (
             select(Shout.id)
             .where(Shout.id == ShoutAuthor.shout)

@@ -21,14 +21,13 @@ from services.viewed import ViewedStorage
 
 
 def add_reaction_stat_columns(q, aliased_reaction):
-    q = q.outerjoin(
-        aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
-            func.sum(aliased_reaction.id).label("reacted_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
-            func.max(aliased_reaction.created_at).label("last_comment_stat")
-        )
+    q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
+        func.sum(aliased_reaction.id).label("reacted_stat"),
+        func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
+        func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
+        func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
+        func.max(aliased_reaction.created_at).label("last_comment_stat"),
+    )
 
     return q
 
@@ -427,7 +426,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
                 "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
                 "reacted": reacted_stat,
                 "commented": commented_stat,
-                "last_reacted_at": last_reacted_at
+                "last_reacted_at": last_reacted_at,
             }
             reactions.add(reaction)
 
