@@ -23,7 +23,8 @@ async def cache_topic(topic: dict):
     payload = json.dumps(topic, cls=CustomJSONEncoder)
     # Одновременное кэширование по id и slug для быстрого доступа
     await asyncio.gather(
-        redis.execute("SET", f"topic:id:{topic['id']}", payload), redis.execute("SET", f"topic:slug:{topic['slug']}", payload)
+        redis.execute("SET", f"topic:id:{topic['id']}", payload),
+        redis.execute("SET", f"topic:slug:{topic['slug']}", payload),
     )
 
 
@@ -239,6 +240,7 @@ async def get_cached_author_by_user_id(user_id: str):
     # Возвращаем None, если автор не найден
     return None
 
+
 async def get_cached_topic_authors(topic_id: int):
     """
     Получает список авторов для заданной темы, используя кэш или базу данных.
@@ -263,7 +265,7 @@ async def get_cached_topic_authors(topic_id: int):
                 .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
                 .where(and_(ShoutTopic.topic == topic_id, Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
             )
-            authors_ids = [author_id for author_id, in session.execute(query).all()]
+            authors_ids = [author_id for (author_id,) in session.execute(query).all()]
             # Кэшируем полученные ID авторов
             await redis.set(rkey, json.dumps(authors_ids))
 
