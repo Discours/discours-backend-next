@@ -40,6 +40,6 @@ class Reaction(Base):
     quote = Column(String, nullable=True, comment="Original quoted text")
     shout = Column(ForeignKey("shout.id"), nullable=False)
     created_by = Column(ForeignKey("author.id"), nullable=False)
-    kind = Column(String, nullable=False)
+    kind = Column(String, nullable=False, index=True)
 
     oid = Column(String)
