@@ -23,7 +23,7 @@ async def cache_topic(topic: dict):
     payload = json.dumps(topic, cls=CustomJSONEncoder)
     # Одновременное кэширование по id и slug для быстрого доступа
     await asyncio.gather(
-        redis.set(f"topic:id:{topic['id']}", payload), redis.set(f"topic:slug:{topic['slug']}", payload)
+        redis.execute("SET", f"topic:id:{topic['id']}", payload), redis.execute("SET", f"topic:slug:{topic['slug']}", payload)
     )
 
 
@@ -32,8 +32,8 @@ async def cache_author(author: dict):
     payload = json.dumps(author, cls=CustomJSONEncoder)
     # Кэширование данных автора по user и id
     await asyncio.gather(
-        redis.set(f"author:user:{author['user'].strip()}", str(author["id"])),
-        redis.set(f"author:id:{author['id']}", payload),
+        redis.execute("SET", f"author:user:{author['user'].strip()}", str(author["id"])),
+        redis.execute("SET", f"author:id:{author['id']}", payload),
     )
 
 
@@ -126,7 +126,7 @@ async def get_cached_topic_followers(topic_id: int):
             .filter(TopicFollower.topic == topic_id)
             .all()
         ]
-        await redis.set(f"topic:followers:{topic_id}", json.dumps(followers_ids))
+        await redis.execute("SET", f"topic:followers:{topic_id}", json.dumps(followers_ids))
         followers = await get_cached_authors_by_ids(followers_ids)
         return followers
 
@@ -149,7 +149,7 @@ async def get_cached_author_followers(author_id: int):
             .filter(AuthorFollower.author == author_id, Author.id != author_id)
             .all()
         ]
-        await redis.set(f"author:followers:{author_id}", json.dumps(followers_ids))
+        await redis.execute("SET", f"author:followers:{author_id}", json.dumps(followers_ids))
         followers = await get_cached_authors_by_ids(followers_ids)
         return followers
 
@@ -170,7 +170,7 @@ async def get_cached_follower_authors(author_id: int):
                     .where(AuthorFollower.follower == author_id)
                 ).all()
             ]
-            await redis.set(f"author:follows-authors:{author_id}", json.dumps(authors_ids))
+            await redis.execute("SET", f"author:follows-authors:{author_id}", json.dumps(authors_ids))
 
     authors = await get_cached_authors_by_ids(authors_ids)
     return authors
@@ -191,7 +191,7 @@ async def get_cached_follower_topics(author_id: int):
                 .where(TopicFollower.follower == author_id)
                 .all()
             ]
-            await redis.set(f"author:follows-topics:{author_id}", json.dumps(topics_ids))
+            await redis.execute("SET", f"author:follows-topics:{author_id}", json.dumps(topics_ids))
 
     topics = []
     for topic_id in topics_ids:
@@ -231,8 +231,8 @@ async def get_cached_author_by_user_id(user_id: str):
             # Кэшируем полученные данные автора
             author_dict = author.dict()
             await asyncio.gather(
-                redis.set(f"author:user:{user_id.strip()}", str(author.id)),
-                redis.set(f"author:id:{author.id}", json.dumps(author_dict)),
+                redis.execute("SET", f"author:user:{user_id.strip()}", str(author.id)),
+                redis.execute("SET", f"author:id:{author.id}", json.dumps(author_dict)),
             )
             return author_dict
 
