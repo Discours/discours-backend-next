@@ -15,8 +15,8 @@ from orm.topic import Topic
 from services.db import local_session
 from services.logger import root_logger as logger
 
-GOOGLE_KEYFILE_PATH = os.environ.get("GOOGLE_KEYFILE_PATH", "/dump/google-service.json")
-GOOGLE_PROPERTY_ID = os.environ.get("GOOGLE_PROPERTY_ID", "")
+GOOGLE_KEYFILE_PATH = os.environ.get("GOOGLE_KEYFILE_PATH") or "/dump/google-service.json"
+GOOGLE_PROPERTY_ID = os.environ.get("GOOGLE_PROPERTY_ID")
 VIEWS_FILEPATH = "/dump/views.json"
 
 
