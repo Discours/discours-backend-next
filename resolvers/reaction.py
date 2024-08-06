@@ -21,18 +21,14 @@ from services.viewed import ViewedStorage
 
 
 def add_reaction_stat_columns(q, aliased_reaction):
-    q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
-        func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
-        func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-        func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
-        func.max(
-            case(
-                (aliased_reaction.kind == str(ReactionKind.COMMENT.value), aliased_reaction.created_at),
-                else_=None,
-            )
-        ).label("last_comment_stat"),
-    )
+    q = q.outerjoin(
+        aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
+            func.sum(aliased_reaction.id).label("reacted_stat"),
+            func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
+            func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
+            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
+            func.max(aliased_reaction.created_at).label("last_comment_stat")
+        )
 
     return q
 
@@ -252,7 +248,7 @@ async def update_reaction(_, info, reaction):
                         commented_stat,
                         likes_stat,
                         dislikes_stat,
-                        last_comment,
+                        last_reacted_at,
                     ] = result
                     if not r:
                         return {"error": "invalid reaction id"}
@@ -423,7 +419,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             commented_stat,
             likes_stat,
             dislikes_stat,
-            _last_comment,
+            last_reacted_at,
         ] in result_rows:
             reaction.created_by = author
             reaction.shout = shout
@@ -431,6 +427,7 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
                 "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
                 "reacted": reacted_stat,
                 "commented": commented_stat,
+                "last_reacted_at": last_reacted_at
             }
             reactions.add(reaction)
 
@@ -465,8 +462,8 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             )
             q2 = add_reaction_stat_columns(q2, aliased(Reaction))
 
-            # Sort shouts by the `last_comment` field
-            combined_query = union(q1, q2).order_by(desc(text("last_comment_stat"))).limit(limit).offset(offset)
+            # Sort shouts by the `last_reacted_at` field
+            combined_query = union(q1, q2).order_by(desc(text("last_reacted_at"))).limit(limit).offset(offset)
 
             results = session.execute(combined_query).scalars()
             for [
@@ -475,14 +472,14 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
                 commented_stat,
                 likes_stat,
                 dislikes_stat,
-                last_comment,
+                last_reacted_at,
             ] in results:
                 shout.stat = {
                     "viewed": await ViewedStorage.get_shout(shout.slug),
                     "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
                     "reacted": reacted_stat,
                     "commented": commented_stat,
-                    "last_comment": last_comment,
+                    "last_reacted_at": last_reacted_at,
                 }
                 shouts.append(shout)
 

@@ -103,7 +103,7 @@ async def get_shout(_, info, slug: str):
                     commented_stat,
                     likes_stat,
                     dislikes_stat,
-                    last_comment,
+                    last_reaction_at,
                 ] = results
 
                 shout.stat = {
@@ -111,7 +111,7 @@ async def get_shout(_, info, slug: str):
                     "reacted": reacted_stat,
                     "commented": commented_stat,
                     "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                    "last_comment": last_comment,
+                    "last_reacted_at": last_reaction_at,
                 }
 
                 for author_caption in (
@@ -164,7 +164,7 @@ async def load_shouts_by(_, _info, options):
         }
         offset: 0
         limit: 50
-        order_by: "likes" | "followers" | "comments" | "last_comment"
+        order_by: "likes" | "followers" | "comments" | "last_reacted_at"
         order_by_desc: true
 
     }
@@ -188,7 +188,7 @@ async def load_shouts_by(_, _info, options):
     # order
     order_by = Shout.featured_at if filters.get("featured") else Shout.published_at
     order_str = options.get("order_by")
-    if order_str in ["likes", "followers", "comments", "last_comment"]:
+    if order_str in ["likes", "followers", "comments", "last_reacted_at"]:
         q = q.order_by(desc(text(f"{order_str}_stat")))
     query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
     q = q.order_by(nulls_last(query_order_by))
@@ -206,7 +206,7 @@ async def load_shouts_by(_, _info, options):
             commented_stat,
             likes_stat,
             dislikes_stat,
-            last_comment,
+            last_reacted_at,
         ] in session.execute(q).unique():
             main_topic = (
                 session.query(Topic.slug)
@@ -228,7 +228,7 @@ async def load_shouts_by(_, _info, options):
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": int(likes_stat) - int(dislikes_stat),
-                "last_comment": last_comment,
+                "last_reacted_at": last_reacted_at,
             }
             shouts.append(shout)
 
@@ -270,7 +270,7 @@ async def load_shouts_feed(_, info, options):
             commented_stat,
             likes_stat,
             dislikes_stat,
-            last_comment,
+            last_reacted_at,
         ] in session.execute(q).unique():
             main_topic = (
                 session.query(Topic.slug)
@@ -292,7 +292,7 @@ async def load_shouts_feed(_, info, options):
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": likes_stat - dislikes_stat,
-                "last_comment": last_comment,
+                "last_reacted_at": last_reacted_at,
             }
             shouts.append(shout)
 
@@ -365,7 +365,7 @@ async def get_shouts_from_query(q, author_id=None):
             commented_stat,
             likes_stat,
             dislikes_stat,
-            last_comment,
+            last_reacted_at,
         ] in session.execute(q, {"author_id": author_id}).unique():
             shouts.append(shout)
             shout.stat = {
@@ -373,7 +373,7 @@ async def get_shouts_from_query(q, author_id=None):
                 "reacted": reacted_stat,
                 "commented": commented_stat,
                 "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                "last_comment": last_comment,
+                "last_reacted_at": last_reacted_at,
             }
 
     return shouts
