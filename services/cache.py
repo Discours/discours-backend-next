@@ -2,12 +2,13 @@ import asyncio
 import json
 from typing import List
 
-from sqlalchemy import select
-from orm.author import Author
-from orm.topic import Topic
+from sqlalchemy import select, join
+from orm.author import Author, AuthorFollower
+from orm.topic import Topic, TopicFollower
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
+from services.logger import root_logger as logger
 
 DEFAULT_FOLLOWS = {
     "topics": [],
@@ -105,3 +106,78 @@ async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
             await asyncio.gather(*(cache_author(author.dict()) for author in missing_authors))
             authors = [author.dict() for author in missing_authors]
     return authors
+
+async def get_cached_topic_followers(topic_id: int):
+    # Попытка извлечь кэшированные данные
+    cached = await redis.get(f"topic:followers:{topic_id}")
+    if cached:
+        followers = json.loads(cached)
+        logger.debug(f"Cached followers for topic#{topic_id}: {len(followers)}")
+        return followers
+
+    # Загрузка из базы данных и кэширование результатов
+    with local_session() as session:
+        followers_ids = [f[0] for f in session.query(Author.id)
+                         .join(TopicFollower, TopicFollower.follower == Author.id)
+                         .filter(TopicFollower.topic == topic_id).all()]
+        await redis.set(f"topic:followers:{topic_id}", json.dumps(followers_ids))
+        followers = await get_cached_authors_by_ids(followers_ids)
+        return followers
+
+async def get_cached_author_followers(author_id: int):
+    # Проверяем кэш на наличие данных
+    cached = await redis.get(f"author:followers:{author_id}")
+    if cached:
+        followers_ids = json.loads(cached)
+        followers = await get_cached_authors_by_ids(followers_ids)
+        logger.debug(f"Cached followers for author#{author_id}: {len(followers)}")
+        return followers
+
+    # Запрос в базу данных если кэш пуст
+    with local_session() as session:
+        followers_ids = [f[0] for f in session.query(Author.id)
+                         .join(AuthorFollower, AuthorFollower.follower == Author.id)
+                         .filter(AuthorFollower.author == author_id, Author.id != author_id).all()]
+        await redis.set(f"author:followers:{author_id}", json.dumps(followers_ids))
+        followers = await get_cached_authors_by_ids(followers_ids)
+        return followers
+
+async def get_cached_follower_authors(author_id: int):
+    # Попытка получить авторов из кэша
+    cached = await redis.get(f"author:follows-authors:{author_id}")
+    if cached:
+        authors_ids = json.loads(cached)
+    else:
+        # Запрос авторов из базы данных
+        with local_session() as session:
+            authors_ids = [a[0] for a in session.execute(select(Author.id)
+                            .select_from(join(Author, AuthorFollower, Author.id == AuthorFollower.author))
+                            .where(AuthorFollower.follower == author_id)).all()]
+            await redis.set(f"author:follows-authors:{author_id}", json.dumps(authors_ids))
+
+    authors = await get_cached_authors_by_ids(authors_ids)
+    return authors
+
+async def get_cached_follower_topics(author_id: int):
+    # Попытка получить темы из кэша
+    cached = await redis.get(f"author:follows-topics:{author_id}")
+    if cached:
+        topics_ids = json.loads(cached)
+    else:
+        # Загрузка тем из базы данных и их кэширование
+        with local_session() as session:
+            topics_ids = [t[0] for t in session.query(Topic.id)
+                          .join(TopicFollower, TopicFollower.topic == Topic.id)
+                          .where(TopicFollower.follower == author_id).all()]
+            await redis.set(f"author:follows-topics:{author_id}", json.dumps(topics_ids))
+
+    topics = []
+    for topic_id in topics_ids:
+        topic_str = await redis.get(f"topic:id:{topic_id}")
+        if topic_str:
+            topic = json.loads(topic_str)
+            if topic and topic not in topics:
+                topics.append(topic)
+
+    logger.debug(f"Cached topics for author#{author_id}: {len(topics)}")
+    return topics
