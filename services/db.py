@@ -17,7 +17,8 @@ from settings import DB_URL
 
 
 # Подключение к базе данных SQLAlchemy
-engine = create_engine(DB_URL,
+engine = create_engine(
+    DB_URL,
     echo=False,
     pool_size=10,
     max_overflow=20,

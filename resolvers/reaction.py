@@ -577,7 +577,9 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
             func.count(aliased_reaction.id).label("reacted_stat"),
             func.count(aliased_reaction.body).label("commented_stat"),
             func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
+            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label(
+                "dislikes_stat"
+            ),
         )
         .select_from(Reaction)
         .join(Author, Reaction.created_by == Author.id)
@@ -606,9 +608,9 @@ async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
 
     return list(reactions)
 
+
 @query.field("load_comment_ratings")
 async def load_comment_ratings(_, info, comment: int, limit=50, offset=0):
-
     """
     getting paginated comments with stats
     :param info: graphql meta
@@ -626,7 +628,9 @@ async def load_comment_ratings(_, info, comment: int, limit=50, offset=0):
             func.count(aliased_reaction.id).label("reacted_stat"),
             func.count(aliased_reaction.body).label("commented_stat"),
             func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
+            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label(
+                "dislikes_stat"
+            ),
         )
         .select_from(Reaction)
         .join(Author, Reaction.created_by == Author.id)
