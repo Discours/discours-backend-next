@@ -2,9 +2,10 @@ import asyncio
 import json
 from typing import List
 
-from sqlalchemy import select, join
+from sqlalchemy import select, join, and_
 from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from services.db import local_session
 from services.encoders import CustomJSONEncoder
 from services.rediscache import redis
@@ -237,3 +238,39 @@ async def get_cached_author_by_user_id(user_id: str):
 
     # Возвращаем None, если автор не найден
     return None
+
+async def get_cached_topic_authors(topic_id: int):
+    """
+    Получает список авторов для заданной темы, используя кэш или базу данных.
+
+    Args:
+        topic_id (int): Идентификатор темы, для которой нужно получить авторов.
+
+    Returns:
+        List[dict]: Список словарей, содержащих данные авторов.
+    """
+    # Пытаемся получить список ID авторов из кэша
+    rkey = f"topic:authors:{topic_id}"
+    cached_authors_ids = await redis.get(rkey)
+    if cached_authors_ids:
+        authors_ids = json.loads(cached_authors_ids)
+    else:
+        # Если кэш пуст, получаем данные из базы данных
+        with local_session() as session:
+            query = (
+                select(ShoutAuthor.author)
+                .select_from(join(ShoutTopic, Shout, ShoutTopic.shout == Shout.id))
+                .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
+                .where(and_(ShoutTopic.topic == topic_id, Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+            )
+            authors_ids = [author_id for author_id, in session.execute(query).all()]
+            # Кэшируем полученные ID авторов
+            await redis.set(rkey, json.dumps(authors_ids))
+
+    # Получаем полные данные авторов по кэшированным ID
+    if authors_ids:
+        authors = await get_cached_authors_by_ids(authors_ids)
+        logger.debug(f"Topic#{topic_id} authors fetched and cached: {len(authors)} authors found.")
+        return authors
+
+    return []
