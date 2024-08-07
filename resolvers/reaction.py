@@ -21,15 +21,19 @@ from services.viewed import ViewedStorage
 
 
 def add_reaction_stat_columns(q, aliased_reaction):
-    q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
-        func.sum(aliased_reaction.id).label("reacted_stat"),
-        func.sum(case((aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1), else_=0)).label("comments_stat"),
-        func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-        func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label("dislikes_stat"),
-        func.max(aliased_reaction.created_at).label("last_comment_stat"),
+    reaction_subquery = (
+        select(
+            aliased_reaction.shout,
+            func.count(aliased_reaction.id).label("reacted_stat"),
+            func.count(case([(aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1)])).label("comments_stat"),
+            func.count(case([(aliased_reaction.kind == str(ReactionKind.LIKE.value), 1)])).label("likes_stat"),
+            func.count(case([(aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1)])).label("dislikes_stat"),
+            func.max(aliased_reaction.created_at).label("last_comment_stat"),
+        )
+        .where(aliased_reaction.deleted_at.is_(None))
+        .group_by(aliased_reaction.shout)
     )
-
-    return q
+    return q.outerjoin(reaction_subquery, Shout.id == reaction_subquery.c.shout)
 
 
 def is_featured_author(session, author_id):

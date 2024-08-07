@@ -38,16 +38,14 @@ def filter_my(info, session, q):
     user_id = info.context.get("user_id")
     reader_id = info.context.get("author", {}).get("id")
     if user_id and reader_id:
-        # Предварительный расчет ID для автора и темы
         reader_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == reader_id)
         reader_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == reader_id)
 
-        # Используйте подзапросы для фильтрации
         subquery = (
             select(Shout.id)
-            .where(Shout.id == ShoutAuthor.shout)
-            .where(Shout.id == ShoutTopic.shout)
-            .where((ShoutAuthor.author.in_(reader_followed_authors)) | (ShoutTopic.topic.in_(reader_followed_topics)))
+            .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
+            .join(ShoutTopic, ShoutTopic.shout == Shout.id)
+            .where(ShoutAuthor.author.in_(reader_followed_authors) | ShoutTopic.topic.in_(reader_followed_topics))
         )
         q = q.filter(Shout.id.in_(subquery))
     return q, reader_id
