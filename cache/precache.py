@@ -108,4 +108,7 @@ async def precache_data():
                     logger.error(f"fail caching {author}")
             logger.info(f"{len(authors)} authors and their followings precached")
     except Exception as exc:
+        import traceback
+
+        traceback.print_exc()
         logger.error(f"Error in precache_data: {exc}")
