@@ -38,6 +38,34 @@ async def cache_author(author: dict):
     )
 
 
+async def get_cached_topic(topic_id: int):
+    """
+    Получает информацию о теме из кэша или базы данных.
+
+    Args:
+        topic_id (int): Идентификатор темы.
+
+    Returns:
+        dict: Данные темы в формате словаря или None, если тема не найдена.
+    """
+    # Ключ для кэширования темы в Redis
+    topic_key = f"topic:id:{topic_id}"
+    cached_topic = await redis.get(topic_key)
+    if cached_topic:
+        return json.loads(cached_topic)
+
+    # Если данных о теме нет в кэше, загружаем из базы данных
+    with local_session() as session:
+        topic = session.execute(select(Topic).where(Topic.id == topic_id)).scalar_one_or_none()
+        if topic:
+            # Кэшируем полученные данные
+            topic_dict = topic.dict()
+            await redis.set(topic_key, json.dumps(topic_dict, cls=CustomJSONEncoder))
+            return topic_dict
+
+    return None
+
+
 async def get_cached_shout_authors(shout_id: int):
     """
     Retrieves a list of authors for a given shout from the cache or database if not present.
