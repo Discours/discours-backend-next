@@ -483,12 +483,12 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     if not author_id:
         return []
     # Subquery to find shout IDs that the author has commented on
-        reaction_subquery = (
-            select(Reaction.shout)
-            .distinct()  # Ensure distinct shout IDs
-            .filter(and_(Reaction.created_by == author_id, Reaction.body.is_not(None)))
-            .correlate(Shout)  # Ensure proper correlation with the main query
-        )
+    reaction_subquery = (
+        select(Reaction.shout)
+        .distinct()  # Ensure distinct shout IDs
+        .filter(and_(Reaction.created_by == author_id, Reaction.body.is_not(None)))
+        .correlate(Shout)  # Ensure proper correlation with the main query
+    )
     q, aliased_reaction = query_shouts()
     q = q.filter(Shout.id.in_(reaction_subquery))
     return get_shouts_with_stats(q, limit, offset=offset)
