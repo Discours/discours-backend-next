@@ -4,7 +4,7 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor
 from orm.topic import Topic, TopicFollower
-from services.cache import cache_manager  # Предполагается, что этот менеджер уже реализован
+from services.cache import cache_author, get_cached_author, cache_topic, get_cached_shout, get_cached_topic, cache_shout
 from services.logger import root_logger as logger
 
 
@@ -27,19 +27,19 @@ class CacheRevalidationManager:
             for entity_id in ids:
                 if entity_type == "authors":
                     # Ревалидация кэша автора
-                    author = await cache_manager.get_author(entity_id)
+                    author = await get_cached_author(entity_id)
                     if author:
-                        await cache_manager.cache_author(author)
+                        await cache_author(author)
                 elif entity_type == "topics":
                     # Ревалидация кэша темы
-                    topic = await cache_manager.get_topic(entity_id)
+                    topic = await get_cached_topic(entity_id)
                     if topic:
-                        await cache_manager.cache_topic(topic)
+                        await cache_topic(topic)
                 elif entity_type == "shouts":
                     # Ревалидация кэша shout
-                    shout = await cache_manager.get_shout(entity_id)
+                    shout = await get_cached_shout(entity_id)
                     if shout:
-                        await cache_manager.cache_shout(shout)
+                        await cache_shout(shout)
             ids.clear()
 
     def mark_for_revalidation(self, entity_id, entity_type):

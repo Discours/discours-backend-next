@@ -38,6 +38,42 @@ async def cache_author(author: dict):
     )
 
 
+async def get_cached_shout_authors(shout_id: int):
+    """
+    Retrieves a list of authors for a given shout from the cache or database if not present.
+
+    Args:
+        shout_id (int): The ID of the shout for which to retrieve authors.
+
+    Returns:
+        List[dict]: A list of dictionaries containing author data.
+    """
+    # Attempt to retrieve cached author IDs for the shout
+    rkey = f"shout:authors:{shout_id}"
+    cached_author_ids = await redis.get(rkey)
+    if cached_author_ids:
+        author_ids = json.loads(cached_author_ids)
+    else:
+        # If not in cache, fetch from the database and cache the result
+        with local_session() as session:
+            query = (
+                select(ShoutAuthor.author)
+                .where(ShoutAuthor.shout == shout_id)
+                .join(Author, ShoutAuthor.author == Author.id)
+                .filter(Author.deleted_at.is_(None))
+            )
+            author_ids = [author_id for (author_id,) in session.execute(query).all()]
+            await redis.execute("set", rkey, json.dumps(author_ids))
+
+    # Retrieve full author details from cached IDs
+    if author_ids:
+        authors = await get_cached_authors_by_ids(author_ids)
+        logger.debug(f"Shout#{shout_id} authors fetched and cached: {len(authors)} authors found.")
+        return authors
+
+    return []
+
+
 # Кэширование данных о подписках
 async def cache_follows(follower_id: int, entity_type: str, entity_id: int, is_insert=True):
     key = f"author:follows-{entity_type}s:{follower_id}"
@@ -48,7 +84,7 @@ async def cache_follows(follower_id: int, entity_type: str, entity_id: int, is_i
             follows.append(entity_id)
     else:
         follows = [eid for eid in follows if eid != entity_id]
-    await redis.set(key, json.dumps(follows, cls=CustomJSONEncoder))
+    await redis.execute("set", key, json.dumps(follows, cls=CustomJSONEncoder))
     update_follower_stat(follower_id, entity_type, len(follows))
 
 
@@ -267,7 +303,7 @@ async def get_cached_topic_authors(topic_id: int):
             )
             authors_ids = [author_id for (author_id,) in session.execute(query).all()]
             # Кэшируем полученные ID авторов
-            await redis.set(rkey, json.dumps(authors_ids))
+            await redis.execute("set", rkey, json.dumps(authors_ids))
 
     # Получаем полные данные авторов по кэшированным ID
     if authors_ids:
