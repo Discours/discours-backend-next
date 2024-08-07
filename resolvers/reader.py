@@ -10,7 +10,6 @@ from sqlalchemy.sql.expression import (
     select,
     text,
 )
-from sqlalchemy.dialects.postgresql import json_agg
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutReactionsFollower
@@ -48,7 +47,7 @@ def query_shouts():
                 )
             ).label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
-            json_agg(
+            func.json_agg(
                 func.distinct(
                     func.json_build_object(
                         "id",
@@ -62,7 +61,7 @@ def query_shouts():
                     )
                 )
             ).label("authors"),
-            json_agg(
+            func.json_agg(
                 func.distinct(
                     func.json_build_object(
                         "id",
