@@ -418,17 +418,14 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
             reaction,
             author,
             shout,
-            reacted_stat,
             commented_stat,
-            likes_stat,
-            dislikes_stat,
+            rating_stat,
             last_reacted_at,
         ] in result_rows:
             reaction.created_by = author
             reaction.shout = shout
             reaction.stat = {
-                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                "reacted": reacted_stat,
+                "rating": rating_stat,
                 "commented": commented_stat,
                 "last_reacted_at": last_reacted_at,
             }
