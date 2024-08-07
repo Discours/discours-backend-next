@@ -13,7 +13,7 @@ from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from services.db import local_session
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 
 GOOGLE_KEYFILE_PATH = os.environ.get("GOOGLE_KEYFILE_PATH", "/dump/google-service.json")
 GOOGLE_PROPERTY_ID = os.environ.get("GOOGLE_PROPERTY_ID", "")
