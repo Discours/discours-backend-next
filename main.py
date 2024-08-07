@@ -14,7 +14,7 @@ from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from cache.precache import precache_data
-from cache.rediscache import redis
+from services.redis import redis
 from cache.revalidator import revalidation_manager
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 

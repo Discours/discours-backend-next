@@ -1,48 +1,55 @@
 import asyncio
+from cache.cache import get_cached_author, cache_author, get_cached_topic, cache_topic
 from utils.logger import root_logger as logger
-from cache.cache import get_cached_author, cache_author, cache_topic, get_cached_topic
 
 
 class CacheRevalidationManager:
-    """Управление периодической ревалидацией кэша."""
+    def __init__(self, interval=60):
+        """Инициализация менеджера с заданным интервалом проверки (в секундах)."""
+        self.interval = interval
+        self.items_to_revalidate = {"authors": set(), "topics": set(), "shouts": set(), "reactions": set()}
+        self.lock = asyncio.Lock()
+        self.running = True
 
-    def __init__(self):
-        self.items_to_revalidate = {"authors": set(), "topics": set()}
-        self.revalidation_interval = 60  # Интервал ревалидации в секундах
-        self.loop = None
-
-    def start(self):
-        self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.revalidate_cache())
-        self.loop.run_forever()
-        logger.info("[services.revalidator] started infinite loop")
+    async def start(self):
+        """Запуск фонового воркера для ревалидации кэша."""
+        asyncio.create_task(self.revalidate_cache())
 
     async def revalidate_cache(self):
-        """Периодическая ревалидация кэша."""
-        while True:
-            await asyncio.sleep(self.revalidation_interval)
-            await self.process_revalidation()
+        """Циклическая проверка и ревалидация кэша каждые self.interval секунд."""
+        try:
+            while self.running:
+                await asyncio.sleep(self.interval)
+                await self.process_revalidation()
+        except asyncio.CancelledError:
+            logger.info("Revalidation worker was stopped.")
+        except Exception as e:
+            logger.error(f"An error occurred in the revalidation worker: {e}")
 
     async def process_revalidation(self):
-        """Ревалидация кэша для отмеченных сущностей."""
-        for entity_type, ids in self.items_to_revalidate.items():
-            for entity_id in ids:
-                if entity_type == "authors":
-                    # Ревалидация кэша автора
-                    author = await get_cached_author(entity_id)
-                    if author:
-                        await cache_author(author)
-                elif entity_type == "topics":
-                    # Ревалидация кэша темы
-                    topic = await get_cached_topic(entity_id)
-                    if topic:
-                        await cache_topic(topic)
-            ids.clear()
+        """Обновление кэша для всех сущностей, требующих ревалидации."""
+        async with self.lock:
+            # Ревалидация кэша авторов
+            for author_id in self.items_to_revalidate["authors"]:
+                author = await get_cached_author(author_id)
+                if author:
+                    await cache_author(author)
+            self.items_to_revalidate["authors"].clear()
+
+            # Ревалидация кэша тем
+            for topic_id in self.items_to_revalidate["topics"]:
+                topic = await get_cached_topic(topic_id)
+                if topic:
+                    await cache_topic(topic)
+            self.items_to_revalidate["topics"].clear()
 
     def mark_for_revalidation(self, entity_id, entity_type):
         """Отметить сущность для ревалидации."""
         self.items_to_revalidate[entity_type].add(entity_id)
 
+    def stop(self):
+        """Остановка фонового воркера."""
+        self.running = False
 
-# Инициализация менеджера ревалидации
-revalidation_manager = CacheRevalidationManager()
+
+revalidation_manager = CacheRevalidationManager(interval=300)  # Ревалидация каждые 5 минут

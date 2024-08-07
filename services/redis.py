@@ -9,7 +9,7 @@ logger = logging.getLogger("redis")
 logger.setLevel(logging.WARNING)
 
 
-class RedisCache:
+class RedisService:
     def __init__(self, uri=REDIS_URL):
         self._uri: str = uri
         self.pubsub_channels = []
@@ -58,6 +58,6 @@ class RedisCache:
         await self._client.publish(channel, data)
 
 
-redis = RedisCache()
+redis = RedisService()
 
 __all__ = ["redis"]
