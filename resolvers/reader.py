@@ -80,7 +80,6 @@ def query_shouts():
     q = (
         select(
             Shout,
-            ShoutReactionsFollower,
             func.count(case((aliased_reaction.body.is_not(None), 1))).label("comments_stat"),
             func.count(distinct(aliased_reaction.created_by)).label("followers_stat"),
             func.sum(
