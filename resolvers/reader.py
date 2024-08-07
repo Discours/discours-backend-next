@@ -82,9 +82,7 @@ def query_shouts():
             Shout,
             ShoutReactionsFollower,
             func.count(case((aliased_reaction.body.is_not(None), 1))).label("comments_stat"),
-            func.count(ShoutReactionsFollower.follower)
-            .filter(ShoutReactionsFollower.shout == Shout.id)
-            .label("followers_stat"),
+            func.count(distinct(aliased_reaction.created_by)).label("followers_stat"),
             func.sum(
                 case(
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
@@ -104,8 +102,6 @@ def query_shouts():
             Shout.id,
             authors_subquery.c.authors,
             topics_subquery.c.topics,
-            ShoutReactionsFollower.follower,
-            ShoutReactionsFollower.shout,
         )
     )
 
