@@ -66,6 +66,7 @@ def query_shouts():
                     func.concat("title:", Topic.title),
                     func.concat("body:", Topic.body),
                     func.concat("slug:", Topic.slug),
+                    func.concat("is_main:", ShoutTopic.main),
                 ),
                 ", ",
             ).label("topics"),
