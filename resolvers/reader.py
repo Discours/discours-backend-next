@@ -23,9 +23,6 @@ from utils.logger import root_logger as logger
 from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
-
-
-
 def query_shouts():
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем.
@@ -34,45 +31,47 @@ def query_shouts():
     """
     # Создаем алиасы для таблиц для избежания конфликтов имен
     aliased_reaction = aliased(Reaction)
-    shout_author = aliased(ShoutAuthor)
-    shout_topic = aliased(ShoutTopic)
 
-    # Подзапросы для уникальных авторов и тем
-    authors_subquery = (
-        select(
-            Shout.id.label("shout_id"),
-            func.json_agg(
-                func.json_build_object(
-                    "id", Author.id,
-                    "name", Author.name,
-                    "slug", Author.slug,
-                    "pic", Author.pic
-                )
-            ).label("authors")
-        )
-        .join(shout_author, shout_author.author == Author.id)
-        .group_by(Shout.id)
-        .subquery()
-    )
+    # Используем чистый SQL-запрос для подзапросов с уникальными значениями
+    authors_subquery = text("""
+        SELECT
+            shout.id AS shout_id,
+            json_agg(distinct json_build_object(
+                'id', author.id,
+                'name', author.name,
+                'slug', author.slug,
+                'pic', author.pic
+            )) AS authors
+        FROM
+            author
+        JOIN
+            shout_author ON shout_author.author = author.id
+        JOIN
+            shout ON shout.id = shout_author.shout
+        GROUP BY
+            shout.id
+    """)
 
-    topics_subquery = (
-        select(
-            Shout.id.label("shout_id"),
-            func.json_agg(
-                func.json_build_object(
-                    "id", Topic.id,
-                    "title", Topic.title,
-                    "body", Topic.body,
-                    "slug", Topic.slug
-                )
-            ).label("topics")
-        )
-        .join(shout_topic, shout_topic.topic == Topic.id)
-        .group_by(Shout.id)
-        .subquery()
-    )
+    topics_subquery = text("""
+        SELECT
+            shout.id AS shout_id,
+            json_agg(distinct json_build_object(
+                'id', topic.id,
+                'title', topic.title,
+                'body', topic.body,
+                'slug', topic.slug
+            )) AS topics
+        FROM
+            topic
+        JOIN
+            shout_topic ON shout_topic.topic = topic.id
+        JOIN
+            shout ON shout.id = shout_topic.shout
+        GROUP BY
+            shout.id
+    """)
 
-    # Основной запрос с подзапросами для получения статистики, авторов и тем
+    # Основной запрос с использованием подзапросов
     q = (
         select(
             Shout,
@@ -96,7 +95,6 @@ def query_shouts():
     )
 
     return q, aliased_reaction
-
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """
