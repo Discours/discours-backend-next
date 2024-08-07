@@ -49,6 +49,7 @@ def query_shouts():
             ).label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
             array_agg(
+                func.distinct(
                 func.json_build_object(
                     "id",
                     Author.id,
@@ -59,8 +60,10 @@ def query_shouts():
                     "pic",
                     Author.pic,
                 )
+                )
             ).label("authors"),
             array_agg(
+                func.distinct(
                 func.json_build_object(
                     "id",
                     Topic.id,
@@ -70,6 +73,7 @@ def query_shouts():
                     Topic.body,
                     "slug",
                     Topic.slug,
+                )
                 )
             ).label("topics"),
         )
