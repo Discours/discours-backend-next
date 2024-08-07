@@ -119,10 +119,19 @@ def parse_aggregated_string(aggregated_str):
 
     items = []
     for item_str in aggregated_str.split(", "):
-        item_data = dict(field.split(":", 1) for field in item_str.split(";"))
+        item_data = {}
+        for field in item_str.split(";"):
+            if ':' in field:
+                key, value = field.split(":", 1)
+                item_data[key] = value
+            else:
+                # Лог или обработка случаев, когда разделитель отсутствует
+                print(f"Некорректный формат поля: {field}")
+                continue
         items.append(item_data)
 
     return items
+
 
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
