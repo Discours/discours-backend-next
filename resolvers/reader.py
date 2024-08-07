@@ -1,5 +1,6 @@
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import (
+    selectinload,
     and_,
     asc,
     case,
@@ -94,7 +95,10 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     :return: Список публикаций с включенной статистикой.
     """
     # Основной запрос для получения публикаций и объединения их с подзапросами
-    q = q.limit(limit).offset(offset)
+    q = q.options(
+        selectinload(Shout.authors),  # Eagerly load authors
+        selectinload(Shout.topics)    # Eagerly load topics
+    ).limit(limit).offset(offset)
 
     # Выполнение запроса и обработка результатов
     with local_session() as session:
