@@ -39,17 +39,26 @@ def query_shouts():
         select(
             Shout.id.label("shout_id"),
             func.json_agg(
-                distinct(
-                    func.json_build_object(
-                        'id', Author.id,
-                        'name', Author.name,
-                        'slug', Author.slug,
-                        'pic', Author.pic
-                    )
+                func.json_build_object(
+                    'id', Author.id,
+                    'name', Author.name,
+                    'slug', Author.slug,
+                    'pic', Author.pic
                 )
             ).label("authors")
         )
-        .join(ShoutAuthor, ShoutAuthor.author == Author.id)
+        .select_from(
+            select(
+                distinct(Author.id),
+                Author.name,
+                Author.slug,
+                Author.pic,
+                Shout.id.label("shout_id")
+            )
+            .join(ShoutAuthor, ShoutAuthor.author == Author.id)
+            .join(Shout, Shout.id == ShoutAuthor.shout)
+            .subquery()
+        )
         .group_by(Shout.id)
         .subquery()
     )
@@ -58,17 +67,26 @@ def query_shouts():
         select(
             Shout.id.label("shout_id"),
             func.json_agg(
-                distinct(
-                    func.json_build_object(
-                        'id', Topic.id,
-                        'title', Topic.title,
-                        'body', Topic.body,
-                        'slug', Topic.slug
-                    )
+                func.json_build_object(
+                    'id', Topic.id,
+                    'title', Topic.title,
+                    'body', Topic.body,
+                    'slug', Topic.slug
                 )
             ).label("topics")
         )
-        .join(ShoutTopic, ShoutTopic.topic == Topic.id)
+        .select_from(
+            select(
+                distinct(Topic.id),
+                Topic.title,
+                Topic.body,
+                Topic.slug,
+                Shout.id.label("shout_id")
+            )
+            .join(ShoutTopic, ShoutTopic.topic == Topic.id)
+            .join(Shout, Shout.id == ShoutTopic.shout)
+            .subquery()
+        )
         .group_by(Shout.id)
         .subquery()
     )
