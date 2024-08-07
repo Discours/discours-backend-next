@@ -83,7 +83,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
 
     # Выполнение запроса и обработка результатов
     with local_session() as session:
-        results = session.execute(q, {"author_id": author_id}).unique()
+        results = session.execute(q, {"author_id": author_id}).all()
 
         # Получаем все ID публикаций
         shout_ids = [row.Shout.id for row in results]
