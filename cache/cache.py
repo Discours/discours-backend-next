@@ -104,7 +104,6 @@ async def get_cached_topic(topic_id: int):
     return None
 
 
-
 # Get topic by slug from cache
 async def get_cached_topic_by_slug(slug: str):
     topic_key = f"topic:slug:{slug}"

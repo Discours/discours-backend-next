@@ -92,8 +92,6 @@ type Shout {
 }
 
 type Stat {
-  viewed: Int
-  reacted: Int
   rating: Int
   commented: Int
   ranking: Int

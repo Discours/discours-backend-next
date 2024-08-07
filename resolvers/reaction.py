@@ -21,19 +21,21 @@ from services.viewed import ViewedStorage
 
 
 def add_reaction_stat_columns(q, aliased_reaction):
-    reaction_subquery = (
-        select(
-            aliased_reaction.shout,
-            func.count(aliased_reaction.id).label("reacted_stat"),
-            func.count(case([(aliased_reaction.kind == str(ReactionKind.COMMENT.value), 1)])).label("comments_stat"),
-            func.count(case([(aliased_reaction.kind == str(ReactionKind.LIKE.value), 1)])).label("likes_stat"),
-            func.count(case([(aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1)])).label("dislikes_stat"),
-            func.max(aliased_reaction.created_at).label("last_comment_stat"),
-        )
-        .where(aliased_reaction.deleted_at.is_(None))
-        .group_by(aliased_reaction.shout)
+    # Adjust case statements to use positional arguments
+    q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
+        func.count(case((aliased_reaction.body.is_not(None), 1), else_=0)).label("comments_stat"),
+        # Calculate net likes as likes - dislikes
+        func.sum(
+            case(
+                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                else_=0,
+            )
+        ).label("rating_stat"),
+        func.max(aliased_reaction.created_at).label("last_comment_stat"),
     )
-    return q.outerjoin(reaction_subquery, Shout.id == reaction_subquery.c.shout)
+
+    return q
 
 
 def is_featured_author(session, author_id):
@@ -247,10 +249,8 @@ async def update_reaction(_, info, reaction):
                 if result:
                     [
                         r,
-                        reacted_stat,
                         commented_stat,
-                        likes_stat,
-                        dislikes_stat,
+                        rating_stat,
                         last_reacted_at,
                     ] = result
                     if not r:
@@ -275,9 +275,8 @@ async def update_reaction(_, info, reaction):
                         session.commit()
 
                         r.stat = {
-                            "reacted": reacted_stat,
                             "commented": commented_stat,
-                            "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
+                            "rating": rating_stat,
                         }
 
                         await notify_reaction(r.dict(), "update")
