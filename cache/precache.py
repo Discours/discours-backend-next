@@ -81,7 +81,8 @@ async def precache_data():
 
         with local_session() as session:
             # topics
-            topics = get_with_stat(select(Topic))
+            q = select(Topic).where(Topic.community == 1)
+            topics = get_with_stat(q)
             for topic in topics:
                 topic_dict = topic.dict() if hasattr(topic, 'dict') else topic
                 await cache_topic(topic_dict)

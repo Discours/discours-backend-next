@@ -104,7 +104,7 @@ def query_shouts():
         .subquery()
     )
 
-    return (
+    q = (
         select(
             Shout,
             reaction_stats_subquery.c.comments_stat,
@@ -118,7 +118,18 @@ def query_shouts():
         .outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .execution_options(populate_existing=True)
-    ), aliased_reaction
+    )
+
+    # Группируем по всем полям, которые не являются агрегатами
+    q = q.group_by(
+            Shout.id,
+            reaction_stats_subquery.c.comments_stat,
+            reaction_stats_subquery.c.rating_stat,
+            authors_subquery.c.authors,
+            topics_subquery.c.topics
+    )
+
+    return q, aliased_reaction
 
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
@@ -130,7 +141,6 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     :param offset: Смещение для пагинации.
     :return: Список публикаций с включенной статистикой.
     """
-
     # Основной запрос для получения публикаций и объединения их с подзапросами
     q = q.limit(limit).offset(offset)
 
@@ -313,9 +323,6 @@ async def load_shouts_by(_, _info, options):
     filters = options.get("filters", {})
     q = apply_filters(q, filters)
 
-    # Группировка
-    q = q.group_by(Shout.id)
-
     # Сортировка
     order_by = Shout.featured_at if filters.get("featured") else Shout.published_at
     order_str = options.get("order_by")
@@ -357,7 +364,7 @@ async def load_shouts_feed(_, info, options):
         order_by = options.get("order_by")
         order_by = text(order_by) if order_by else Shout.featured_at if filters.get("featured") else Shout.published_at
         query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
-        q = q.group_by(Shout.id).order_by(nulls_last(query_order_by))
+        q = q.order_by(nulls_last(query_order_by))
 
         # Пагинация
         offset = options.get("offset", 0)
@@ -427,7 +434,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
         .filter(Shout.published_at.is_not(None))
     )
 
-    q = q.group_by(Shout.id).having(func.count(distinct(aliased_reaction.id)) <= 4)  # 3 или менее голосов
+    q = q.having(func.count(distinct(aliased_reaction.id)) <= 4)  # 3 или менее голосов
     q = q.order_by(func.random())
 
     return get_shouts_with_stats(q, limit, offset=offset, author_id=author_id)
@@ -470,7 +477,6 @@ async def load_shouts_random_top(_, _info, options):
         subquery = subquery.limit(random_limit)
     q, aliased_reaction = query_shouts()
     q = q.where(Shout.id.in_(subquery))
-    q = q.group_by(Shout.id)
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
     return get_shouts_with_stats(q, limit)
@@ -489,7 +495,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
     if topic:
         q, aliased_reaction = query_shouts()
         q = q.filter(Shout.topics.any(slug=topic.slug))
-        q = q.group_by(Shout.id).order_by(desc(Shout.created_at))
+        q = q.order_by(desc(Shout.created_at))
         shouts = get_shouts_with_stats(q, limit)
         if shouts:
             return {"topic": topic, "shouts": shouts}
