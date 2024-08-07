@@ -27,43 +27,49 @@ from services.viewed import ViewedStorage
 
 def query_shouts():
     """
-    Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем.
+    Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
+    с агрегацией в строку вместо JSON.
 
+    :param session: Сессия SQLAlchemy для выполнения запроса.
     :return: Запрос для получения публикаций.
     """
     # Создаем алиасы для таблиц для избежания конфликтов имен
     aliased_reaction = aliased(Reaction)
 
-    # Подзапрос для уникальных авторов
+    # Подзапрос для уникальных авторов, объединенных в строку
     authors_subquery = (
         select(
             ShoutAuthor.shout.label("shout_id"),
-            func.json_agg(
-                func.json_build_object(
-                    'id', Author.id,
-                    'name', Author.name,
-                    'slug', Author.slug,
-                    'pic', Author.pic
-                )
-            ).label("authors")
+            func.string_agg(
+                func.concat_ws(
+                    ";",
+                    func.concat("id:", Author.id),
+                    func.concat("name:", Author.name),
+                    func.concat("slug:", Author.slug),
+                    func.concat("pic:", Author.pic),
+                ),
+                ", ",
+            ).label("authors"),
         )
         .join(Author, ShoutAuthor.author == Author.id)
         .group_by(ShoutAuthor.shout)
         .subquery()
     )
 
-    # Подзапрос для уникальных тем
+    # Подзапрос для уникальных тем, объединенных в строку
     topics_subquery = (
         select(
             ShoutTopic.shout.label("shout_id"),
-            func.json_agg(
-                func.json_build_object(
-                    'id', Topic.id,
-                    'title', Topic.title,
-                    'body', Topic.body,
-                    'slug', Topic.slug
-                )
-            ).label("topics")
+            func.string_agg(
+                func.concat_ws(
+                    ";",
+                    func.concat("id:", Topic.id),
+                    func.concat("title:", Topic.title),
+                    func.concat("body:", Topic.body),
+                    func.concat("slug:", Topic.slug),
+                ),
+                ", ",
+            ).label("topics"),
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
         .group_by(ShoutTopic.shout)
@@ -94,6 +100,7 @@ def query_shouts():
     )
 
     return q, aliased_reaction
+
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """

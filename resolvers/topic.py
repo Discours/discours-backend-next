@@ -12,21 +12,23 @@ from cache.memorycache import cache_region
 from services.schema import mutation, query
 
 
+# Запрос на получение всех тем
 @query.field("get_topics_all")
 def get_topics_all(_, _info):
-    cache_key = "get_topics_all"
+    cache_key = "get_topics_all"  # Ключ для кеша
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_all():
         topics_query = select(Topic)
-        return get_with_stat(topics_query)
+        return get_with_stat(topics_query)  # Получение тем с учетом статистики
 
     return _get_topics_all()
 
 
+# Запрос на получение тем по сообществу
 @query.field("get_topics_by_community")
 def get_topics_by_community(_, _info, community_id: int):
-    cache_key = f"get_topics_by_community_{community_id}"
+    cache_key = f"get_topics_by_community_{community_id}"  # Ключ для кеша
 
     @cache_region.cache_on_arguments(cache_key)
     def _get_topics_by_community():
@@ -36,6 +38,7 @@ def get_topics_by_community(_, _info, community_id: int):
     return _get_topics_by_community()
 
 
+# Запрос на получение тем по автору
 @query.field("get_topics_by_author")
 async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
     topics_by_author_query = select(Topic)
@@ -49,6 +52,7 @@ async def get_topics_by_author(_, _info, author_id=0, slug="", user=""):
     return get_with_stat(topics_by_author_query)
 
 
+# Запрос на получение одной темы по её slug
 @query.field("get_topic")
 async def get_topic(_, _info, slug: str):
     topic = await get_cached_topic_by_slug(slug, get_with_stat)
@@ -56,12 +60,13 @@ async def get_topic(_, _info, slug: str):
         return topic
 
 
+# Мутация для создания новой темы
 @mutation.field("create_topic")
 @login_required
 async def create_topic(_, _info, inp):
     with local_session() as session:
-        # TODO: check user permissions to create topic for exact community
-        # and actor is permitted to craete it
+        # TODO: проверить права пользователя на создание темы для конкретного сообщества
+        # и разрешение на создание
         new_topic = Topic(**inp)
         session.add(new_topic)
         session.commit()
@@ -69,6 +74,7 @@ async def create_topic(_, _info, inp):
         return {"topic": new_topic}
 
 
+# Мутация для обновления темы
 @mutation.field("update_topic")
 @login_required
 async def update_topic(_, _info, inp):
@@ -85,6 +91,7 @@ async def update_topic(_, _info, inp):
             return {"topic": topic}
 
 
+# Мутация для удаления темы
 @mutation.field("delete_topic")
 @login_required
 async def delete_topic(_, info, slug: str):
@@ -105,6 +112,7 @@ async def delete_topic(_, info, slug: str):
     return {"error": "access denied"}
 
 
+# Запрос на получение случайных тем
 @query.field("get_topics_random")
 def get_topics_random(_, _info, amount=12):
     q = select(Topic)
@@ -121,6 +129,7 @@ def get_topics_random(_, _info, amount=12):
     return topics
 
 
+# Запрос на получение подписчиков темы
 @query.field("get_topic_followers")
 async def get_topic_followers(_, _info, slug: str):
     logger.debug(f"getting followers for @{slug}")
@@ -130,6 +139,7 @@ async def get_topic_followers(_, _info, slug: str):
     return followers
 
 
+# Запрос на получение авторов темы
 @query.field("get_topic_authors")
 async def get_topic_authors(_, _info, slug: str):
     logger.debug(f"getting authors for @{slug}")

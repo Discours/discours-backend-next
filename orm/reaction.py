@@ -38,7 +38,7 @@ class Reaction(Base):
     deleted_by = Column(ForeignKey("author.id"), nullable=True)
     reply_to = Column(ForeignKey("reaction.id"), nullable=True)
     quote = Column(String, nullable=True, comment="Original quoted text")
-    shout = Column(ForeignKey("shout.id"), nullable=False)
+    shout = Column(ForeignKey("shout.id"), nullable=False, index=True)
     created_by = Column(ForeignKey("author.id"), nullable=False)
     kind = Column(String, nullable=False, index=True)
 
