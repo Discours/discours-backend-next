@@ -30,7 +30,6 @@ def query_shouts():
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
     с агрегацией в строку вместо JSON.
 
-    :param session: Сессия SQLAlchemy для выполнения запроса.
     :return: Запрос для получения публикаций.
     """
     # Создаем алиасы для таблиц для избежания конфликтов имен
@@ -102,6 +101,24 @@ def query_shouts():
     return q, aliased_reaction
 
 
+def parse_aggregated_string(aggregated_str):
+    """
+    Преобразует строку, полученную из string_agg, обратно в список словарей.
+
+    :param aggregated_str: Строка, содержащая агрегированные данные.
+    :return: Список словарей с данными.
+    """
+    if not aggregated_str:
+        return []
+
+    items = []
+    for item_str in aggregated_str.split(", "):
+        item_data = dict(field.split(":", 1) for field in item_str.split(";"))
+        items.append(item_data)
+
+    return items
+
+
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """
     Получение публикаций со статистикой, и подзапросами авторов и тем.
@@ -128,8 +145,8 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     # Формирование списка публикаций с их данными
     shouts = []
     for shout, comments_stat, rating_stat, last_reacted_at, authors, topics in results:
-        shout.authors = authors or []
-        shout.topics = topics or []
+        shout.authors = parse_aggregated_string(authors)
+        shout.topics = parse_aggregated_string(topics)
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
             "followers": 0,  # FIXME: implement followers_stat
