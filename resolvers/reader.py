@@ -25,7 +25,7 @@ from services.search import search_text
 
 def query_shouts():
     """
-    Базовый запрос для получения публикаций, с подзапросами статистики, авторов и тем.
+    Базовый запрос для получения публикаций, с подзапросами статистики.
 
     :return: (Запрос для получения публикаций, aliased_reaction)
     """
@@ -68,7 +68,7 @@ def query_shouts():
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """
-    Получение публикаций с статистикой комментариев и рейтинга.
+    Получение публикаций со статистикой, и подзапросами авторов и тем.
 
     :param q: Запрос
     :param limit: Ограничение на количество результатов.
@@ -81,7 +81,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     shout_author = aliased(ShoutAuthor)
     shout_topic = aliased(ShoutTopic)
 
-    # Выполнение запроса и обработка результатов
+   # Выполнение запроса и обработка результатов
     with local_session() as session:
         results = session.execute(q, {"author_id": author_id}).all() if author_id else session.execute(q).all()
 
@@ -104,31 +104,36 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
             .all()
         )
 
+        # Группировка авторов и тем по публикациям
+        authors_by_shout = {}
+        for author in authors:
+            shout_id = author[0]  # ID публикации
+            if shout_id not in authors_by_shout:
+                authors_by_shout[shout_id] = []
+            authors_by_shout[shout_id].append({
+                "id": author[1],
+                "name": author[2],
+                "slug": author[3],
+                "pic": author[4],
+            })
+
+        topics_by_shout = {}
+        for topic in topics:
+            shout_id = topic[0]  # ID публикации
+            if shout_id not in topics_by_shout:
+                topics_by_shout[shout_id] = []
+            topics_by_shout[shout_id].append({
+                "id": topic[1],
+                "title": topic[2],
+                "body": topic[3],
+                "slug": topic[4],
+            })
+
     # Формирование списка публикаций с их данными
     shouts = []
     for shout, comments_stat, rating_stat, last_reacted_at in results:
-        shout.authors = [
-            {
-                "id": author.id,
-                "name": author.name,
-                "slug": author.slug,
-                "pic": author.pic,
-            }
-            for author in authors
-            if author.shout == shout.id
-        ]
-
-        shout.topics = [
-            {
-                "id": topic.id,
-                "slug": topic.slug,
-                "title": topic.title,
-                "body": topic.body,
-            }
-            for topic in topics
-            if topic.shout == shout.id
-        ]
-
+        shout.authors = authors_by_shout.get(shout.id, [])
+        shout.topics = topics_by_shout.get(shout.id, [])
         shout.stat = {
             "viewed": 0,  # FIXME: use separate resolver
             "followers": 0,  # FIXME: implement followers_stat
