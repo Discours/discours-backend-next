@@ -87,7 +87,7 @@ def query_shouts():
             .join(Shout, Shout.id == ShoutTopic.shout)
             .subquery()
         )
-        .group_by(Shout.id)
+        .group_by(Shout.id, Shout.authors, Shout.topics)
         .subquery()
     )
 
