@@ -36,41 +36,6 @@ def query_shouts():
     shout_author = aliased(ShoutAuthor)
     shout_topic = aliased(ShoutTopic)
 
-    # Подзапросы для получения уникальных авторов и тем
-    authors_subquery = (
-        select(
-            shout_author.shout.label("shout_id"),
-            func.json_agg(
-                func.json_build_object(
-                    "id", Author.id,
-                    "name", Author.name,
-                    "slug", Author.slug,
-                    "pic", Author.pic
-                )
-            ).label("authors")
-        )
-        .join(Author, Author.id == shout_author.author)
-        .group_by(shout_author.shout)
-        .alias("authors_subquery")
-    )
-
-    topics_subquery = (
-        select(
-            shout_topic.shout.label("shout_id"),
-            func.json_agg(
-                func.json_build_object(
-                    "id", Topic.id,
-                    "title", Topic.title,
-                    "body", Topic.body,
-                    "slug", Topic.slug
-                )
-            ).label("topics")
-        )
-        .join(Topic, Topic.id == shout_topic.topic)
-        .group_by(shout_topic.shout)
-        .alias("topics_subquery")
-    )
-
     # Основной запрос с подзапросами для получения статистики, авторов и тем
     q = (
         select(
@@ -84,14 +49,40 @@ def query_shouts():
                 )
             ).label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
-            authors_subquery.c.authors,
-            topics_subquery.c.topics,
+            func.coalesce(
+                func.json_agg(
+                    func.distinct(
+                        func.json_build_object(
+                            "id", Author.id,
+                            "name", Author.name,
+                            "slug", Author.slug,
+                            "pic", Author.pic
+                        )
+                    )
+                ).filter(Author.id.is_not(None)),
+                "[]"
+            ).label("authors"),
+            func.coalesce(
+                func.json_agg(
+                    func.distinct(
+                        func.json_build_object(
+                            "id", Topic.id,
+                            "title", Topic.title,
+                            "body", Topic.body,
+                            "slug", Topic.slug
+                        )
+                    )
+                ).filter(Topic.id.is_not(None)),
+                "[]"
+            ).label("topics"),
         )
         .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
-        .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
-        .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
+        .outerjoin(shout_author, shout_author.shout == Shout.id)
+        .outerjoin(Author, Author.id == shout_author.author)
+        .outerjoin(shout_topic, shout_topic.shout == Shout.id)
+        .outerjoin(Topic, Topic.id == shout_topic.topic)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics)
+        .group_by(Shout.id)
     )
 
     return q, aliased_reaction
