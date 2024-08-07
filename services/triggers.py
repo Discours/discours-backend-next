@@ -41,16 +41,11 @@ class CacheRevalidationManager:
         """Отметить сущность для ревалидации."""
         self.items_to_revalidate[entity_type].add(entity_id)
 
-
-async def start_revalidation():
-    await revalidation_manager.revalidate_cache()
-
-
 # Инициализация и запуск менеджера ревалидации
 revalidation_manager = CacheRevalidationManager()
-asyncio.create_task(revalidation_manager.revalidate_cache())
+
 loop = asyncio.get_event_loop()
-loop.run_until_complete(start_revalidation())
+loop.run_until_complete(revalidation_manager.revalidate_cache())
 loop.run_forever()
 
 
