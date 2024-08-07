@@ -1,6 +1,7 @@
 from typing import List
 from sqlalchemy.orm import aliased, selectinload, joinedload
 from sqlalchemy.sql import union
+from sqlalchemy.dialects.postgresql.types import CITEXT
 from sqlalchemy.sql.expression import (
     and_,
     asc,
@@ -60,7 +61,7 @@ def query_shouts():
                         Author.slug,
                         "pic",
                         Author.pic,
-                    )
+                    ).cast(CITEXT)  # Преобразуем JSON в текст
                 )
             ).label("authors"),
             func.array_agg(
@@ -74,7 +75,7 @@ def query_shouts():
                         Topic.body,
                         "slug",
                         Topic.slug,
-                    )
+                    ).cast(CITEXT)  # Преобразуем JSON в текст
                 )
             ).label("topics"),
         )
