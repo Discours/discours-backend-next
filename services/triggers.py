@@ -4,7 +4,7 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor
 from orm.topic import Topic, TopicFollower
-from services.cache import cache_author, get_cached_author, cache_topic, get_cached_shout, get_cached_topic, cache_shout
+from services.cache import cache_author, get_cached_author, cache_topic, get_cached_topic
 from services.logger import root_logger as logger
 
 
@@ -12,7 +12,7 @@ class CacheRevalidationManager:
     """Управление периодической ревалидацией кэша."""
 
     def __init__(self):
-        self.items_to_revalidate = {"authors": set(), "topics": set(), "shouts": set()}
+        self.items_to_revalidate = {"authors": set(), "topics": set()}
         self.revalidation_interval = 60  # Интервал ревалидации в секундах
 
     async def revalidate_cache(self):
@@ -35,11 +35,6 @@ class CacheRevalidationManager:
                     topic = await get_cached_topic(entity_id)
                     if topic:
                         await cache_topic(topic)
-                elif entity_type == "shouts":
-                    # Ревалидация кэша shout
-                    shout = await get_cached_shout(entity_id)
-                    if shout:
-                        await cache_shout(shout)
             ids.clear()
 
     def mark_for_revalidation(self, entity_id, entity_type):
