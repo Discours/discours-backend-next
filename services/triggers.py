@@ -15,6 +15,11 @@ class CacheRevalidationManager:
         self.items_to_revalidate = {"authors": set(), "topics": set()}
         self.revalidation_interval = 60  # Интервал ревалидации в секундах
 
+    def start(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.revalidate_cache())
+        loop.run_forever()
+
     async def revalidate_cache(self):
         """Периодическая ревалидация кэша."""
         while True:
@@ -43,10 +48,7 @@ class CacheRevalidationManager:
 
 # Инициализация и запуск менеджера ревалидации
 revalidation_manager = CacheRevalidationManager()
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(revalidation_manager.revalidate_cache())
-loop.run_forever()
+revalidation_manager.start()
 
 
 def after_update_handler(mapper, connection, target):
