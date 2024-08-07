@@ -1,6 +1,6 @@
 import json
 
-from services.rediscache import redis
+from cache.rediscache import redis
 
 
 async def get_unread_counter(chat_id: str, author_id: int) -> int:

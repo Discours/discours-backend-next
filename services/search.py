@@ -5,8 +5,8 @@ import os
 
 from opensearchpy import OpenSearch
 
-from services.encoders import CustomJSONEncoder
-from services.rediscache import redis
+from utils.encoders import CustomJSONEncoder
+from cache.rediscache import redis
 
 # Set redis logging level to suppress DEBUG messages
 logger = logging.getLogger("search")

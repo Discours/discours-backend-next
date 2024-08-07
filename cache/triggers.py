@@ -3,8 +3,8 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor
 from orm.topic import Topic, TopicFollower
-from services.revalidator import revalidation_manager
-from services.logger import root_logger as logger
+from cache.revalidator import revalidation_manager
+from utils.logger import root_logger as logger
 
 
 def after_update_handler(mapper, connection, target):

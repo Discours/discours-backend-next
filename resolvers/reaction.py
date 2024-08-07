@@ -14,7 +14,7 @@ from resolvers.follower import follow
 from resolvers.stat import update_author_stat
 from services.auth import add_user_role, login_required
 from services.db import local_session
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 from services.notify import notify_reaction
 from services.schema import mutation, query
 from services.viewed import ViewedStorage

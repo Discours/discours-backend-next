@@ -3,7 +3,7 @@ import subprocess
 from granian.constants import Interfaces
 from granian.server import Granian
 
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 from settings import PORT
 
 

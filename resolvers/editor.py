@@ -12,10 +12,10 @@ from orm.topic import Topic
 from resolvers.follower import follow, unfollow
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from services.cache import cache_author, cache_topic
+from cache.cache import cache_author, cache_topic
 from services.db import local_session
-from services.diff import apply_diff, get_diff
-from services.logger import root_logger as logger
+from utils.diff import apply_diff, get_diff
+from utils.logger import root_logger as logger
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service

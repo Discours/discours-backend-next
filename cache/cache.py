@@ -7,9 +7,9 @@ from orm.author import Author, AuthorFollower
 from orm.topic import Topic, TopicFollower
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from services.db import local_session
-from services.encoders import CustomJSONEncoder
-from services.rediscache import redis
-from services.logger import root_logger as logger
+from utils.encoders import CustomJSONEncoder
+from cache.rediscache import redis
+from utils.logger import root_logger as logger
 
 DEFAULT_FOLLOWS = {
     "topics": [],

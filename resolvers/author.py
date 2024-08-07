@@ -8,7 +8,7 @@ from orm.shout import ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from services.cache import (
+from cache.cache import (
     cache_author,
     get_cached_author,
     get_cached_author_by_user_id,
@@ -17,7 +17,7 @@ from services.cache import (
     get_cached_follower_topics,
 )
 from services.db import local_session
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 from services.schema import mutation, query
 
 

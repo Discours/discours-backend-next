@@ -5,10 +5,10 @@ from orm.shout import ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from services.cache import get_cached_topic_authors, get_cached_topic_by_slug, get_cached_topic_followers
+from cache.cache import get_cached_topic_authors, get_cached_topic_by_slug, get_cached_topic_followers
 from services.db import local_session
-from services.logger import root_logger as logger
-from services.memorycache import cache_region
+from utils.logger import root_logger as logger
+from cache.memorycache import cache_region
 from services.schema import mutation, query
 
 

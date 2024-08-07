@@ -10,7 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
 
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 from settings import DB_URL
 
 # from sqlalchemy_searchable import make_searchable

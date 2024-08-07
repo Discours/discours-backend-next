@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse
 
 from orm.author import Author
 from resolvers.stat import get_with_stat
-from services.cache import cache_author
+from cache.cache import cache_author
 from services.db import local_session
 
 

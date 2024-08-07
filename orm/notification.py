@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 
 from orm.author import Author
 from services.db import Base, engine
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 
 
 class NotificationEntity(Enumeration):

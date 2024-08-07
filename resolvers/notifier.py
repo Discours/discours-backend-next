@@ -12,7 +12,7 @@ from orm.notification import Notification, NotificationAction, NotificationEntit
 from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
-from services.logger import root_logger as logger
+from utils.logger import root_logger as logger
 from services.schema import mutation, query
 
 

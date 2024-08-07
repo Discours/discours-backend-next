@@ -6,11 +6,11 @@ from orm.author import Author, AuthorFollower
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
-from services.cache import cache_author, cache_topic
+from cache.cache import cache_author, cache_topic
 from services.db import local_session
-from services.encoders import CustomJSONEncoder
-from services.logger import root_logger as logger
-from services.rediscache import redis
+from utils.encoders import CustomJSONEncoder
+from utils.logger import root_logger as logger
+from cache.rediscache import redis
 
 
 async def precache_authors_followers(author_id, session):

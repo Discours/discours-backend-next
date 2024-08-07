@@ -8,14 +8,14 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 
 from services.exception import ExceptionHandlerMiddleware
-from services.precache import precache_data
-from services.rediscache import redis
 from services.schema import resolvers
 from services.search import search_service
 from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
-from services.revalidator import revalidation_manager
+from cache.precache import precache_data
+from cache.rediscache import redis
+from cache.revalidator import revalidation_manager
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 
 import_module("resolvers")

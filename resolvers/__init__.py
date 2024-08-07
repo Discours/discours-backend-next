@@ -49,7 +49,7 @@ from resolvers.topic import (
     get_topics_by_author,
     get_topics_by_community,
 )
-from services.triggers import events_register
+from cache.triggers import events_register
 
 events_register()
 

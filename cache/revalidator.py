@@ -1,6 +1,6 @@
 import asyncio
-from services.logger import root_logger as logger
-from services.cache import get_cached_author, cache_author, cache_topic, get_cached_topic
+from utils.logger import root_logger as logger
+from cache.cache import get_cached_author, cache_author, cache_topic, get_cached_topic
 
 
 class CacheRevalidationManager:
