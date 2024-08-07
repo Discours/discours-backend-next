@@ -80,7 +80,9 @@ def query_shouts():
     q = (
         select(
             Shout,
+            ShoutReactionsFollower,
             func.count(case((aliased_reaction.body.is_not(None), 1))).label("comments_stat"),
+            func.count(ShoutReactionsFollower.follower).filter(ShoutReactionsFollower.shout == Shout.id).label("followers_stat"),
             func.sum(
                 case(
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
@@ -145,12 +147,20 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
 
     # Формирование списка публикаций с их данными
     shouts = []
-    for shout, comments_stat, rating_stat, last_reacted_at, authors, topics in results:
+    for (
+        shout,
+        comments_stat,
+        followers_stat,
+        rating_stat,
+        last_reacted_at,
+        authors,
+        topics,
+    ) in results:
         shout.authors = parse_aggregated_string(authors)
         shout.topics = parse_aggregated_string(topics)
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
-            "followers": 0,  # FIXME: implement followers_stat
+            "followers": followers_stat or 0,
             "rating": rating_stat or 0,
             "commented": comments_stat or 0,
             "last_reacted_at": last_reacted_at,
@@ -252,7 +262,14 @@ async def get_shout(_, info, slug: str):
 
             results = session.execute(q).first()
             if results:
-                [shout, commented_stat, rating_stat, last_reaction_at, authors, topics] = results
+                [
+                    shout,
+                    commented_stat,
+                    rating_stat,
+                    last_reaction_at,
+                    authors,
+                    topics,
+                ] = results
 
                 shout.stat = {
                     "viewed": ViewedStorage.get_shout(shout.id),
