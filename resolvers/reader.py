@@ -122,11 +122,11 @@ def query_shouts():
 
     # Группируем по всем полям, которые не являются агрегатами
     q = q.group_by(
-            Shout.id,
-            reaction_stats_subquery.c.comments_stat,
-            reaction_stats_subquery.c.rating_stat,
-            authors_subquery.c.authors,
-            topics_subquery.c.topics
+        Shout.id,
+        reaction_stats_subquery.c.comments_stat,
+        reaction_stats_subquery.c.rating_stat,
+        authors_subquery.c.authors,
+        topics_subquery.c.topics,
     )
 
     return q, aliased_reaction

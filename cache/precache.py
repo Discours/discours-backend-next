@@ -84,7 +84,7 @@ async def precache_data():
             q = select(Topic).where(Topic.community == 1)
             topics = get_with_stat(q)
             for topic in topics:
-                topic_dict = topic.dict() if hasattr(topic, 'dict') else topic
+                topic_dict = topic.dict() if hasattr(topic, "dict") else topic
                 await cache_topic(topic_dict)
                 await asyncio.gather(
                     precache_topics_followers(topic["id"], session), precache_topics_authors(topic_dict["id"], session)
