@@ -204,7 +204,7 @@ async def get_shout(_, info, slug: str):
     """
     try:
         with local_session() as session:
-            q = query_shouts()
+            q, aliased_reaction = query_shouts()
             q = q.filter(Shout.slug == slug)
 
             results = session.execute(q).first()
@@ -264,7 +264,7 @@ async def load_shouts_by(_, _info, options):
     :return: Список публикаций, удовлетворяющих критериям.
     """
     # Базовый запрос
-    q = query_shouts()
+    q, aliased_reaction = query_shouts()
 
     # Применение фильтров
     filters = options.get("filters", {})
@@ -299,7 +299,7 @@ async def load_shouts_feed(_, info, options):
     :return: Список публикаций для ленты.
     """
     with local_session() as session:
-        q = query_shouts()
+        q, aliased_reaction = query_shouts()
 
         # Применение фильтров
         filters = options.get("filters", {})
@@ -341,8 +341,9 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
 
-        shouts_query = query_shouts().filter(Shout.id.in_(hits_ids))
-        shouts = get_shouts_with_stats(shouts_query, limit, offset)
+        q, aliased_reaction = query_shouts()
+        q = q.filter(Shout.id.in_(hits_ids))
+        shouts = get_shouts_with_stats(q, limit, offset)
         for shout in shouts:
             shout.score = scores[f"{shout.id}"]
             shouts.append(shout)
@@ -421,7 +422,8 @@ async def load_shouts_random_top(_, _info, options):
     random_limit = options.get("random_limit", 100)
     if random_limit:
         subquery = subquery.limit(random_limit)
-    q = query_shouts().where(Shout.id.in_(subquery))
+    q, aliased_reaction = query_shouts()
+    q = q.filter(Shout.id.in_(subquery))
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
     return get_shouts_with_stats(q, limit)
@@ -438,7 +440,8 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
     """
     [topic] = get_topics_random(None, None, 1)
     if topic:
-        q = query_shouts().filter(Shout.topics.any(slug=topic.slug))
+        q, aliased_reaction = query_shouts()
+        q = q.filter(Shout.topics.any(slug=topic.slug))
         q = q.order_by(desc(Shout.created_at))
         shouts = get_shouts_with_stats(q, limit)
         if shouts:
@@ -460,7 +463,8 @@ async def load_shouts_coauthored(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
         return []
-    q = query_shouts().filter(Shout.authors.any(id=author_id))
+    q, aliaed_reaction = query_shouts()
+    q = q.filter(Shout.authors.any(id=author_id))
     return get_shouts_with_stats(q, limit, offset=offset)
 
 
@@ -478,13 +482,13 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
         return []
-    q = query_shouts()
-    q = q.outerjoin(
-        Reaction,
-        and_(
-            Reaction.shout == Shout.id,
-            Reaction.created_by == author_id,
-            Reaction.kind.is_(ReactionKind.COMMENT.value),
-        ),
-    ).outerjoin(Author, Reaction.created_by == Author.id)
-    return get_shouts_with_stats(q, limit, offset=offset, author_id=author_id)
+    # Subquery to find shout IDs that the author has commented on
+        reaction_subquery = (
+            select(Reaction.shout)
+            .distinct()  # Ensure distinct shout IDs
+            .filter(and_(Reaction.created_by == author_id, Reaction.body.is_not(None)))
+            .correlate(Shout)  # Ensure proper correlation with the main query
+        )
+    q, aliased_reaction = query_shouts()
+    q = q.filter(Shout.id.in_(reaction_subquery))
+    return get_shouts_with_stats(q, limit, offset=offset)
