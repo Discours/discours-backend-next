@@ -42,9 +42,16 @@ class CacheRevalidationManager:
         self.items_to_revalidate[entity_type].add(entity_id)
 
 
+async def start_revalidation():
+    await revalidation_manager.revalidate_cache()
+
+
 # Инициализация и запуск менеджера ревалидации
 revalidation_manager = CacheRevalidationManager()
 asyncio.create_task(revalidation_manager.revalidate_cache())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(start_revalidation())
+loop.run_forever()
 
 
 def after_update_handler(mapper, connection, target):
