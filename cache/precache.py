@@ -87,7 +87,7 @@ async def precache_data():
                 topic_dict = topic.dict() if hasattr(topic, "dict") else topic
                 await cache_topic(topic_dict)
                 await asyncio.gather(
-                    precache_topics_followers(topic["id"], session), precache_topics_authors(topic_dict["id"], session)
+                    precache_topics_followers(topic_dict["id"], session), precache_topics_authors(topic_dict["id"], session)
                 )
             logger.info(f"{len(topics)} topics and their followings precached")
 
