@@ -275,6 +275,7 @@ async def update_reaction(_, info, reaction):
                         session.commit()
 
                         r.stat = {
+                            # FIXME: "viewed": ViewedStorage.get_shout(r.shuot), sure, it is possible to collect reaction vews
                             "commented": commented_stat,
                             "rating": rating_stat,
                         }

@@ -1,9 +1,9 @@
-import asyncio
 import json
 import os
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict
+from threading import Lock
 
 # ga
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
@@ -21,7 +21,7 @@ VIEWS_FILEPATH = "/dump/views.json"
 
 
 class ViewedStorage:
-    lock = asyncio.Lock()
+    lock = Lock()
     views_by_shout = {}
     shouts_by_topic = {}
     shouts_by_author = {}
@@ -33,10 +33,10 @@ class ViewedStorage:
     start_date = datetime.now().strftime("%Y-%m-%d")
 
     @staticmethod
-    async def init():
+    def init():
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
-        async with self.lock:
+        with self.lock:
             # Загрузка предварительно подсчитанных просмотров из файла JSON
             self.load_precounted_views()
 
@@ -48,7 +48,7 @@ class ViewedStorage:
                 logger.info(" * Клиент Google Analytics успешно авторизован")
 
                 # Запуск фоновой задачи
-                _task = asyncio.create_task(self.worker())
+                self.worker()
             else:
                 logger.info(" * Пожалуйста, добавьте ключевой файл Google Analytics")
                 self.disabled = True
@@ -78,16 +78,15 @@ class ViewedStorage:
         except Exception as e:
             logger.error(f"Ошибка загрузки предварительно подсчитанных просмотров: {e}")
 
-    # noinspection PyTypeChecker
     @staticmethod
-    async def update_pages():
+    def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
         self = ViewedStorage
         logger.info(" ⎧ Обновление данных просмотров от Google Analytics ---")
         if not self.disabled:
             try:
                 start = time.time()
-                async with self.lock:
+                with self.lock:
                     if self.analytics_client:
                         request = RunReportRequest(
                             property=f"properties/{GOOGLE_PROPERTY_ID}",
@@ -126,35 +125,35 @@ class ViewedStorage:
                 self.disabled = True
 
     @staticmethod
-    async def get_shout(shout_slug) -> int:
+    def get_shout(shout_slug) -> int:
         """Получение метрики просмотров shout по slug"""
         self = ViewedStorage
-        async with self.lock:
+        with self.lock:
             return self.views_by_shout.get(shout_slug, 0)
 
     @staticmethod
-    async def get_shout_media(shout_slug) -> Dict[str, int]:
+    def get_shout_media(shout_slug) -> Dict[str, int]:
         """Получение метрики воспроизведения shout по slug"""
         self = ViewedStorage
-        async with self.lock:
+        with self.lock:
             return self.views_by_shout.get(shout_slug, 0)
 
     @staticmethod
-    async def get_topic(topic_slug) -> int:
+    def get_topic(topic_slug) -> int:
         """Получение суммарного значения просмотров темы"""
         self = ViewedStorage
         topic_views = 0
-        async with self.lock:
+        with self.lock:
             for shout_slug in self.shouts_by_topic.get(topic_slug, []):
                 topic_views += self.views_by_shout.get(shout_slug, 0)
         return topic_views
 
     @staticmethod
-    async def get_author(author_slug) -> int:
+    def get_author(author_slug) -> int:
         """Получение суммарного значения просмотров автора"""
         self = ViewedStorage
         author_views = 0
-        async with self.lock:
+        with self.lock:
             for shout_slug in self.shouts_by_author.get(author_slug, []):
                 author_views += self.views_by_shout.get(shout_slug, 0)
         return author_views
@@ -180,8 +179,8 @@ class ViewedStorage:
                 update_groups(self.shouts_by_author, author.slug, shout_slug)
 
     @staticmethod
-    async def worker():
-        """Асинхронная задача обновления"""
+    def worker():
+        """Задача обновления"""
         failed = 0
         self = ViewedStorage
         if self.disabled:
@@ -189,7 +188,7 @@ class ViewedStorage:
 
         while True:
             try:
-                await self.update_pages()
+                self.update_pages()
                 failed = 0
             except Exception as exc:
                 failed += 1
@@ -204,7 +203,7 @@ class ViewedStorage:
                 logger.info(
                     "       ⎩ Следующее обновление: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
                 )
-                await asyncio.sleep(self.period)
+                time.sleep(self.period)
             else:
-                await asyncio.sleep(10)
+                time.sleep(10)
                 logger.info(" - Попытка снова обновить данные")

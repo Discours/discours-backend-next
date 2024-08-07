@@ -21,6 +21,7 @@ from services.db import local_session
 from utils.logger import root_logger as logger
 from services.schema import query
 from services.search import search_text
+from services.viewed import ViewedStorage
 
 
 def query_shouts():
@@ -94,10 +95,14 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     :return: Список публикаций с включенной статистикой.
     """
     # Основной запрос для получения публикаций и объединения их с подзапросами
-    q = q.options(
-        selectinload(Shout.authors),  # Eagerly load authors
-        selectinload(Shout.topics)    # Eagerly load topics
-    ).limit(limit).offset(offset)
+    q = (
+        q.options(
+            selectinload(Shout.authors),  # Eagerly load authors
+            selectinload(Shout.topics),  # Eagerly load topics
+        )
+        .limit(limit)
+        .offset(offset)
+    )
 
     # Выполнение запроса и обработка результатов
     with local_session() as session:
@@ -109,7 +114,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
         shout.authors = authors or []
         shout.topics = topics or []
         shout.stat = {
-            "viewed": 0,  # FIXME: use separate resolver
+            "viewed": ViewedStorage.get_shout(shout.id),
             "followers": 0,  # FIXME: implement followers_stat
             "rating": rating_stat or 0,
             "commented": comments_stat or 0,
@@ -215,6 +220,7 @@ async def get_shout(_, info, slug: str):
                 [shout, commented_stat, rating_stat, last_reaction_at, authors, topics] = results
 
                 shout.stat = {
+                    "viewed": ViewedStorage.get_shout(shout.id),
                     "commented": commented_stat,
                     "rating": rating_stat,
                     "last_reacted_at": last_reaction_at,
