@@ -1,3 +1,7 @@
+[0.4.3]
+- cache reimplemented
+- shouts queries improved, views separated
+
 [0.4.2]
 - reactions load resolvers separated for ratings (no stats) and comments
 - reactions stats improved

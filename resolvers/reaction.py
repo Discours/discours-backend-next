@@ -32,7 +32,7 @@ def add_reaction_stat_columns(q, aliased_reaction):
                 else_=0,
             )
         ).label("rating_stat"),
-        func.max(aliased_reaction.created_at).label("last_comment_stat"),
+        func.max(aliased_reaction.created_at).label("last_reacted_at"),
     )
 
     return q
