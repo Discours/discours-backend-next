@@ -34,10 +34,10 @@ def query_shouts():
     # Создаем алиасы для таблиц для избежания конфликтов имен
     aliased_reaction = aliased(Reaction)
 
-    # Используем SQLAlchemy для подзапросов с уникальными значениями
+    # Подзапрос для уникальных авторов
     authors_subquery = (
         select(
-            Shout.id.label("shout_id"),
+            ShoutAuthor.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
                     'id', Author.id,
@@ -47,25 +47,15 @@ def query_shouts():
                 )
             ).label("authors")
         )
-        .select_from(
-            select(
-                distinct(Author.id),
-                Author.name,
-                Author.slug,
-                Author.pic,
-                Shout.id.label("shout_id")
-            )
-            .join(ShoutAuthor, ShoutAuthor.author == Author.id)
-            .join(Shout, Shout.id == ShoutAuthor.shout)
-            .subquery()
-        )
-        .group_by(Shout.id)
+        .join(Author, ShoutAuthor.author == Author.id)
+        .group_by(ShoutAuthor.shout)
         .subquery()
     )
 
+    # Подзапрос для уникальных тем
     topics_subquery = (
         select(
-            Shout.id.label("shout_id"),
+            ShoutTopic.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
                     'id', Topic.id,
@@ -75,19 +65,8 @@ def query_shouts():
                 )
             ).label("topics")
         )
-        .select_from(
-            select(
-                distinct(Topic.id),
-                Topic.title,
-                Topic.body,
-                Topic.slug,
-                Shout.id.label("shout_id")
-            )
-            .join(ShoutTopic, ShoutTopic.topic == Topic.id)
-            .join(Shout, Shout.id == ShoutTopic.shout)
-            .subquery()
-        )
-        .group_by(Shout.id, Shout.authors, Shout.topics)
+        .join(Topic, ShoutTopic.topic == Topic.id)
+        .group_by(ShoutTopic.shout)
         .subquery()
     )
 
@@ -104,14 +83,14 @@ def query_shouts():
                 )
             ).label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
-            func.coalesce(authors_subquery.c.authors, "[]").label("authors"),
-            func.coalesce(topics_subquery.c.topics, "[]").label("topics"),
+            authors_subquery.c.authors.label("authors"),
+            topics_subquery.c.topics.label("topics"),
         )
         .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id)
+        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics)
     )
 
     return q, aliased_reaction
