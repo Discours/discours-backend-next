@@ -54,22 +54,25 @@ class Base(declarative_base()):
 
     def dict(self) -> Dict[str, Any]:
         column_names = filter(lambda x: x not in FILTERED_FIELDS, self.__table__.columns.keys())
+        data = {}
         try:
-            data = {}
-            for c in column_names:
-                value = getattr(self, c)
-                if isinstance(value, JSON):
-                    # save JSON column as dict
-                    data[c] = json.loads(str(value))
+            for column_name in column_names:
+                value = getattr(self, column_name)
+                # Check if the value is JSON and decode it if necessary
+                if isinstance(value, (str, bytes)) and isinstance(self.__table__.columns[column_name].type, JSON):
+                    try:
+                        data[column_name] = json.loads(value)
+                    except (TypeError, json.JSONDecodeError) as e:
+                        logger.error(f"Error decoding JSON for column '{column_name}': {e}")
+                        data[column_name] = value
                 else:
-                    data[c] = value
-            # Add synthetic field .stat
+                    data[column_name] = value
+            # Add synthetic field .stat if it exists
             if hasattr(self, "stat"):
                 data["stat"] = self.stat
-            return data
         except Exception as e:
             logger.error(f"Error occurred while converting object to dictionary: {e}")
-            return {}
+        return data
 
     def update(self, values: Dict[str, Any]) -> None:
         for key, value in values.items():
