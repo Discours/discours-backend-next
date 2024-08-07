@@ -23,8 +23,6 @@ from resolvers.reaction import (
     create_reaction,
     delete_reaction,
     load_reactions_by,
-    load_shouts_followed,
-    load_shouts_followed_by,
     update_reaction,
     load_shout_comments,
     load_shout_ratings,
@@ -40,6 +38,8 @@ from resolvers.reader import (
     load_shouts_unrated,
     load_shouts_coauthored,
     load_shouts_discussed,
+    load_shouts_followed,
+    load_shouts_followed_by,
 )
 from resolvers.topic import (
     get_topic,

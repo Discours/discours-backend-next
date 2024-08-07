@@ -38,7 +38,9 @@ def add_topic_stat_columns(q):
                 Shout.deleted_at.is_(None),
             ),
         )
-        .add_columns(func.count(distinct(aliased_shout.shout)).label("shouts_stat")) # Подсчет уникальных публикаций для темы
+        .add_columns(
+            func.count(distinct(aliased_shout.shout)).label("shouts_stat")
+        )  # Подсчет уникальных публикаций для темы
     )
 
     aliased_follower = aliased(TopicFollower)
@@ -80,7 +82,9 @@ def add_author_stat_columns(q):
                 aliased_shout.deleted_at.is_(None),
             ),
         )
-        .add_columns(func.count(distinct(aliased_shout.id)).label("shouts_stat")) # Подсчет уникальных публикаций автора
+        .add_columns(
+            func.count(distinct(aliased_shout.id)).label("shouts_stat")
+        )  # Подсчет уникальных публикаций автора
     )
 
     # Добавляем количество подписчиков автора
@@ -303,7 +307,7 @@ def get_with_stat(q):
             for cols in result:
                 entity = cols[0]
                 stat = dict()
-                stat["shouts"] = cols[1]   # Статистика по публикациям
+                stat["shouts"] = cols[1]  # Статистика по публикациям
                 stat["followers"] = cols[2]  # Статистика по подписчикам
                 if is_author:
                     stat["authors"] = get_author_authors_stat(entity.id)  # Статистика по подпискам на авторов

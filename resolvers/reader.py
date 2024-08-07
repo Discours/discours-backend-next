@@ -1,4 +1,6 @@
-from sqlalchemy.orm import aliased, selectinload
+from typing import List
+from sqlalchemy.orm import aliased, selectinload, joinedload
+from sqlalchemy.sql import union
 from sqlalchemy.sql.expression import (
     and_,
     asc,
@@ -504,3 +506,81 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     q, aliased_reaction = query_shouts()
     q = q.filter(Shout.id.in_(reaction_subquery))
     return get_shouts_with_stats(q, limit, offset=offset)
+
+
+async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
+    """
+    Обновляет публикации, на которые подписан автор, с учетом реакций.
+
+    :param follower_id: Идентификатор подписчика.
+    :param limit: Количество публикаций для загрузки.
+    :param offset: Смещение для пагинации.
+    :return: Список публикаций.
+    """
+    shouts: List[Shout] = []
+    with local_session() as session:
+        author = session.query(Author).filter(Author.id == follower_id).first()
+        if author:
+            # Публикации, где подписчик является автором
+            q1, aliased_reaction1 = query_shouts()
+            q1 = q1.filter(Shout.authors.any(id=follower_id))
+
+            # Публикации, на которые подписчик реагировал
+            q2, aliased_reaction2 = query_shouts()
+            q2 = q2.options(joinedload(Shout.reactions))
+            q2 = q2.filter(Reaction.created_by == follower_id)
+
+            # Сортировка публикаций по полю `last_reacted_at`
+            combined_query = union(q1, q2).order_by(desc(text("last_reacted_at")))
+
+            # извлечение ожидаемой структуры данных
+            shouts = get_shouts_with_stats(combined_query, limit, offset=offset)
+
+    return shouts
+
+
+@query.field("load_shouts_followed")
+@login_required
+async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
+    """
+    Загружает публикации, на которые подписан пользователь.
+
+    :param info: Информация о контексте GraphQL.
+    :param limit: Количество публикаций для загрузки.
+    :param offset: Смещение для пагинации.
+    :return: Список публикаций.
+    """
+    user_id = info.context["user_id"]
+    with local_session() as session:
+        author = session.query(Author).filter(Author.user == user_id).first()
+        if author:
+            try:
+                author_id: int = author.dict()["id"]
+                shouts = await reacted_shouts_updates(author_id, limit, offset)
+                return shouts
+            except Exception as error:
+                logger.debug(error)
+    return []
+
+
+@query.field("load_shouts_followed_by")
+async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> List[Shout]:
+    """
+    Загружает публикации, на которые подписан автор по slug.
+
+    :param info: Информация о контексте GraphQL.
+    :param slug: Slug автора.
+    :param limit: Количество публикаций для загрузки.
+    :param offset: Смещение для пагинации.
+    :return: Список публикаций.
+    """
+    with local_session() as session:
+        author = session.query(Author).filter(Author.slug == slug).first()
+        if author:
+            try:
+                author_id: int = author.dict()["id"]
+                shouts = await reacted_shouts_updates(author_id, limit, offset)
+                return shouts
+            except Exception as error:
+                logger.debug(error)
+    return []
