@@ -111,7 +111,7 @@ def query_shouts():
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics)
+        .group_by(Shout.id)
     )
 
     return q, aliased_reaction
