@@ -25,6 +25,7 @@ from services.search import search_text
 from services.viewed import ViewedStorage
 
 
+
 def query_shouts():
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем.
@@ -35,6 +36,41 @@ def query_shouts():
     aliased_reaction = aliased(Reaction)
     shout_author = aliased(ShoutAuthor)
     shout_topic = aliased(ShoutTopic)
+
+    # Подзапросы для уникальных авторов и тем
+    authors_subquery = (
+        select(
+            Shout.id.label("shout_id"),
+            func.json_agg(
+                func.json_build_object(
+                    "id", Author.id,
+                    "name", Author.name,
+                    "slug", Author.slug,
+                    "pic", Author.pic
+                )
+            ).label("authors")
+        )
+        .join(shout_author, shout_author.author == Author.id)
+        .group_by(Shout.id)
+        .subquery()
+    )
+
+    topics_subquery = (
+        select(
+            Shout.id.label("shout_id"),
+            func.json_agg(
+                func.json_build_object(
+                    "id", Topic.id,
+                    "title", Topic.title,
+                    "body", Topic.body,
+                    "slug", Topic.slug
+                )
+            ).label("topics")
+        )
+        .join(shout_topic, shout_topic.topic == Topic.id)
+        .group_by(Shout.id)
+        .subquery()
+    )
 
     # Основной запрос с подзапросами для получения статистики, авторов и тем
     q = (
@@ -49,40 +85,14 @@ def query_shouts():
                 )
             ).label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
-            func.coalesce(
-                func.json_agg(
-                    func.distinct(
-                        func.json_build_object(
-                            "id", Author.id,
-                            "name", Author.name,
-                            "slug", Author.slug,
-                            "pic", Author.pic
-                        )
-                    )
-                ).filter(Author.id.is_not(None)),
-                "[]"
-            ).label("authors"),
-            func.coalesce(
-                func.json_agg(
-                    func.distinct(
-                        func.json_build_object(
-                            "id", Topic.id,
-                            "title", Topic.title,
-                            "body", Topic.body,
-                            "slug", Topic.slug
-                        )
-                    )
-                ).filter(Topic.id.is_not(None)),
-                "[]"
-            ).label("topics"),
+            func.coalesce(authors_subquery.c.authors, "[]").label("authors"),
+            func.coalesce(topics_subquery.c.topics, "[]").label("topics"),
         )
         .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
-        .outerjoin(shout_author, shout_author.shout == Shout.id)
-        .outerjoin(Author, Author.id == shout_author.author)
-        .outerjoin(shout_topic, shout_topic.shout == Shout.id)
-        .outerjoin(Topic, Topic.id == shout_topic.topic)
+        .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
+        .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id)
+        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics)
     )
 
     return q, aliased_reaction
