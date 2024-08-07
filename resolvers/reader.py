@@ -48,33 +48,33 @@ def query_shouts():
             ).label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
             func.json_agg(
-                func.distinct(
-                    func.json_build_object(
-                        "id",
-                        Author.id,
-                        "name",
-                        Author.name,
-                        "slug",
-                        Author.slug,
-                        "pic",
-                        Author.pic,
-                    )
+                func.json_build_object(
+                    "id",
+                    Author.id,
+                    "name",
+                    Author.name,
+                    "slug",
+                    Author.slug,
+                    "pic",
+                    Author.pic,
                 )
-            ).label("authors"),
+            )
+            .filter(Author.id.is_not(None))
+            .label("authors"),
             func.json_agg(
-                func.distinct(
-                    func.json_build_object(
-                        "id",
-                        Topic.id,
-                        "title",
-                        Topic.title,
-                        "body",
-                        Topic.body,
-                        "slug",
-                        Topic.slug,
-                    )
+                func.json_build_object(
+                    "id",
+                    Topic.id,
+                    "title",
+                    Topic.title,
+                    "body",
+                    Topic.body,
+                    "slug",
+                    Topic.slug,
                 )
-            ).label("topics"),
+            )
+            .filter(Topic.id.is_not(None))
+            .label("topics"),
         )
         .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
         .outerjoin(shout_author, shout_author.shout == Shout.id)
@@ -82,7 +82,7 @@ def query_shouts():
         .outerjoin(shout_topic, shout_topic.shout == Shout.id)
         .outerjoin(Topic, Topic.id == shout_topic.topic)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id)
+        .group_by(Shout.id, Author.id, Topic.id)
     )
 
     return q, aliased_reaction
