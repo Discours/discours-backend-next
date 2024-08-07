@@ -32,8 +32,6 @@ def query_shouts():
 
     # Создаем алиасы для таблиц для избежания конфликтов имен
     aliased_reaction = aliased(Reaction)
-    shout_author = aliased(ShoutAuthor)
-    shout_topic = aliased(ShoutTopic)
 
     # Подзапрос для получения статистики реакций
     reaction_stats_subquery = (
@@ -54,79 +52,15 @@ def query_shouts():
         .subquery()
     )
 
-    # Подзапрос для получения тем публикаций
-    topics_subquery = (
-        select(
-            shout_topic.shout,
-            func.array_agg(
-                func.json_build_object(
-                    "id",
-                    Topic.id,
-                    "title",
-                    Topic.title,
-                    "body",
-                    Topic.body,
-                    "slug",
-                    Topic.slug,
-                    "is_main",
-                    shout_topic.main,  # Добавляем поле is_main
-                )
-            ).label("topics"),
-        )
-        .join(Topic, Topic.id == shout_topic.topic)
-        .group_by(shout_topic.shout)
-        .subquery()
-    )
-
-    # Подзапрос для авторов публикаций
-    authors_subquery = (
-        select(
-            shout_author.shout,
-            func.array_agg(
-                func.json_build_object("id", Author.id, "name", Author.name, "slug", Author.slug, "pic", Author.pic)
-            ).label("authors"),
-        )
-        .join(Author, Author.id == shout_author.author)
-        .group_by(shout_author.shout)
-        .subquery()
-    )
-
-    # Подзапрос для получения тем публикаций
-    topics_subquery = (
-        select(
-            shout_topic.shout,
-            func.array_agg(
-                func.json_build_object("id", Topic.id, "title", Topic.title, "body", Topic.body, "slug", Topic.slug)
-            ).label("topics"),
-        )
-        .join(Topic, Topic.id == shout_topic.topic)
-        .group_by(shout_topic.shout)
-        .subquery()
-    )
-
     q = (
         select(
             Shout,
             reaction_stats_subquery.c.comments_stat,
             reaction_stats_subquery.c.rating_stat,
             reaction_stats_subquery.c.last_reacted_at,
-            authors_subquery.c.authors,
-            topics_subquery.c.topics,
         )
         .outerjoin(reaction_stats_subquery, reaction_stats_subquery.c.shout_id == Shout.id)
-        .outerjoin(authors_subquery, authors_subquery.c.shout == Shout.id)
-        .outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .execution_options(populate_existing=True)
-    )
-
-    # Группируем по всем полям, которые не являются агрегатами
-    q = q.group_by(
-        Shout.id,
-        reaction_stats_subquery.c.comments_stat,
-        reaction_stats_subquery.c.rating_stat,
-        authors_subquery.c.authors,
-        topics_subquery.c.topics,
     )
 
     return q, aliased_reaction
@@ -144,15 +78,57 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     # Основной запрос для получения публикаций и объединения их с подзапросами
     q = q.limit(limit).offset(offset)
 
+    shout_author = aliased(ShoutAuthor)
+    shout_topic = aliased(ShoutTopic)
+
     # Выполнение запроса и обработка результатов
     with local_session() as session:
         results = session.execute(q, {"author_id": author_id}).unique()
 
+        # Получаем все ID публикаций
+        shout_ids = [row.Shout.id for row in results]
+
+        # Получаем авторов для этих публикаций
+        authors = (
+            session.query(shout_author.shout, Author.id, Author.name, Author.slug, Author.pic)
+            .join(Author, Author.id == shout_author.author)
+            .filter(shout_author.shout.in_(shout_ids))
+            .all()
+        )
+
+        # Получаем темы для этих публикаций
+        topics = (
+            session.query(shout_topic.shout, Topic.id, Topic.title, Topic.body, Topic.slug)
+            .join(Topic, Topic.id == shout_topic.topic)
+            .filter(shout_topic.shout.in_(shout_ids))
+            .all()
+        )
+
     # Формирование списка публикаций с их данными
     shouts = []
-    for shout, comments_stat, rating_stat, last_reacted_at, authors, topics in results:
-        shout.topics = topics or []
-        shout.authors = authors or []
+    for shout, comments_stat, rating_stat, last_reacted_at in results:
+        shout.authors = [
+            {
+                "id": author.id,
+                "name": author.name,
+                "slug": author.slug,
+                "pic": author.pic,
+            }
+            for author in authors
+            if author.shout == shout.id
+        ]
+
+        shout.topics = [
+            {
+                "id": topic.id,
+                "slug": topic.slug,
+                "title": topic.title,
+                "body": topic.body,
+            }
+            for topic in topics
+            if topic.shout == shout.id
+        ]
+
         shout.stat = {
             "viewed": 0,  # FIXME: use separate resolver
             "followers": 0,  # FIXME: implement followers_stat
