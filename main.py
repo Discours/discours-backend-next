@@ -15,6 +15,7 @@ from services.search import search_service
 from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
+from services.revalidator import revalidation_manager
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 
 import_module("resolvers")
@@ -43,6 +44,7 @@ app = Starlette(
         search_service.info,
         start_sentry,
         start,
+        revalidation_manager.start,
     ],
     on_shutdown=[redis.disconnect],
     debug=True,
