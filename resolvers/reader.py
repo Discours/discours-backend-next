@@ -1,6 +1,5 @@
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.sql.expression import (
-    selectinload,
     and_,
     asc,
     case,
