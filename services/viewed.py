@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -33,10 +34,10 @@ class ViewedStorage:
     start_date = datetime.now().strftime("%Y-%m-%d")
 
     @staticmethod
-    def init():
+    async def init():
         """Подключение к клиенту Google Analytics с использованием аутентификации"""
         self = ViewedStorage
-        with self.lock:
+        async with self.lock:
             # Загрузка предварительно подсчитанных просмотров из файла JSON
             self.load_precounted_views()
 
@@ -48,7 +49,7 @@ class ViewedStorage:
                 logger.info(" * Клиент Google Analytics успешно авторизован")
 
                 # Запуск фоновой задачи
-                self.worker()
+                _task = asyncio.create_task(self.worker())
             else:
                 logger.info(" * Пожалуйста, добавьте ключевой файл Google Analytics")
                 self.disabled = True
@@ -67,7 +68,7 @@ class ViewedStorage:
                 if now_date == self.start_date:
                     logger.info(" * Данные актуализованы!")
                 else:
-                    logger.warn(f" * Файл просмотров {VIEWS_FILEPATH} устарел: {self.start_date}")
+                    logger.warning(f" * Файл просмотров {VIEWS_FILEPATH} устарел: {self.start_date}")
 
                 with open(VIEWS_FILEPATH, "r") as file:
                     precounted_views = json.load(file)
@@ -78,15 +79,16 @@ class ViewedStorage:
         except Exception as e:
             logger.error(f"Ошибка загрузки предварительно подсчитанных просмотров: {e}")
 
+    # noinspection PyTypeChecker
     @staticmethod
-    def update_pages():
+    async def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
         self = ViewedStorage
         logger.info(" ⎧ Обновление данных просмотров от Google Analytics ---")
         if not self.disabled:
             try:
                 start = time.time()
-                with self.lock:
+                async with self.lock:
                     if self.analytics_client:
                         request = RunReportRequest(
                             property=f"properties/{GOOGLE_PROPERTY_ID}",
@@ -179,8 +181,8 @@ class ViewedStorage:
                 update_groups(self.shouts_by_author, author.slug, shout_slug)
 
     @staticmethod
-    def worker():
-        """Задача обновления"""
+    async def worker():
+        """Асинхронная задача обновления"""
         failed = 0
         self = ViewedStorage
         if self.disabled:
@@ -188,7 +190,7 @@ class ViewedStorage:
 
         while True:
             try:
-                self.update_pages()
+                await self.update_pages()
                 failed = 0
             except Exception as exc:
                 failed += 1
@@ -203,7 +205,7 @@ class ViewedStorage:
                 logger.info(
                     "       ⎩ Следующее обновление: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
                 )
-                time.sleep(self.period)
+                await asyncio.sleep(self.period)
             else:
-                time.sleep(10)
+                await asyncio.sleep(10)
                 logger.info(" - Попытка снова обновить данные")
