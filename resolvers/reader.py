@@ -24,13 +24,12 @@ from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
 
-
 def query_shouts():
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
-    с агрегацией в строку вместо JSON.
+    с агрегацией в строку.
 
-    :return: Запрос для получения публикаций.
+    :return: Запрос для получения публикаций, aliased_reaction:
     """
     # Создаем алиасы для таблиц для избежания конфликтов имен
     aliased_reaction = aliased(Reaction)
@@ -106,7 +105,6 @@ def query_shouts():
 
     return q, aliased_reaction
 
-
 def parse_aggregated_string(aggregated_str):
     """
     Преобразует строку, полученную из string_agg, обратно в список словарей.
@@ -126,13 +124,11 @@ def parse_aggregated_string(aggregated_str):
                 item_data[key] = value
             else:
                 # Лог или обработка случаев, когда разделитель отсутствует
-                print(f"Некорректный формат поля: {field}")
+                logger.error(f"Некорректный формат поля: {field}")
                 continue
         items.append(item_data)
 
     return items
-
-
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """
@@ -181,7 +177,6 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
 
     return shouts
 
-
 def filter_my(info, session, q):
     """
     Фильтрация публикаций, основанная на подписках пользователя.
@@ -212,7 +207,6 @@ def filter_my(info, session, q):
         )
         q = q.filter(Shout.id.in_(subquery))
     return q, reader_id
-
 
 def apply_filters(q, filters, author_id=None):
     """
@@ -256,7 +250,6 @@ def apply_filters(q, filters, author_id=None):
 
     return q
 
-
 @query.field("get_shout")
 async def get_shout(_, info, slug: str):
     """
@@ -277,6 +270,7 @@ async def get_shout(_, info, slug: str):
                 [
                     shout,
                     commented_stat,
+                    followers_stat,
                     rating_stat,
                     last_reaction_at,
                     authors,
@@ -289,8 +283,8 @@ async def get_shout(_, info, slug: str):
                     "rating": rating_stat,
                     "last_reacted_at": last_reaction_at,
                 }
-                shout.authors = authors or []
-                shout.topics = topics or []
+                shout.authors = parse_aggregated_string(authors)
+                shout.topics = parse_aggregated_string(topics)
 
                 for author_caption in (
                     session.query(ShoutAuthor)
@@ -304,8 +298,8 @@ async def get_shout(_, info, slug: str):
                     )
                 ):
                     for author in shout.authors:
-                        if author.id == author_caption.author:
-                            author.caption = author_caption.caption
+                        if author["id"] == str(author_caption.author):
+                            author["caption"] = author_caption.caption
                 main_topic = (
                     session.query(Topic.slug)
                     .join(
@@ -324,9 +318,8 @@ async def get_shout(_, info, slug: str):
                 return shout
     except Exception as _exc:
         import traceback
-
         logger.error(traceback.format_exc())
-
+    return None
 
 @query.field("load_shouts_by")
 async def load_shouts_by(_, _info, options):
@@ -347,7 +340,6 @@ async def load_shouts_by(_, _info, options):
     order_by = Shout.featured_at if filters.get("featured") else Shout.published_at
     order_str = options.get("order_by")
     if order_str in ["rating", "followers", "comments", "last_reacted_at"]:
-        # TODO: implement followers_stat
         q = q.order_by(desc(text(f"{order_str}_stat")))
         query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
         q = q.order_by(nulls_last(query_order_by))
@@ -419,7 +411,6 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
         shouts = get_shouts_with_stats(q, limit, offset)
         for shout in shouts:
             shout.score = scores[f"{shout.id}"]
-            shouts.append(shout)
         shouts.sort(key=lambda x: x.score, reverse=True)
         return shouts
     return []
@@ -536,7 +527,7 @@ async def load_shouts_coauthored(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
         return []
-    q, aliaed_reaction = query_shouts()
+    q, aliased_reaction = query_shouts()
     q = q.filter(Shout.authors.any(id=author_id))
     return get_shouts_with_stats(q, limit, offset=offset)
 
@@ -555,17 +546,16 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
         return []
-    # Subquery to find shout IDs that the author has commented on
+    # Подзапрос для поиска идентификаторов публикаций, которые комментировал автор
     reaction_subquery = (
         select(Reaction.shout)
-        .distinct()  # Ensure distinct shout IDs
+        .distinct()  # Убедитесь, что получены уникальные идентификаторы публикаций
         .filter(and_(Reaction.created_by == author_id, Reaction.body.is_not(None)))
-        .correlate(Shout)  # Ensure proper correlation with the main query
+        .correlate(Shout)  # Убедитесь, что подзапрос правильно связан с основным запросом
     )
     q, aliased_reaction = query_shouts()
     q = q.filter(Shout.id.in_(reaction_subquery))
     return get_shouts_with_stats(q, limit, offset=offset)
-
 
 async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
     """
@@ -597,7 +587,6 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
 
     return shouts
 
-
 @query.field("load_shouts_followed")
 @login_required
 async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
@@ -620,7 +609,6 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
             except Exception as error:
                 logger.debug(error)
     return []
-
 
 @query.field("load_shouts_followed_by")
 async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> List[Shout]:
