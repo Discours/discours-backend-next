@@ -47,7 +47,7 @@ def query_shouts():
                     func.concat("slug:", Author.slug),
                     func.concat("pic:", Author.pic),
                 ),
-                " | "
+                " | ",
             ).label("authors"),  # Используем символ | как разделитель
         )
         .join(Author, ShoutAuthor.author == Author.id)
@@ -67,7 +67,7 @@ def query_shouts():
                     func.concat("slug:", Topic.slug),
                     func.concat("is_main:", ShoutTopic.main),
                 ),
-                " | "
+                " | ",
             ).label("topics"),  # Используем символ | как разделитель
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
@@ -105,6 +105,7 @@ def query_shouts():
 
     return q, aliased_reaction
 
+
 def parse_aggregated_string(aggregated_str):
     """
     Преобразует строку, полученную из string_agg, обратно в список словарей.
@@ -120,7 +121,7 @@ def parse_aggregated_string(aggregated_str):
     for item_str in aggregated_str.split(" | "):
         item_data = {}
         for field in item_str.split(";"):
-            if ':' in field:
+            if ":" in field:
                 key, value = field.split(":", 1)
                 item_data[key] = value
             else:
@@ -325,6 +326,7 @@ async def get_shout(_, info, slug: str):
                 return shout
     except Exception as _exc:
         import traceback
+
         logger.error(traceback.format_exc())
     return None
 
