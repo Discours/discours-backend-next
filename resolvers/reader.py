@@ -288,8 +288,10 @@ async def get_shout(_, info, slug: str):
                     "rating": rating_stat,
                     "last_reacted_at": last_reaction_at,
                 }
-                shout.authors = parse_aggregated_string(authors)
-                shout.topics = parse_aggregated_string(topics)
+                # Используем класс модели Author для преобразования строк в объекты
+                shout.authors = parse_aggregated_string(authors, Author)
+                # Используем класс модели Topic для преобразования строк в объекты
+                shout.topics = parse_aggregated_string(topics, Topic)
 
                 for author_caption in (
                     session.query(ShoutAuthor)
@@ -303,8 +305,8 @@ async def get_shout(_, info, slug: str):
                     )
                 ):
                     for author in shout.authors:
-                        if author["id"] == str(author_caption.author):
-                            author["caption"] = author_caption.caption
+                        if author.id == author_caption.author:
+                            author.caption = author_caption.caption
                 main_topic = (
                     session.query(Topic.slug)
                     .join(
@@ -323,7 +325,6 @@ async def get_shout(_, info, slug: str):
                 return shout
     except Exception as _exc:
         import traceback
-
         logger.error(traceback.format_exc())
     return None
 
