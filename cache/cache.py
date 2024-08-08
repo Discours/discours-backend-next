@@ -139,27 +139,40 @@ async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
     return authors
 
 
-# Get cached topic followers
 async def get_cached_topic_followers(topic_id: int):
-    # Attempt to retrieve cached data
-    cached = await redis.execute("get", f"topic:followers:{topic_id}")
-    if cached:
-        followers = json.loads(cached)
-        logger.debug(f"Cached followers for topic#{topic_id}: {len(followers)}")
-        return followers
+    """
+    Получает подписчиков темы по ID, используя кеш Redis.
+    Если данные отсутствуют в кеше, извлекает из базы данных и кеширует их.
 
-    # Load from database and cache results
-    with local_session() as session:
-        followers_ids = [
-            f[0]
-            for f in session.query(Author.id)
-            .join(TopicFollower, TopicFollower.follower == Author.id)
-            .filter(TopicFollower.topic == topic_id)
-            .all()
-        ]
-        await redis.execute("SET", f"topic:followers:{topic_id}", json.dumps(followers_ids))
-        followers = await get_cached_authors_by_ids(followers_ids)
-        return followers
+    :param topic_id: Идентификатор темы, подписчиков которой необходимо получить.
+    :return: Список подписчиков темы, каждый элемент представляет собой словарь с ID и именем автора.
+    """
+    try:
+        # Попытка получить данные из кеша
+        cached = await redis.get(f"topic:followers:{topic_id}")
+        if cached:
+            followers = json.loads(cached)
+            logger.debug(f"Cached followers for topic#{topic_id}: {len(followers)}")
+            return followers
+
+        # Если данные не найдены в кеше, загрузка из базы данных
+        async with local_session() as session:
+            result = await session.execute(
+                session.query(Author.id)
+                .join(TopicFollower, TopicFollower.follower == Author.id)
+                .filter(TopicFollower.topic == topic_id)
+            )
+            followers_ids = [f[0] for f in result.scalars().all()]
+
+            # Кеширование результатов
+            await redis.set(f"topic:followers:{topic_id}", json.dumps(followers_ids))
+
+            # Получение подробной информации о подписчиках по их ID
+            followers = await get_cached_authors_by_ids(followers_ids)
+            return followers
+    except Exception as e:
+        logger.error(f"Ошибка при получении подписчиков для темы#{topic_id}: {str(e)}")
+        return []
 
 
 # Get cached author followers
