@@ -41,7 +41,7 @@ async def cache_author(author: dict):
 # Cache follows data
 async def cache_follows(follower_id: int, entity_type: str, entity_id: int, is_insert=True):
     key = f"author:follows-{entity_type}s:{follower_id}"
-    follows_str = await redis.get(key)
+    follows_str = await redis.execute("get", key)
     follows = json.loads(follows_str) if follows_str else DEFAULT_FOLLOWS[entity_type]
     if is_insert:
         if entity_id not in follows:
@@ -55,7 +55,7 @@ async def cache_follows(follower_id: int, entity_type: str, entity_id: int, is_i
 # Update follower statistics
 async def update_follower_stat(follower_id, entity_type, count):
     follower_key = f"author:id:{follower_id}"
-    follower_str = await redis.get(follower_key)
+    follower_str = await redis.execute("get", follower_key)
     follower = json.loads(follower_str) if follower_str else None
     if follower:
         follower["stat"] = {f"{entity_type}s": count}
@@ -65,7 +65,7 @@ async def update_follower_stat(follower_id, entity_type, count):
 # Get author from cache
 async def get_cached_author(author_id: int):
     author_key = f"author:id:{author_id}"
-    result = await redis.get(author_key)
+    result = await redis.execute("get", author_key)
     if result:
         return json.loads(result)
     # Load from database if not found in cache
@@ -89,7 +89,7 @@ async def get_cached_topic(topic_id: int):
         dict: Topic data or None if not found.
     """
     topic_key = f"topic:id:{topic_id}"
-    cached_topic = await redis.get(topic_key)
+    cached_topic = await redis.execute("get", topic_key)
     if cached_topic:
         return json.loads(cached_topic)
 
@@ -98,7 +98,7 @@ async def get_cached_topic(topic_id: int):
         topic = session.execute(select(Topic).where(Topic.id == topic_id)).scalar_one_or_none()
         if topic:
             topic_dict = topic.dict()
-            await redis.set(topic_key, json.dumps(topic_dict, cls=CustomJSONEncoder))
+            await redis.execute("set", topic_key, json.dumps(topic_dict, cls=CustomJSONEncoder))
             return topic_dict
 
     return None
@@ -107,7 +107,7 @@ async def get_cached_topic(topic_id: int):
 # Get topic by slug from cache
 async def get_cached_topic_by_slug(slug: str, get_with_stat):
     topic_key = f"topic:slug:{slug}"
-    result = await redis.get(topic_key)
+    result = await redis.execute("get", topic_key)
     if result:
         return json.loads(result)
     # Load from database if not found in cache
@@ -124,7 +124,7 @@ async def get_cached_topic_by_slug(slug: str, get_with_stat):
 async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
     # Fetch all author data concurrently
     keys = [f"author:id:{author_id}" for author_id in author_ids]
-    results = await asyncio.gather(*(redis.get(key) for key in keys))
+    results = await asyncio.gather(*(redis.execute("get", key) for key in keys))
     authors = [json.loads(result) if result else None for result in results]
     # Load missing authors from database and cache
     missing_indices = [index for index, author in enumerate(authors) if author is None]
@@ -142,7 +142,7 @@ async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
 # Get cached topic followers
 async def get_cached_topic_followers(topic_id: int):
     # Attempt to retrieve cached data
-    cached = await redis.get(f"topic:followers:{topic_id}")
+    cached = await redis.execute("get", f"topic:followers:{topic_id}")
     if cached:
         followers = json.loads(cached)
         logger.debug(f"Cached followers for topic#{topic_id}: {len(followers)}")
@@ -165,7 +165,7 @@ async def get_cached_topic_followers(topic_id: int):
 # Get cached author followers
 async def get_cached_author_followers(author_id: int):
     # Check cache for data
-    cached = await redis.get(f"author:followers:{author_id}")
+    cached = await redis.execute("get", f"author:followers:{author_id}")
     if cached:
         followers_ids = json.loads(cached)
         followers = await get_cached_authors_by_ids(followers_ids)
@@ -189,7 +189,7 @@ async def get_cached_author_followers(author_id: int):
 # Get cached follower authors
 async def get_cached_follower_authors(author_id: int):
     # Attempt to retrieve authors from cache
-    cached = await redis.get(f"author:follows-authors:{author_id}")
+    cached = await redis.execute("get", f"author:follows-authors:{author_id}")
     if cached:
         authors_ids = json.loads(cached)
     else:
@@ -212,7 +212,7 @@ async def get_cached_follower_authors(author_id: int):
 # Get cached follower topics
 async def get_cached_follower_topics(author_id: int):
     # Attempt to retrieve topics from cache
-    cached = await redis.get(f"author:follows-topics:{author_id}")
+    cached = await redis.execute("get", f"author:follows-topics:{author_id}")
     if cached:
         topics_ids = json.loads(cached)
     else:
@@ -229,7 +229,7 @@ async def get_cached_follower_topics(author_id: int):
 
     topics = []
     for topic_id in topics_ids:
-        topic_str = await redis.get(f"topic:id:{topic_id}")
+        topic_str = await redis.execute("get", f"topic:id:{topic_id}")
         if topic_str:
             topic = json.loads(topic_str)
             if topic and topic not in topics:
@@ -251,10 +251,10 @@ async def get_cached_author_by_user_id(user_id: str):
         dict: Dictionary with author data or None if not found.
     """
     # Attempt to find author ID by user_id in Redis cache
-    author_id = await redis.get(f"author:user:{user_id.strip()}")
+    author_id = await redis.execute("get", f"author:user:{user_id.strip()}")
     if author_id:
         # If ID is found, get full author data by ID
-        author_data = await redis.get(f"author:id:{author_id}")
+        author_data = await redis.execute("get", f"author:id:{author_id}")
         if author_data:
             return json.loads(author_data)
 
@@ -288,7 +288,7 @@ async def get_cached_topic_authors(topic_id: int):
     """
     # Attempt to get a list of author IDs from cache
     rkey = f"topic:authors:{topic_id}"
-    cached_authors_ids = await redis.get(rkey)
+    cached_authors_ids = await redis.execute("get", rkey)
     if cached_authors_ids:
         authors_ids = json.loads(cached_authors_ids)
     else:
