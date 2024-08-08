@@ -57,6 +57,12 @@ class RedisService:
             return
         await self._client.publish(channel, data)
 
+    async def set(self, key, data):
+        await self.execute("set", key, data)
+
+    async def get(self, key, data):
+        return await self.execute("set", key)
+
 
 redis = RedisService()
 
