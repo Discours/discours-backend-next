@@ -105,17 +105,18 @@ async def get_cached_topic(topic_id: int):
 
 
 # Get topic by slug from cache
-async def get_cached_topic_by_slug(slug: str):
+async def get_cached_topic_by_slug(slug: str, get_with_stat):
     topic_key = f"topic:slug:{slug}"
     result = await redis.get(topic_key)
     if result:
         return json.loads(result)
     # Load from database if not found in cache
-    with local_session() as session:
-        topic = session.execute(select(Topic).where(Topic.slug == slug)).scalar_one_or_none()
-        if topic:
-            await cache_topic(topic.dict())
-            return topic.dict()
+    topic_query = select(Topic).where(Topic.slug == slug)
+    topic = get_with_stat(topic_query)
+    if topic:
+        topic_dict = topic.dict()
+        await cache_topic(topic_dict)
+        return topic_dict
     return None
 
 
