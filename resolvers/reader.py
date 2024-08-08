@@ -70,7 +70,9 @@ def query_shouts(slug=None):
                 ),
                 " | ",
             ).label("topics"),  # Используем символ | как разделитель
-            func.max(case((ShoutTopic.main.is_(True), Topic.slug))).label("main_topic_slug")  # Получение основного топика
+            func.max(case((ShoutTopic.main.is_(True), Topic.slug))).label(
+                "main_topic_slug"
+            ),  # Получение основного топика
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
         .group_by(ShoutTopic.shout)
@@ -93,19 +95,14 @@ def query_shouts(slug=None):
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
             authors_subquery.c.authors.label("authors"),
             topics_subquery.c.topics.label("topics"),
-            topics_subquery.c.main_topic_slug.label("main_topic_slug")
+            topics_subquery.c.main_topic_slug.label("main_topic_slug"),
         )
         .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .outerjoin(ShoutReactionsFollower, ShoutReactionsFollower.shout == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(
-            Shout.id,
-            authors_subquery.c.authors,
-            topics_subquery.c.topics,
-            topics_subquery.c.main_topic_slug
-        )
+        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics, topics_subquery.c.main_topic_slug)
     )
 
     if slug:
@@ -129,7 +126,7 @@ def parse_aggregated_string(aggregated_str, model_class):
     for item_str in aggregated_str.split(" | "):
         item_data = {}
         for field in item_str.split(";"):
-            if ':' in field:
+            if ":" in field:
                 key, value = field.split(":", 1)
                 item_data[key] = value
             else:
@@ -143,8 +140,8 @@ def parse_aggregated_string(aggregated_str, model_class):
         item_object = model_class(**filtered_data)
 
         # Добавление синтетического поля, если оно присутствует в item_data
-        if 'is_main' in item_data:
-            item_object.is_main = item_data['is_main'] == 'True'  # Преобразование в логическое значение
+        if "is_main" in item_data:
+            item_object.is_main = item_data["is_main"] == "True"  # Преобразование в логическое значение
 
         items.append(item_object)
 
@@ -176,16 +173,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
 
     # Формирование списка публикаций с их данными
     shouts = []
-    for (
-        shout,
-        comments_stat,
-        followers_stat,
-        rating_stat,
-        last_reacted_at,
-        authors,
-        topics,
-        main_topic_slug
-    ) in results:
+    for shout, comments_stat, followers_stat, rating_stat, last_reacted_at, authors, topics, main_topic_slug in results:
         shout.authors = parse_aggregated_string(authors, Author)
         shout.topics = parse_aggregated_string(topics, Topic)
         shout.stat = {
@@ -299,7 +287,7 @@ async def get_shout(_, info, slug: str):
                     last_reaction_at,
                     authors,
                     topics,
-                    main_topic_slug
+                    main_topic_slug,
                 ] = results
 
                 shout.stat = {
