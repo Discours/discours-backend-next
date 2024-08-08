@@ -47,15 +47,15 @@ def query_shouts():
                     func.concat("slug:", Author.slug),
                     func.concat("pic:", Author.pic),
                 ),
-                ", ",
-            ).label("authors"),
+                " | "
+            ).label("authors"),  # Используем символ | как разделитель
         )
         .join(Author, ShoutAuthor.author == Author.id)
         .group_by(ShoutAuthor.shout)
         .subquery()
     )
 
-    # Подзапрос для уникальных тем, объединенных в строку
+    # Подзапрос для уникальных тем, объединенных в строку (без поля body)
     topics_subquery = (
         select(
             ShoutTopic.shout.label("shout_id"),
@@ -67,8 +67,8 @@ def query_shouts():
                     func.concat("slug:", Topic.slug),
                     func.concat("is_main:", ShoutTopic.main),
                 ),
-                ", ",
-            ).label("topics"),
+                " | "
+            ).label("topics"),  # Используем символ | как разделитель
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
         .group_by(ShoutTopic.shout)
@@ -105,7 +105,6 @@ def query_shouts():
 
     return q, aliased_reaction
 
-
 def parse_aggregated_string(aggregated_str):
     """
     Преобразует строку, полученную из string_agg, обратно в список словарей.
@@ -117,10 +116,11 @@ def parse_aggregated_string(aggregated_str):
         return []
 
     items = []
-    for item_str in aggregated_str.split(", "):
+    # Изменяем разделитель на символ |, соответствующий используемому в агрегации
+    for item_str in aggregated_str.split(" | "):
         item_data = {}
         for field in item_str.split(";"):
-            if ":" in field:
+            if ':' in field:
                 key, value = field.split(":", 1)
                 item_data[key] = value
             else:
