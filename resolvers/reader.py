@@ -24,6 +24,7 @@ from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
 
+
 def query_shouts():
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
@@ -105,6 +106,7 @@ def query_shouts():
 
     return q, aliased_reaction
 
+
 def parse_aggregated_string(aggregated_str):
     """
     Преобразует строку, полученную из string_agg, обратно в список словарей.
@@ -119,7 +121,7 @@ def parse_aggregated_string(aggregated_str):
     for item_str in aggregated_str.split(", "):
         item_data = {}
         for field in item_str.split(";"):
-            if ':' in field:
+            if ":" in field:
                 key, value = field.split(":", 1)
                 item_data[key] = value
             else:
@@ -129,6 +131,7 @@ def parse_aggregated_string(aggregated_str):
         items.append(item_data)
 
     return items
+
 
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """
@@ -177,6 +180,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
 
     return shouts
 
+
 def filter_my(info, session, q):
     """
     Фильтрация публикаций, основанная на подписках пользователя.
@@ -207,6 +211,7 @@ def filter_my(info, session, q):
         )
         q = q.filter(Shout.id.in_(subquery))
     return q, reader_id
+
 
 def apply_filters(q, filters, author_id=None):
     """
@@ -249,6 +254,7 @@ def apply_filters(q, filters, author_id=None):
             q = q.filter(Shout.created_at > ts)
 
     return q
+
 
 @query.field("get_shout")
 async def get_shout(_, info, slug: str):
@@ -318,8 +324,10 @@ async def get_shout(_, info, slug: str):
                 return shout
     except Exception as _exc:
         import traceback
+
         logger.error(traceback.format_exc())
     return None
+
 
 @query.field("load_shouts_by")
 async def load_shouts_by(_, _info, options):
@@ -557,6 +565,7 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     q = q.filter(Shout.id.in_(reaction_subquery))
     return get_shouts_with_stats(q, limit, offset=offset)
 
+
 async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
     """
     Обновляет публикации, на которые подписан автор, с учетом реакций.
@@ -587,6 +596,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
 
     return shouts
 
+
 @query.field("load_shouts_followed")
 @login_required
 async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
@@ -609,6 +619,7 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
             except Exception as error:
                 logger.debug(error)
     return []
+
 
 @query.field("load_shouts_followed_by")
 async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> List[Shout]:
