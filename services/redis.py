@@ -61,7 +61,7 @@ class RedisService:
         await self.execute("set", key, data)
 
     async def get(self, key):
-        return await self.execute("set", key)
+        return await self.execute("get", key)
 
 
 redis = RedisService()
