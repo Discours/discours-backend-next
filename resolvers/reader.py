@@ -121,14 +121,23 @@ def parse_aggregated_string(aggregated_str, model_class):
     for item_str in aggregated_str.split(" | "):
         item_data = {}
         for field in item_str.split(";"):
-            if ":" in field:
+            if ':' in field:
                 key, value = field.split(":", 1)
                 item_data[key] = value
             else:
                 logger.error(f"Некорректный формат поля: {field}")
                 continue
-        # Создание экземпляра модели на основе словаря
-        item_object = model_class(**item_data)
+
+        # Фильтрация item_data, чтобы использовать только допустимые поля модели
+        filtered_data = {k: v for k, v in item_data.items() if hasattr(model_class, k)}
+
+        # Создание экземпляра модели на основе фильтрованного словаря
+        item_object = model_class(**filtered_data)
+
+        # Добавление синтетического поля, если оно присутствует в item_data
+        if 'is_main' in item_data:
+            item_object.is_main = item_data['is_main'] == 'True'  # Преобразование в логическое значение
+
         items.append(item_object)
 
     return items
