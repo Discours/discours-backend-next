@@ -25,14 +25,14 @@ from services.search import search_text
 from services.viewed import ViewedStorage
 
 
-def query_shouts():
+def query_shouts(slug=None):
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
     с агрегацией в строку.
 
+    :param slug: Опциональный параметр для фильтрации по slug.
     :return: Запрос для получения публикаций, aliased_reaction:
     """
-    # Создаем алиасы для таблиц для избежания конфликтов имен
     aliased_reaction = aliased(Reaction)
 
     # Подзапрос для уникальных авторов, объединенных в строку
@@ -46,6 +46,7 @@ def query_shouts():
                     func.concat("name:", Author.name),
                     func.concat("slug:", Author.slug),
                     func.concat("pic:", Author.pic),
+                    func.concat("caption:", ShoutAuthor.caption),  # Добавлено поле caption
                 ),
                 " | ",
             ).label("authors"),  # Используем символ | как разделитель
@@ -55,7 +56,7 @@ def query_shouts():
         .subquery()
     )
 
-    # Подзапрос для уникальных тем, объединенных в строку (без поля body)
+    # Подзапрос для уникальных тем, объединенных в строку (включая main_topic_slug)
     topics_subquery = (
         select(
             ShoutTopic.shout.label("shout_id"),
@@ -69,6 +70,7 @@ def query_shouts():
                 ),
                 " | ",
             ).label("topics"),  # Используем символ | как разделитель
+            func.max(case((ShoutTopic.main.is_(True), Topic.slug))).label("main_topic_slug")  # Получение основного топика
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
         .group_by(ShoutTopic.shout)
@@ -80,7 +82,7 @@ def query_shouts():
         select(
             Shout,
             func.count(case((aliased_reaction.body.is_not(None), 1))).label("comments_stat"),
-            func.count(distinct(aliased_reaction.created_by)).label("followers_stat"),
+            func.count(distinct(ShoutReactionsFollower.follower)).label("followers_stat"),
             func.sum(
                 case(
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
@@ -91,17 +93,23 @@ def query_shouts():
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
             authors_subquery.c.authors.label("authors"),
             topics_subquery.c.topics.label("topics"),
+            topics_subquery.c.main_topic_slug.label("main_topic_slug")
         )
         .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
+        .outerjoin(ShoutReactionsFollower, ShoutReactionsFollower.shout == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .group_by(
             Shout.id,
             authors_subquery.c.authors,
             topics_subquery.c.topics,
+            topics_subquery.c.main_topic_slug
         )
     )
+
+    if slug:
+        q = q.where(Shout.slug == slug)
 
     return q, aliased_reaction
 
@@ -176,6 +184,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
         last_reacted_at,
         authors,
         topics,
+        main_topic_slug
     ) in results:
         shout.authors = parse_aggregated_string(authors, Author)
         shout.topics = parse_aggregated_string(topics, Topic)
@@ -186,6 +195,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
             "commented": comments_stat or 0,
             "last_reacted_at": last_reacted_at,
         }
+        shout.main_topic = main_topic_slug  # Присваиваем основной топик
         shouts.append(shout)
 
     return shouts
@@ -278,9 +288,7 @@ async def get_shout(_, info, slug: str):
     """
     try:
         with local_session() as session:
-            q, aliased_reaction = query_shouts()
-            q = q.filter(Shout.slug == slug)
-
+            q, aliased_reaction = query_shouts(slug)
             results = session.execute(q).first()
             if results:
                 [
@@ -291,6 +299,7 @@ async def get_shout(_, info, slug: str):
                     last_reaction_at,
                     authors,
                     topics,
+                    main_topic_slug
                 ] = results
 
                 shout.stat = {
@@ -304,35 +313,9 @@ async def get_shout(_, info, slug: str):
                 # Используем класс модели Topic для преобразования строк в объекты
                 shout.topics = parse_aggregated_string(topics, Topic)
 
-                for author_caption in (
-                    session.query(ShoutAuthor)
-                    .join(Shout)
-                    .where(
-                        and_(
-                            Shout.slug == slug,
-                            Shout.published_at.is_not(None),
-                            Shout.deleted_at.is_(None),
-                        )
-                    )
-                ):
-                    for author in shout.authors:
-                        if author.id == author_caption.author:
-                            author.caption = author_caption.caption
-                main_topic = (
-                    session.query(Topic.slug)
-                    .join(
-                        ShoutTopic,
-                        and_(
-                            ShoutTopic.topic == Topic.id,
-                            ShoutTopic.shout == shout.id,
-                            ShoutTopic.main.is_(True),
-                        ),
-                    )
-                    .first()
-                )
+                # Добавляем основной топик, если он существует
+                shout.main_topic = main_topic_slug
 
-                if main_topic:
-                    shout.main_topic = main_topic[0]
                 return shout
     except Exception as _exc:
         import traceback
