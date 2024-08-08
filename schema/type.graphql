@@ -135,6 +135,7 @@ type Topic {
   pic: String
   stat: TopicStat
   oid: String
+  is_main: Boolean
 }
 
 # output type
