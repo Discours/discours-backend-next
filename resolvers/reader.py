@@ -106,18 +106,18 @@ def query_shouts():
     return q, aliased_reaction
 
 
-def parse_aggregated_string(aggregated_str):
+def parse_aggregated_string(aggregated_str, model_class):
     """
-    Преобразует строку, полученную из string_agg, обратно в список словарей.
+    Преобразует строку, полученную из string_agg, обратно в список объектов.
 
     :param aggregated_str: Строка, содержащая агрегированные данные.
-    :return: Список словарей с данными.
+    :param model_class: Класс модели, экземпляры которой нужно создать.
+    :return: Список объектов модели.
     """
     if not aggregated_str:
         return []
 
     items = []
-    # Изменяем разделитель на символ |, соответствующий используемому в агрегации
     for item_str in aggregated_str.split(" | "):
         item_data = {}
         for field in item_str.split(";"):
@@ -125,10 +125,11 @@ def parse_aggregated_string(aggregated_str):
                 key, value = field.split(":", 1)
                 item_data[key] = value
             else:
-                # Лог или обработка случаев, когда разделитель отсутствует
                 logger.error(f"Некорректный формат поля: {field}")
                 continue
-        items.append(item_data)
+        # Создание экземпляра модели на основе словаря
+        item_object = model_class(**item_data)
+        items.append(item_object)
 
     return items
 
@@ -167,8 +168,8 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
         authors,
         topics,
     ) in results:
-        shout.authors = parse_aggregated_string(authors)
-        shout.topics = parse_aggregated_string(topics)
+        shout.authors = parse_aggregated_string(authors, Author)
+        shout.topics = parse_aggregated_string(topics, Topic)
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
             "followers": followers_stat or 0,
