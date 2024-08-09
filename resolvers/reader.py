@@ -83,8 +83,10 @@ def query_shouts(slug=None):
     q = (
         select(
             Shout,
-            func.count().filter(aliased_reaction.kind == ReactionKind.COMMENT.value).label("comments_stat"),
-            func.count(distinct(ShoutReactionsFollower.follower)).label("followers_stat"),
+            func.count(aliased_reaction.id)
+            .filter(aliased_reaction.kind == ReactionKind.COMMENT.value)
+            .label("comments_stat"),
+            func.count(ShoutReactionsFollower.follower).label("followers_stat"),
             func.sum(
                 case(
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
@@ -97,7 +99,7 @@ def query_shouts(slug=None):
             topics_subquery.c.topics.label("topics"),
             topics_subquery.c.main_topic_slug.label("main_topic_slug"),
         )
-        .outerjoin(aliased_reaction, aliased_reaction.shout == Shout.id)
+        .outerjoin(aliased_reaction, and_(aliased_reaction.shout == Shout.id, aliased_reaction.deleted_at.is_(None)))
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .outerjoin(ShoutReactionsFollower, ShoutReactionsFollower.shout == Shout.id)

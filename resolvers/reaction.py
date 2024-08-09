@@ -1,6 +1,5 @@
 import time
-
-from sqlalchemy import and_, asc, case, desc, func, select
+from sqlalchemy import and_, case, desc, func, select, asc
 from sqlalchemy.orm import aliased
 
 from orm.author import Author
@@ -17,19 +16,45 @@ from services.notify import notify_reaction
 from services.schema import mutation, query
 
 
-def add_reaction_stat_columns(q, aliased_reaction):
+def query_reactions():
     """
-    Добавляет статистические колонки к запросу реакций.
+    Base query for fetching reactions with associated authors and shouts.
 
-    :param q: SQL-запрос для реакций.
-    :param aliased_reaction: Алиас для таблицы реакций.
-    :return: Запрос с добавленными колонками статистики.
+    :return: Base query.
     """
-    # Присоединение реакций и добавление статистических колонок
-    q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
-        # Подсчет комментариев
-        func.count().filter(aliased_reaction.kind == ReactionKind.COMMENT.value).label("comments_stat"),
-        # Вычисление рейтинга как разница между лайками и дизлайками
+    return (
+        select(
+            Reaction,
+            Author,
+            Shout,
+        )
+        .select_from(Reaction)
+        .join(Author, Reaction.created_by == Author.id)
+        .join(Shout, Reaction.shout == Shout.id)
+    )
+
+
+def add_reaction_stat_columns(q):
+    """
+    Add statistical columns to a reaction query.
+
+    :param q: SQL query for reactions.
+    :return: Query with added statistics columns.
+    """
+    aliased_reaction = aliased(Reaction)
+    # Join reactions and add statistical columns
+    q = q.outerjoin(
+        aliased_reaction,
+        and_(
+            aliased_reaction.reply_to == Reaction.id,
+            aliased_reaction.deleted_at.is_(None),
+        ),
+    ).add_columns(
+        # Count unique comments
+        func.count(aliased_reaction.id)
+        .filter(aliased_reaction.kind == ReactionKind.COMMENT.value)
+        .label("comments_stat"),
+        # Calculate rating as the difference between likes and dislikes
         func.sum(
             case(
                 (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
@@ -38,159 +63,167 @@ def add_reaction_stat_columns(q, aliased_reaction):
             )
         ).label("rating_stat"),
     )
-
     return q
+
+
+def get_reactions_with_stat(q, limit, offset):
+    """
+    Execute the reaction query and retrieve reactions with statistics.
+
+    :param q: Query with reactions and statistics.
+    :param limit: Number of reactions to load.
+    :param offset: Pagination offset.
+    :return: List of reactions.
+    """
+    q = q.limit(limit).offset(offset)
+    reactions = []
+
+    with local_session() as session:
+        result_rows = session.execute(q)
+        for reaction, author, shout, commented_stat, rating_stat in result_rows:
+            reaction.created_by = author
+            reaction.shout = shout
+            reaction.stat = {"rating": rating_stat, "comments": commented_stat}
+            reactions.append(reaction)
+
+    return reactions
 
 
 def is_featured_author(session, author_id) -> bool:
     """
-    Проверяет, есть ли у автора хотя бы одна опубликованная статья.
+    Check if an author has at least one featured article.
 
-    :param session: Сессия базы данных.
-    :param author_id: Идентификатор автора.
-    :return: True, если у автора есть хотя бы одна опубликованная статья, иначе False.
+    :param session: Database session.
+    :param author_id: Author ID.
+    :return: True if the author has a featured article, else False.
     """
-    return (
-        session.query(Shout)
-        .where(Shout.authors.any(id=author_id))
-        .filter(and_(Shout.featured_at.is_not(None), Shout.deleted_at.is_(None)))
-        .count()
-        > 0
-    )
+    return session.query(
+        session.query(Shout).where(Shout.authors.any(id=author_id)).filter(Shout.featured_at.is_not(None)).exists()
+    ).scalar()
 
 
 def check_to_feature(session, approver_id, reaction) -> bool:
     """
-    Устанавливает публикацию в открытый доступ, если количество голосов превышает 4.
+    Make a shout featured if it receives more than 4 votes.
 
-    :param session: Сессия базы данных.
-    :param approver_id: Идентификатор утверждающего автора.
-    :param reaction: Объект реакции.
-    :return: True, если нужно установить публикацию в открытый доступ, иначе False.
+    :param session: Database session.
+    :param approver_id: Approver author ID.
+    :param reaction: Reaction object.
+    :return: True if shout should be featured, else False.
     """
     if not reaction.reply_to and is_positive(reaction.kind):
-        if is_featured_author(session, approver_id):
-            approvers = [approver_id]
-            # Подсчет количества голосующих утверждающих
-            reacted_readers = session.query(Reaction).where(Reaction.shout == reaction.shout).all()
-            for reacted_reader in reacted_readers:
-                if is_featured_author(session, reacted_reader.id):
-                    approvers.append(reacted_reader.id)
-            if len(approvers) > 4:
-                return True
+        approvers = {approver_id}
+        # Count the number of approvers
+        reacted_readers = (
+            session.query(Reaction.created_by)
+            .filter(Reaction.shout == reaction.shout, is_positive(Reaction.kind), Reaction.deleted_at.is_(None))
+            .distinct()
+        )
+
+        for reader_id in reacted_readers:
+            if is_featured_author(session, reader_id):
+                approvers.add(reader_id)
+        return len(approvers) > 4
     return False
 
 
 def check_to_unfeature(session, rejecter_id, reaction) -> bool:
     """
-    Убирает публикацию из открытого доступа, если 20% реакций негативные.
+    Unfeature a shout if 20% of reactions are negative.
 
-    :param session: Сессия базы данных.
-    :param rejecter_id: Идентификатор отклоняющего автора.
-    :param reaction: Объект реакции.
-    :return: True, если нужно убрать публикацию из открытого доступа, иначе False.
+    :param session: Database session.
+    :param rejecter_id: Rejecter author ID.
+    :param reaction: Reaction object.
+    :return: True if shout should be unfeatured, else False.
     """
     if not reaction.reply_to and is_negative(reaction.kind):
-        if is_featured_author(session, rejecter_id):
-            reactions = (
-                session.query(Reaction)
-                .where(
-                    and_(
-                        Reaction.shout == reaction.shout,
-                        Reaction.kind.in_(RATING_REACTIONS),
-                    )
-                )
-                .all()
+        total_reactions = (
+            session.query(Reaction)
+            .filter(
+                Reaction.shout == reaction.shout, Reaction.kind.in_(RATING_REACTIONS), Reaction.deleted_at.is_(None)
             )
-            rejects = 0
-            for r in reactions:
-                approver = session.query(Author).filter(Author.id == r.created_by).first()
-                if is_featured_author(session, approver):
-                    if is_negative(r.kind):
-                        rejects += 1
-            if len(reactions) / rejects < 5:
-                return True
+            .count()
+        )
+
+        negative_reactions = (
+            session.query(Reaction)
+            .filter(Reaction.shout == reaction.shout, is_negative(Reaction.kind), Reaction.deleted_at.is_(None))
+            .count()
+        )
+
+        return total_reactions > 0 and (negative_reactions / total_reactions) >= 0.2
     return False
 
 
 async def set_featured(session, shout_id):
     """
-    Устанавливает публикацию в открытый доступ и обновляет роль автора.
+    Feature a shout and update the author's role.
 
-    :param session: Сессия базы данных.
-    :param shout_id: Идентификатор публикации.
+    :param session: Database session.
+    :param shout_id: Shout ID.
     """
-    s = session.query(Shout).where(Shout.id == shout_id).first()
-    s.featured_at = int(time.time())
-    Shout.update(s, {"featured_at": int(time.time())})
-    author = session.query(Author).filter(Author.id == s.created_by).first()
-    if author:
-        await add_user_role(str(author.user))
-    session.add(s)
-    session.commit()
+    s = session.query(Shout).filter(Shout.id == shout_id).first()
+    if s:
+        current_time = int(time.time())
+        s.featured_at = current_time
+        session.commit()
+        author = session.query(Author).filter(Author.id == s.created_by).first()
+        if author:
+            await add_user_role(str(author.user))
+        session.add(s)
+        session.commit()
 
 
 def set_unfeatured(session, shout_id):
     """
-    Убирает публикацию из открытого доступа.
+    Unfeature a shout.
 
-    :param session: Сессия базы данных.
-    :param shout_id: Идентификатор публикации.
+    :param session: Database session.
+    :param shout_id: Shout ID.
     """
-    s = session.query(Shout).where(Shout.id == shout_id).first()
-    Shout.update(s, {"featured_at": None})
-    session.add(s)
+    session.query(Shout).filter(Shout.id == shout_id).update({"featured_at": None})
     session.commit()
 
 
 async def _create_reaction(session, info, shout, author_id: int, reaction) -> dict:
     """
-    Создает новую реакцию и выполняет связанные с этим действия, такие как обновление счетчиков и уведомление.
+    Create a new reaction and perform related actions such as updating counters and notification.
 
-    :param session: Сессия базы данных.
-    :param info: Информация о контексте GraphQL.
-    :param shout: Объект публикации.
-    :param author_id: Идентификатор автора.
-    :param reaction: Словарь с данными реакции.
-    :return: Словарь с данными о созданной реакции.
+    :param session: Database session.
+    :param info: GraphQL context info.
+    :param shout: Shout object.
+    :param author_id: Author ID.
+    :param reaction: Dictionary with reaction data.
+    :return: Dictionary with created reaction data.
     """
     r = Reaction(**reaction)
     session.add(r)
     session.commit()
     rdict = r.dict()
 
-    # Пересчет счетчика комментариев
-    if str(r.kind) == ReactionKind.COMMENT.value:
+    # Update author stat for comments
+    if r.kind == ReactionKind.COMMENT.value:
         update_author_stat(author_id)
 
-    # Совместное редактирование
-    if rdict.get("reply_to") and r.kind in PROPOSAL_REACTIONS and author_id in shout.authors:
+    # Handle proposal
+    if r.reply_to and r.kind in PROPOSAL_REACTIONS and author_id in shout.authors:
         handle_proposing(session, r, shout)
 
-    # Рейтинг и саморегуляция
+    # Handle rating
     if r.kind in RATING_REACTIONS:
-        # Механизм саморегуляции
         if check_to_unfeature(session, author_id, r):
             set_unfeatured(session, shout.id)
         elif check_to_feature(session, author_id, r):
             await set_featured(session, shout.id)
 
-        # Подписка, если понравилось
+        # Follow if liked
         if r.kind == ReactionKind.LIKE.value:
             try:
-                # Автоподписка при реакции
                 follow(None, info, "shout", shout.slug)
             except Exception:
                 pass
 
-    # Обновление счетчика комментариев в кэше
-    if str(r.kind) == ReactionKind.COMMENT.value:
-        update_author_stat(author_id)
-
-    rdict["shout"] = shout.dict()
-    rdict["stat"] = {"commented": 0, "reacted": 0, "rating": 0}
-
-    # Уведомление о создании
+    # Notify creation
     await notify_reaction(rdict, "create")
 
     return rdict
@@ -198,47 +231,36 @@ async def _create_reaction(session, info, shout, author_id: int, reaction) -> di
 
 def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
     """
-    Проверяет возможность выставления новой оценки для публикации.
+    Check for the possibility of rating a shout.
 
-    :param reaction: Словарь с данными реакции.
-    :param shout_id: Идентификатор публикации.
-    :param session: Сессия базы данных.
-    :param author_id: Идентификатор автора.
-    :return: Словарь с ошибкой или None.
+    :param reaction: Dictionary with reaction data.
+    :param shout_id: Shout ID.
+    :param session: Database session.
+    :param author_id: Author ID.
+    :return: Dictionary with error or None.
     """
     kind = reaction.get("kind")
     opposite_kind = ReactionKind.DISLIKE.value if is_positive(kind) else ReactionKind.LIKE.value
 
-    # Формирование запроса для проверки существующих оценок
-    q = select(Reaction).filter(
-        and_(
+    existing_ratings = (
+        session.query(Reaction)
+        .filter(
             Reaction.shout == shout_id,
             Reaction.created_by == author_id,
             Reaction.kind.in_(RATING_REACTIONS),
-            Reaction.deleted_at.is_not(None),
+            Reaction.deleted_at.is_(None),
         )
+        .all()
     )
-    reply_to = reaction.get("reply_to")
-    if reply_to and isinstance(reply_to, int):
-        q = q.filter(Reaction.reply_to == reply_to)
-    rating_reactions = session.execute(q).all()
 
-    # Проверка условий для выставления новой оценки
-    if rating_reactions:
-        same_rating = filter(
-            lambda r: r.created_by == author_id and r.kind == kind,
-            rating_reactions,
-        )
-        opposite_rating = filter(
-            lambda r: r.created_by == author_id and r.kind == opposite_kind,
-            rating_reactions,
-        )
-        if same_rating:
+    for r in existing_ratings:
+        if r.kind == kind:
             return {"error": "You can't rate the same thing twice"}
-        elif opposite_rating:
+        if r.kind == opposite_kind:
             return {"error": "Remove opposite vote first"}
-        elif filter(lambda r: r.created_by == author_id, rating_reactions):
-            return {"error": "You can't rate your own thing"}
+    if shout_id in [r.shout for r in existing_ratings]:
+        return {"error": "You can't rate your own thing"}
+
     return
 
 
@@ -246,34 +268,27 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
 @login_required
 async def create_reaction(_, info, reaction):
     """
-    Создает новую реакцию через GraphQL запрос.
+    Create a new reaction through a GraphQL request.
 
-    :param info: Информация о контексте GraphQL.
-    :param reaction: Словарь с данными реакции.
-    :return: Словарь с информацией о созданной реакции или ошибкой.
+    :param info: GraphQL context info.
+    :param reaction: Dictionary with reaction data.
+    :return: Dictionary with created reaction data or error.
     """
-    # logger.debug(f"{info.context} for {reaction}")
-    info.context.get("user_id")
     author_dict = info.context.get("author", {})
-    if not isinstance(author_dict, dict):
-        return {"error": "Unauthorized"}
     author_id = author_dict.get("id")
     shout_id = reaction.get("shout")
-    if not shout_id:
-        return {"error": "Shout ID is required to create a reaction."}
+
+    if not shout_id or not author_id:
+        return {"error": "Shout ID and author ID are required to create a reaction."}
 
     try:
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
-            if shout and author_id:
-                reaction["created_by"] = int(author_id)
-                kind = reaction.get("kind")
-
-                if not kind and isinstance(reaction.get("body"), str):
-                    kind = ReactionKind.COMMENT.value
-
-                if not kind:
-                    return {"error": "cannot create reaction without a kind"}
+            if shout:
+                reaction["created_by"] = author_id
+                kind = reaction.get(
+                    "kind", ReactionKind.COMMENT.value if isinstance(reaction.get("body"), str) else None
+                )
 
                 if kind in RATING_REACTIONS:
                     error_result = prepare_new_rating(reaction, shout_id, session, author_id)
@@ -282,158 +297,150 @@ async def create_reaction(_, info, reaction):
 
                 rdict = await _create_reaction(session, info, shout, author_id, reaction)
 
-                # TODO: call recount ratings periodically
+                # Return created reaction
                 rdict["created_by"] = author_dict
                 return {"reaction": rdict}
     except Exception as e:
-        import traceback
-
-        traceback.print_exc()
         logger.error(f"{type(e).__name__}: {e}")
-
-    return {"error": "Cannot create reaction."}
+        return {"error": "Cannot create reaction."}
 
 
 @mutation.field("update_reaction")
 @login_required
 async def update_reaction(_, info, reaction):
     """
-    Обновляет существующую реакцию через GraphQL запрос.
+    Update an existing reaction through a GraphQL request.
 
-    :param info: Информация о контексте GraphQL.
-    :param reaction: Словарь с данными реакции.
-    :return: Словарь с информацией об обновленной реакции или ошибкой.
+    :param info: GraphQL context info.
+    :param reaction: Dictionary with reaction data.
+    :return: Dictionary with updated reaction data or error.
     """
-    logger.debug(f"{info.context} for {reaction}")
     user_id = info.context.get("user_id")
     roles = info.context.get("roles")
     rid = reaction.get("id")
-    if rid and isinstance(rid, int) and user_id and roles:
-        del reaction["id"]
-        with local_session() as session:
-            reaction_query = select(Reaction).filter(Reaction.id == rid)
-            aliased_reaction = aliased(Reaction)
-            reaction_query = add_reaction_stat_columns(reaction_query, aliased_reaction)
+
+    if not rid or not user_id or not roles:
+        return {"error": "Invalid input data"}
+
+    del reaction["id"]
+
+    with local_session() as session:
+        try:
+            reaction_query = query_reactions().filter(Reaction.id == rid)
+            reaction_query = add_reaction_stat_columns(reaction_query)
             reaction_query = reaction_query.group_by(Reaction.id)
 
-            try:
-                result = session.execute(reaction_query).unique().first()
-                if result:
-                    [r, commented_stat, rating_stat] = result
-                    if not r:
-                        return {"error": "invalid reaction id"}
+            result = session.execute(reaction_query).unique().first()
+            if result:
+                r, commented_stat, rating_stat = result
+                author = session.query(Author).filter(Author.user == user_id).first()
+                if not r or not author:
+                    return {"error": "Invalid reaction ID or unauthorized"}
 
-                    author = session.query(Author).filter(Author.user == user_id).first()
-                    if author:
-                        if r.created_by != author.id and "editor" not in roles:
-                            return {"error": "access denied"}
+                if r.created_by != author.id and "editor" not in roles:
+                    return {"error": "Access denied"}
 
-                        body = reaction.get("body")
-                        if body:
-                            r.body = body
-                        r.updated_at = int(time.time())
+                # Update reaction
+                r.body = reaction.get("body", r.body)
+                r.updated_at = int(time.time())
+                Reaction.update(r, reaction)
+                session.add(r)
+                session.commit()
 
-                        if r.kind != reaction["kind"]:
-                            # Определение изменения мнения может быть реализовано здесь
-                            pass
+                r.stat = {
+                    "commented": commented_stat,
+                    "rating": rating_stat,
+                }
 
-                        Reaction.update(r, reaction)
-                        session.add(r)
-                        session.commit()
+                await notify_reaction(r.dict(), "update")
 
-                        r.stat = {
-                            "commented": commented_stat,
-                            "rating": rating_stat,
-                        }
-
-                        await notify_reaction(r.dict(), "update")
-
-                        return {"reaction": r}
-                    else:
-                        return {"error": "not authorized"}
-            except Exception:
-                import traceback
-
-                traceback.print_exc()
-    return {"error": "cannot create reaction"}
+                return {"reaction": r}
+        except Exception as e:
+            logger.error(f"{type(e).__name__}: {e}")
+            return {"error": "Cannot update reaction"}
 
 
 @mutation.field("delete_reaction")
 @login_required
 async def delete_reaction(_, info, reaction_id: int):
     """
-    Удаляет существующую реакцию через GraphQL запрос.
+    Delete an existing reaction through a GraphQL request.
 
-    :param info: Информация о контексте GraphQL.
-    :param reaction_id: Идентификатор удаляемой реакции.
-    :return: Словарь с информацией об удаленной реакции или ошибкой.
+    :param info: GraphQL context info.
+    :param reaction_id: Reaction ID to delete.
+    :return: Dictionary with deleted reaction data or error.
     """
-    logger.debug(f"{info.context} for {reaction_id}")
     user_id = info.context.get("user_id")
     author_id = info.context.get("author", {}).get("id")
     roles = info.context.get("roles", [])
-    if user_id:
-        with local_session() as session:
-            try:
-                author = session.query(Author).filter(Author.user == user_id).one()
-                r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
-                if r.created_by != author_id and "editor" not in roles:
-                    return {"error": "access denied"}
 
-                logger.debug(f"{user_id} user removing his #{reaction_id} reaction")
-                reaction_dict = r.dict()
-                session.delete(r)
-                session.commit()
+    if not user_id:
+        return {"error": "Unauthorized"}
 
-                # Обновление счетчика комментариев в кэше
-                if str(r.kind) == ReactionKind.COMMENT.value:
-                    update_author_stat(author.id)
-                await notify_reaction(reaction_dict, "delete")
+    with local_session() as session:
+        try:
+            author = session.query(Author).filter(Author.user == user_id).one()
+            r = session.query(Reaction).filter(Reaction.id == reaction_id).one()
 
-                return {"error": None, "reaction": reaction_dict}
-            except Exception as exc:
-                return {"error": f"cannot delete reaction: {exc}"}
-    return {"error": "cannot delete reaction"}
+            if r.created_by != author_id and "editor" not in roles:
+                return {"error": "Access denied"}
+
+            logger.debug(f"{user_id} user removing his #{reaction_id} reaction")
+            reaction_dict = r.dict()
+            session.delete(r)
+            session.commit()
+
+            # Update author stat
+            if r.kind == ReactionKind.COMMENT.value:
+                update_author_stat(author.id)
+
+            await notify_reaction(reaction_dict, "delete")
+
+            return {"error": None, "reaction": reaction_dict}
+        except Exception as e:
+            logger.error(f"{type(e).__name__}: {e}")
+            return {"error": "Cannot delete reaction"}
 
 
 def apply_reaction_filters(by, q):
     """
-    Применяет фильтры к запросу реакций.
+    Apply filters to a reaction query.
 
-    :param by: Словарь с параметрами фильтрации.
-    :param q: SQL-запрос.
-    :return: Запрос с примененными фильтрами.
+    :param by: Dictionary with filter parameters.
+    :param q: SQL query.
+    :return: Query with applied filters.
     """
-    shout_slug = by.get("shout", None)
+    shout_slug = by.get("shout")
     if shout_slug:
         q = q.filter(Shout.slug == shout_slug)
 
-    elif by.get("shouts"):
-        q = q.filter(Shout.slug.in_(by.get("shouts", [])))
+    shouts = by.get("shouts")
+    if shouts:
+        q = q.filter(Shout.slug.in_(shouts))
 
-    created_by = by.get("created_by", None)
+    created_by = by.get("created_by")
     if created_by:
         q = q.filter(Author.id == created_by)
 
-    author_slug = by.get("author", None)
+    author_slug = by.get("author")
     if author_slug:
         q = q.filter(Author.slug == author_slug)
 
-    topic = by.get("topic", None)
+    topic = by.get("topic")
     if isinstance(topic, int):
         q = q.filter(Shout.topics.any(id=topic))
 
-    if by.get("comment", False):
+    if by.get("comment"):
         q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)
 
-    if by.get("rating", False):
+    if by.get("rating"):
         q = q.filter(Reaction.kind.in_(RATING_REACTIONS))
 
     by_search = by.get("search", "")
     if len(by_search) > 2:
         q = q.filter(Reaction.body.ilike(f"%{by_search}%"))
 
-    after = by.get("after", None)
+    after = by.get("after")
     if isinstance(after, int):
         q = q.filter(Reaction.created_at > after)
 
@@ -443,45 +450,24 @@ def apply_reaction_filters(by, q):
 @query.field("load_reactions_by")
 async def load_reactions_by(_, info, by, limit=50, offset=0):
     """
-    Загружает реакции по указанным параметрам.
+    Load reactions based on specified parameters.
 
-    :param info: Информация о контексте GraphQL.
-    :param by: {
-        :shout - фильтрация по slug публикации
-        :shouts - фильтрация по списку slug публикаций
-        :created_by - фильтрация по идентификатору автора
-        :author - фильтрация по slug автора
-        :topic - фильтрация по теме
-        :search - поиск по тексту реакций
-        :comment - фильтрация комментариев
-        :rating - фильтрация реакций с рейтингом
-        :after - фильтрация по времени создания
-        :sort - поле для сортировки (по убыванию по умолчанию)
-    }
-    :param limit: Количество реакций для загрузки.
-    :param offset: Смещение для пагинации.
-    :return: Список реакций.
+    :param info: GraphQL context info.
+    :param by: Filter parameters.
+    :param limit: Number of reactions to load.
+    :param offset: Pagination offset.
+    :return: List of reactions.
     """
-    q = (
-        select(Reaction, Author, Shout)
-        .select_from(Reaction)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
-    )
+    q = query_reactions()
 
-    # Подсчет статистики
-    aliased_reaction = aliased(Reaction)
-    q = add_reaction_stat_columns(q, aliased_reaction)
-
-    # Применение фильтров
+    # Add statistics and apply filters
+    q = add_reaction_stat_columns(q)
     q = apply_reaction_filters(by, q)
     q = q.where(Reaction.deleted_at.is_(None))
 
-    # Группировка
-    q = q.group_by(Reaction.id, Author.id, Shout.id, aliased_reaction.id)
-
-    # Сортировка
-    order_stat = by.get("sort", "").lower()  # 'like' | 'dislike' | 'newest' | 'oldest'
+    # Group and sort
+    q = q.group_by(Reaction.id, Author.id, Shout.id)
+    order_stat = by.get("sort", "").lower()
     order_by_stmt = desc(Reaction.created_at)
     if order_stat == "oldest":
         order_by_stmt = asc(Reaction.created_at)
@@ -489,159 +475,93 @@ async def load_reactions_by(_, info, by, limit=50, offset=0):
         order_by_stmt = desc("rating_stat")
     q = q.order_by(order_by_stmt)
 
-    # Пагинация
-    q = q.limit(limit).offset(offset)
-
-    reactions = set()
-    with local_session() as session:
-        result_rows = session.execute(q)
-        for [reaction, author, shout, commented_stat, rating_stat] in result_rows:
-            reaction.created_by = author
-            reaction.shout = shout
-            reaction.stat = {"rating": rating_stat, "commented": commented_stat}
-            reactions.add(reaction)
-
-    return reactions
+    # Retrieve and return reactions
+    return get_reactions_with_stat(q, limit, offset)
 
 
 @query.field("load_shout_ratings")
 async def load_shout_ratings(_, info, shout: int, limit=100, offset=0):
     """
-    Получает оценки для указанной публикации с пагинацией.
+    Load ratings for a specified shout with pagination.
 
-    :param info: Информация о контексте GraphQL.
-    :param shout: Идентификатор публикации.
-    :param limit: Количество реакций для загрузки.
-    :param offset: Смещение для пагинации.
-    :return: Список реакций.
+    :param info: GraphQL context info.
+    :param shout: Shout ID.
+    :param limit: Number of reactions to load.
+    :param offset: Pagination offset.
+    :return: List of reactions.
     """
-    q = (
-        select(Reaction, Author, Shout)
-        .select_from(Reaction)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
+    q = query_reactions()
+
+    # Filter, group, sort, limit, offset
+    q = q.filter(
+        and_(
+            Reaction.deleted_at.is_(None),
+            Reaction.shout == shout,
+            Reaction.kind.in_(RATING_REACTIONS),
+        )
     )
-
-    # Фильтрация, группировка, сортировка, лимит, офсет
-    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.shout == shout, Reaction.kind.in_(RATING_REACTIONS)))
-    q = q.group_by(Reaction.id)
+    q = q.group_by(Reaction.id, Author.id, Shout.id)
     q = q.order_by(desc(Reaction.created_at))
-    q = q.limit(limit).offset(offset)
 
-    reactions = set()
-    with local_session() as session:
-        result_rows = session.execute(q)
-        for [
-            reaction,
-            author,
-            shout,
-        ] in result_rows:
-            reaction.created_by = author
-            reaction.shout = shout
-            reactions.add(reaction)
-
-    return reactions
+    # Retrieve and return reactions
+    return get_reactions_with_stat(q, limit, offset)
 
 
 @query.field("load_shout_comments")
 async def load_shout_comments(_, info, shout: int, limit=50, offset=0):
     """
-    Получает комментарии для указанной публикации с пагинацией и статистикой.
+    Load comments for a specified shout with pagination and statistics.
 
-    :param info: Информация о контексте GraphQL.
-    :param shout: Идентификатор публикации.
-    :param limit: Количество комментариев для загрузки.
-    :param offset: Смещение для пагинации.
-    :return: Список реакций.
+    :param info: GraphQL context info.
+    :param shout: Shout ID.
+    :param limit: Number of comments to load.
+    :param offset: Pagination offset.
+    :return: List of reactions.
     """
-    aliased_reaction = aliased(Reaction)
-    q = (
-        select(
-            Reaction,
-            Author,
-            Shout,
-            func.count(aliased_reaction.id).label("reacted_stat"),
-            func.count(aliased_reaction.body).label("commented_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label(
-                "dislikes_stat"
-            ),
-        )
-        .select_from(Reaction)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
-    )
+    q = query_reactions()
 
-    # Фильтрация, группировка, сортировка, лимит, офсет
-    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.shout == shout, Reaction.body.is_not(None)))
+    q = add_reaction_stat_columns(q)
+
+    # Filter, group, sort, limit, offset
+    q = q.filter(
+        and_(
+            Reaction.deleted_at.is_(None),
+            Reaction.shout == shout,
+            Reaction.body.is_not(None),
+        )
+    )
     q = q.group_by(Reaction.id, Author.id, Shout.id)
     q = q.order_by(desc(Reaction.created_at))
-    q = q.limit(limit).offset(offset)
 
-    reactions = set()
-    with local_session() as session:
-        result_rows = session.execute(q)
-        for row in result_rows:
-            reaction, author, shout, reacted_stat, commented_stat, likes_stat, dislikes_stat = row
-            reaction.created_by = author
-            reaction.shout = shout
-            reaction.stat = {
-                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-            }
-            reactions.add(reaction)
-
-    return list(reactions)
+    # Retrieve and return reactions
+    return get_reactions_with_stat(q, limit, offset)
 
 
 @query.field("load_comment_ratings")
 async def load_comment_ratings(_, info, comment: int, limit=50, offset=0):
     """
-    Получает оценки для указанного комментария с пагинацией и статистикой.
+    Load ratings for a specified comment with pagination and statistics.
 
-    :param info: Информация о контексте GraphQL.
-    :param comment: Идентификатор комментария.
-    :param limit: Количество оценок для загрузки.
-    :param offset: Смещение для пагинации.
-    :return: Список реакций.
+    :param info: GraphQL context info.
+    :param comment: Comment ID.
+    :param limit: Number of ratings to load.
+    :param offset: Pagination offset.
+    :return: List of reactions.
     """
-    aliased_reaction = aliased(Reaction)
-    q = (
-        select(
-            Reaction,
-            Author,
-            Shout,
-            func.count(aliased_reaction.id).label("reacted_stat"),
-            func.count(aliased_reaction.body).label("commented_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.LIKE.value), 1), else_=0)).label("likes_stat"),
-            func.sum(case((aliased_reaction.kind == str(ReactionKind.DISLIKE.value), 1), else_=0)).label(
-                "dislikes_stat"
-            ),
-        )
-        .select_from(Reaction)
-        .join(Author, Reaction.created_by == Author.id)
-        .join(Shout, Reaction.shout == Shout.id)
-    )
+    q = query_reactions()
 
-    # Фильтрация, группировка, сортировка, лимит, офсет
-    q = q.filter(and_(Reaction.deleted_at.is_(None), Reaction.reply_to == comment, Reaction.body.is_not(None)))
+    q = add_reaction_stat_columns(q)
+
+    # Filter, group, sort, limit, offset
+    q = q.filter(
+        and_(
+            Reaction.deleted_at.is_(None),
+            Reaction.reply_to == comment,
+            Reaction.kind == ReactionKind.COMMENT.value,
+        )
+    )
     q = q.group_by(Reaction.id, Author.id, Shout.id)
     q = q.order_by(desc(Reaction.created_at))
-    q = q.limit(limit).offset(offset)
 
-    reactions = set()
-    with local_session() as session:
-        result_rows = session.execute(q)
-        for row in result_rows:
-            reaction, author, shout, reacted_stat, commented_stat, likes_stat, dislikes_stat = row
-            reaction.created_by = author
-            reaction.shout = shout
-            reaction.stat = {
-                "rating": int(likes_stat or 0) - int(dislikes_stat or 0),
-                "reacted": reacted_stat,
-                "commented": commented_stat,
-            }
-            reactions.add(reaction)
-
-    return list(reactions)
+    # Retrieve and return reactions
+    return get_reactions_with_stat(q, limit, offset)
