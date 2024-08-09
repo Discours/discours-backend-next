@@ -151,12 +151,12 @@ async def get_cached_topic_followers(topic_id: int):
         # Попытка получить данные из кеша
         cached = await redis.get(f"topic:followers:{topic_id}")
         if cached:
-            followers = json.loads(cached)
-            logger.debug(f"Cached followers for topic #{topic_id}: {len(followers)}")
+            followers_ids = json.loads(cached)
+            logger.debug(f"Cached {len(followers_ids)} followers for topic #{topic_id}")
+            followers = await get_cached_authors_by_ids(followers_ids)
             logger.debug(followers)
             return followers
 
-        logger.debug(">>>>>>>>>>> update cache from db ")
         # Если данные не найдены в кеше, загрузка из базы данных
         async with local_session() as session:
             result = await session.execute(
@@ -175,7 +175,7 @@ async def get_cached_topic_followers(topic_id: int):
             logger.debug(followers)
             return followers
     except Exception as e:
-        logger.error(f"Ошибка при получении подписчиков для темы#{topic_id}: {str(e)}")
+        logger.error(f"Ошибка при получении подписчиков для темы #{topic_id}: {str(e)}")
         return []
 
 
