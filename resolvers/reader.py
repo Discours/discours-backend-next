@@ -1,5 +1,6 @@
 from typing import List
-from sqlalchemy.orm import aliased, selectinload, joinedload
+
+from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.sql import union
 from sqlalchemy.sql.expression import (
     and_,
@@ -12,17 +13,18 @@ from sqlalchemy.sql.expression import (
     select,
     text,
 )
+
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutReactionsFollower
+from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.topic import get_topics_random
 from services.auth import login_required
 from services.db import local_session
-from utils.logger import root_logger as logger
 from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
+from utils.logger import root_logger as logger
 
 
 def query_shouts(slug=None):

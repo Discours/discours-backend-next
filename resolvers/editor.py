@@ -4,6 +4,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
+from cache.cache import cache_author, cache_topic
 from orm.author import Author
 from orm.rating import is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
@@ -12,13 +13,12 @@ from orm.topic import Topic
 from resolvers.follower import follow, unfollow
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from cache.cache import cache_author, cache_topic
 from services.db import local_session
-from utils.diff import apply_diff, get_diff
-from utils.logger import root_logger as logger
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
+from utils.diff import apply_diff, get_diff
+from utils.logger import root_logger as logger
 
 
 async def cache_by_id(entity, entity_id: int, cache_method):

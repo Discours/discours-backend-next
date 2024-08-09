@@ -63,17 +63,17 @@ async def update_follower_stat(follower_id, entity_type, count):
 
 
 # Get author from cache
-async def get_cached_author(author_id: int):
+async def get_cached_author(author_id: int, get_with_stat):
     author_key = f"author:id:{author_id}"
     result = await redis.execute("get", author_key)
     if result:
         return json.loads(result)
     # Load from database if not found in cache
-    with local_session() as session:
-        author = session.execute(select(Author).where(Author.id == author_id)).scalar_one_or_none()
-        if author:
-            await cache_author(author.dict())
-            return author.dict()
+    q = select(Author).where(Author.id == author_id)
+    author = get_with_stat(q)
+    if author:
+        await cache_author(author.dict())
+        return author.dict()
     return None
 
 

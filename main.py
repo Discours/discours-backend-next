@@ -7,15 +7,15 @@ from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
 
+from cache.precache import precache_data
+from cache.revalidator import revalidation_manager
 from services.exception import ExceptionHandlerMiddleware
+from services.redis import redis
 from services.schema import resolvers
 from services.search import search_service
 from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
-from cache.precache import precache_data
-from services.redis import redis
-from cache.revalidator import revalidation_manager
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 
 import_module("resolvers")

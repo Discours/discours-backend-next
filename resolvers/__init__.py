@@ -1,3 +1,4 @@
+from cache.triggers import events_register
 from resolvers.author import (  # search_authors,
     get_author,
     get_author_followers,
@@ -22,24 +23,24 @@ from resolvers.rating import rate_author
 from resolvers.reaction import (
     create_reaction,
     delete_reaction,
+    load_comment_ratings,
     load_reactions_by,
-    update_reaction,
     load_shout_comments,
     load_shout_ratings,
-    load_comment_ratings,
+    update_reaction,
 )
 from resolvers.reader import (
     get_shout,
     load_shouts_by,
+    load_shouts_coauthored,
+    load_shouts_discussed,
     load_shouts_feed,
+    load_shouts_followed,
+    load_shouts_followed_by,
     load_shouts_random_top,
     load_shouts_random_topic,
     load_shouts_search,
     load_shouts_unrated,
-    load_shouts_coauthored,
-    load_shouts_discussed,
-    load_shouts_followed,
-    load_shouts_followed_by,
 )
 from resolvers.topic import (
     get_topic,
@@ -49,7 +50,6 @@ from resolvers.topic import (
     get_topics_by_author,
     get_topics_by_community,
 )
-from cache.triggers import events_register
 
 events_register()
 

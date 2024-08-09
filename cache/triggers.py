@@ -1,9 +1,10 @@
 from sqlalchemy import event
+
+from cache.revalidator import revalidation_manager
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from cache.revalidator import revalidation_manager
 from utils.logger import root_logger as logger
 
 

@@ -3,6 +3,12 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.sql import and_
 
+from cache.cache import (
+    cache_author,
+    cache_topic,
+    get_cached_follower_authors,
+    get_cached_follower_topics,
+)
 from orm.author import Author, AuthorFollower
 from orm.community import Community, CommunityFollower
 from orm.reaction import Reaction
@@ -10,7 +16,6 @@ from orm.shout import Shout, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from cache.cache import cache_author, cache_topic, get_cached_follower_authors, get_cached_follower_topics
 from services.db import local_session
 from services.notify import notify_follower
 from services.schema import mutation, query

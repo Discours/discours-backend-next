@@ -2,10 +2,10 @@ from functools import wraps
 
 import httpx
 
-from resolvers.stat import get_with_stat
 from cache.cache import get_cached_author_by_user_id
-from utils.logger import root_logger as logger
+from resolvers.stat import get_with_stat
 from settings import ADMIN_SECRET, AUTH_URL
+from utils.logger import root_logger as logger
 
 
 async def request_data(gql, headers=None):

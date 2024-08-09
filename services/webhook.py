@@ -8,9 +8,9 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from cache.cache import cache_author
 from orm.author import Author
 from resolvers.stat import get_with_stat
-from cache.cache import cache_author
 from services.db import local_session
 
 

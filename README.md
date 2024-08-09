@@ -31,6 +31,15 @@ poetry env use .venv/bin/python3.12
 poetry update
 poetry run server.py
 ```
+
+### Полезные команды
+
+```shell
+poetry run ruff check . --fix --select I # линтер и сортировка импортов
+poetry run ruff format . --line-length=120 # форматирование кода
+```
+
+
 ## Подключенные сервисы
 
 Для межсерверной коммуникации используются отдельные логики, папка `services/*` содержит адаптеры для использования базы данных, `redis`, кеширование и клиенты для запросов GraphQL.

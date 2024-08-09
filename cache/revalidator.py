@@ -1,5 +1,6 @@
 import asyncio
-from cache.cache import get_cached_author, cache_author, get_cached_topic, cache_topic
+
+from cache.cache import cache_author, cache_topic, get_cached_author, get_cached_topic
 from utils.logger import root_logger as logger
 
 

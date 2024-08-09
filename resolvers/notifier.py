@@ -8,12 +8,17 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import not_
 
 from orm.author import Author
-from orm.notification import Notification, NotificationAction, NotificationEntity, NotificationSeen
+from orm.notification import (
+    Notification,
+    NotificationAction,
+    NotificationEntity,
+    NotificationSeen,
+)
 from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
-from utils.logger import root_logger as logger
 from services.schema import mutation, query
+from utils.logger import root_logger as logger
 
 
 def query_notifications(author_id: int, after: int = 0) -> Tuple[int, int, List[Tuple[Notification, bool]]]:

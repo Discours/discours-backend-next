@@ -3,8 +3,8 @@ import subprocess
 from granian.constants import Interfaces
 from granian.server import Granian
 
-from utils.logger import root_logger as logger
 from settings import PORT
+from utils.logger import root_logger as logger
 
 
 def is_docker_container_running(name):

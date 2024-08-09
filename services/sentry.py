@@ -2,6 +2,7 @@ import sentry_sdk
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
+
 from settings import GLITCHTIP_DSN
 
 
