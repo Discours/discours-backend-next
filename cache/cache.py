@@ -154,7 +154,6 @@ async def get_cached_topic_followers(topic_id: int):
             followers_ids = json.loads(cached)
             logger.debug(f"Cached {len(followers_ids)} followers for topic #{topic_id}")
             followers = await get_cached_authors_by_ids(followers_ids)
-            logger.debug(followers)
             return followers
 
         # Если данные не найдены в кеше, загрузка из базы данных
@@ -165,7 +164,6 @@ async def get_cached_topic_followers(topic_id: int):
                 .filter(TopicFollower.topic == topic_id)
             )
             followers_ids = [f[0] for f in result.scalars().all()]
-            logger.debug(followers_ids)
 
             # Кеширование результатов
             await redis.set(f"topic:followers:{topic_id}", json.dumps(followers_ids))
