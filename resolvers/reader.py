@@ -83,7 +83,7 @@ def query_shouts(slug=None):
     q = (
         select(
             Shout,
-            func.count(case((aliased_reaction.body.is_not(None), 1))).label("comments_stat"),
+            func.count().filter(aliased_reaction.kind == ReactionKind.COMMENT.value).label("comments_stat"),
             func.count(distinct(ShoutReactionsFollower.follower)).label("followers_stat"),
             func.sum(
                 case(
@@ -178,7 +178,7 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
         shout.topics = parse_aggregated_string(topics, Topic)
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
-            "followers": followers_stat or 0,
+            "followed": followers_stat or 0,
             "rating": rating_stat or 0,
             "commented": comments_stat or 0,
             "last_reacted_at": last_reacted_at,

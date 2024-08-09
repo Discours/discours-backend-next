@@ -28,7 +28,7 @@ def add_reaction_stat_columns(q, aliased_reaction):
     # Присоединение реакций и добавление статистических колонок
     q = q.outerjoin(aliased_reaction, aliased_reaction.deleted_at.is_(None)).add_columns(
         # Подсчет комментариев
-        func.count(case((aliased_reaction.body.is_not(None), 1), else_=0)).label("comments_stat"),
+        func.count().filter(aliased_reaction.kind == ReactionKind.COMMENT.value).label("comments_stat"),
         # Вычисление рейтинга как разница между лайками и дизлайками
         func.sum(
             case(
