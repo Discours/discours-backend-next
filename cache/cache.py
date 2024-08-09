@@ -152,10 +152,11 @@ async def get_cached_topic_followers(topic_id: int):
         cached = await redis.get(f"topic:followers:{topic_id}")
         if cached:
             followers = json.loads(cached)
-            logger.debug(f"Cached followers for topic#{topic_id}: {len(followers)}")
+            logger.debug(f"Cached followers for topic #{topic_id}: {len(followers)}")
+            logger.debug(followers)
             return followers
 
-        logger.debug("[get_cached_topic_followers] >>>>>>>>>>> ")
+        logger.debug(">>>>>>>>>>> update cache from db ")
         # Если данные не найдены в кеше, загрузка из базы данных
         async with local_session() as session:
             result = await session.execute(
@@ -185,7 +186,7 @@ async def get_cached_author_followers(author_id: int):
     if cached:
         followers_ids = json.loads(cached)
         followers = await get_cached_authors_by_ids(followers_ids)
-        logger.debug(f"Cached followers for author#{author_id}: {len(followers)}")
+        logger.debug(f"Cached followers for author #{author_id}: {len(followers)}")
         return followers
 
     # Query database if cache is empty
