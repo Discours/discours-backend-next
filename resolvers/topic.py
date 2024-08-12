@@ -1,15 +1,19 @@
 from sqlalchemy import distinct, func, select
 
+from cache.cache import (
+    get_cached_topic_authors,
+    get_cached_topic_by_slug,
+    get_cached_topic_followers,
+)
+from cache.memorycache import cache_region
 from orm.author import Author
 from orm.shout import ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
-from cache.cache import get_cached_topic_authors, get_cached_topic_by_slug, get_cached_topic_followers
 from services.db import local_session
-from utils.logger import root_logger as logger
-from cache.memorycache import cache_region
 from services.schema import mutation, query
+from utils.logger import root_logger as logger
 
 
 # Запрос на получение всех тем

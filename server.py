@@ -1,6 +1,7 @@
 import subprocess
 
 from granian.constants import Interfaces
+from granian.log import LogLevels
 from granian.server import Granian
 
 from settings import PORT
@@ -21,8 +22,9 @@ if __name__ == "__main__":
         "main:app",
         address="0.0.0.0",  # noqa S104
         port=PORT,
+        interface=Interfaces.ASGI,
         threads=4,
         websockets=False,
-        interface=Interfaces.ASGI,
+        log_level=LogLevels.debug,
     )
     granian_instance.serve()

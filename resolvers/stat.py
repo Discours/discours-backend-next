@@ -3,11 +3,11 @@ import asyncio
 from sqlalchemy import and_, distinct, func, join, select
 from sqlalchemy.orm import aliased
 
+from cache.cache import cache_author
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from cache.cache import cache_author
 from services.db import local_session
 from utils.logger import root_logger as logger
 

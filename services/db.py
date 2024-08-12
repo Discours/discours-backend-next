@@ -1,19 +1,15 @@
 import json
-import math
 import time
 import traceback
 import warnings
+import math
 from typing import Any, Callable, Dict, TypeVar
-
 from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
-
-from settings import DB_URL
 from utils.logger import root_logger as logger
-
-# from sqlalchemy_searchable import make_searchable
+from settings import DB_URL
 
 
 # Подключение к базе данных SQLAlchemy
@@ -96,23 +92,44 @@ warnings.showwarning = warning_with_traceback
 warnings.simplefilter("always", exc.SAWarning)
 
 
-@event.listens_for(Engine, "before_cursor_execute")
-def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    conn.query_start_time = time.time()
-    conn.last_statement = None
-
-
-@event.listens_for(Engine, "after_cursor_execute")
-def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+# Функция для извлечения SQL-запроса из контекста
+def get_statement_from_context(context):
+    query = None
     compiled_statement = context.compiled.string
     compiled_parameters = context.compiled.params
     if compiled_statement:
-        elapsed = time.time() - conn.query_start_time
-        if compiled_parameters is not None:
-            query = compiled_statement.format(*compiled_parameters)
+        if compiled_parameters:
+            try:
+                # Безопасное форматирование параметров
+                query = compiled_statement % compiled_parameters
+            except Exception as e:
+                logger.error(f"Error formatting query: {e}")
         else:
-            query = compiled_statement  # or handle this case in a way that makes sense for your application
+            query = compiled_statement
+    if query:
+        query = query.replace("\n", " ").replace("  ", " ").strip()
+    return query
 
-        if elapsed > 1 and conn.last_statement != query:
-            conn.last_statement = query
-            logger.debug(f"\n{query}\n{'*' * math.floor(elapsed)} {elapsed:.3f} s\n")
+
+# Обработчик события перед выполнением запроса
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.query_start_time = time.time()
+    conn.cursor_id = id(cursor)  # Отслеживание конкретного курсора
+
+
+# Обработчик события после выполнения запроса
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    if hasattr(conn, "cursor_id") and conn.cursor_id == id(cursor):
+        query = get_statement_from_context(context)
+        if query:
+            elapsed = time.time() - conn.query_start_time
+            if elapsed > 1:
+                query_end = query[-16:]
+                query = query.split(query_end)[0] + query_end
+                logger.debug(query)
+                elapsed_n = math.floor(elapsed)
+                logger.debug('*' * elapsed_n)
+                logger.debug(f"{elapsed_n:.3f} s")
+        del conn.cursor_id  # Удаление идентификатора курсора после выполнения

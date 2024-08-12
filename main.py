@@ -13,7 +13,6 @@ from services.exception import ExceptionHandlerMiddleware
 from services.redis import redis
 from services.schema import resolvers
 from services.search import search_service
-from services.sentry import start_sentry
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
@@ -42,7 +41,7 @@ app = Starlette(
         precache_data,
         ViewedStorage.init,
         search_service.info,
-        start_sentry,
+        # start_sentry,
         start,
         revalidation_manager.start,
     ],

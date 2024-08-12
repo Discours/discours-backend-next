@@ -1,15 +1,17 @@
-import json
 import asyncio
+import json
+
 from sqlalchemy import and_, join, select
+
+from cache.cache import cache_author, cache_topic
 from orm.author import Author, AuthorFollower
-from orm.shout import Shout, ShoutAuthor, ShoutTopic, ShoutReactionsFollower
+from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower, ShoutTopic
 from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
-from cache.cache import cache_author, cache_topic
 from services.db import local_session
+from services.redis import redis
 from utils.encoders import CustomJSONEncoder
 from utils.logger import root_logger as logger
-from services.redis import redis
 
 
 # Предварительное кеширование подписчиков автора

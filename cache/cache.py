@@ -1,13 +1,15 @@
 import asyncio
 import json
 from typing import List
-from sqlalchemy import select, join, and_
+
+from sqlalchemy import and_, join, select
+
 from orm.author import Author, AuthorFollower
-from orm.topic import Topic, TopicFollower
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
+from orm.topic import Topic, TopicFollower
 from services.db import local_session
-from utils.encoders import CustomJSONEncoder
 from services.redis import redis
+from utils.encoders import CustomJSONEncoder
 from utils.logger import root_logger as logger
 
 DEFAULT_FOLLOWS = {

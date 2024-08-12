@@ -63,8 +63,9 @@ stream.setFormatter(formatter)
 
 # Set up the root logger with the same formatting
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
-root_logger.addHandler(stream)
+if not root_logger.hasHandlers():
+    root_logger.setLevel(logging.DEBUG)
+    root_logger.addHandler(stream)
 
 ignore_logs = ["_trace", "httpx", "_client", "_trace.atrace", "aiohttp", "_client", "base"]
 for lgr in ignore_logs:

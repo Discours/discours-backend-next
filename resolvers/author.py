@@ -3,11 +3,6 @@ import time
 
 from sqlalchemy import desc, select, text
 
-from orm.author import Author
-from orm.shout import ShoutAuthor, ShoutTopic
-from orm.topic import Topic
-from resolvers.stat import get_with_stat
-from services.auth import login_required
 from cache.cache import (
     cache_author,
     get_cached_author,
@@ -16,9 +11,14 @@ from cache.cache import (
     get_cached_follower_authors,
     get_cached_follower_topics,
 )
+from orm.author import Author
+from orm.shout import ShoutAuthor, ShoutTopic
+from orm.topic import Topic
+from resolvers.stat import get_with_stat
+from services.auth import login_required
 from services.db import local_session
-from utils.logger import root_logger as logger
 from services.schema import mutation, query
+from utils.logger import root_logger as logger
 
 
 @mutation.field("update_author")

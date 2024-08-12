@@ -1,5 +1,6 @@
 import time
-from sqlalchemy import and_, case, desc, func, select, asc
+
+from sqlalchemy import and_, asc, case, desc, func, select
 from sqlalchemy.orm import aliased
 
 from orm.author import Author
@@ -11,9 +12,9 @@ from resolvers.follower import follow
 from resolvers.stat import update_author_stat
 from services.auth import add_user_role, login_required
 from services.db import local_session
-from utils.logger import root_logger as logger
 from services.notify import notify_reaction
 from services.schema import mutation, query
+from utils.logger import root_logger as logger
 
 
 def query_reactions():

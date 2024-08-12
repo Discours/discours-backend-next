@@ -280,35 +280,39 @@ async def get_shout(_, info, slug: str):
     """
     try:
         with local_session() as session:
-            q, aliased_reaction = query_shouts(slug)
-            results = session.execute(q).first()
-            if results:
-                [
-                    shout,
-                    commented_stat,
-                    followers_stat,
-                    rating_stat,
-                    last_reaction_at,
-                    authors,
-                    topics,
-                    main_topic_slug,
-                ] = results
+            # Отключение автосохранения
+            with session.no_autoflush:
+                q, aliased_reaction = query_shouts(slug)
+                results = session.execute(q).first()
+                if results:
+                    [
+                        shout,
+                        commented_stat,
+                        followers_stat,
+                        rating_stat,
+                        last_reaction_at,
+                        authors,
+                        topics,
+                        main_topic_slug,
+                    ] = results
 
-                shout.stat = {
-                    "viewed": ViewedStorage.get_shout(shout.id),
-                    "commented": commented_stat,
-                    "rating": rating_stat,
-                    "last_reacted_at": last_reaction_at,
-                }
-                # Используем класс модели Author для преобразования строк в объекты
-                shout.authors = parse_aggregated_string(authors, Author)
-                # Используем класс модели Topic для преобразования строк в объекты
-                shout.topics = parse_aggregated_string(topics, Topic)
+                    shout.stat = {
+                        "viewed": ViewedStorage.get_shout(shout.id),
+                        "commented": commented_stat,
+                        "rating": rating_stat,
+                        "last_reacted_at": last_reaction_at,
+                    }
 
-                # Добавляем основной топик, если он существует
-                shout.main_topic = main_topic_slug
+                    # Преобразование строк в объекты Author без их создания
+                    shout.authors = parse_aggregated_string(authors, Author)
 
-                return shout
+                    # Преобразование строк в объекты Topic без их создания
+                    shout.topics = parse_aggregated_string(topics, Topic)
+
+                    # Добавляем основной топик, если он существует
+                    shout.main_topic = main_topic_slug
+
+                    return shout
     except Exception as _exc:
         import traceback
 
