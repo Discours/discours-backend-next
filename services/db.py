@@ -129,7 +129,7 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
                 query_end = query[-16:]
                 query = query.split(query_end)[0] + query_end
                 logger.debug(query)
-                elapsed_n = math.floor(elapsed*1000) / 1000
-                logger.debug('*' * elapsed_n)
-                logger.debug(f"{elapsed_n:.3f} s")
+                elapsed_n = math.floor(elapsed)
+                logger.debug('*' * (elapsed_n))
+                logger.debug(f"{elapsed:.3f} s")
         del conn.cursor_id  # Удаление идентификатора курсора после выполнения
