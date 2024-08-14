@@ -115,9 +115,9 @@ async def get_cached_topic_by_slug(slug: str, get_with_stat):
         return json.loads(result)
     # Load from database if not found in cache
     topic_query = select(Topic).where(Topic.slug == slug)
-    topic = get_with_stat(topic_query)
-    if topic:
-        topic_dict = topic.dict()
+    topics = get_with_stat(topic_query)
+    if topics:
+        topic_dict = topics[0].dict()
         await cache_topic(topic_dict)
         return topic_dict
     return None
@@ -258,7 +258,7 @@ async def get_cached_follower_topics(author_id: int):
 
 
 # Get author by user ID from cache
-async def get_cached_author_by_user_id(user_id: str):
+async def get_cached_author_by_user_id(user_id: str, get_with_stat):
     """
     Retrieve author information by user_id, checking the cache first, then the database.
 
@@ -277,17 +277,17 @@ async def get_cached_author_by_user_id(user_id: str):
             return json.loads(author_data)
 
     # If data is not found in cache, query the database
-    with local_session() as session:
-        author = session.execute(select(Author).where(Author.user == user_id)).scalar_one_or_none()
-
-        if author:
-            # Cache the retrieved author data
-            author_dict = author.dict()
-            await asyncio.gather(
-                redis.execute("SET", f"author:user:{user_id.strip()}", str(author.id)),
-                redis.execute("SET", f"author:id:{author.id}", json.dumps(author_dict)),
-            )
-            return author_dict
+    author_query = select(Author).where(Author.user == user_id)
+    authors = get_with_stat(author_query)
+    if authors:
+        # Cache the retrieved author data
+        author = authors[0]
+        author_dict = author.dict()
+        await asyncio.gather(
+            redis.execute("SET", f"author:user:{user_id.strip()}", str(author.id)),
+            redis.execute("SET", f"author:id:{author.id}", json.dumps(author_dict)),
+        )
+        return author_dict
 
     # Return None if author is not found
     return None
