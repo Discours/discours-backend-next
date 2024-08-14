@@ -72,8 +72,9 @@ async def get_cached_author(author_id: int, get_with_stat):
         return json.loads(result)
     # Load from database if not found in cache
     q = select(Author).where(Author.id == author_id)
-    author = get_with_stat(q)
-    if author:
+    authors = get_with_stat(q)
+    if authors:
+        author = authors[0]
         await cache_author(author.dict())
         return author.dict()
     return None
