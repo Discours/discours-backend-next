@@ -107,7 +107,7 @@ def get_statement_from_context(context):
         else:
             query = compiled_statement
     if query:
-        query = query.replace("\n", " ").replace("  ", " ").strip()
+        query = query.replace("\n", " ").replace("  ", " ").replace("  ", " ").strip()
     return query
 
 
