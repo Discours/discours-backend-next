@@ -80,12 +80,11 @@ async def precache_data():
         key = "authorizer_dev"
         # cache reset
         value = await redis.get(key)
-        if value is not None:
-            logger.info(f"Значение ключа '{key}' сохранено: {value}")
         await redis.execute("FLUSHDB")
         logger.info("redis flushed")
-        await redis.execute("HSET", key, value)
-        logger.info("authorizer_dev перезаписан")
+        if value is not None:
+            await redis.execute("HSET", key, value)
+            logger.info(f"Значение ключа '{key}' сохранено")
 
         with local_session() as session:
             # topics
