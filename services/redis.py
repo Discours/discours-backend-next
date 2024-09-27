@@ -57,8 +57,17 @@ class RedisService:
             return
         await self._client.publish(channel, data)
 
-    async def set(self, key, data):
-        await self.execute("set", key, data)
+    async def set(self, key, data, ex=None):
+        # Prepare the command arguments
+        args = [key, data]
+
+        # If an expiration time is provided, add it to the arguments
+        if ex is not None:
+            args.append("EX")
+            args.append(ex)
+
+        # Execute the command with the provided arguments
+        await self.execute("set", *args)
 
     async def get(self, key):
         return await self.execute("get", key)
