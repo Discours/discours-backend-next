@@ -1,4 +1,4 @@
-FROM python:alpine
+FROM python:3.12-alpine
 
 # Update package lists and install necessary dependencies
 RUN apk update && \
