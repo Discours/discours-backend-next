@@ -5,7 +5,7 @@ PORT = 8000
 DB_URL = (
     environ.get("DATABASE_URL", "").replace("postgres://", "postgresql://")
     or environ.get("DB_URL", "").replace("postgres://", "postgresql://")
-    or "postgresql://postgres@localhost:5432/discoursio"
+    or "sqlite:///discoursio-db.sqlite3"
 )
 REDIS_URL = environ.get("REDIS_URL") or "redis://127.0.0.1"
 API_BASE = environ.get("API_BASE") or ""

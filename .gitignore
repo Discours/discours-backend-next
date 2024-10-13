@@ -153,3 +153,6 @@ poetry.lock
 .zed
 
 dokku_config
+
+*.db
+*.sqlite3

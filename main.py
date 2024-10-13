@@ -16,6 +16,8 @@ from services.search import search_service
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
+from services.db import engine, create_table_if_not_exists
+from orm import author, notification, shout, topic, reaction, community #, collection, invite
 
 import_module("resolvers")
 schema = make_executable_schema(load_schema_from_path("schema/"), resolvers)
@@ -30,6 +32,19 @@ async def start():
     print(f"[main] process started in {MODE} mode")
 
 
+def create_all_tables():
+    for model in [author.Author, author.AuthorRating, author.AuthorFollower,
+                  notification.Notification, notification.NotificationSeen,
+                  shout.Shout, shout.ShoutAuthor, shout.ShoutTopic, shout.ShoutCommunity,
+                  topic.Topic, topic.TopicFollower,
+                  reaction.Reaction,
+                  community.Community, community.CommunityFollower,
+                  # collection.Collection, collection.ShoutCollection,
+                  # invite.Invite
+                  ]:
+        create_table_if_not_exists(engine, model)
+
+
 # main starlette app object with ariadne mounted in root
 app = Starlette(
     routes=[
@@ -37,6 +52,7 @@ app = Starlette(
         Route("/new-author", WebhookEndpoint),
     ],
     on_startup=[
+        create_all_tables,
         redis.connect,
         precache_data,
         ViewedStorage.init,

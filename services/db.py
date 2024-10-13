@@ -12,21 +12,36 @@ from utils.logger import root_logger as logger
 from settings import DB_URL
 
 
-# Подключение к базе данных SQLAlchemy
-engine = create_engine(
-    DB_URL,
-    echo=False,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,  # Время ожидания свободного соединения
-    pool_recycle=1800,  # Время жизни соединения
-    connect_args={"sslmode": "disable"},
-)
+if DB_URL.startswith("postgres"):
+    engine = create_engine(
+        DB_URL,
+        echo=False,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,  # Время ожидания свободного соединения
+        pool_recycle=1800,  # Время жизни соединения
+        connect_args={"sslmode": "disable"},
+    )
+else:
+    engine = create_engine(
+        DB_URL,
+        echo=False,
+        connect_args={"check_same_thread": False}
+    )
 inspector = inspect(engine)
 configure_mappers()
 T = TypeVar("T")
 REGISTRY: Dict[str, type] = {}
 FILTERED_FIELDS = ["_sa_instance_state", "search_vector"]
+
+
+def create_table_if_not_exists(engine, table):
+    inspector = inspect(engine)
+    if not inspector.has_table(table.__tablename__):
+        table.__table__.create(engine)
+        logger.info(f"Table '{table.__tablename__}' created.")
+    else:
+        logger.info(f"Table '{table.__tablename__}' already exists.")
 
 
 # noinspection PyUnusedLocal
@@ -77,7 +92,7 @@ class Base(declarative_base()):
 
 
 # make_searchable(Base.metadata)
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 
 # Функция для вывода полного трейсбека при предупреждениях
@@ -94,21 +109,12 @@ warnings.simplefilter("always", exc.SAWarning)
 
 # Функция для извлечения SQL-запроса из контекста
 def get_statement_from_context(context):
-    query = None
-    compiled_statement = context.compiled.string
-    compiled_parameters = context.compiled.params
-    if compiled_statement:
-        if compiled_parameters:
-            try:
-                # Безопасное форматирование параметров
-                query = compiled_statement % compiled_parameters
-            except Exception as e:
-                logger.error(f"Error formatting query: {e}")
-        else:
-            query = compiled_statement
-    if query:
-        query = query.replace("\n", " ").replace("  ", " ").replace("  ", " ").strip()
-    return query
+    if context is None or not hasattr(context, 'compiled'):
+        return None
+    compiled = context.compiled
+    if compiled is None or not hasattr(compiled, 'string'):
+        return None
+    return compiled.string
 
 
 # Обработчик события перед выполнением запроса
@@ -121,15 +127,22 @@ def before_cursor_execute(conn, cursor, statement, parameters, context, executem
 # Обработчик события после выполнения запроса
 @event.listens_for(Engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    if hasattr(conn, "cursor_id") and conn.cursor_id == id(cursor):
-        query = get_statement_from_context(context)
-        if query:
-            elapsed = time.time() - conn.query_start_time
-            if elapsed > 1:
-                query_end = query[-16:]
-                query = query.split(query_end)[0] + query_end
-                logger.debug(query)
-                elapsed_n = math.floor(elapsed)
-                logger.debug('*' * (elapsed_n))
-                logger.debug(f"{elapsed:.3f} s")
-        del conn.cursor_id  # Удаление идентификатора курсора после выполнения
+    query = get_statement_from_context(context)
+    if query is not None:
+        logger.debug(query)
+
+
+def create_tables_if_not_exist(engine, base):
+    inspector = inspect(engine)
+    for table_name, table in base.metadata.tables.items():
+        try:
+            if not inspector.has_table(table_name):
+                table.create(engine)
+                logger.info(f"Table '{table_name}' created.")
+            else:
+                logger.info(f"Table '{table_name}' already exists.")
+        except Exception as e:
+            logger.error(f"Error while creating table '{table_name}': {str(e)}")
+
+# Заменяем Base.metadata.create_all(bind=engine) на:
+create_tables_if_not_exist(engine, Base)
