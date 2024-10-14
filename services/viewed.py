@@ -55,7 +55,7 @@ class ViewedStorage:
                 # Запуск фоновой задачи
                 _task = asyncio.create_task(self.worker())
             else:
-                logger.info(" * Пожалуйста, добавьте ключевой файл Google Analytics")
+                logger.warning(" * Пожалуйста, добавьте ключевой файл Google Analytics")
                 self.disabled = True
 
     @staticmethod
@@ -79,7 +79,7 @@ class ViewedStorage:
                     self.views_by_shout.update(precounted_views)
                     logger.info(f" * {len(precounted_views)} публикаций с просмотрами успешно загружены.")
             else:
-                logger.info(" * Файл просмотров не найден.")
+                logger.warning(" * Файл просмотров не найден.")
         except Exception as e:
             logger.error(f"Ошибка загрузки предварительно подсчитанных просмотров: {e}")
 

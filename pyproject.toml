@@ -12,7 +12,7 @@ SQLAlchemy = "^2.0.29"
 psycopg2-binary = "^2.9.9"
 redis = {extras = ["hiredis"], version = "^5.0.1"}
 sentry-sdk = {version = "^1.44.1", extras = ["starlette", "ariadne", "sqlalchemy"]}
-starlette = "^0.37.2"
+starlette = "^0.39.2"
 gql = "^3.5.0"
 ariadne = "^0.23.0"
 pre-commit = "^3.7.0"

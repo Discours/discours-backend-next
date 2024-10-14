@@ -1,3 +1,4 @@
+import asyncio
 import os
 from importlib import import_module
 from os.path import exists
@@ -6,6 +7,7 @@ from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
 from starlette.routing import Route
+from starlette.responses import JSONResponse
 
 from cache.precache import precache_data
 from cache.revalidator import revalidation_manager
@@ -45,10 +47,21 @@ def create_all_tables():
         create_table_if_not_exists(engine, model)
 
 
+# Оборачиваем GraphQL-обработчик для лучшей обработки ошибок
+async def graphql_handler(request):
+    try:
+        graphql_app = GraphQL(schema, debug=True)
+        return await graphql_app(request)
+    except asyncio.CancelledError:
+        return JSONResponse({"error": "Request cancelled"}, status_code=499)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # main starlette app object with ariadne mounted in root
 app = Starlette(
     routes=[
-        Route("/", GraphQL(schema, debug=True)),
+        Route("/", graphql_handler),
         Route("/new-author", WebhookEndpoint),
     ],
     on_startup=[

@@ -10,6 +10,7 @@ from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
 from services.db import local_session
 from services.redis import redis
+from settings import REDIS_URL
 from utils.encoders import CustomJSONEncoder
 from utils.logger import root_logger as logger
 
@@ -81,7 +82,7 @@ async def precache_data():
         # cache reset
         value = await redis.get(key)
         await redis.execute("FLUSHDB")
-        logger.info("redis flushed")
+        logger.info(f"FLUSHDB {REDIS_URL}")
         if value is not None:
             await redis.execute("HSET", key, value)
             logger.info(f"Значение ключа '{key}' сохранено")
