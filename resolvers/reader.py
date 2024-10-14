@@ -90,6 +90,7 @@ def query_shouts(slug=None):
             aliased_reaction.deleted_at.is_(None)
         ))
         .scalar_subquery()
+        .correlate(Shout)
     )
     
     # followers_subquery = (
@@ -112,6 +113,7 @@ def query_shouts(slug=None):
             aliased_reaction.deleted_at.is_(None)
         ))
         .scalar_subquery()
+        .correlate(Shout)
     )
     
     # Основной запрос с использованием подзапросов
