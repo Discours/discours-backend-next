@@ -6,12 +6,15 @@ from os.path import exists
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from cache.precache import precache_data
 from cache.revalidator import revalidation_manager
-from orm import (  # , collection, invite
+from orm import (
+    # collection,
+    # invite,
     author,
     community,
     notification,
@@ -89,19 +92,26 @@ graphql_app = GraphQL(schema, debug=True)
 
 
 # Оборачиваем GraphQL-обработчик для лучшей обработки ошибок
-async def graphql_handler(request):
+async def graphql_handler(request: Request):
+    if request.method not in ["GET", "POST"]:
+        return JSONResponse({"error": "Method Not Allowed"}, status_code=405)
+
     try:
-        return await graphql_app.handle_request(request)
+        result = await graphql_app.handle_request(request)
+        if isinstance(result, Response):
+            return result
+        return JSONResponse(result)
     except asyncio.CancelledError:
         return JSONResponse({"error": "Request cancelled"}, status_code=499)
     except Exception as e:
+        print(f"GraphQL error: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-# main starlette app object with ariadne mounted in root
+# Обновляем маршрут в Starlette
 app = Starlette(
     routes=[
-        Route("/", graphql_handler),
+        Route("/", graphql_handler, methods=["GET", "POST"]),
         Route("/new-author", WebhookEndpoint),
     ],
     lifespan=lifespan,

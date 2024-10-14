@@ -82,7 +82,7 @@ async def precache_data():
         # cache reset
         value = await redis.get(key)
         await redis.execute("FLUSHDB")
-        logger.info(f"FLUSHDB {REDIS_URL}")
+        logger.info("redis: FLUSHDB")
         if value is not None:
             await redis.execute("HSET", key, value)
             logger.info(f"Значение ключа '{key}' сохранено")
