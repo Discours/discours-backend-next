@@ -34,6 +34,22 @@ async def start():
     print(f"[main] process started in {MODE} mode")
 
 
+async def lifespan(app):
+    # Запуск всех сервисов при старте приложения
+    await asyncio.gather(
+        create_all_tables(),
+        redis.connect(),
+        precache_data(),
+        ViewedStorage.init(),
+        search_service.info(),
+        start(),
+        revalidation_manager.start(),
+    )
+    yield
+    # Остановка сервисов при завершении работы приложения
+    await redis.disconnect()
+
+
 def create_all_tables():
     for model in [author.Author, author.AuthorRating, author.AuthorFollower,
                   notification.Notification, notification.NotificationSeen,
@@ -47,11 +63,13 @@ def create_all_tables():
         create_table_if_not_exists(engine, model)
 
 
+# Создаем экземпляр GraphQL
+graphql_app = GraphQL(schema, debug=True)
+
 # Оборачиваем GraphQL-обработчик для лучшей обработки ошибок
 async def graphql_handler(request):
     try:
-        graphql_app = GraphQL(schema, debug=True)
-        return await graphql_app(request)
+        return await graphql_app.handle_request(request)
     except asyncio.CancelledError:
         return JSONResponse({"error": "Request cancelled"}, status_code=499)
     except Exception as e:
@@ -64,17 +82,8 @@ app = Starlette(
         Route("/", graphql_handler),
         Route("/new-author", WebhookEndpoint),
     ],
-    on_startup=[
-        create_all_tables,
-        redis.connect,
-        precache_data,
-        ViewedStorage.init,
-        search_service.info,
-        # start_sentry,
-        start,
-        revalidation_manager.start,
-    ],
-    on_shutdown=[redis.disconnect],
+    lifespan=lifespan,
     debug=True,
 )
+
 app.add_middleware(ExceptionHandlerMiddleware)
