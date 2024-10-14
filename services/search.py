@@ -141,9 +141,10 @@ class SearchService:
                 if isinstance(result, dict):
                     mapping = result.get(self.index_name, {}).get("mappings")
                     logger.info(f"Найдена структура индексации: {mapping['properties'].keys()}")
-                    if mapping and mapping["properties"].keys() != expected_mapping["properties"].keys():
+                    expected_keys = expected_mapping["properties"].keys()
+                    if mapping and mapping["properties"].keys() != expected_keys:
                         logger.info(f"Ожидаемая структура индексации: {expected_mapping}")
-                        logger.warn("[!!!] Требуется переиндексация всех данных")
+                        logger.warning("[!!!] Требуется переиндексация всех данных")
                         self.delete_index()
                         self.client = None
         else:

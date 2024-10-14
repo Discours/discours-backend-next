@@ -329,12 +329,11 @@ async def update_reaction(_, info, reaction):
         try:
             reaction_query = query_reactions().filter(Reaction.id == rid)
             reaction_query = add_reaction_stat_columns(reaction_query)
-            reaction_query = reaction_query.group_by(Reaction.id)
+            reaction_query = reaction_query.group_by(Reaction.id, Author.id, Shout.id)
 
             result = session.execute(reaction_query).unique().first()
             if result:
-                r, commented_stat, rating_stat = result
-                author = session.query(Author).filter(Author.user == user_id).first()
+                r, author, shout, commented_stat, rating_stat = result
                 if not r or not author:
                     return {"error": "Invalid reaction ID or unauthorized"}
 
