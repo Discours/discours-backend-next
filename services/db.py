@@ -1,16 +1,17 @@
 import json
+import math
 import time
 import traceback
 import warnings
-import math
 from typing import Any, Callable, Dict, TypeVar
+
 from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
-from utils.logger import root_logger as logger
-from settings import DB_URL
 
+from settings import DB_URL
+from utils.logger import root_logger as logger
 
 if DB_URL.startswith("postgres"):
     engine = create_engine(
@@ -23,11 +24,7 @@ if DB_URL.startswith("postgres"):
         connect_args={"sslmode": "disable"},
     )
 else:
-    engine = create_engine(
-        DB_URL,
-        echo=False,
-        connect_args={"check_same_thread": False}
-    )
+    engine = create_engine(DB_URL, echo=False, connect_args={"check_same_thread": False})
 
 inspector = inspect(engine)
 configure_mappers()
@@ -110,7 +107,7 @@ warnings.simplefilter("always", exc.SAWarning)
 
 # Функция для извлечения SQL-запроса из контекста
 def get_statement_from_context(context):
-    query = ''
+    query = ""
     compiled = context.compiled
     if compiled:
         compiled_statement = compiled.string
@@ -148,6 +145,6 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
                 query = query.split(query_end)[0] + query_end
                 logger.debug(query)
                 elapsed_n = math.floor(elapsed)
-                logger.debug('*' * (elapsed_n))
+                logger.debug("*" * (elapsed_n))
                 logger.debug(f"{elapsed:.3f} s")
         del conn.cursor_id  # Удаление идентификатора курсора после выполнения

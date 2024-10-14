@@ -1,8 +1,9 @@
+import logging
+
 import sentry_sdk
 from sentry_sdk.integrations.ariadne import AriadneIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
-import logging
 
 from settings import GLITCHTIP_DSN
 
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 sentry_logging_handler = sentry_sdk.integrations.logging.SentryHandler(level=logging.WARNING)
 logger.addHandler(sentry_logging_handler)
 logger.setLevel(logging.DEBUG)  # Более подробное логирование
+
 
 def start_sentry():
     try:
@@ -26,5 +28,3 @@ def start_sentry():
         logger.info("[services.sentry] Sentry initialized successfully.")
     except Exception as e:
         logger.warning("[services.sentry] Failed to initialize Sentry", exc_info=True)
-
-

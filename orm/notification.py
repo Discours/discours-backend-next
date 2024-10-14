@@ -40,6 +40,3 @@ class Notification(Base):
     payload = Column(JSON, nullable=True)
 
     seen = relationship(lambda: Author, secondary="notification_seen")
-
-# Вызываем функцию создания таблицы
-create_table_if_not_exists(engine, Notification)

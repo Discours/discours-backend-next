@@ -84,15 +84,17 @@ def query_shouts(slug=None):
     # Подзапросы для каждого счетчика
     comments_subquery = (
         select(func.count(distinct(aliased_reaction.id)).label("comments_count"))
-        .where(and_(
-            aliased_reaction.shout == Shout.id,
-            aliased_reaction.kind == ReactionKind.COMMENT.value,
-            aliased_reaction.deleted_at.is_(None)
-        ))
+        .where(
+            and_(
+                aliased_reaction.shout == Shout.id,
+                aliased_reaction.kind == ReactionKind.COMMENT.value,
+                aliased_reaction.deleted_at.is_(None),
+            )
+        )
         .scalar_subquery()
         .correlate(Shout)
     )
-    
+
     # followers_subquery = (
     #    select(func.count(distinct(ShoutReactionsFollower.follower)).label("followers_count"))
     #    .where(ShoutReactionsFollower.shout == Shout.id)
@@ -100,22 +102,26 @@ def query_shouts(slug=None):
     # )
 
     rating_subquery = (
-        select(func.sum(
-            case(
-                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                else_=0
+        select(
+            func.sum(
+                case(
+                    (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
+                    (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                    else_=0,
+                )
+            ).label("rating")
+        )
+        .where(
+            and_(
+                aliased_reaction.shout == Shout.id,
+                aliased_reaction.reply_to.is_(None),
+                aliased_reaction.deleted_at.is_(None),
             )
-        ).label("rating"))
-        .where(and_(
-            aliased_reaction.shout == Shout.id,
-            aliased_reaction.reply_to.is_(None),
-            aliased_reaction.deleted_at.is_(None)
-        ))
+        )
         .scalar_subquery()
         .correlate(Shout)
     )
-    
+
     # Основной запрос с использованием подзапросов
     q = (
         select(
