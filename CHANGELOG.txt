@@ -1,3 +1,8 @@
+[0.4.4]
+- followers_stat removed
+- sqlite3 support added
+- rating_stat and commented_stat fix
+
 [0.4.3]
 - cache reimplemented
 - load shouts queries unified

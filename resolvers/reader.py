@@ -88,7 +88,7 @@ def query_shouts(slug=None):
             func.count(aliased_reaction.id)
             .filter(aliased_reaction.kind == ReactionKind.COMMENT.value)
             .label("comments_stat"),
-            func.count(ShoutReactionsFollower.follower).label("followers_stat"),
+            # func.count(ShoutReactionsFollower.follower).label("followers_stat"),
             func.sum(
                 case(
                     (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
@@ -177,12 +177,22 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
 
     # Формирование списка публикаций с их данными
     shouts = []
-    for shout, comments_stat, followers_stat, rating_stat, last_reacted_at, authors, topics, main_topic_slug in results:
+
+    for [
+        shout,
+        comments_stat,
+        # followers_stat,
+        rating_stat,
+        last_reacted_at,
+        authors,
+        topics,
+        main_topic_slug,
+    ] in results:
         shout.authors = parse_aggregated_string(authors, Author)
         shout.topics = parse_aggregated_string(topics, Topic)
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
-            "followed": followers_stat or 0,
+            # "followed": followers_stat or 0,
             "rating": rating_stat or 0,
             "commented": comments_stat or 0,
             "last_reacted_at": last_reacted_at,
@@ -288,7 +298,7 @@ async def get_shout(_, info, slug: str):
                     [
                         shout,
                         commented_stat,
-                        followers_stat,
+                        # followers_stat,
                         rating_stat,
                         last_reaction_at,
                         authors,
