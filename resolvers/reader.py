@@ -81,21 +81,45 @@ def query_shouts(slug=None):
         .subquery()
     )
 
+    # Подзапросы для каждого счетчика
+    comments_subquery = (
+        select(func.count(distinct(aliased_reaction.id)).label("comments_count"))
+        .where(and_(
+            aliased_reaction.shout == Shout.id,
+            aliased_reaction.kind == ReactionKind.COMMENT.value,
+            aliased_reaction.deleted_at.is_(None)
+        ))
+        .scalar_subquery()
+    )
+    
+    # followers_subquery = (
+    #    select(func.count(distinct(ShoutReactionsFollower.follower)).label("followers_count"))
+    #    .where(ShoutReactionsFollower.shout == Shout.id)
+    #    .scalar_subquery()
+    # )
+
+    rating_subquery = (
+        select(func.sum(
+            case(
+                (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
+                (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                else_=0
+            )
+        ).label("rating"))
+        .where(and_(
+            aliased_reaction.shout == Shout.id,
+            aliased_reaction.reply_to.is_(None),
+            aliased_reaction.deleted_at.is_(None)
+        ))
+        .scalar_subquery()
+    )
+    
     # Основной запрос с использованием подзапросов
     q = (
         select(
             Shout,
-            func.count(aliased_reaction.id)
-            .filter(aliased_reaction.kind == ReactionKind.COMMENT.value)
-            .label("comments_stat"),
-            # func.count(ShoutReactionsFollower.follower).label("followers_stat"),
-            func.sum(
-                case(
-                    (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-                    (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0,
-                )
-            ).label("rating_stat"),
+            comments_subquery.label("comments_stat"),
+            rating_subquery.label("rating_stat"),
             func.max(aliased_reaction.created_at).label("last_reacted_at"),
             authors_subquery.c.authors.label("authors"),
             topics_subquery.c.topics.label("topics"),
