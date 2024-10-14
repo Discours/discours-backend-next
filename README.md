@@ -1,6 +1,5 @@
 ## Техстек
 
-
 - sqlalchemy
 - redis
 - ariadne
@@ -9,27 +8,14 @@
 
 ## Локальная разработка
 
-Подготовьте зависимости
-
-osx:
-```
-brew install redis nginx postgres
-brew services start redis
-```
-
-debian/ubuntu:
-```
-apt install redis nginx
-```
-
-Затем запустите postgres, redis и наш API-сервер:
+Запустите API-сервер с ключом `dev`:
 
 ```shell
 mkdir .venv
 python3.12 -m venv .venv
 poetry env use .venv/bin/python3.12
 poetry update
-poetry run server.py
+poetry run server.py dev
 ```
 
 ### Полезные команды
