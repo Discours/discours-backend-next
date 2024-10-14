@@ -1,8 +1,9 @@
 import logging
 
-import redis.asyncio as aredis
+from fakeredis.aioredis import FakeRedis
+from redis.asyncio import Redis
 
-from settings import REDIS_URL
+from settings import MODE, REDIS_URL
 
 # Set redis logging level to suppress DEBUG messages
 logger = logging.getLogger("redis")
@@ -16,7 +17,10 @@ class RedisService:
         self._client = None
 
     async def connect(self):
-        self._client = aredis.Redis.from_url(self._uri, decode_responses=True)
+        if MODE == "development":
+            self._client = FakeRedis(decode_responses=True)
+        else:
+            self._client = await Redis.from_url(self._uri, decode_responses=True)
 
     async def disconnect(self):
         if self._client:

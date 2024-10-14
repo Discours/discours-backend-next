@@ -77,6 +77,7 @@ async def precache_topics_followers(topic_id: int, session):
 
 
 async def precache_data():
+    logger.info("precaching...")
     try:
         key = "authorizer_dev"
         # cache reset
