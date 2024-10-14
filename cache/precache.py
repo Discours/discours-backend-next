@@ -101,7 +101,7 @@ async def precache_data():
 
             # authors
             authors = get_with_stat(select(Author).where(Author.user.is_not(None)))
-            logger.debug(f"{len(authors)} authors found in database")
+            logger.info(f"{len(authors)} authors found in database")
             for author in authors:
                 if isinstance(author, Author):
                     profile = author.dict()

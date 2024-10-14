@@ -14,6 +14,7 @@ logger.setLevel(logging.DEBUG)  # Более подробное логирова
 
 def start_sentry():
     try:
+        logger.info("[services.sentry] Sentry init started...")
         sentry_sdk.init(
             dsn=GLITCHTIP_DSN,
             traces_sample_rate=1.0,  # Захват 100% транзакций
@@ -24,6 +25,6 @@ def start_sentry():
         )
         logger.info("[services.sentry] Sentry initialized successfully.")
     except Exception as e:
-        logger.error("[services.sentry] Failed to initialize Sentry", exc_info=True)
+        logger.warning("[services.sentry] Failed to initialize Sentry", exc_info=True)
 
 
