@@ -55,40 +55,46 @@ class ViewedStorage:
                 # Запуск фоновой задачи
                 _task = asyncio.create_task(self.worker())
             else:
-                logger.warning(" * Пожалуйста, добавьте ключевой файл Google Analytics")
+                logger.warning(" * please, add Google Analytics credentials file")
                 self.disabled = True
 
     @staticmethod
     def load_precounted_views():
         """Загрузка предварительно подсчитанных просмотров из файла JSON"""
         self = ViewedStorage
+        viewfile_path = VIEWS_FILEPATH
+        if not os.path.exists(viewfile_path):
+            viewfile_path = os.path.join(os.path.curdir, "views.json")
+            if not os.path.exists(viewfile_path):
+                logger.warning(" * views.json not found")
+                return
+            
+        logger.info(f" * loading views from {viewfile_path}")
         try:
-            if os.path.exists(VIEWS_FILEPATH):
-                start_date_int = os.path.getmtime(VIEWS_FILEPATH)
-                start_date_str = datetime.fromtimestamp(start_date_int).strftime("%Y-%m-%d")
-                self.start_date = start_date_str
-                now_date = datetime.now().strftime("%Y-%m-%d")
+            start_date_int = os.path.getmtime(viewfile_path)
+            start_date_str = datetime.fromtimestamp(start_date_int).strftime("%Y-%m-%d")
+            self.start_date = start_date_str
+            now_date = datetime.now().strftime("%Y-%m-%d")
 
-                if now_date == self.start_date:
-                    logger.info(" * Данные актуализованы!")
-                else:
-                    logger.warn(f" * Файл просмотров {VIEWS_FILEPATH} устарел: {self.start_date}")
-
-                with open(VIEWS_FILEPATH, "r") as file:
-                    precounted_views = json.load(file)
-                    self.views_by_shout.update(precounted_views)
-                    logger.info(f" * {len(precounted_views)} публикаций с просмотрами успешно загружены.")
+            if now_date == self.start_date:
+                logger.info(" * views data is up to date!")
             else:
-                logger.warning(" * Файл просмотров не найден.")
+                logger.warn(f" * {viewfile_path} is too old: {self.start_date}")
+
+            with open(viewfile_path, "r") as file:
+                precounted_views = json.load(file)
+                self.views_by_shout.update(precounted_views)
+                logger.info(f" * {len(precounted_views)} shouts with views was loaded.")
+
         except Exception as e:
-            logger.error(f"Ошибка загрузки предварительно подсчитанных просмотров: {e}")
+            logger.error(f"precounted views loading error: {e}")
 
     # noinspection PyTypeChecker
     @staticmethod
     async def update_pages():
         """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
         self = ViewedStorage
-        logger.info(" ⎧ Обновление данных просмотров от Google Analytics ---")
+        logger.info(" ⎧ views update from Google Analytics ---")
         if not self.disabled:
             try:
                 start = time.time()
@@ -122,10 +128,10 @@ class ViewedStorage:
                                     # Запись путей страниц для логирования
                                     slugs.add(slug)
 
-                                logger.info(f" ⎪ Собрано страниц: {len(slugs)} ")
+                                logger.info(f" ⎪ collected pages: {len(slugs)} ")
 
                         end = time.time()
-                        logger.info(" ⎪ Обновление страниц заняло %fs " % (end - start))
+                        logger.info(" ⎪ views update time: %fs " % (end - start))
             except Exception as error:
                 logger.error(error)
                 self.disabled = True
@@ -189,17 +195,15 @@ class ViewedStorage:
             except Exception as exc:
                 failed += 1
                 logger.debug(exc)
-                logger.info(" - Обновление не удалось #%d, ожидание 10 секунд" % failed)
+                logger.info(" - update failed #%d, wait 10 secs" % failed)
                 if failed > 3:
-                    logger.info(" - Больше не пытаемся обновить")
+                    logger.info(" - views update failed, not trying anymore")
                     break
             if failed == 0:
                 when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
                 t = format(when.astimezone().isoformat())
-                logger.info(
-                    "       ⎩ Следующее обновление: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0])
-                )
+                logger.info("       ⎩ next update: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0]))
                 await asyncio.sleep(self.period)
             else:
                 await asyncio.sleep(10)
-                logger.info(" - Попытка снова обновить данные")
+                logger.info(" - try to update views again")

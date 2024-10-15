@@ -108,7 +108,7 @@ class SearchService:
                 logger.error(f"Ошибка подключения к OpenSearch: {exc}")
                 self.client = None
         else:
-            logger.warning("Задайте переменные среды для подключения к серверу поиска")
+            logger.warning("env var ELASTIC_HOST is not set")
 
     async def info(self):
         if isinstance(self.client, OpenSearch):

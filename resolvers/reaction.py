@@ -52,9 +52,9 @@ def add_reaction_stat_columns(q):
         ),
     ).add_columns(
         # Count unique comments
-        func.count(aliased_reaction.id)
-        .filter(aliased_reaction.kind == ReactionKind.COMMENT.value)
-        .label("comments_stat"),
+        func.coalesce(
+            func.count(aliased_reaction.id).filter(aliased_reaction.kind == ReactionKind.COMMENT.value), 0
+        ).label("comments_stat"),
         # Calculate rating as the difference between likes and dislikes
         func.sum(
             case(

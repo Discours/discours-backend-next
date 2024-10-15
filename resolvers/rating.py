@@ -192,7 +192,8 @@ def add_author_rating_columns(q, group_list):
                         (shout_reaction.kind == ReactionKind.DISLIKE.value, -1),
                         else_=0,
                     )
-                )
+                ),
+                0,
             ).label("shouts_rating"),
         )
         .select_from(shout_reaction)
@@ -226,7 +227,8 @@ def add_author_rating_columns(q, group_list):
                         (reaction_2.kind == ReactionKind.DISLIKE.value, -1),
                         else_=0,
                     )
-                )
+                ),
+                0,
             ).label("comments_rating"),
         )
         .select_from(reaction_2)

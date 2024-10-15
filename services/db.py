@@ -39,7 +39,7 @@ def create_table_if_not_exists(engine, table):
         table.__table__.create(engine)
         logger.info(f"Table '{table.__tablename__}' created.")
     else:
-        logger.info(f"Table '{table.__tablename__}' already exists.")
+        logger.info(f"Table '{table.__tablename__}' ok.")
 
 
 # noinspection PyUnusedLocal

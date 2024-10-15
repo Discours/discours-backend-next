@@ -173,7 +173,7 @@ def get_topic_comments_stat(topic_id: int) -> int:
     sub_comments = (
         select(
             Shout.id.label("shout_id"),
-            func.coalesce(func.count(Reaction.id)).label("comments_count"),
+            func.coalesce(func.count(Reaction.id), 0).label("comments_count"),
         )
         .join(ShoutTopic, ShoutTopic.shout == Shout.id)
         .join(Topic, ShoutTopic.topic == Topic.id)
@@ -257,17 +257,10 @@ def get_author_followers_stat(author_id: int) -> int:
     return result[0] if result else 0
 
 
-def get_author_comments_stat(author_id: int) -> int:
-    """
-    Получает количество комментариев, оставленных указанным автором.
-
-    :param author_id: Идентификатор автора.
-    :return: Количество комментариев, оставленных автором.
-    """
-    # Подзапрос для получения количества комментариев, оставленных автором
-    sub_comments = (
-        select(Author.id, func.coalesce(func.count(Reaction.id)).label("comments_count"))
-        .select_from(Author)  # явно указываем левый элемент join'а
+def get_author_comments_stat(author_id):
+    q = (
+        select(func.coalesce(func.count(Reaction.id), 0).label("comments_count"))
+        .select_from(Author)
         .outerjoin(
             Reaction,
             and_(
@@ -276,13 +269,13 @@ def get_author_comments_stat(author_id: int) -> int:
                 Reaction.deleted_at.is_(None),
             ),
         )
+        .where(Author.id == author_id)
         .group_by(Author.id)
-        .subquery()
     )
-    q = select(sub_comments.c.comments_count).filter(sub_comments.c.id == author_id)
+
     with local_session() as session:
         result = session.execute(q).first()
-    return result[0] if result else 0
+        return result.comments_count if result else 0
 
 
 def get_with_stat(q):
