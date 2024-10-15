@@ -68,7 +68,7 @@ class ViewedStorage:
             if not os.path.exists(viewfile_path):
                 logger.warning(" * views.json not found")
                 return
-            
+
         logger.info(f" * loading views from {viewfile_path}")
         try:
             start_date_int = os.path.getmtime(viewfile_path)
