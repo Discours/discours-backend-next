@@ -46,20 +46,22 @@ async def start():
 
 def create_all_tables():
     for model in [
+        # user.User,
         author.Author,
-        author.AuthorRating,
         author.AuthorFollower,
-        notification.Notification,
-        notification.NotificationSeen,
         shout.Shout,
         shout.ShoutAuthor,
-        shout.ShoutTopic,
-        shout.ShoutCommunity,
         topic.Topic,
         topic.TopicFollower,
+        shout.ShoutTopic,
         reaction.Reaction,
+        shout.ShoutReactionsFollower,
+        author.AuthorRating,
         community.Community,
+        shout.ShoutCommunity,
         community.CommunityFollower,
+        notification.Notification,
+        notification.NotificationSeen,
         # collection.Collection, collection.ShoutCollection,
         # invite.Invite
     ]:
