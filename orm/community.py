@@ -1,8 +1,7 @@
 import time
 
-from requests import Session
 from sqlalchemy import Column, ForeignKey, Integer, String, func
-from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
 from orm.author import Author
@@ -12,7 +11,6 @@ from services.db import Base
 class CommunityFollower(Base):
     __tablename__ = "community_author"
 
-    id = None  # type: ignore
     author = Column(ForeignKey("author.id"), primary_key=True)
     community = Column(ForeignKey("community.id"), primary_key=True)
     joined_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
@@ -30,16 +28,24 @@ class Community(Base):
 
     authors = relationship(Author, secondary="community_author")
 
-    @hybrid_method
-    def get_stats(self, session: Session):
-        from orm.shout import ShoutCommunity  # Импорт здесь во избежание циклических зависимостей
+    @hybrid_property
+    def stat(self):
+        return CommunityStats(self)
 
-        shouts_count = (
-            session.query(func.count(ShoutCommunity.shout_id)).filter(ShoutCommunity.community_id == self.id).scalar()
-        )
 
-        followers_count = (
-            session.query(func.count(CommunityFollower.author)).filter(CommunityFollower.community == self.id).scalar()
-        )
+class CommunityStats:
+    def __init__(self, community):
+        self.community = community
 
-        return {"shouts": shouts_count, "followers": followers_count}
+    @property
+    def shouts(self):
+        from orm.shout import ShoutCommunity
+        return self.community.session.query(func.count(ShoutCommunity.shout_id))\
+            .filter(ShoutCommunity.community_id == self.community.id)\
+            .scalar()
+
+    @property
+    def followers(self):
+        return self.community.session.query(func.count(CommunityFollower.author))\
+            .filter(CommunityFollower.community == self.community.id)\
+            .scalar()
