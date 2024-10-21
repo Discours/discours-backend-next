@@ -1,8 +1,9 @@
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import ARRAY, Column, ForeignKey, Integer, String, func, Enum
-from sqlalchemy.orm import relationship
 import enum
 import time
+
+from sqlalchemy import ARRAY, Column, ForeignKey, Integer, String, func
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import relationship
 
 from orm.author import Author
 from services.db import Base
@@ -16,6 +17,10 @@ class CommunityRole(enum.Enum):
     EXPERT = "expert"
     ARTIST = "artist"
 
+    @classmethod
+    def as_string_array(cls, roles):
+        return [role.value for role in roles]
+
 
 class CommunityFollower(Base):
     __tablename__ = "community_author"
@@ -23,7 +28,13 @@ class CommunityFollower(Base):
     author = Column(ForeignKey("author.id"), primary_key=True)
     community = Column(ForeignKey("community.id"), primary_key=True)
     joined_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    roles = Column(ARRAY(Enum(CommunityRole)), nullable=False, default=[CommunityRole.READER])
+    roles = Column(ARRAY(String), nullable=False, default=lambda: CommunityRole.as_string_array([CommunityRole.READER]))
+
+    def set_roles(self, roles):
+        self.roles = CommunityRole.as_string_array(roles)
+
+    def get_roles(self):
+        return [CommunityRole(role) for role in self.roles]
 
 
 class Community(Base):
