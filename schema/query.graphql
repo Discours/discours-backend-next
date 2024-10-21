@@ -9,6 +9,7 @@ type Query {
   # community
   get_community: Community
   get_communities_all: [Community]
+  get_communities_by_author(slug: String, user: String, author_id: Int): [Community]
 
   # follower
   get_shout_followers(slug: String, shout_id: Int): [Author]
