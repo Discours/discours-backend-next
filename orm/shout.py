@@ -4,7 +4,6 @@ from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from orm.author import Author
-from orm.community import Community
 from orm.reaction import Reaction
 from orm.topic import Topic
 from services.db import Base
@@ -39,14 +38,6 @@ class ShoutAuthor(Base):
     caption = Column(String, nullable=True, default="")
 
 
-class ShoutCommunity(Base):
-    __tablename__ = "shout_community"
-
-    id = None  # type: ignore
-    shout = Column(ForeignKey("shout.id"), primary_key=True, index=True)
-    community = Column(ForeignKey("community.id"), primary_key=True, index=True)
-
-
 class Shout(Base):
     __tablename__ = "shout"
 
@@ -59,6 +50,7 @@ class Shout(Base):
     created_by = Column(ForeignKey("author.id"), nullable=False)
     updated_by = Column(ForeignKey("author.id"), nullable=True)
     deleted_by = Column(ForeignKey("author.id"), nullable=True)
+    community = Column(ForeignKey("community.id"), nullable=False)
 
     body = Column(String, nullable=False, comment="Body")
     slug = Column(String, unique=True)
@@ -73,7 +65,6 @@ class Shout(Base):
 
     authors = relationship(Author, secondary="shout_author")
     topics = relationship(Topic, secondary="shout_topic")
-    communities = relationship(Community, secondary="shout_community")
     reactions = relationship(Reaction)
 
     lang = Column(String, nullable=False, default="ru", comment="Language")
