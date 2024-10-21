@@ -3,7 +3,6 @@ import time
 
 from sqlalchemy import ARRAY, Column, ForeignKey, Integer, String, distinct, func
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship
 
 from orm.author import Author
 from orm.shout import Shout
@@ -59,11 +58,9 @@ class CommunityStats:
 
     @property
     def shouts(self):
-        from orm.shout import ShoutCommunity
-
         return (
-            self.community.session.query(func.count(ShoutCommunity.shout_id))
-            .filter(ShoutCommunity.community_id == self.community.id)
+            self.community.session.query(func.count(Shout.id))
+            .filter(Shout.community == self.community.id)
             .scalar()
         )
 
@@ -77,12 +74,12 @@ class CommunityStats:
 
     @property
     def authors(self):
-        # author has a shout with community id and featured_at is not null
+        # author has a shout with community id and its featured_at is not null
         return (
             self.community.session.query(func.count(distinct(Author.id)))
             .join(Shout)
             .filter(
-                Shout.community_id == self.community.id, Shout.featured_at.is_not(None), Author.id.in_(Shout.authors)
+                Shout.community == self.community.id, Shout.featured_at.is_not(None), Author.id.in_(Shout.authors)
             )
             .scalar()
         )
