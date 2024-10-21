@@ -26,5 +26,5 @@ def start_sentry():
             send_default_pii=True,  # Отправка информации о пользователе (PII)
         )
         logger.info("[services.sentry] Sentry initialized successfully.")
-    except Exception as e:
+    except Exception as _e:
         logger.warning("[services.sentry] Failed to initialize Sentry", exc_info=True)

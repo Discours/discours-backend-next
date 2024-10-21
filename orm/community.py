@@ -1,6 +1,8 @@
 import time
 
-from sqlalchemy import Column, ForeignKey, Integer, String
+from requests import Session
+from sqlalchemy import Column, ForeignKey, Integer, String, func
+from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.orm import relationship
 
 from orm.author import Author
@@ -27,3 +29,17 @@ class Community(Base):
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
 
     authors = relationship(Author, secondary="community_author")
+
+    @hybrid_method
+    def get_stats(self, session: Session):
+        from orm.shout import ShoutCommunity  # Импорт здесь во избежание циклических зависимостей
+
+        shouts_count = (
+            session.query(func.count(ShoutCommunity.shout_id)).filter(ShoutCommunity.community_id == self.id).scalar()
+        )
+
+        followers_count = (
+            session.query(func.count(CommunityFollower.author)).filter(CommunityFollower.community == self.id).scalar()
+        )
+
+        return {"shouts": shouts_count, "followers": followers_count}

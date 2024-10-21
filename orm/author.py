@@ -26,6 +26,14 @@ class AuthorFollower(Base):
     auto = Column(Boolean, nullable=False, default=False)
 
 
+class AuthorBookmark(Base):
+    __tablename__ = "author_bookmark"
+
+    id = None  # type: ignore
+    author = Column(ForeignKey("author.id"), primary_key=True)
+    shout = Column(ForeignKey("shout.id"), primary_key=True)
+
+
 class Author(Base):
     __tablename__ = "author"
 

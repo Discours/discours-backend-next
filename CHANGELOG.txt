@@ -1,5 +1,14 @@
+[0.4.5]
+- bookmark_shout mutation resolver added
+- load_bookmarked_shouts resolver fix
+- community stats in orm
+- get_communities_by_author resolver added
+- get_communities_all resolver fix
+- reaction filter by kinds
+- reaction sort enum added
+
 [0.4.4]
-- followers_stat removed
+- followers_stat removed for shout
 - sqlite3 support added
 - rating_stat and commented_stat fix
 

@@ -430,11 +430,12 @@ def apply_reaction_filters(by, q):
     if isinstance(topic, int):
         q = q.filter(Shout.topics.any(id=topic))
 
-    if by.get("comment"):
-        q = q.filter(Reaction.kind == ReactionKind.COMMENT.value)
+    kinds = by.get("kinds")
+    if isinstance(kinds, list):
+        q = q.filter(Reaction.kind.in_(kinds))
 
-    if by.get("rating"):
-        q = q.filter(Reaction.kind.in_(RATING_REACTIONS))
+    if by.get("reply_to"):
+        q = q.filter(Reaction.reply_to == by.get("reply_to"))
 
     by_search = by.get("search", "")
     if len(by_search) > 2:

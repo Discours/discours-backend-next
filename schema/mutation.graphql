@@ -29,6 +29,9 @@ type Mutation {
   accept_invite(invite_id: Int!): CommonResult!
   reject_invite(invite_id: Int!): CommonResult!
 
+  # bookmark
+  toggle_bookmark_shout(slug: String!): CommonResult!
+
   # notifier
   notification_mark_seen(notification_id: Int!, seen: Boolean): CommonResult!
   notifications_seen_after(after: Int!, seen: Boolean): CommonResult!

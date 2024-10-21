@@ -72,13 +72,13 @@ input ReactionBy {
   shout: String
   shouts: [String]
   search: String
-  comment: Boolean
-  rating: Boolean
+  kinds: [ReactionKind]
+  reply_to: Int # filter
   topic: String
   created_by: Int
   author: String
   after: Int
-  sort: ReactionSort
+  sort: ReactionSort # sort
 }
 
 input NotificationSeenInput {

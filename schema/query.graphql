@@ -37,6 +37,7 @@ type Query {
   load_shouts_discussed(limit: Int, offset: Int): [Shout]
   load_shouts_random_top(options: LoadShoutsOptions): [Shout]
   load_shouts_random_topic(limit: Int!): CommonResult!  # { topic shouts }
+  load_shouts_bookmarked(limit: Int, offset: Int): [Shout]
 
   # editor
   get_my_shout(shout_id: Int!): CommonResult!

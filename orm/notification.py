@@ -5,8 +5,7 @@ from sqlalchemy import JSON, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from orm.author import Author
-from services.db import Base, create_table_if_not_exists, engine
-from utils.logger import root_logger as logger
+from services.db import Base
 
 
 class NotificationEntity(Enumeration):

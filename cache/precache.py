@@ -10,7 +10,6 @@ from orm.topic import Topic, TopicFollower
 from resolvers.stat import get_with_stat
 from services.db import local_session
 from services.redis import redis
-from settings import REDIS_URL
 from utils.encoders import CustomJSONEncoder
 from utils.logger import root_logger as logger
 
