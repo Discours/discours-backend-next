@@ -51,6 +51,7 @@ def create_all_tables():
         author.AuthorFollower,
         shout.Shout,
         shout.ShoutAuthor,
+        author.AuthorBookmark,
         topic.Topic,
         topic.TopicFollower,
         shout.ShoutTopic,
