@@ -1,11 +1,20 @@
-import time
-
-from sqlalchemy import Column, ForeignKey, Integer, String, func
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy import ARRAY, Column, ForeignKey, Integer, String, func, Enum
 from sqlalchemy.orm import relationship
+import enum
+import time
 
 from orm.author import Author
 from services.db import Base
+
+
+class CommunityRole(enum.Enum):
+    AUTHOR = "author"
+    READER = "reader"
+    EDITOR = "editor"
+    CRITIC = "critic"
+    EXPERT = "expert"
+    ARTIST = "artist"
 
 
 class CommunityFollower(Base):
@@ -14,7 +23,7 @@ class CommunityFollower(Base):
     author = Column(ForeignKey("author.id"), primary_key=True)
     community = Column(ForeignKey("community.id"), primary_key=True)
     joined_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    role = Column(String, nullable=False)
+    roles = Column(ARRAY(Enum(CommunityRole)), nullable=False, default=[CommunityRole.READER])
 
 
 class Community(Base):
@@ -40,12 +49,17 @@ class CommunityStats:
     @property
     def shouts(self):
         from orm.shout import ShoutCommunity
-        return self.community.session.query(func.count(ShoutCommunity.shout_id))\
-            .filter(ShoutCommunity.community_id == self.community.id)\
+
+        return (
+            self.community.session.query(func.count(ShoutCommunity.shout_id))
+            .filter(ShoutCommunity.community_id == self.community.id)
             .scalar()
+        )
 
     @property
     def followers(self):
-        return self.community.session.query(func.count(CommunityFollower.author))\
-            .filter(CommunityFollower.community == self.community.id)\
+        return (
+            self.community.session.query(func.count(CommunityFollower.author))
+            .filter(CommunityFollower.community == self.community.id)
             .scalar()
+        )

@@ -6,6 +6,7 @@
 - get_communities_all resolver fix
 - reaction filter by kinds
 - reaction sort enum added
+- community follower roles enum added
 
 [0.4.4]
 - followers_stat removed for shout
