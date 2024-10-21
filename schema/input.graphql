@@ -85,3 +85,10 @@ input NotificationSeenInput {
   notifications: [Int]
   thread: Int
 }
+
+input CommunityInput {
+  slug: String
+  name: String
+  desc: String
+  pic: String
+}

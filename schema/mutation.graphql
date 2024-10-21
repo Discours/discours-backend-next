@@ -36,4 +36,11 @@ type Mutation {
   notification_mark_seen(notification_id: Int!, seen: Boolean): CommonResult!
   notifications_seen_after(after: Int!, seen: Boolean): CommonResult!
   notifications_seen_thread(thread_id: String!, seen: Boolean): CommonResult!
+
+  # community
+  join_community(slug: String!): CommonResult!
+  leave_community(slug: String!): CommonResult!
+  create_community(input: CommunityInput!): CommonResult!
+  update_community(input: CommunityInput!): CommonResult!
+  delete_community(slug: String!): CommonResult!
 }

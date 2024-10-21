@@ -1,11 +1,12 @@
 import enum
 import time
 
-from sqlalchemy import ARRAY, Column, ForeignKey, Integer, String, func
+from sqlalchemy import ARRAY, Column, ForeignKey, Integer, String, distinct, func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
 from orm.author import Author
+from orm.shout import Shout
 from services.db import Base
 
 
@@ -45,8 +46,7 @@ class Community(Base):
     desc = Column(String, nullable=False, default="")
     pic = Column(String, nullable=False, default="")
     created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-
-    authors = relationship(Author, secondary="community_author")
+    created_by = Column(ForeignKey("author.id"), nullable=False)
 
     @hybrid_property
     def stat(self):
@@ -72,5 +72,17 @@ class CommunityStats:
         return (
             self.community.session.query(func.count(CommunityFollower.author))
             .filter(CommunityFollower.community == self.community.id)
+            .scalar()
+        )
+
+    @property
+    def authors(self):
+        # author has a shout with community id and featured_at is not null
+        return (
+            self.community.session.query(func.count(distinct(Author.id)))
+            .join(Shout)
+            .filter(
+                Shout.community_id == self.community.id, Shout.featured_at.is_not(None), Author.id.in_(Shout.authors)
+            )
             .scalar()
         )

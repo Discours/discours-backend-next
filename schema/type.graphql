@@ -99,6 +99,12 @@ type Stat {
   last_reacted_at: Int
 }
 
+type CommunityStat {
+  shouts: Int!
+  followers: Int!
+  authors: Int!
+}
+
 type Community {
   id: Int!
   slug: String!
@@ -107,6 +113,7 @@ type Community {
   pic: String!
   created_at: Int!
   created_by: Author!
+  stat: CommunityStat
 }
 
 type Collection {
