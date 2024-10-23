@@ -78,14 +78,14 @@ async def precache_topics_followers(topic_id: int, session):
 async def precache_data():
     logger.info("precaching...")
     try:
-        key = "authorizer_dev"
+        key = "authorizer_env"
         # cache reset
-        value = await redis.get(key)
+        value = await redis.execute("HGET", key)
         await redis.execute("FLUSHDB")
         logger.info("redis: FLUSHDB")
         if value is not None:
             await redis.execute("HSET", key, value)
-            logger.info(f"Значение ключа '{key}' сохранено")
+            logger.info(f"redis hash '{key}' was successfully restored")
 
         with local_session() as session:
             # topics

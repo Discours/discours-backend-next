@@ -35,7 +35,7 @@ async def cache_by_id(entity, entity_id: int, cache_method):
 @query.field("get_my_shout")
 @login_required
 async def get_my_shout(_, info, shout_id: int):
-    logger.debug(info)
+    # logger.debug(info)
     user_id = info.context.get("user_id", "")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
@@ -54,7 +54,7 @@ async def get_my_shout(_, info, shout_id: int):
         if not shout:
             return {"error": "no shout found", "shout": None}
 
-        logger.debug(f"got shout authors: {shout.authors} created by {shout.created_by}")
+        logger.debug(f"got {len(shout.authors)} shout authors, created by {shout.created_by}")
         is_editor = "editor" in roles
         logger.debug(f'viewer is{'' if is_editor else ' not'} editor')
         is_creator = author_id == shout.created_by

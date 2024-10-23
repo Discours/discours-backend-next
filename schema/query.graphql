@@ -26,7 +26,7 @@ type Query {
   load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
 
   # reader
-  get_shout(slug: String): Shout
+  get_shout(slug: String, shout_id: Int): Shout
   load_shouts_by(options: LoadShoutsOptions): [Shout]
   load_shout_comments(shout: Int!, limit: Int, offset: Int): [Reaction]
   load_shout_ratings(shout: Int!, limit: Int, offset: Int): [Reaction]

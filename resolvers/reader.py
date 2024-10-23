@@ -27,12 +27,13 @@ from services.viewed import ViewedStorage
 from utils.logger import root_logger as logger
 
 
-def query_shouts(slug=None):
+def query_shouts(slug=None, shout_id=None):
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
     с агрегацией в строку.
 
     :param slug: Опциональный параметр для фильтрации по slug.
+    :param shout_id: Опциональный параметр для фильтрации по shout_id.
     :return: Запрос для получения публикаций, aliased_reaction:
     """
     aliased_reaction = aliased(Reaction)
@@ -143,6 +144,8 @@ def query_shouts(slug=None):
 
     if slug:
         q = q.where(Shout.slug == slug)
+    elif shout_id:
+        q = q.where(Shout.id == shout_id)
 
     return q, aliased_reaction
 
@@ -311,7 +314,7 @@ def apply_filters(q, filters, author_id=None):
 
 
 @query.field("get_shout")
-async def get_shout(_, info, slug: str):
+async def get_shout(_, info, slug: str, shout_id: int):
     """
     Получение публикации по slug.
 
@@ -324,7 +327,7 @@ async def get_shout(_, info, slug: str):
         with local_session() as session:
             # Отключение автосохранения
             with session.no_autoflush:
-                q, aliased_reaction = query_shouts(slug)
+                q, _ = query_shouts(slug)
                 results = session.execute(q).first()
                 if results:
                     [
