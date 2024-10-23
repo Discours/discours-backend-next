@@ -80,13 +80,19 @@ async def precache_data():
     try:
         key = "authorizer_env"
         # cache reset
-        value = await redis.execute("HGET", key)
+        value = await redis.execute("HGETALL", key)
         await redis.execute("FLUSHDB")
         logger.info("redis: FLUSHDB")
-        if value is not None:
-            await redis.execute("HSET", key, value)
-            logger.info(f"redis hash '{key}' was successfully restored")
 
+        # Преобразуем словарь в список аргументов для HSET
+        if value:
+            flattened = []
+            for field, val in value.items():
+                flattened.extend([field, val])
+            
+            await redis.execute("HSET", key, *flattened)
+            logger.info(f"redis hash '{key}' was restored")
+        
         with local_session() as session:
             # topics
             q = select(Topic).where(Topic.community == 1)
