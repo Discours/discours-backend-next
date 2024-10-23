@@ -50,7 +50,7 @@ class ViewedStorage:
                 # Using a default constructor instructs the client to use the credentials
                 # specified in GOOGLE_APPLICATION_CREDENTIALS environment variable.
                 self.analytics_client = BetaAnalyticsDataClient()
-                logger.info(" * Клиент Google Analytics успешно авторизован")
+                logger.info(" * Google Analytics credentials accepted")
 
                 # Запуск фоновой задачи
                 _task = asyncio.create_task(self.worker())
