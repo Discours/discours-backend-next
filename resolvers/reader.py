@@ -314,7 +314,7 @@ def apply_filters(q, filters, author_id=None):
 
 
 @query.field("get_shout")
-async def get_shout(_, info, slug: str, shout_id: int):
+async def get_shout(_, info, slug: str, shout_id = 0):
     """
     Получение публикации по slug.
 
