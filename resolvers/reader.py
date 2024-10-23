@@ -327,7 +327,7 @@ async def get_shout(_, info, slug: str, shout_id = 0):
         with local_session() as session:
             # Отключение автосохранения
             with session.no_autoflush:
-                q, _ = query_shouts(slug)
+                q, _ = query_shouts(slug, shout_id)
                 results = session.execute(q).first()
                 if results:
                     [
