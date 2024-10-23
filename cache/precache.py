@@ -89,10 +89,10 @@ async def precache_data():
             flattened = []
             for field, val in value.items():
                 flattened.extend([field, val])
-            
+
             await redis.execute("HSET", key, *flattened)
             logger.info(f"redis hash '{key}' was restored")
-        
+
         with local_session() as session:
             # topics
             q = select(Topic).where(Topic.community == 1)
