@@ -289,11 +289,12 @@ def apply_filters(q, filters, author_id=None):
                 ),
             )
 
-        featured_filter = filters.get("featured", "")
-        if featured_filter:
-            q = q.filter(Shout.featured_at.is_not(None))
-        elif "featured" in filters:
-            q = q.filter(Shout.featured_at.is_(None))
+        if "featured" in filters:
+            featured_filter = filters.get("featured")
+            if featured_filter:
+                q = q.filter(Shout.featured_at.is_not(None))
+            else:
+                q = q.filter(Shout.featured_at.is_(None))
         else:
             pass
         by_layouts = filters.get("layouts")
@@ -461,7 +462,6 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
 
 @query.field("load_shouts_unrated")
-@login_required
 async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     """
     Загрузка публикаций с наименьшим количеством оценок.
@@ -471,9 +471,6 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     :param offset: Смещение для пагинации.
     :return: Список публикаций с минимальным количеством оценок.
     """
-    author_id = info.context.get("author", {}).get("id")
-    if not author_id:
-        return []
     q, aliased_reaction = query_shouts()
 
     q = (
@@ -482,7 +479,6 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
             and_(
                 aliased_reaction.shout == Shout.id,
                 aliased_reaction.reply_to.is_(None),
-                aliased_reaction.created_by != author_id,
                 aliased_reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
             ),
         )
@@ -493,7 +489,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     q = q.having(func.count(distinct(aliased_reaction.id)) <= 4)  # 3 или менее голосов
     q = q.order_by(func.random())
 
-    return get_shouts_with_stats(q, limit, offset=offset, author_id=author_id)
+    return get_shouts_with_stats(q, limit, offset=offset)
 
 
 @query.field("load_shouts_random_top")
