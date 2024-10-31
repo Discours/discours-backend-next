@@ -249,33 +249,29 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     if author_id:
         query = query.filter(Shout.created_by == author_id)
 
-    # Выполнение запроса и обработка результатов
-    with q.session as session:
-        results = session.execute(query).all()
-
     # Формирование списка публикаций с их данными
     shouts = []
+    with local_session() as session:
+        for row in session.execute(query).all() or []:
+            shout = row.Shout
+            comments_stat = row.comments_stat
+            rating_stat = row.rating_stat
+            last_reacted_at = row.last_reacted_at
+            authors_json = row.authors
+            topics_json = row.topics
+            main_topic_slug = row.main_topic_slug
 
-    for row in results:
-        shout = row.Shout
-        comments_stat = row.comments_stat
-        rating_stat = row.rating_stat
-        last_reacted_at = row.last_reacted_at
-        authors_json = row.authors
-        topics_json = row.topics
-        main_topic_slug = row.main_topic_slug
-
-        # Преобразование JSON данных в объекты
-        shout.authors = [Author(**author) for author in authors_json] if authors_json else []
-        shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
-        shout.stat = {
-            "viewed": ViewedStorage.get_shout(shout.id),
-            "rating": rating_stat or 0,
-            "commented": comments_stat or 0,
-            "last_reacted_at": last_reacted_at,
-        }
-        shout.main_topic = main_topic_slug  # Присваиваем основной топик
-        shouts.append(shout)
+            # Преобразование JSON данных в объекты
+            shout.authors = [Author(**author) for author in authors_json] if authors_json else []
+            shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
+            shout.stat = {
+                "viewed": ViewedStorage.get_shout(shout.id),
+                "rating": rating_stat or 0,
+                "commented": comments_stat or 0,
+                "last_reacted_at": last_reacted_at,
+            }
+            shout.main_topic = main_topic_slug  # Присваиваем основной топик
+            shouts.append(shout)
 
     return shouts
 
