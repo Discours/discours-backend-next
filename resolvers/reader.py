@@ -262,14 +262,14 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
             session.execute(query).all() or []
         ):
             # Преобразование JSON данных в объекты
-            captions = {caption['author_id']: caption['caption'] for caption in captions_json} if captions_json else {}
-            authors = [Author(**author) for author in authors_json] if authors_json else []
+            captions = {int(ca['author_id']): ca['caption'] for ca in captions_json} if captions_json else {}
+            authors = [a for a in authors_json] if authors_json else []
             for author in authors:
-                author.caption = captions.get(author.id, "")
+                author['caption'] = captions.get(int(author.id), "")
             shout.authors = authors
-            topics = [Topic(**topic) for topic in topics_json] if topics_json else []
+            topics = [t for t in topics_json] if topics_json else []
             for topic in topics:
-                topic.is_main = topic.slug == main_topic_slug
+                topic['is_main'] = topic.slug == main_topic_slug
             shout.topics = topics
             shout.stat = {
                 "viewed": ViewedStorage.get_shout(shout.id),
