@@ -146,7 +146,7 @@ def query_shouts(slug=None, shout_id=None):
     return q, last_reaction
 
 
-def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
+def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
     """
     Получение публикаций со статистикой, и подзапросами авторов и тем.
 
@@ -155,9 +155,9 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
     :param offset: Смещение для пагинации.
     :return: Список публикаций с включенной статистикой.
     """
-    # Определение алиасов подзапросов авторов и тем (предполагается, что они уже определены ранее)
+    # Определение алиасов подзапросов авторов и тем
     authors_subquery = (
-        select(
+        q.session.query(
             ShoutAuthor.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
@@ -235,9 +235,6 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
         )
         .group_by(
             Shout.id,
-            authors_subquery.c.authors,
-            topics_subquery.c.topics,
-            topics_subquery.c.main_topic_slug,
             last_reaction.c.last_reacted_at
         )
         .order_by(Shout.published_at.desc().nullslast())
@@ -245,9 +242,13 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
         .offset(offset)
     )
 
+    # Добавление фильтрации по author_id, если необходимо
+    if author_id:
+        query = q.filter(Shout.created_by == author_id)
+
     # Выполнение запроса и обработка результатов
-    with local_session() as session:
-        results = session.execute(q, {"author_id": author_id}).all() if author_id else session.execute(q).all()
+    with q.session as session:
+        results = session.execute(query).all()
 
     # Формирование списка публикаций с их данными
     shouts = []
