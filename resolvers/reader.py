@@ -32,7 +32,9 @@ def query_shouts(slug=None, shout_id=None):
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
     с агрегированием в JSON.
     """
-    aliased_reaction = aliased(Reaction)
+    comments_reaction = aliased(Reaction, name='comments_reaction')
+    ratings_reaction = aliased(Reaction, name='ratings_reaction') 
+    last_reaction = aliased(Reaction, name='last_reaction')
 
     # Подзапрос для уникальных авторов, агрегированных в JSON
     authors_subquery = (
@@ -74,64 +76,66 @@ def query_shouts(slug=None, shout_id=None):
         .subquery()
     )
 
-    # Подзапросы для каждого счетчика
-    comments_subquery = (
-        select(func.count(distinct(aliased_reaction.id)).label("comments_count"))
+    # Подзапрос для комментариев
+    comments_subq = (
+        select(func.count(distinct(comments_reaction.id)))
+        .select_from(comments_reaction)
         .where(
             and_(
-                aliased_reaction.shout == Shout.id,
-                aliased_reaction.kind == ReactionKind.COMMENT.value,
-                aliased_reaction.deleted_at.is_(None),
+                comments_reaction.shout == Shout.id,
+                comments_reaction.kind == ReactionKind.COMMENT.value,
+                comments_reaction.deleted_at.is_(None)
             )
         )
         .scalar_subquery()
-        .correlate(Shout)
+        .label('comments_stat')
     )
 
-    # followers_subquery = (
-    #    select(func.count(distinct(ShoutReactionsFollower.follower)).label("followers_count"))
-    #    .where(ShoutReactionsFollower.shout == Shout.id)
-    #    .scalar_subquery()
-    # )
-
-    rating_subquery = (
+    # Подзапрос для рейтинга
+    ratings_subq = (
         select(
             func.sum(
                 case(
-                    (aliased_reaction.kind == ReactionKind.LIKE.value, 1),
-                    (aliased_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0,
+                    (ratings_reaction.kind == ReactionKind.LIKE.value, 1),
+                    (ratings_reaction.kind == ReactionKind.DISLIKE.value, -1),
+                    else_=0
                 )
-            ).label("rating")
+            )
         )
+        .select_from(ratings_reaction)
         .where(
             and_(
-                aliased_reaction.shout == Shout.id,
-                aliased_reaction.reply_to.is_(None),
-                aliased_reaction.deleted_at.is_(None),
+                ratings_reaction.shout == Shout.id,
+                ratings_reaction.reply_to.is_(None),
+                ratings_reaction.deleted_at.is_(None)
             )
         )
         .scalar_subquery()
-        .correlate(Shout)
+        .label('rating_stat')
     )
 
     # Основной запрос с использованием подзапросов
     q = (
         select(
             Shout,
-            comments_subquery.label("comments_stat"),
-            rating_subquery.label("rating_stat"),
-            func.max(aliased_reaction.created_at).label("last_reacted_at"),
+            comments_subq,
+            ratings_subq,
+            func.max(last_reaction.created_at).label("last_reacted_at"),
             authors_subquery.c.authors.label("authors"),
             topics_subquery.c.topics.label("topics"),
             topics_subquery.c.main_topic_slug.label("main_topic_slug"),
         )
-        .outerjoin(aliased_reaction, and_(aliased_reaction.shout == Shout.id, aliased_reaction.deleted_at.is_(None)))
+        .outerjoin(last_reaction, and_(last_reaction.shout == Shout.id, last_reaction.deleted_at.is_(None)))
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .outerjoin(ShoutReactionsFollower, ShoutReactionsFollower.shout == Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics, topics_subquery.c.main_topic_slug)
+        .group_by(
+            Shout.id,
+            text('authors_subquery.authors::text'),
+            text('topics_subquery.topics::text'),
+            text('topics_subquery.main_topic_slug')
+        )
     )
 
     if slug:
@@ -139,10 +143,10 @@ def query_shouts(slug=None, shout_id=None):
     elif shout_id:
         q = q.where(Shout.id == shout_id)
 
-    return q, aliased_reaction
+    return q, last_reaction
 
 
-def get_shouts_with_stats(q, limit, offset=0, author_id=None):
+def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
     """
     Получение публикаций со статистикой, и подзапросами авторов и тем.
 
