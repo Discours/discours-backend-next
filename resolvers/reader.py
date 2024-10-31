@@ -205,20 +205,35 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
         select(
             Shout,
             func.count(func.distinct(Reaction.id)).label("comments_stat"),
-            func.sum(func.case([(Reaction.kind == "LIKE", 1), (Reaction.kind == "DISLIKE", -1)], else_=0)).label(
-                "rating_stat"
-            ),
+            func.sum(
+                case(
+                    [
+                        (Reaction.kind == "LIKE", 1),
+                        (Reaction.kind == "DISLIKE", -1)
+                    ],
+                    else_=0
+                )
+            ).label("rating_stat"),
             last_reaction.c.last_reacted_at,
             authors_subquery.c.authors,
             topics_subquery.c.topics,
-            topics_subquery.c.main_topic_slug,
+            topics_subquery.c.main_topic_slug
         )
         .outerjoin(Reaction, Reaction.shout == Shout.id)
         .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
         .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
         .outerjoin(last_reaction, last_reaction.c.shout_id == Shout.id)
-        .filter(Shout.published_at.isnot(None), Shout.deleted_at.is_(None), Shout.featured_at.isnot(None))
-        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics, topics_subquery.c.main_topic_slug)
+        .filter(
+            Shout.published_at.isnot(None),
+            Shout.deleted_at.is_(None),
+            Shout.featured_at.isnot(None)
+        )
+        .group_by(
+            Shout.id,
+            authors_subquery.c.authors,
+            topics_subquery.c.topics,
+            topics_subquery.c.main_topic_slug
+        )
         .order_by(Shout.published_at.desc().nullslast())
         .limit(limit)
         .offset(offset)
