@@ -267,7 +267,10 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
             for author in authors:
                 author.caption = captions.get(author.id, "")
             shout.authors = authors
-            shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
+            topics = [Topic(**topic) for topic in topics_json] if topics_json else []
+            for topic in topics:
+                topic.is_main = topic.slug == main_topic_slug
+            shout.topics = topics
             shout.stat = {
                 "viewed": ViewedStorage.get_shout(shout.id),
                 "rating": rating_stat or 0,
