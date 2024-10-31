@@ -155,24 +155,19 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
     :param offset: Смещение для пагинации.
     :return: Список публикаций с включенной статистикой.
     """
-    # Определение алиасов подзапросов
+    # Определение алиасов подзапросов авторов и тем (предполагается, что они уже определены ранее)
     authors_subquery = (
         select(
             ShoutAuthor.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
-                    "id",
-                    Author.id,
-                    "name",
-                    Author.name,
-                    "slug",
-                    Author.slug,
-                    "pic",
-                    Author.pic,
-                    "caption",
-                    ShoutAuthor.caption,
+                    "id", Author.id,
+                    "name", Author.name,
+                    "slug", Author.slug,
+                    "pic", Author.pic,
+                    "caption", ShoutAuthor.caption
                 )
-            ).label("authors"),
+            ).label("authors")
         )
         .join(Author, ShoutAuthor.author == Author.id)
         .group_by(ShoutAuthor.shout)
@@ -184,20 +179,32 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
             ShoutTopic.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
-                    "id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main
+                    "id", Topic.id,
+                    "title", Topic.title,
+                    "slug", Topic.slug,
+                    "is_main", ShoutTopic.main
                 )
             ).label("topics"),
-            func.max(func.case([(ShoutTopic.main, Topic.slug)])).label("main_topic_slug"),
+            func.max(
+                case(
+                    (ShoutTopic.main, Topic.slug)
+                )
+            ).label("main_topic_slug")
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
         .group_by(ShoutTopic.shout)
         .subquery("topics_subquery")
     )
 
+    # Определение подзапроса для получения даты последней реакции
     last_reaction = (
-        select(func.max(Reaction.created_at).label("last_reacted_at"))
-        .filter(Reaction.shout == Shout.id, Reaction.deleted_at.is_(None))
-        .subquery()
+        select(
+            Reaction.shout.label("shout_id"),
+            func.max(Reaction.created_at).label("last_reacted_at")
+        )
+        .filter(Reaction.deleted_at.is_(None))
+        .group_by(Reaction.shout)
+        .subquery("last_reaction")
     )
 
     # Основной запрос
@@ -207,8 +214,8 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
             func.count(func.distinct(Reaction.id)).label("comments_stat"),
             func.sum(
                 case(
-                    (Reaction.kind == ReactionKind.LIKE.value, 1),
-                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                    (Reaction.kind == "LIKE", 1),
+                    (Reaction.kind == "DISLIKE", -1),
                     else_=0
                 )
             ).label("rating_stat"),
@@ -230,7 +237,8 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
             Shout.id,
             authors_subquery.c.authors,
             topics_subquery.c.topics,
-            topics_subquery.c.main_topic_slug
+            topics_subquery.c.main_topic_slug,
+            last_reaction.c.last_reacted_at
         )
         .order_by(Shout.published_at.desc().nullslast())
         .limit(limit)
