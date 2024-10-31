@@ -68,7 +68,7 @@ def query_with_stat():
 
 def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
     """
-    Оптимизированное получение данных
+    Оптимизированное получение публикаций с минимизацией количества запросов.
     """
     if author_id:
         q = q.filter(Shout.created_by == author_id)
@@ -78,16 +78,20 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
     if offset:
         q = q.offset(offset)
 
+    # Предварительно определяем флаги для запрашиваемых полей
+    includes_authors = has_field(info, "authors")
+    includes_topics = has_field(info, "topics")
+    includes_stat = has_field(info, "stat")
+
     with local_session() as session:
-        # 1. Получаем шауты одним запросом
-        shouts_result = session.execute(q).all()
+        shouts_result = session.execute(q).scalars().all()
         if not shouts_result:
             return []
 
-        # 2. Получаем авторов и топики пакетным запросом
-        shout_ids = [row.Shout.id for row in shouts_result]
-        if has_field(info, "authors") or has_field(info, "topics"):
-            authors_and_topics = session.execute(
+        shout_ids = [shout.id for shout in shouts_result]
+        authors_and_topics = []
+        if includes_authors or includes_topics:
+            query = (
                 select(
                     ShoutAuthor.shout.label("shout_id"),
                     Author.id.label("author_id"),
@@ -104,50 +108,29 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                 .outerjoin(ShoutTopic, ShoutTopic.shout == ShoutAuthor.shout)
                 .outerjoin(Topic, ShoutTopic.topic == Topic.id)
                 .where(ShoutAuthor.shout.in_(shout_ids))
-            ).all()
+            )
+            authors_and_topics = session.execute(query).all()
 
-        # 3. Группируем данные эффективно
-        shouts_data = {}
-        for row in shouts_result:
-            shout = row.Shout
-            shout_id = shout.id
-            shout_dict = shout.dict()
+        shouts_data = {
+            shout.id: {**shout.dict(),
+                      "authors": [],
+                      "topics": set()} for shout in shouts_result
+        }
 
-            # Добавляем статистику только если она запрошена
-            if has_field(info, "stat"):
-                viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
-                shout_dict["stat"] = {
-                    "viewed": viewed_stat,
-                    "commented": row.comments_count or 0,
-                    "rating": row.rating or 0,
-                    "last_reacted_at": row.last_reacted_at,
-                }
-
-            # Инициализируем списки только для запрошенных полей
-            if has_field(info, "authors"):
-                shout_dict["authors"] = []
-            if has_field(info, "topics"):
-                shout_dict["topics"] = set()  # используем set для уникальности
-
-            shouts_data[shout_id] = shout_dict
-
-        # 4. Заполняем связанные данные
         for row in authors_and_topics:
             shout_data = shouts_data[row.shout_id]
+            if includes_authors:
+                author = {
+                    "id": row.author_id,
+                    "name": row.author_name,
+                    "slug": row.author_slug,
+                    "pic": row.author_pic,
+                    "caption": row.author_caption,
+                }
+                if author not in shout_data["authors"]:
+                    shout_data["authors"].append(author)
 
-            # Добавляем автора
-            author = {
-                "id": row.author_id,
-                "name": row.author_name,
-                "slug": row.author_slug,
-                "pic": row.author_pic,
-                "caption": row.author_caption,
-            }
-            if author not in shout_data["authors"]:
-                shout_data["authors"].append(author)
-
-            # Добавляем топик если есть
-            if row.topic_id:
+            if includes_topics and row.topic_id:
                 topic = {
                     "id": row.topic_id,
                     "title": row.topic_title,
@@ -156,16 +139,23 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                 }
                 shout_data["topics"].add(tuple(topic.items()))
 
-        # 5. Финальная обработка и сортировка
-        result = []
-        for shout_data in shouts_data.values():
-            # Конвертируем topics обратно в список словарей и сортируем
-            shout_data["topics"] = sorted(
-                [dict(t) for t in shout_data["topics"]], key=lambda x: (not x["is_main"], x["id"])
-            )
-            result.append(shout_data)
+        for shout in shouts_data.values():
+            if includes_stat:
+                shout_id = shout["id"]
+                viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
+                shout["stat"] = {
+                    "viewed": viewed_stat,
+                    "commented": shout.get("comments_count", 0),
+                    "rating": shout.get("rating", 0),
+                    "last_reacted_at": shout.get("last_reacted_at"),
+                }
 
-        return result
+            shout["topics"] = sorted(
+                [dict(t) for t in shout["topics"]],
+                key=lambda x: (not x["is_main"], x["id"])
+            )
+
+        return list(shouts_data.values())
 
 
 def filter_my(info, session, q):
@@ -512,7 +502,7 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     :param info: Информация о контексте GraphQL.
     :param limit: Максимальное количество публикаций.
     :param offset: Смещне для пагинации.
-    :return: Список публикаций, обсужде��ных пользователем.
+    :return: Список публикаций, обсужденых пользователем.
     """
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
@@ -538,7 +528,7 @@ async def reacted_shouts_updates(info, follower_id: int, limit=50, offset=0) -> 
     Обновляет публикации, на которые подписан автор, с учетом реакци.
 
     :param follower_id: Идентификатор подписчика.
-    :param limit: Коли��ество пу��ликаций для загрузки.
+    :param limit: Колиество пукликаций для загрузки.
     :param offset: Смещение для пагинации.
     :return: Список публикаций.
     """
