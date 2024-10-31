@@ -376,7 +376,7 @@ async def load_shouts_search(_, info, text, limit=50, offset=0):
 
 
 @query.field("load_shouts_unrated")
-async def load_shouts_unrated(_, info, limit=50, offset=0):
+async def load_shouts_unrated(_, info, limit=5, offset=0):
     """
     Загрузка публикаций с менее чем 3 реакциями типа LIKE/DISLIKE
     """
@@ -395,7 +395,8 @@ async def load_shouts_unrated(_, info, limit=50, offset=0):
     q = (
         select(Shout)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None), ~Shout.id.in_(rated_shouts)))
-        .order_by(desc(Shout.published_at))
+        # .order_by(desc(Shout.published_at))
+        .order_by(func.random())
     )
 
     return get_shouts_with_links(info, q, limit, offset)
