@@ -244,11 +244,12 @@ def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
 
     # Добавление фильтрации по author_id, если необходимо
     if author_id:
-        query = q.filter(Shout.created_by == author_id)
+        q = q.filter(Shout.created_by == author_id)
 
     # Выполнение запроса и обработка результатов
+    results = []
     with local_session() as session:
-        results = session.execute(query).all()
+        results = session.execute(q).all()
 
     # Формирование списка публикаций с их данными
     shouts = []
