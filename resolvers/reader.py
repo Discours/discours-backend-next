@@ -392,24 +392,20 @@ async def get_shout(_, _info, slug="", shout_id=0):
                         topics_json,
                         main_topic_slug,
                     ] = results
-
-                    shout.stat = {
-                        "viewed": ViewedStorage.get_shout(shout.id),
-                        "commented": commented_stat,
-                        "rating": rating_stat,
-                        "last_reacted_at": last_reaction_at,
+                    viewed_stat = ViewedStorage.get_shout(shout.id)
+                    shout_dict = shout.dict()
+                    shout_dict["stat"] = {
+                        "viewed": viewed_stat or 0,
+                        "commented": commented_stat or 0,
+                        "rating": rating_stat or 0,
+                        "last_reacted_at": last_reaction_at or 0,
                     }
 
-                    # Преобразование строк в объекты Author без их создания
-                    shout.authors = [Author(**author) for author in authors_json] if authors_json else []
+                    shout_dict["authors"] = authors_json or []
+                    shout_dict["topics"] = topics_json or []
+                    shout_dict["main_topic"] = main_topic_slug
 
-                    # Преобразование строк в объекты Topic без их создания
-                    shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
-
-                    # Добавляем основной топик, если он существует
-                    shout.main_topic = main_topic_slug
-
-                    return shout
+                    return shout_dict
     except Exception as _exc:
         import traceback
 
