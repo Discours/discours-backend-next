@@ -1,6 +1,6 @@
 from typing import List
 
-from sqlalchemy.orm import aliased, joinedload, selectinload
+from sqlalchemy.orm import aliased, joinedload
 from sqlalchemy.sql import union
 from sqlalchemy.sql.expression import (
     and_,
@@ -32,9 +32,9 @@ def query_shouts(slug=None, shout_id=None):
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
     с агрегированием в JSON.
     """
-    comments_reaction = aliased(Reaction, name='comments_reaction')
-    ratings_reaction = aliased(Reaction, name='ratings_reaction') 
-    last_reaction = aliased(Reaction, name='last_reaction')
+    comments_reaction = aliased(Reaction, name="comments_reaction")
+    ratings_reaction = aliased(Reaction, name="ratings_reaction")
+    last_reaction = aliased(Reaction, name="last_reaction")
 
     # Подзапрос для уникальных авторов, агрегированных в JSON
     authors_subquery = (
@@ -84,11 +84,11 @@ def query_shouts(slug=None, shout_id=None):
             and_(
                 comments_reaction.shout == Shout.id,
                 comments_reaction.kind == ReactionKind.COMMENT.value,
-                comments_reaction.deleted_at.is_(None)
+                comments_reaction.deleted_at.is_(None),
             )
         )
         .scalar_subquery()
-        .label('comments_stat')
+        .label("comments_stat")
     )
 
     # Подзапрос для рейтинга
@@ -98,7 +98,7 @@ def query_shouts(slug=None, shout_id=None):
                 case(
                     (ratings_reaction.kind == ReactionKind.LIKE.value, 1),
                     (ratings_reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0
+                    else_=0,
                 )
             )
         )
@@ -107,11 +107,11 @@ def query_shouts(slug=None, shout_id=None):
             and_(
                 ratings_reaction.shout == Shout.id,
                 ratings_reaction.reply_to.is_(None),
-                ratings_reaction.deleted_at.is_(None)
+                ratings_reaction.deleted_at.is_(None),
             )
         )
         .scalar_subquery()
-        .label('rating_stat')
+        .label("rating_stat")
     )
 
     # Основной запрос с использованием подзапросов
@@ -132,9 +132,9 @@ def query_shouts(slug=None, shout_id=None):
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .group_by(
             Shout.id,
-            text('authors_subquery.authors::text'),
-            text('topics_subquery.topics::text'),
-            text('topics_subquery.main_topic_slug')
+            text("authors_subquery.authors::text"),
+            text("topics_subquery.topics::text"),
+            text("topics_subquery.main_topic_slug"),
         )
     )
 
@@ -155,12 +155,71 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
     :param offset: Смещение для пагинации.
     :return: Список публикаций с включенной статистикой.
     """
-    # Основной запрос для получения публикаций и объединения их с подзапросами
-    q = (
-        q.options(
-            selectinload(Shout.authors),  # Eagerly load authors
-            selectinload(Shout.topics),  # Eagerly load topics
+    # Определение алиасов подзапросов
+    authors_subquery = (
+        select(
+            ShoutAuthor.shout.label("shout_id"),
+            func.json_agg(
+                func.json_build_object(
+                    "id",
+                    Author.id,
+                    "name",
+                    Author.name,
+                    "slug",
+                    Author.slug,
+                    "pic",
+                    Author.pic,
+                    "caption",
+                    ShoutAuthor.caption,
+                )
+            ).label("authors"),
         )
+        .join(Author, ShoutAuthor.author == Author.id)
+        .group_by(ShoutAuthor.shout)
+        .subquery("authors_subquery")
+    )
+
+    topics_subquery = (
+        select(
+            ShoutTopic.shout.label("shout_id"),
+            func.json_agg(
+                func.json_build_object(
+                    "id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main
+                )
+            ).label("topics"),
+            func.max(func.case([(ShoutTopic.main, Topic.slug)])).label("main_topic_slug"),
+        )
+        .join(Topic, ShoutTopic.topic == Topic.id)
+        .group_by(ShoutTopic.shout)
+        .subquery("topics_subquery")
+    )
+
+    last_reaction = (
+        select(func.max(Reaction.created_at).label("last_reacted_at"))
+        .filter(Reaction.shout == Shout.id, Reaction.deleted_at.is_(None))
+        .subquery()
+    )
+
+    # Основной запрос
+    q = (
+        select(
+            Shout,
+            func.count(func.distinct(Reaction.id)).label("comments_stat"),
+            func.sum(func.case([(Reaction.kind == "LIKE", 1), (Reaction.kind == "DISLIKE", -1)], else_=0)).label(
+                "rating_stat"
+            ),
+            last_reaction.c.last_reacted_at,
+            authors_subquery.c.authors,
+            topics_subquery.c.topics,
+            topics_subquery.c.main_topic_slug,
+        )
+        .outerjoin(Reaction, Reaction.shout == Shout.id)
+        .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
+        .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
+        .outerjoin(last_reaction, last_reaction.c.shout_id == Shout.id)
+        .filter(Shout.published_at.isnot(None), Shout.deleted_at.is_(None), Shout.featured_at.isnot(None))
+        .group_by(Shout.id, authors_subquery.c.authors, topics_subquery.c.topics, topics_subquery.c.main_topic_slug)
+        .order_by(Shout.published_at.desc().nullslast())
         .limit(limit)
         .offset(offset)
     )
@@ -175,7 +234,6 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
     for [
         shout,
         comments_stat,
-        # followers_stat,
         rating_stat,
         last_reacted_at,
         authors_json,
@@ -187,7 +245,6 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
         shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
-            # "followed": followers_stat or 0,
             "rating": rating_stat or 0,
             "commented": comments_stat or 0,
             "last_reacted_at": last_reacted_at,
