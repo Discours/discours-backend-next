@@ -146,7 +146,7 @@ def query_shouts(slug=None, shout_id=None):
     return q, last_reaction
 
 
-def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
+def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     """
     Получение публикаций со статистикой, и подзапросами авторов и тем.
 
@@ -155,56 +155,53 @@ def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
     :param offset: Смещение для пагинации.
     :return: Список публикаций с включенной статистикой.
     """
-    # Определение алиасов подзапросов авторов и тем
+
+    # Определение скалярного подзапроса для авторов
     authors_subquery = (
         select(
-            ShoutAuthor.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
-                    "id", Author.id,
-                    "name", Author.name,
-                    "slug", Author.slug,
-                    "pic", Author.pic,
-                    "caption", ShoutAuthor.caption
+                    "id",
+                    Author.id,
+                    "name",
+                    Author.name,
+                    "slug",
+                    Author.slug,
+                    "pic",
+                    Author.pic,
+                    "caption",
+                    ShoutAuthor.caption,
                 )
             ).label("authors")
         )
+        .select_from(ShoutAuthor)
         .join(Author, ShoutAuthor.author == Author.id)
-        .group_by(ShoutAuthor.shout)
-        .subquery("authors_subquery")
+        .where(ShoutAuthor.shout == Shout.id)
+        .scalar_subquery()
     )
 
+    # Определение скалярного подзапроса для тем
     topics_subquery = (
         select(
-            ShoutTopic.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
-                    "id", Topic.id,
-                    "title", Topic.title,
-                    "slug", Topic.slug,
-                    "is_main", ShoutTopic.main
+                    "id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main
                 )
             ).label("topics"),
-            func.max(
-                case(
-                    (ShoutTopic.main, Topic.slug)
-                )
-            ).label("main_topic_slug")
+            func.max(case((ShoutTopic.main, Topic.slug))).label("main_topic_slug"),
         )
+        .select_from(ShoutTopic)
         .join(Topic, ShoutTopic.topic == Topic.id)
+        .where(ShoutTopic.shout == Shout.id)
         .group_by(ShoutTopic.shout)
-        .subquery("topics_subquery")
+        .scalar_subquery()
     )
 
-    # Определение подзапроса для получения даты последней реакции
+    # Определение скалярного подзапроса для последней реакции
     last_reaction = (
-        select(
-            Reaction.shout.label("shout_id"),
-            func.max(Reaction.created_at).label("last_reacted_at")
-        )
-        .filter(Reaction.deleted_at.is_(None))
-        .group_by(Reaction.shout)
-        .subquery("last_reaction")
+        select(func.max(Reaction.created_at).label("last_reacted_at"))
+        .where(Reaction.shout == Shout.id, Reaction.deleted_at.is_(None))
+        .scalar_subquery()
     )
 
     # Основной запрос
@@ -212,31 +209,17 @@ def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
         select(
             Shout,
             func.count(func.distinct(Reaction.id)).label("comments_stat"),
-            func.sum(
-                case(
-                    (Reaction.kind == "LIKE", 1),
-                    (Reaction.kind == "DISLIKE", -1),
-                    else_=0
-                )
-            ).label("rating_stat"),
-            last_reaction.c.last_reacted_at,
-            authors_subquery.c.authors,
-            topics_subquery.c.topics,
-            topics_subquery.c.main_topic_slug
+            func.sum(case((Reaction.kind == "LIKE", 1), (Reaction.kind == "DISLIKE", -1), else_=0)).label(
+                "rating_stat"
+            ),
+            last_reaction.label("last_reacted_at"),
+            authors_subquery.label("authors"),
+            topics_subquery.label("topics"),
+            func.coalesce(func.json_extract_path_text(topics_subquery, "main_topic_slug"), "").label("main_topic_slug"),
         )
         .outerjoin(Reaction, Reaction.shout == Shout.id)
-        .outerjoin(authors_subquery, authors_subquery.c.shout_id == Shout.id)
-        .outerjoin(topics_subquery, topics_subquery.c.shout_id == Shout.id)
-        .outerjoin(last_reaction, last_reaction.c.shout_id == Shout.id)
-        .filter(
-            Shout.published_at.isnot(None),
-            Shout.deleted_at.is_(None),
-            Shout.featured_at.isnot(None)
-        )
-        .group_by(
-            Shout.id,
-            last_reaction.c.last_reacted_at
-        )
+        .filter(Shout.published_at.isnot(None), Shout.deleted_at.is_(None), Shout.featured_at.isnot(None))
+        .group_by(Shout.id, last_reaction)
         .order_by(Shout.published_at.desc().nullslast())
         .limit(limit)
         .offset(offset)
