@@ -31,8 +31,8 @@ def query_shouts():
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем.
     """
-    # Подзапрос для реакций и статистики (объединяем только эту часть)
-    reactions_subquery = (
+    # Подзапросы для статистики реакций
+    rating_subquery = (
         select(
             func.sum(
                 case(
@@ -40,19 +40,34 @@ def query_shouts():
                     (Reaction.kind == ReactionKind.DISLIKE.value, -1),
                     else_=0,
                 )
-            ).label("rating_stat"),
-            func.count(distinct(case((Reaction.kind == ReactionKind.COMMENT.value, Reaction.id), else_=None))).label(
-                "comments_stat"
-            ),
-            func.max(Reaction.created_at).label("last_reacted_at"),
+            )
         )
         .select_from(Reaction)
         .where(and_(Reaction.shout == Shout.id, Reaction.reply_to.is_(None), Reaction.deleted_at.is_(None)))
         .correlate(Shout)
         .scalar_subquery()
+        .label("rating_stat")
     )
 
-    # Остальные подзапросы оставляем как есть
+    comments_subquery = (
+        select(func.count(distinct(case((Reaction.kind == ReactionKind.COMMENT.value, Reaction.id), else_=None))))
+        .select_from(Reaction)
+        .where(and_(Reaction.shout == Shout.id, Reaction.reply_to.is_(None), Reaction.deleted_at.is_(None)))
+        .correlate(Shout)
+        .scalar_subquery()
+        .label("comments_stat")
+    )
+
+    last_reaction_subquery = (
+        select(func.max(Reaction.created_at))
+        .select_from(Reaction)
+        .where(and_(Reaction.shout == Shout.id, Reaction.reply_to.is_(None), Reaction.deleted_at.is_(None)))
+        .correlate(Shout)
+        .scalar_subquery()
+        .label("last_reacted_at")
+    )
+
+    # Остальные подзапросы остаются без изменений
     authors_subquery = (
         select(
             func.json_agg(
@@ -62,30 +77,6 @@ def query_shouts():
         .select_from(ShoutAuthor)
         .join(Author, ShoutAuthor.author == Author.id)
         .where(ShoutAuthor.shout == Shout.id)
-        .correlate(Shout)
-        .scalar_subquery()
-    )
-
-    # Подзапрос для уникальных тем, агрегированных в JSON
-    topics_subquery = (
-        select(
-            func.json_agg(func.json_build_object("id", Topic.id, "title", Topic.title, "slug", Topic.slug)).label(
-                "topics"
-            )
-        )
-        .select_from(ShoutTopic)
-        .join(Topic, ShoutTopic.topic == Topic.id)
-        .where(ShoutTopic.shout == Shout.id)
-        .correlate(Shout)
-        .scalar_subquery()
-    )
-
-    # Новый подзапрос для main_topic_slug
-    main_topic_subquery = (
-        select(func.max(Topic.slug).label("main_topic_slug"))
-        .select_from(ShoutTopic)
-        .join(Topic, ShoutTopic.topic == Topic.id)
-        .where(and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
         .correlate(Shout)
         .scalar_subquery()
     )
@@ -103,11 +94,36 @@ def query_shouts():
         .scalar_subquery()
     )
 
+    topics_subquery = (
+        select(
+            func.json_agg(func.json_build_object("id", Topic.id, "title", Topic.title, "slug", Topic.slug)).label(
+                "topics"
+            )
+        )
+        .select_from(ShoutTopic)
+        .join(Topic, ShoutTopic.topic == Topic.id)
+        .where(ShoutTopic.shout == Shout.id)
+        .correlate(Shout)
+        .scalar_subquery()
+    )
+
+    main_topic_subquery = (
+        select(func.max(Topic.slug))
+        .select_from(ShoutTopic)
+        .join(Topic, ShoutTopic.topic == Topic.id)
+        .where(and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
+        .correlate(Shout)
+        .scalar_subquery()
+        .label("main_topic_slug")
+    )
+
     # Основной запрос
     q = (
         select(
             Shout,
-            reactions_subquery,
+            rating_subquery,
+            comments_subquery,
+            last_reaction_subquery,
             authors_subquery,
             captions_subquery,
             topics_subquery,
@@ -124,7 +140,6 @@ def query_shouts():
 def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     """
     Получение публикаций со статистикой.
-
     :param q: Базовый запрос публикаций
     :param limit: Ограничение количества результатов
     :param offset: Смещение для пагинации
@@ -145,18 +160,25 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     with local_session() as session:
         results = session.execute(q).all()
 
-        for [shout, reactions_stat, authors_json, captions_json, topics_json, main_topic_slug] in results:
-            # Базовые данные публикации
+        for [
+            shout,
+            rating_stat,
+            comments_stat,
+            last_reacted_at,
+            authors_json,
+            captions_json,
+            topics_json,
+            main_topic_slug,
+        ] in results:
             shout_dict = shout.dict()
 
             # Добавление статистики просмотров
-            viewed_stat = ViewedStorage.get_shout(shout_slug=shout.slug)
+            viewed_stat = ViewedStorage.get_shout(shout_slug=shout.slug, shout_id=shout.id)
 
             # Обработка авторов и их подписей
             authors = authors_json or []
             captions = captions_json or []
 
-            # Объединяем авторов с их подписями
             for author in authors:
                 caption_item = next((c for c in captions if c["author_id"] == author["id"]), None)
                 if caption_item:
@@ -175,9 +197,9 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
                     "main_topic": main_topic_slug,
                     "stat": {
                         "viewed": viewed_stat or 0,
-                        "rating": reactions_stat.rating_stat or 0,
-                        "commented": reactions_stat.comments_stat or 0,
-                        "last_reacted_at": reactions_stat.last_reacted_at,
+                        "rating": rating_stat or 0,
+                        "commented": comments_stat or 0,
+                        "last_reacted_at": last_reacted_at,
                     },
                 }
             )
