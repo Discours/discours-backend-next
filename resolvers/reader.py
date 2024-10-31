@@ -262,26 +262,27 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
             session.execute(query).all() or []
         ):
             viewed_stat = ViewedStorage.get_shout(shout.id)
+            shout_dict = shout.dict()
             # Преобразование JSON данных в объекты
             captions = {int(ca['author_id']): ca['caption'] for ca in captions_json} if captions_json else {}
             # patch json to add captions to authors
             authors = [
                 {**a, "caption": captions.get(int(a["id"]), "")} for a in authors_json
             ] if authors_json else []   
-            shout.authors = authors
+            shout_dict["authors"] = authors
             # patch json to add is_main to topics
-            topics_json = [
+            topics = [
                 {**t, "is_main": t["slug"] == main_topic_slug} for t in topics_json
             ] if topics_json else []
-            shout.topics = topics_json
-            shout.stat = {
+            shout_dict["topics"] = topics
+            shout_dict["stat"] = {
                 "viewed": viewed_stat or 0,
                 "rating": rating_stat or 0,
                 "commented": comments_stat or 0,
                 "last_reacted_at": last_reacted_at,
             }
-            shout.main_topic = main_topic_slug  # Присваиваем основной топик
-            shouts.append(shout)
+            shout_dict["main_topic"] = main_topic_slug  # Присваиваем основной топик
+            shouts.append(shout_dict)
 
     return shouts
 
