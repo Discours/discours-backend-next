@@ -118,6 +118,7 @@ async def create_shout(_, info, inp):
                 "slug": slug,
                 "topics": inp.get("topics", []),
                 "published_at": None,
+                "community": 1,
                 "created_at": current_time,  # Set created_at as Unix timestamp
             }
             same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
