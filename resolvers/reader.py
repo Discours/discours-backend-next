@@ -207,10 +207,8 @@ def get_shouts_with_stats(q, limit=50, offset=0, author_id=None):
             func.count(func.distinct(Reaction.id)).label("comments_stat"),
             func.sum(
                 case(
-                    [
-                        (Reaction.kind == "LIKE", 1),
-                        (Reaction.kind == "DISLIKE", -1)
-                    ],
+                    (Reaction.kind == ReactionKind.LIKE.value, 1),
+                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
                     else_=0
                 )
             ).label("rating_stat"),
