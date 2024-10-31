@@ -30,52 +30,44 @@ from utils.logger import root_logger as logger
 def query_shouts(slug=None, shout_id=None):
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
-    с агрегацией в строку.
-
-    :param slug: Опциональный параметр для фильтрации по slug.
-    :param shout_id: Опциональный параметр для фильтрации по shout_id.
-    :return: Запрос для получения публикаций, aliased_reaction:
+    с агрегированием в JSON.
     """
     aliased_reaction = aliased(Reaction)
 
-    # Подзапрос для уникальных авторов, объединенных в строку
+    # Подзапрос для уникальных авторов, агрегированных в JSON
     authors_subquery = (
         select(
             ShoutAuthor.shout.label("shout_id"),
-            func.string_agg(
-                func.concat_ws(
-                    ";",
-                    func.concat("id:", Author.id),
-                    func.concat("name:", Author.name),
-                    func.concat("slug:", Author.slug),
-                    func.concat("pic:", Author.pic),
-                    func.concat("caption:", ShoutAuthor.caption),  # Добавлено поле caption
-                ),
-                " | ",
-            ).label("authors"),  # Используем символ | как разделитель
+            func.json_agg(
+                func.json_build_object(
+                    "id",
+                    Author.id,
+                    "name",
+                    Author.name,
+                    "slug",
+                    Author.slug,
+                    "pic",
+                    Author.pic,
+                    "caption",
+                    ShoutAuthor.caption,
+                )
+            ).label("authors"),
         )
         .join(Author, ShoutAuthor.author == Author.id)
         .group_by(ShoutAuthor.shout)
         .subquery()
     )
 
-    # Подзапрос для уникальных тем, объединенных в строку (включая main_topic_slug)
+    # Подзапрос для уникальных тем, агрегированных в JSON
     topics_subquery = (
         select(
             ShoutTopic.shout.label("shout_id"),
-            func.string_agg(
-                func.concat_ws(
-                    ";",
-                    func.concat("id:", Topic.id),
-                    func.concat("title:", Topic.title),
-                    func.concat("slug:", Topic.slug),
-                    func.concat("is_main:", ShoutTopic.main),
-                ),
-                " | ",
-            ).label("topics"),  # Используем символ | как разделитель
-            func.max(case((ShoutTopic.main.is_(True), Topic.slug))).label(
-                "main_topic_slug"
-            ),  # Получение основного топика
+            func.json_agg(
+                func.json_build_object(
+                    "id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main
+                )
+            ).label("topics"),
+            func.max(case((ShoutTopic.main.is_(True), Topic.slug))).label("main_topic_slug"),
         )
         .join(Topic, ShoutTopic.topic == Topic.id)
         .group_by(ShoutTopic.shout)
@@ -150,43 +142,6 @@ def query_shouts(slug=None, shout_id=None):
     return q, aliased_reaction
 
 
-def parse_aggregated_string(aggregated_str, model_class):
-    """
-    Преобразует строку, полученную из string_agg, обратно в список объектов.
-
-    :param aggregated_str: Строка, содержащая агрегированные данные.
-    :param model_class: Класс модели, экземпляры которой нужно создать.
-    :return: Список объектов модели.
-    """
-    if not aggregated_str:
-        return []
-
-    items = []
-    for item_str in aggregated_str.split(" | "):
-        item_data = {}
-        for field in item_str.split(";"):
-            if ":" in field:
-                key, value = field.split(":", 1)
-                item_data[key] = value
-            else:
-                logger.error(f"Некорректный формат поля: {field}")
-                continue
-
-        # Фильтрация item_data, чтобы использовать только допустимые поля модели
-        filtered_data = {k: v for k, v in item_data.items() if hasattr(model_class, k)}
-
-        # Создание экземпляра модели на основе фильтрованного словаря
-        item_object = model_class(**filtered_data)
-
-        # Добавление синтетического поля, если оно присутствует в item_data
-        if "is_main" in item_data:
-            item_object.is_main = item_data["is_main"] == "True"  # Преобразование в логическое значение
-
-        items.append(item_object)
-
-    return items
-
-
 def get_shouts_with_stats(q, limit, offset=0, author_id=None):
     """
     Получение публикаций со статистикой, и подзапросами авторов и тем.
@@ -219,12 +174,13 @@ def get_shouts_with_stats(q, limit, offset=0, author_id=None):
         # followers_stat,
         rating_stat,
         last_reacted_at,
-        authors,
-        topics,
+        authors_json,
+        topics_json,
         main_topic_slug,
     ] in results:
-        shout.authors = parse_aggregated_string(authors, Author)
-        shout.topics = parse_aggregated_string(topics, Topic)
+        # Преобразование JSON данных в объекты
+        shout.authors = [Author(**author) for author in authors_json] if authors_json else []
+        shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
         shout.stat = {
             "viewed": ViewedStorage.get_shout(shout.id),
             # "followed": followers_stat or 0,
@@ -337,8 +293,8 @@ async def get_shout(_, _info, slug="", shout_id=0):
                         # followers_stat,
                         rating_stat,
                         last_reaction_at,
-                        authors,
-                        topics,
+                        authors_json,
+                        topics_json,
                         main_topic_slug,
                     ] = results
 
@@ -350,10 +306,10 @@ async def get_shout(_, _info, slug="", shout_id=0):
                     }
 
                     # Преобразование строк в объекты Author без их создания
-                    shout.authors = parse_aggregated_string(authors, Author)
+                    shout.authors = [Author(**author) for author in authors_json] if authors_json else []
 
                     # Преобразование строк в объекты Topic без их создания
-                    shout.topics = parse_aggregated_string(topics, Topic)
+                    shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
 
                     # Добавляем основной топик, если он существует
                     shout.main_topic = main_topic_slug
