@@ -172,7 +172,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         .select_from(ShoutAuthor)
         .join(Author, ShoutAuthor.author == Author.id)
         .where(ShoutAuthor.shout == Shout.id)
-        .correlate(Shout)  # Явная корреляция с таблицей Shout
+        .correlate(Shout)
         .scalar_subquery()
     )
 
@@ -197,16 +197,24 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         .select_from(ShoutTopic)
         .join(Topic, ShoutTopic.topic == Topic.id)
         .where(ShoutTopic.shout == Shout.id)
-        .group_by(ShoutTopic.shout)
-        .correlate(Shout)  # Явная корреляция с таблицей Shout
+        .correlate(Shout)
         .scalar_subquery()
     )
 
-    # Скалярный подзапрос для последней реакции
-    last_reaction_subquery = (
-        select(func.max(Reaction.created_at).label("last_reacted_at"))
-        .where(Reaction.shout == Shout.id, Reaction.deleted_at.is_(None))
-        .correlate(Shout)  # Явная корреляция с таблицей Shout
+    # Скалярный подзапрос для основного топика
+    main_topic_subquery = (
+        select(
+            func.max(Topic.slug).label("main_topic_slug")
+        )
+        .select_from(ShoutTopic)
+        .join(Topic, ShoutTopic.topic == Topic.id)
+        .where(
+            and_(
+                ShoutTopic.shout == Shout.id,
+                ShoutTopic.main.is_(True),
+            )
+        )
+        .correlate(Shout)
         .scalar_subquery()
     )
 
@@ -214,35 +222,34 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     query = (
         select(
             Shout,
-            func.count(Reaction.id.distinct()).label("comments_stat"),
+            func.count(distinct(Reaction.id)).label("comments_stat"),
             func.sum(
                 case(
-                    (Reaction.kind == "LIKE", 1),
-                    (Reaction.kind == "DISLIKE", -1),
+                    [(Reaction.kind == "LIKE", 1),
+                     (Reaction.kind == "DISLIKE", -1)],
                     else_=0
                 )
             ).label("rating_stat"),
-            last_reaction_subquery,
+            func.max(Reaction.created_at).label("last_reacted_at"),
             authors_subquery,
             topics_subquery,
-            func.coalesce(
-                func.json_extract_path_text(topics_subquery, 'main_topic_slug'),
-                ''
-            ).label("main_topic_slug")
+            main_topic_subquery
         )
-        .join(Reaction, Reaction.shout == Shout.id, isouter=True)
+        .outerjoin(Reaction, Reaction.shout == Shout.id)
         .where(
-            Shout.published_at.is_not(None),
-            Shout.deleted_at.is_(None),
-            Shout.featured_at.is_not(None)
+            and_(
+                Shout.published_at.isnot(None),
+                Shout.deleted_at.is_(None),
+                Shout.featured_at.isnot(None)
+            )
         )
         .group_by(Shout.id)
-        .order_by(Shout.published_at.desc().nullslast())
+        .order_by(Shout.published_at.desc().nulls_last())
         .limit(limit)
         .offset(offset)
     )
 
-    # Добавление фильтрации по author_id, если необходимо
+    # Применение дополнительных фильтров, если необходимо
     if author_id:
         query = query.filter(Shout.created_by == author_id)
 
