@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from sqlalchemy.orm import aliased, joinedload
@@ -82,6 +83,24 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
     includes_authors = has_field(info, "authors")
     includes_topics = has_field(info, "topics")
     includes_stat = has_field(info, "stat")
+    includes_media = has_field(info, "media")
+
+    #  created_by и main_topic
+    if has_field(info, "created_by"):
+        q = q.outerjoin(Author, Shout.created_by == Author.id).add_columns(
+            Author.id.label("main_author_id"),
+            Author.name.label("main_author_name"),
+            Author.slug.label("main_author_slug"),
+            Author.pic.label("main_author_pic"),
+            Author.caption.label("main_author_caption"),
+        )
+    if has_field(info, "main_topic"):
+        q = q.outerjoin(Topic, Shout.main_topic == Topic.id).add_columns(
+            Topic.id.label("main_topic_id"),
+            Topic.title.label("main_topic_title"),
+            Topic.slug.label("main_topic_slug"),
+            func.literal(True).label("main_topic_is_main"),
+        )
 
     with local_session() as session:
         shouts_result = session.execute(q).scalars().all()
@@ -111,11 +130,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
             )
             authors_and_topics = session.execute(query).all()
 
-        shouts_data = {
-            shout.id: {**shout.dict(),
-                      "authors": [],
-                      "topics": set()} for shout in shouts_result
-        }
+        shouts_data = {shout.id: {**shout.dict(), "authors": [], "topics": set()} for shout in shouts_result}
 
         for row in authors_and_topics:
             shout_data = shouts_data[row.shout_id]
@@ -140,6 +155,8 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                 shout_data["topics"].add(tuple(topic.items()))
 
         for shout in shouts_data.values():
+            if includes_media:
+                shout["media"] = json.dumps(shout.get("media", []))
             if includes_stat:
                 shout_id = shout["id"]
                 viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
@@ -150,10 +167,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                     "last_reacted_at": shout.get("last_reacted_at"),
                 }
 
-            shout["topics"] = sorted(
-                [dict(t) for t in shout["topics"]],
-                key=lambda x: (not x["is_main"], x["id"])
-            )
+            shout["topics"] = sorted([dict(t) for t in shout["topics"]], key=lambda x: (not x["is_main"], x["id"]))
 
         return list(shouts_data.values())
 
@@ -240,7 +254,7 @@ async def get_shout(_, info, slug="", shout_id=0):
     Получение публикации по slug или id.
 
     :param _: Корневой объект запроса (не используется)
-    :param _info: Информация о контексте GraphQL
+    :param info: Информация о контексте GraphQL
     :param slug: Уникальный идентификатор публикации
     :param shout_id: ID публикации
     :return: Данные публикации с включенной статистикой

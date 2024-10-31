@@ -57,26 +57,35 @@ type Reaction {
   # old_thread: String
 }
 
+type Media {
+  url: String
+  pic: String
+  title: String
+  body: String
+  artist: String
+}
+
 type Shout {
   id: Int!
+  title: String!
   slug: String!
   body: String!
+  layout: String!
+
   lead: String
   description: String
-  main_topic: String
-  topics: [Topic]
-  created_by: Author!
-  updated_by: Author
-  deleted_by: Author
-  authors: [Author]
-  communities: [Community]
-  title: String!
   subtitle: String
   lang: String
-  community: String
   cover: String
   cover_caption: String
-  layout: String!
+
+  community: Community!
+  main_topic: Topic!
+  created_by: Author!
+  topics: [Topic]
+  authors: [Author]
+  updated_by: Author
+  deleted_by: Author
 
   created_at: Int!
   updated_at: Int
@@ -86,7 +95,7 @@ type Shout {
 
   version_of: Shout  # TODO: use version_of somewhere
 
-  media: String
+  media: [Media]
   stat: Stat
   score: Float
 }
