@@ -161,16 +161,11 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         select(
             func.json_agg(
                 func.json_build_object(
-                    "id",
-                    Author.id,
-                    "name",
-                    Author.name,
-                    "slug",
-                    Author.slug,
-                    "pic",
-                    Author.pic,
-                    "caption",
-                    ShoutAuthor.caption,
+                    "id", Author.id,
+                    "name", Author.name,
+                    "slug", Author.slug,
+                    "pic", Author.pic,
+                    "caption", ShoutAuthor.caption,
                 )
             ).label("authors")
         )
@@ -186,10 +181,12 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         select(
             func.json_agg(
                 func.json_build_object(
-                    "id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main
+                    "id", Topic.id,
+                    "title", Topic.title,
+                    "slug", Topic.slug,
+                    "is_main", ShoutTopic.main
                 )
             ).label("topics"),
-            func.max(case((ShoutTopic.main, Topic.slug), else_=None)).label("main_topic_slug"),
         )
         .select_from(ShoutTopic)
         .join(Topic, ShoutTopic.topic == Topic.id)
