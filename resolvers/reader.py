@@ -157,7 +157,7 @@ def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
     """
     # Определение алиасов подзапросов авторов и тем
     authors_subquery = (
-        q.session.query(
+        select(
             ShoutAuthor.shout.label("shout_id"),
             func.json_agg(
                 func.json_build_object(
