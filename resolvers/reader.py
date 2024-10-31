@@ -7,7 +7,6 @@ from sqlalchemy.sql.expression import (
     asc,
     case,
     desc,
-    distinct,
     func,
     nulls_last,
     select,
@@ -27,27 +26,32 @@ from services.viewed import ViewedStorage
 from utils.logger import root_logger as logger
 
 
-def query_shouts():
+def has_field(info, fieldname: str) -> bool:
+    """Проверяет, запрошено ли поле :fieldname: в GraphQL запросе"""
+    field_node = info.field_nodes[0]
+    for selection in field_node.selection_set.selections:
+        if hasattr(selection, "name") and selection.name.value == fieldname:
+            return True
+    return False
+
+
+def query_with_stat():
     """
     Оптимизированный базовый запрос
     """
     # Оптимизированный подзапрос статистики
     stats_subquery = (
         select(
-            Reaction.shout.label('shout_id'),
-            func.count(
-                case((Reaction.kind == ReactionKind.COMMENT.value, 1), else_=None)
-            ).label('comments_count'),
+            Reaction.shout.label("shout_id"),
+            func.count(case((Reaction.kind == ReactionKind.COMMENT.value, 1), else_=None)).label("comments_count"),
             func.sum(
                 case(
                     (Reaction.kind == ReactionKind.LIKE.value, 1),
                     (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0
+                    else_=0,
                 )
-            ).label('rating'),
-            func.max(
-                case((Reaction.reply_to.is_(None), Reaction.created_at), else_=None)
-            ).label('last_reacted_at')
+            ).label("rating"),
+            func.max(case((Reaction.reply_to.is_(None), Reaction.created_at), else_=None)).label("last_reacted_at"),
         )
         .where(Reaction.deleted_at.is_(None))
         .group_by(Reaction.shout)
@@ -57,15 +61,12 @@ def query_shouts():
     q = (
         select(Shout, stats_subquery)
         .outerjoin(stats_subquery, stats_subquery.c.shout_id == Shout.id)
-        .where(and_(
-            Shout.published_at.is_not(None),
-            Shout.deleted_at.is_(None)
-        ))
+        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
     )
     return q
 
 
-def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
+def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
     """
     Оптимизированное получение данных
     """
@@ -85,75 +86,82 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
 
         # 2. Получаем авторов и топики пакетным запросом
         shout_ids = [row.Shout.id for row in shouts_result]
-        authors_and_topics = session.execute(
-            select(
-                ShoutAuthor.shout.label('shout_id'),
-                Author.id.label('author_id'),
-                Author.name.label('author_name'),
-                Author.slug.label('author_slug'),
-                Author.pic.label('author_pic'),
-                ShoutAuthor.caption.label('author_caption'),
-                Topic.id.label('topic_id'),
-                Topic.title.label('topic_title'),
-                Topic.slug.label('topic_slug'),
-                ShoutTopic.is_main.label('topic_is_main')
-            )
-            .outerjoin(Author, ShoutAuthor.author == Author.id)
-            .outerjoin(ShoutTopic, ShoutTopic.shout == ShoutAuthor.shout)
-            .outerjoin(Topic, ShoutTopic.topic == Topic.id)
-            .where(ShoutAuthor.shout.in_(shout_ids))
-        ).all()
+        if has_field(info, "authors") or has_field(info, "topics"):
+            authors_and_topics = session.execute(
+                select(
+                    ShoutAuthor.shout.label("shout_id"),
+                    Author.id.label("author_id"),
+                    Author.name.label("author_name"),
+                    Author.slug.label("author_slug"),
+                    Author.pic.label("author_pic"),
+                    ShoutAuthor.caption.label("author_caption"),
+                    Topic.id.label("topic_id"),
+                    Topic.title.label("topic_title"),
+                    Topic.slug.label("topic_slug"),
+                    ShoutTopic.main.label("topic_is_main"),
+                )
+                .outerjoin(Author, ShoutAuthor.author == Author.id)
+                .outerjoin(ShoutTopic, ShoutTopic.shout == ShoutAuthor.shout)
+                .outerjoin(Topic, ShoutTopic.topic == Topic.id)
+                .where(ShoutAuthor.shout.in_(shout_ids))
+            ).all()
 
         # 3. Группируем данные эффективно
         shouts_data = {}
         for row in shouts_result:
-            shout = row.shout
-            shout_id = shout['id']
-            viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
-            shouts_data[shout_id] = {
-                **shout,
-                'stat': {
-                    'viewed': viewed_stat,
-                    'commented': row.comments_count or 0,
-                    'rating': row.rating or 0,
-                    'last_reacted_at': row.last_reacted_at
-                },
-                'authors': [],
-                'topics': set()  # используем set для уникальности
-            }
+            shout = row.Shout
+            shout_id = shout.id
+            shout_dict = shout.dict()
+
+            # Добавляем статистику только если она запрошена
+            if has_field(info, "stat"):
+                viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
+                shout_dict["stat"] = {
+                    "viewed": viewed_stat,
+                    "commented": row.comments_count or 0,
+                    "rating": row.rating or 0,
+                    "last_reacted_at": row.last_reacted_at,
+                }
+
+            # Инициализируем списки только для запрошенных полей
+            if has_field(info, "authors"):
+                shout_dict["authors"] = []
+            if has_field(info, "topics"):
+                shout_dict["topics"] = set()  # используем set для уникальности
+
+            shouts_data[shout_id] = shout_dict
 
         # 4. Заполняем связанные данные
         for row in authors_and_topics:
             shout_data = shouts_data[row.shout_id]
-            
+
             # Добавляем автора
             author = {
-                'id': row.author_id,
-                'name': row.author_name,
-                'slug': row.author_slug,
-                'pic': row.author_pic,
-                'caption': row.author_caption
+                "id": row.author_id,
+                "name": row.author_name,
+                "slug": row.author_slug,
+                "pic": row.author_pic,
+                "caption": row.author_caption,
             }
-            if author not in shout_data['authors']:
-                shout_data['authors'].append(author)
+            if author not in shout_data["authors"]:
+                shout_data["authors"].append(author)
 
             # Добавляем топик если есть
             if row.topic_id:
                 topic = {
-                    'id': row.topic_id,
-                    'title': row.topic_title,
-                    'slug': row.topic_slug,
-                    'is_main': row.topic_is_main
+                    "id": row.topic_id,
+                    "title": row.topic_title,
+                    "slug": row.topic_slug,
+                    "is_main": row.topic_is_main,
                 }
-                shout_data['topics'].add(tuple(topic.items()))
+                shout_data["topics"].add(tuple(topic.items()))
 
         # 5. Финальная обработка и сортировка
         result = []
         for shout_data in shouts_data.values():
             # Конвертируем topics обратно в список словарей и сортируем
-            shout_data['topics'] = sorted(
-                [dict(t) for t in shout_data['topics']],
-                key=lambda x: (not x['is_main'], x['id'])
+            shout_data["topics"] = sorted(
+                [dict(t) for t in shout_data["topics"]], key=lambda x: (not x["is_main"], x["id"])
             )
             result.append(shout_data)
 
@@ -237,7 +245,7 @@ def apply_filters(q, filters, author_id=None):
 
 
 @query.field("get_shout")
-async def get_shout(_, _info, slug="", shout_id=0):
+async def get_shout(_, info, slug="", shout_id=0):
     """
     Получение публикации по slug или id.
 
@@ -249,7 +257,7 @@ async def get_shout(_, _info, slug="", shout_id=0):
     """
     try:
         # Получаем базовый запрос с подзапросами статистики
-        q = query_shouts()
+        q = query_with_stat()
 
         # Применяем фильтр по slug или id
         if slug:
@@ -260,7 +268,7 @@ async def get_shout(_, _info, slug="", shout_id=0):
             return None
 
         # Получаем результат через get_shouts_with_stats с limit=1
-        shouts = get_shouts_with_stats(q, limit=1)
+        shouts = get_shouts_with_links(info, q, limit=1)
 
         # Возвращаем первую (и единственную) публикацию, если она найдена
         return shouts[0] if shouts else None
@@ -271,7 +279,7 @@ async def get_shout(_, _info, slug="", shout_id=0):
 
 
 @query.field("load_shouts_by")
-async def load_shouts_by(_, _info, options):
+async def load_shouts_by(_, info, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
 
@@ -279,7 +287,11 @@ async def load_shouts_by(_, _info, options):
     :return: Список публикаций, удовлетворяющих критериям.
     """
     # Базовый запрос
-    q = query_shouts()
+    q = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
 
     # Применение фильтров
     filters = options.get("filters", {})
@@ -299,7 +311,7 @@ async def load_shouts_by(_, _info, options):
     offset = options.get("offset", 0)
     limit = options.get("limit", 10)
 
-    return get_shouts_with_stats(q, limit, offset)
+    return get_shouts_with_links(info, q, limit, offset)
 
 
 @query.field("load_shouts_feed")
@@ -313,7 +325,11 @@ async def load_shouts_feed(_, info, options):
     :return: Список публикаций для ленты.
     """
     with local_session() as session:
-        q = query_shouts()
+        q = (
+            query_with_stat()
+            if has_field(info, "stat")
+            else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        )
 
         # Применение фильтров
         filters = options.get("filters", {})
@@ -331,11 +347,11 @@ async def load_shouts_feed(_, info, options):
         offset = options.get("offset", 0)
         limit = options.get("limit", 10)
 
-        return get_shouts_with_stats(q, limit, offset)
+        return get_shouts_with_links(info, q, limit, offset)
 
 
 @query.field("load_shouts_search")
-async def load_shouts_search(_, _info, text, limit=50, offset=0):
+async def load_shouts_search(_, info, text, limit=50, offset=0):
     """
     Поиск публикаций по тексту.
 
@@ -355,9 +371,13 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
 
-        q = query_shouts()
+        q = (
+            query_with_stat()
+            if has_field(info, "stat")
+            else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        )
         q = q.filter(Shout.id.in_(hits_ids))
-        shouts = get_shouts_with_stats(q, limit, offset)
+        shouts = get_shouts_with_links(info, q, limit, offset)
         for shout in shouts:
             shout.score = scores[f"{shout.id}"]
         shouts.sort(key=lambda x: x.score, reverse=True)
@@ -374,32 +394,25 @@ async def load_shouts_unrated(_, info, limit=50, offset=0):
         select(Reaction.shout)
         .where(
             and_(
-                Reaction.deleted_at.is_(None),
-                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
+                Reaction.deleted_at.is_(None), Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
             )
         )
         .group_by(Reaction.shout)
-        .having(func.count('*') >= 3)
+        .having(func.count("*") >= 3)
         .scalar_subquery()
     )
 
     q = (
         select(Shout)
-        .where(
-            and_(
-                Shout.published_at.is_not(None),
-                Shout.deleted_at.is_(None),
-                ~Shout.id.in_(rated_shouts)
-            )
-        )
+        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None), ~Shout.id.in_(rated_shouts)))
         .order_by(desc(Shout.published_at))
     )
 
-    return get_shouts_with_stats(q, limit, offset)
+    return get_shouts_with_links(info, q, limit, offset)
 
 
 @query.field("load_shouts_random_top")
-async def load_shouts_random_top(_, _info, options):
+async def load_shouts_random_top(_, info, options):
     """
     Загрузка случайных публикаций, упорядоченных по топовым реакциям.
 
@@ -432,11 +445,15 @@ async def load_shouts_random_top(_, _info, options):
     random_limit = options.get("random_limit", 100)
     if random_limit:
         subquery = subquery.limit(random_limit)
-    q = query_shouts()
+    q = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
     q = q.filter(Shout.id.in_(subquery))
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
-    return get_shouts_with_stats(q, limit)
+    return get_shouts_with_links(info, q, limit)
 
 
 @query.field("load_shouts_random_topic")
@@ -450,10 +467,14 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
     """
     [topic] = get_topics_random(None, None, 1)
     if topic:
-        q = query_shouts()
+        q = (
+            query_with_stat()
+            if has_field(info, "stat")
+            else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        )
         q = q.filter(Shout.topics.any(slug=topic.slug))
         q = q.order_by(desc(Shout.created_at))
-        shouts = get_shouts_with_stats(q, limit)
+        shouts = get_shouts_with_links(info, q, limit)
         if shouts:
             return {"topic": topic, "shouts": shouts}
     return {"error": "failed to get random topic"}
@@ -473,9 +494,13 @@ async def load_shouts_coauthored(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
         return []
-    q = query_shouts()
+    q = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
     q = q.filter(Shout.authors.any(id=author_id))
-    return get_shouts_with_stats(q, limit, offset=offset)
+    return get_shouts_with_links(info, q, limit, offset=offset)
 
 
 @query.field("load_shouts_discussed")
@@ -487,7 +512,7 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
     :param info: Информация о контексте GraphQL.
     :param limit: Максимальное количество публикаций.
     :param offset: Смещне для пагинации.
-    :return: Список публикаций, обсужденных пользователем.
+    :return: Список публикаций, обсужде��ных пользователем.
     """
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
@@ -499,17 +524,21 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
         .filter(and_(Reaction.created_by == author_id, Reaction.body.is_not(None)))
         .correlate(Shout)  # Убедитесь, что подзапрос правильно связан с основным запросом
     )
-    q = query_shouts()
+    q = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
     q = q.filter(Shout.id.in_(reaction_subquery))
-    return get_shouts_with_stats(q, limit, offset=offset)
+    return get_shouts_with_links(info, q, limit, offset=offset)
 
 
-async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
+async def reacted_shouts_updates(info, follower_id: int, limit=50, offset=0) -> List[Shout]:
     """
     Обновляет публикации, на которые подписан автор, с учетом реакци.
 
     :param follower_id: Идентификатор подписчика.
-    :param limit: Количество публикаций для загрузки.
+    :param limit: Коли��ество пу��ликаций для загрузки.
     :param offset: Смещение для пагинации.
     :return: Список публикаций.
     """
@@ -518,11 +547,19 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
         author = session.query(Author).filter(Author.id == follower_id).first()
         if author:
             # Публикации, где подписчик является автором
-            q1 = query_shouts()
+            q1 = (
+                query_with_stat()
+                if has_field(info, "stat")
+                else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+            )
             q1 = q1.filter(Shout.authors.any(id=follower_id))
 
             # Публикации, на которые подписчик реагировал
-            q2 = query_shouts()
+            q2 = (
+                query_with_stat()
+                if has_field(info, "stat")
+                else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+            )
             q2 = q2.options(joinedload(Shout.reactions))
             q2 = q2.filter(Reaction.created_by == follower_id)
 
@@ -530,7 +567,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
             combined_query = union(q1, q2).order_by(desc(text("last_reacted_at")))
 
             # извлечение ожидаемой структуры данных
-            shouts = get_shouts_with_stats(combined_query, limit, offset=offset)
+            shouts = get_shouts_with_links(info, combined_query, limit, offset=offset)
 
     return shouts
 
@@ -552,7 +589,7 @@ async def load_shouts_followed(_, info, limit=50, offset=0) -> List[Shout]:
         if author:
             try:
                 author_id: int = author.dict()["id"]
-                shouts = await reacted_shouts_updates(author_id, limit, offset)
+                shouts = await reacted_shouts_updates(info, author_id, limit, offset)
                 return shouts
             except Exception as error:
                 logger.debug(error)
@@ -575,7 +612,7 @@ async def load_shouts_followed_by(_, info, slug: str, limit=50, offset=0) -> Lis
         if author:
             try:
                 author_id: int = author.dict()["id"]
-                shouts = await reacted_shouts_updates(author_id, limit, offset)
+                shouts = await reacted_shouts_updates(info, author_id, limit, offset)
                 return shouts
             except Exception as error:
                 logger.debug(error)
