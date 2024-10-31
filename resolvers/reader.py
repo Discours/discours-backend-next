@@ -44,13 +44,14 @@ def query_shouts(slug=None, shout_id=None):
                     "id", Author.id,
                     "name", Author.name,
                     "slug", Author.slug,
-                    "pic", Author.pic,
-                    "caption", ShoutAuthor.caption,
+                    "pic", Author.pic
                 )
-            ).label("authors"),
+            ).label("authors")
         )
+        .select_from(ShoutAuthor)
         .join(Author, ShoutAuthor.author == Author.id)
-        .group_by(ShoutAuthor.shout)
+        .where(ShoutAuthor.shout == Shout.id)
+        .correlate(Shout)
         .scalar_subquery()
     )
 
@@ -164,8 +165,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
                     "id", Author.id,
                     "name", Author.name,
                     "slug", Author.slug,
-                    "pic", Author.pic,
-                    "caption", ShoutAuthor.caption,
+                    "pic", Author.pic
                 )
             ).label("authors")
         )
