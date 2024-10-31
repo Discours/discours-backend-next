@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import ARRAY, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String
 
 from services.db import Base
 
@@ -25,4 +25,4 @@ class Topic(Base):
     community = Column(ForeignKey("community.id"), default=1)
     oid = Column(String, nullable=True, comment="Old ID")
 
-    parent_ids = Column(ARRAY(Integer), nullable=True, comment="Parent Topic IDs")
+    parent_ids = Column(JSON, nullable=True, comment="Parent Topic IDs")

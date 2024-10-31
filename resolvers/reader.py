@@ -29,184 +29,137 @@ from utils.logger import root_logger as logger
 
 def query_shouts():
     """
-    Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем.
+    Оптимизированный базовый запрос
     """
-    # Подзапросы для статистики реакций
-    rating_subquery = (
+    # Оптимизированный подзапрос статистики
+    stats_subquery = (
         select(
+            Reaction.shout.label('shout_id'),
+            func.count(
+                case((Reaction.kind == ReactionKind.COMMENT.value, 1), else_=None)
+            ).label('comments_count'),
             func.sum(
                 case(
                     (Reaction.kind == ReactionKind.LIKE.value, 1),
                     (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0,
+                    else_=0
                 )
-            )
+            ).label('rating'),
+            func.max(
+                case((Reaction.reply_to.is_(None), Reaction.created_at), else_=None)
+            ).label('last_reacted_at')
         )
-        .select_from(Reaction)
-        .where(and_(Reaction.shout == Shout.id, Reaction.reply_to.is_(None), Reaction.deleted_at.is_(None)))
-        .correlate(Shout)
-        .scalar_subquery()
-        .label("rating_stat")
+        .where(Reaction.deleted_at.is_(None))
+        .group_by(Reaction.shout)
+        .subquery()
     )
 
-    comments_subquery = (
-        select(func.count(distinct(case((Reaction.kind == ReactionKind.COMMENT.value, Reaction.id), else_=None))))
-        .select_from(Reaction)
-        .where(and_(Reaction.shout == Shout.id, Reaction.reply_to.is_(None), Reaction.deleted_at.is_(None)))
-        .correlate(Shout)
-        .scalar_subquery()
-        .label("comments_stat")
-    )
-
-    last_reaction_subquery = (
-        select(func.max(Reaction.created_at))
-        .select_from(Reaction)
-        .where(and_(Reaction.shout == Shout.id, Reaction.reply_to.is_(None), Reaction.deleted_at.is_(None)))
-        .correlate(Shout)
-        .scalar_subquery()
-        .label("last_reacted_at")
-    )
-
-    # Остальные подзапросы остаются без изменений
-    authors_subquery = (
-        select(
-            func.json_agg(
-                func.json_build_object("id", Author.id, "name", Author.name, "slug", Author.slug, "pic", Author.pic)
-            ).label("authors")
-        )
-        .select_from(ShoutAuthor)
-        .join(Author, ShoutAuthor.author == Author.id)
-        .where(ShoutAuthor.shout == Shout.id)
-        .correlate(Shout)
-        .scalar_subquery()
-    )
-
-    captions_subquery = (
-        select(
-            func.json_agg(func.json_build_object("author_id", Author.id, "caption", ShoutAuthor.caption)).label(
-                "captions"
-            )
-        )
-        .select_from(ShoutAuthor)
-        .join(Author, ShoutAuthor.author == Author.id)
-        .where(ShoutAuthor.shout == Shout.id)
-        .correlate(Shout)
-        .scalar_subquery()
-    )
-
-    topics_subquery = (
-        select(
-            func.json_agg(func.json_build_object("id", Topic.id, "title", Topic.title, "slug", Topic.slug)).label(
-                "topics"
-            )
-        )
-        .select_from(ShoutTopic)
-        .join(Topic, ShoutTopic.topic == Topic.id)
-        .where(ShoutTopic.shout == Shout.id)
-        .correlate(Shout)
-        .scalar_subquery()
-    )
-
-    main_topic_subquery = (
-        select(func.max(Topic.slug))
-        .select_from(ShoutTopic)
-        .join(Topic, ShoutTopic.topic == Topic.id)
-        .where(and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
-        .correlate(Shout)
-        .scalar_subquery()
-        .label("main_topic_slug")
-    )
-
-    # Основной запрос
     q = (
-        select(
-            Shout,
-            rating_subquery,
-            comments_subquery,
-            last_reaction_subquery,
-            authors_subquery,
-            captions_subquery,
-            topics_subquery,
-            main_topic_subquery,
-        )
-        .outerjoin(Reaction, Reaction.shout == Shout.id)
-        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .group_by(Shout.id)
+        select(Shout, stats_subquery)
+        .outerjoin(stats_subquery, stats_subquery.c.shout_id == Shout.id)
+        .where(and_(
+            Shout.published_at.is_not(None),
+            Shout.deleted_at.is_(None)
+        ))
     )
-
     return q
 
 
 def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     """
-    Получение публикаций со статистикой.
-    :param q: Базовый запрос публикаций
-    :param limit: Ограничение количества результатов
-    :param offset: Смещение для пагинации
-    :param author_id: Опциональный ID автора для фильтрации
-    :return: Список публикаций с статистикой
+    Оптимизированное получение данных
     """
     if author_id:
         q = q.filter(Shout.created_by == author_id)
 
-    q = q.order_by(Shout.published_at.desc().nulls_last())
+    q = q.order_by(desc(Shout.published_at))
 
     if limit:
         q = q.limit(limit)
     if offset:
         q = q.offset(offset)
 
-    shouts = []
     with local_session() as session:
-        results = session.execute(q).all()
+        # 1. Получаем шауты одним запросом
+        shouts_result = session.execute(q).all()
+        shout_ids = [row.Shout.id for row in shouts_result]
 
-        for [
-            shout,
-            rating_stat,
-            comments_stat,
-            last_reacted_at,
-            authors_json,
-            captions_json,
-            topics_json,
-            main_topic_slug,
-        ] in results:
-            shout_dict = shout.dict()
+        if not shout_ids:
+            return []
 
-            # Добавление статистики просмотров
-            viewed_stat = ViewedStorage.get_shout(shout_slug=shout.slug, shout_id=shout.id)
-
-            # Обработка авторов и их подписей
-            authors = authors_json or []
-            captions = captions_json or []
-
-            for author in authors:
-                caption_item = next((c for c in captions if c["author_id"] == author["id"]), None)
-                if caption_item:
-                    author["caption"] = caption_item["caption"]
-
-            # Обработка тем
-            topics = topics_json or []
-            for topic in topics:
-                topic["is_main"] = topic["slug"] == main_topic_slug
-
-            # Формирование финальной структуры
-            shout_dict.update(
-                {
-                    "authors": authors,
-                    "topics": topics,
-                    "main_topic": main_topic_slug,
-                    "stat": {
-                        "viewed": viewed_stat or 0,
-                        "rating": rating_stat or 0,
-                        "commented": comments_stat or 0,
-                        "last_reacted_at": last_reacted_at,
-                    },
-                }
+        # 2. Получаем авторов и топики пакетным запросом
+        authors_and_topics = session.execute(
+            select(
+                ShoutAuthor.shout.label('shout_id'),
+                Author.id.label('author_id'),
+                Author.name.label('author_name'),
+                Author.slug.label('author_slug'),
+                Author.pic.label('author_pic'),
+                ShoutAuthor.caption.label('author_caption'),
+                Topic.id.label('topic_id'),
+                Topic.title.label('topic_title'),
+                Topic.slug.label('topic_slug'),
+                ShoutTopic.is_main.label('topic_is_main')
             )
+            .outerjoin(Author, ShoutAuthor.author == Author.id)
+            .outerjoin(ShoutTopic, ShoutTopic.shout == ShoutAuthor.shout)
+            .outerjoin(Topic, ShoutTopic.topic == Topic.id)
+            .where(ShoutAuthor.shout.in_(shout_ids))
+        ).all()
 
-            shouts.append(shout_dict)
+        # 3. Группируем данные эффективно
+        shouts_data = {}
+        for row in shouts_result:
+            shout = row.Shout.__dict__
+            shout_id = shout['id']
+            shouts_data[shout_id] = {
+                **shout,
+                'stat': {
+                    'viewed': ViewedStorage.get_shout(shout_id=shout_id) or 0,
+                    'commented': row.comments_count or 0,
+                    'rating': row.rating or 0,
+                    'last_reacted_at': row.last_reacted_at
+                },
+                'authors': [],
+                'topics': set()  # используем set для уникальности
+            }
 
-    return shouts
+        # 4. Заполняем связанные данные
+        for row in authors_and_topics:
+            shout_data = shouts_data[row.shout_id]
+            
+            # Добавляем автора
+            author = {
+                'id': row.author_id,
+                'name': row.author_name,
+                'slug': row.author_slug,
+                'pic': row.author_pic,
+                'caption': row.author_caption
+            }
+            if author not in shout_data['authors']:
+                shout_data['authors'].append(author)
+
+            # Добавляем топик если есть
+            if row.topic_id:
+                topic = {
+                    'id': row.topic_id,
+                    'title': row.topic_title,
+                    'slug': row.topic_slug,
+                    'is_main': row.topic_is_main
+                }
+                shout_data['topics'].add(tuple(topic.items()))
+
+        # 5. Финальная обработка и сортировка
+        result = []
+        for shout_data in shouts_data.values():
+            # Конвертируем topics обратно в список словарей и сортируем
+            shout_data['topics'] = sorted(
+                [dict(t) for t in shout_data['topics']],
+                key=lambda x: (not x['is_main'], x['id'])
+            )
+            result.append(shout_data)
+
+        return result
 
 
 def filter_my(info, session, q):
@@ -519,10 +472,10 @@ async def load_shouts_coauthored(_, info, limit=50, offset=0):
     """
     Загрузка публикаций, написанных в соавторстве с пользователем.
 
-    :param info: Информаци�� о контексте GraphQL.
+    :param info: Информаци о контексте GraphQL.
     :param limit: Максимальное количество публикаций.
     :param offset: Смещение для пагинации.
-    :return: Список публикаций в соавто��стве.
+    :return: Список публикаций в соавтостве.
     """
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
@@ -540,7 +493,7 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
 
     :param info: Информация о контексте GraphQL.
     :param limit: Максимальное количество публикаций.
-    :param offset: Смещене для пагинации.
+    :param offset: Смещне для пагинации.
     :return: Список публикаций, обсужденных пользователем.
     """
     author_id = info.context.get("author", {}).get("id")
@@ -560,7 +513,7 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
 
 async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[Shout]:
     """
-    Обновляет публикации, на которые подписан автор, с учетом реакций.
+    Обновляет публикации, на которые подписан автор, с учетом реакци.
 
     :param follower_id: Идентификатор подписчика.
     :param limit: Количество публикаций для загрузки.
