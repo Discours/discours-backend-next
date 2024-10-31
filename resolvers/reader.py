@@ -92,6 +92,7 @@ def query_shouts(slug=None, shout_id=None):
                 comments_reaction.shout == Shout.id,
                 comments_reaction.kind == ReactionKind.COMMENT.value,
                 comments_reaction.deleted_at.is_(None),
+                comments_reaction.reply_to.is_(None),
             )
         )
         .scalar_subquery()
