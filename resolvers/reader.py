@@ -258,23 +258,24 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     # Формирование списка публикаций с их данными
     shouts = []
     with local_session() as session:
-        for [shout, comments_stat, rating_stat, last_reacted_at, authors_json, captions_json,topics_json, main_topic_slug] in (
+        for [shout, comments_stat, rating_stat, last_reacted_at, authors_json, captions_json, topics_json, main_topic_slug] in (
             session.execute(query).all() or []
         ):
+            viewed_stat = ViewedStorage.get_shout(shout.id)
             # Преобразование JSON данных в объекты
             captions = {int(ca['author_id']): ca['caption'] for ca in captions_json} if captions_json else {}
             # patch json to add captions to authors
-            authors_json = [
+            authors = [
                 {**a, "caption": captions.get(int(a["id"]), "")} for a in authors_json
             ] if authors_json else []   
-            shout.authors = authors_json
+            shout.authors = authors
             # patch json to add is_main to topics
             topics_json = [
                 {**t, "is_main": t["slug"] == main_topic_slug} for t in topics_json
             ] if topics_json else []
             shout.topics = topics_json
             shout.stat = {
-                "viewed": ViewedStorage.get_shout(shout.id),
+                "viewed": viewed_stat or 0,
                 "rating": rating_stat or 0,
                 "commented": comments_stat or 0,
                 "last_reacted_at": last_reacted_at,
