@@ -62,8 +62,7 @@ def query_shouts(slug=None, shout_id=None):
                 func.json_build_object(
                     "id", Topic.id, 
                     "title", Topic.title, 
-                    "slug", Topic.slug, 
-                    "is_main", ShoutTopic.main
+                    "slug", Topic.slug
                 )
             ).label("topics")
         )
@@ -200,8 +199,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
                 func.json_build_object(
                     "id", Topic.id,
                     "title", Topic.title,
-                    "slug", Topic.slug,
-                    "is_main", ShoutTopic.main
+                    "slug", Topic.slug
                 )
             ).label("topics"),
         )
