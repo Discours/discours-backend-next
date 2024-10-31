@@ -27,7 +27,8 @@ VIEWS_FILEPATH = "/dump/views.json"
 
 class ViewedStorage:
     lock = asyncio.Lock()
-    views_by_shout = {}
+    views_by_shout_slug = {}
+    views_by_shout_id = {}
     shouts_by_topic = {}
     shouts_by_author = {}
     views = None
@@ -83,8 +84,15 @@ class ViewedStorage:
 
             with open(viewfile_path, "r") as file:
                 precounted_views = json.load(file)
-                self.views_by_shout.update(precounted_views)
+                self.views_by_shout_slug.update(precounted_views)
                 logger.info(f" * {len(precounted_views)} shouts with views was loaded.")
+
+            # get shout_id by slug
+            with local_session() as session:
+                for slug, views_count in self.views_by_shout_slug.items():
+                    shout_id = session.query(Shout.id).filter(Shout.slug == slug).scalar()
+                    if isinstance(shout_id, int):
+                        self.views_by_shout_id.update({shout_id: views_count})
 
         except Exception as e:
             logger.error(f"precounted views loading error: {e}")
@@ -137,10 +145,10 @@ class ViewedStorage:
                 self.disabled = True
 
     @staticmethod
-    def get_shout(shout_slug) -> int:
-        """Получение метрики просмотров shout по slug."""
+    def get_shout(shout_slug="", shout_id=0) -> int:
+        """Получение метрики просмотров shout по slug или id."""
         self = ViewedStorage
-        return self.views_by_shout.get(shout_slug, 0)
+        return self.views_by_shout_slug.get(shout_slug, self.views_by_shout_id.get(shout_id, 0))
 
     @staticmethod
     def get_shout_media(shout_slug) -> Dict[str, int]:
