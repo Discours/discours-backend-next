@@ -156,7 +156,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     :return: Список публикаций с включенной статистикой.
     """
 
-    # Определение скалярного подзапроса для авторов
+    # Скалярный подзапрос для авторов
     authors_subquery = (
         select(
             func.json_agg(
@@ -176,7 +176,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         .scalar_subquery()
     )
 
-    # Определение скалярного подзапроса для тем
+    # Скалярный подзапрос для тем
     topics_subquery = (
         select(
             func.json_agg(
@@ -189,7 +189,8 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
             ).label("topics"),
             func.max(
                 case(
-                    (ShoutTopic.main, Topic.slug)
+                    (ShoutTopic.main, Topic.slug),
+                    else_=None
                 )
             ).label("main_topic_slug")
         )
@@ -201,12 +202,11 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         .scalar_subquery()
     )
 
-    # Определение скалярного подзапроса для последней реакции
-    last_reaction = (
-        select(
-            func.max(Reaction.created_at).label("last_reacted_at")
-        )
+    # Скалярный подзапрос для последней реакции
+    last_reaction_subquery = (
+        select(func.max(Reaction.created_at).label("last_reacted_at"))
         .where(Reaction.shout == Shout.id, Reaction.deleted_at.is_(None))
+        .correlate(Shout)  # Явная корреляция с таблицей Shout
         .scalar_subquery()
     )
 
@@ -222,7 +222,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
                     else_=0
                 )
             ).label("rating_stat"),
-            last_reaction,
+            last_reaction_subquery,
             authors_subquery,
             topics_subquery,
             func.coalesce(
@@ -230,16 +230,13 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
                 ''
             ).label("main_topic_slug")
         )
-        .outerjoin(Reaction, Reaction.shout == Shout.id)
-        .filter(
-            Shout.published_at.isnot(None),
+        .join(Reaction, Reaction.shout == Shout.id, isouter=True)
+        .where(
+            Shout.published_at.is_not(None),
             Shout.deleted_at.is_(None),
-            Shout.featured_at.isnot(None)
+            Shout.featured_at.is_not(None)
         )
-        .group_by(
-            Shout.id,
-            last_reaction
-        )
+        .group_by(Shout.id)
         .order_by(Shout.published_at.desc().nullslast())
         .limit(limit)
         .offset(offset)
@@ -649,7 +646,7 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
     with local_session() as session:
         author = session.query(Author).filter(Author.id == follower_id).first()
         if author:
-            # Публикации, где подписчик ��вляется автором
+            # Публикации, где подписчик является автором
             q1, aliased_reaction1 = query_shouts()
             q1 = q1.filter(Shout.authors.any(id=follower_id))
 
