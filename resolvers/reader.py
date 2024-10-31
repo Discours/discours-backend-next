@@ -515,29 +515,41 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
     """
     Загрузка публикаций с наименьшим количеством оценок.
-
-    :param info: Информация о контексте GraphQL.
-    :param limit: Максимальное количество результатов.
-    :param offset: Смещение для пагинации.
-    :return: Список публикаций с минимальным количеством оценок.
     """
-    q, aliased_reaction = query_shouts()
-
-    q = (
-        q.outerjoin(
-            aliased_reaction,
+    rating_reaction = aliased(Reaction, name="rating_reaction")
+    
+    # Подзапрос для подсчета количества оценок (лайков и дизлайков)
+    ratings_count = (
+        select(func.count(distinct(rating_reaction.id)))
+        .select_from(rating_reaction)
+        .where(
             and_(
-                aliased_reaction.shout == Shout.id,
-                aliased_reaction.reply_to.is_(None),
-                aliased_reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
-            ),
+                rating_reaction.shout == Shout.id,
+                rating_reaction.reply_to.is_(None),
+                rating_reaction.deleted_at.is_(None),
+                rating_reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
+            )
         )
-        .filter(Shout.deleted_at.is_(None))
-        .filter(Shout.published_at.is_not(None))
+        .correlate(Shout)
+        .scalar_subquery()
+        .label("ratings_count")
     )
 
-    q = q.having(func.count(distinct(aliased_reaction.id)) <= 4)  # 3 или менее голосов
-    q = q.order_by(func.random())
+    q, _ = query_shouts()
+    
+    # Добавляем подсчет рейтингов в основной запрос
+    q = q.add_columns(ratings_count)
+    
+    # Фильтруем только опубликованные и не удаленные публикации
+    q = q.filter(
+        and_(
+            Shout.deleted_at.is_(None),
+            Shout.published_at.is_not(None)
+        )
+    )
+    
+    # Сортируем по количеству оценок (по возрастанию) и случайно среди равных
+    q = q.order_by(ratings_count.asc(), func.random())
 
     return get_shouts_with_stats(q, limit, offset=offset)
 
