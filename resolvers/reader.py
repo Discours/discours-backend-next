@@ -92,14 +92,16 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
             Author.name.label("main_author_name"),
             Author.slug.label("main_author_slug"),
             Author.pic.label("main_author_pic"),
-            Author.caption.label("main_author_caption"),
+            # Author.caption.label("main_author_caption"),
         )
     if has_field(info, "main_topic"):
-        q = q.outerjoin(Topic, Shout.main_topic == Topic.id).add_columns(
+        q = q.outerjoin(ShoutTopic, and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
+        q = q.outerjoin(Topic, ShoutTopic.topic == Topic.id)
+        q = q.add_columns(
             Topic.id.label("main_topic_id"),
             Topic.title.label("main_topic_title"),
             Topic.slug.label("main_topic_slug"),
-            func.literal(True).label("main_topic_is_main"),
+            # func.literal(True).label("main_topic_is_main"),
         )
 
     with local_session() as session:
