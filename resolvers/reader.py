@@ -247,7 +247,7 @@ def get_shouts_with_stats(q, limit=10, offset=0, author_id=None):
         query = q.filter(Shout.created_by == author_id)
 
     # Выполнение запроса и обработка результатов
-    with q.session as session:
+    with local_session() as session:
         results = session.execute(query).all()
 
     # Формирование списка публикаций с их данными
