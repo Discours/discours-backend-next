@@ -27,7 +27,7 @@ from services.viewed import ViewedStorage
 from utils.logger import root_logger as logger
 
 
-def query_shouts(slug=None, shout_id=None):
+def query_shouts():
     """
     Базовый запрос для получения публикаций с подзапросами статистики, авторов и тем,
     с агрегированием в JSON.
@@ -139,12 +139,7 @@ def query_shouts(slug=None, shout_id=None):
         .group_by(Shout.id)
     )
 
-    if slug:
-        q = q.where(Shout.slug == slug)
-    elif shout_id:
-        q = q.where(Shout.id == shout_id)
-
-    return q, last_reaction
+    return q
 
 
 def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
@@ -378,7 +373,13 @@ async def get_shout(_, _info, slug="", shout_id=0):
         with local_session() as session:
             # Отключение автосохранения
             with session.no_autoflush:
-                q, _ = query_shouts(slug, shout_id)
+                q = query_shouts()
+
+                if slug:
+                    q = q.where(Shout.slug == slug)
+                elif shout_id:
+                    q = q.where(Shout.id == shout_id)
+
                 results = session.execute(q).first()
                 if results:
                     [
@@ -425,7 +426,7 @@ async def load_shouts_by(_, _info, options):
     :return: Список публикаций, удовлетворяющих критериям.
     """
     # Базовый запрос
-    q, _aliased_reaction = query_shouts()
+    q = query_shouts()
 
     # Применение фильтров
     filters = options.get("filters", {})
@@ -459,7 +460,7 @@ async def load_shouts_feed(_, info, options):
     :return: Список публикаций для ленты.
     """
     with local_session() as session:
-        q, aliased_reaction = query_shouts()
+        q = query_shouts()
 
         # Применение фильтров
         filters = options.get("filters", {})
@@ -501,7 +502,7 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
                 scores[shout_id] = sr.get("score")
                 hits_ids.append(shout_id)
 
-        q, aliased_reaction = query_shouts()
+        q = query_shouts()
         q = q.filter(Shout.id.in_(hits_ids))
         shouts = get_shouts_with_stats(q, limit, offset)
         for shout in shouts:
@@ -535,7 +536,7 @@ async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
         .label("ratings_count")
     )
 
-    q, _ = query_shouts()
+    q = query_shouts()
     
     # Добавляем подсчет рейтингов в основной запрос
     q = q.add_columns(ratings_count)
@@ -588,7 +589,7 @@ async def load_shouts_random_top(_, _info, options):
     random_limit = options.get("random_limit", 100)
     if random_limit:
         subquery = subquery.limit(random_limit)
-    q, aliased_reaction = query_shouts()
+    q = query_shouts()
     q = q.filter(Shout.id.in_(subquery))
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
@@ -606,7 +607,7 @@ async def load_shouts_random_topic(_, info, limit: int = 10):
     """
     [topic] = get_topics_random(None, None, 1)
     if topic:
-        q, aliased_reaction = query_shouts()
+        q = query_shouts()
         q = q.filter(Shout.topics.any(slug=topic.slug))
         q = q.order_by(desc(Shout.created_at))
         shouts = get_shouts_with_stats(q, limit)
@@ -629,7 +630,7 @@ async def load_shouts_coauthored(_, info, limit=50, offset=0):
     author_id = info.context.get("author", {}).get("id")
     if not author_id:
         return []
-    q, aliased_reaction = query_shouts()
+    q = query_shouts()
     q = q.filter(Shout.authors.any(id=author_id))
     return get_shouts_with_stats(q, limit, offset=offset)
 
@@ -655,7 +656,7 @@ async def load_shouts_discussed(_, info, limit=50, offset=0):
         .filter(and_(Reaction.created_by == author_id, Reaction.body.is_not(None)))
         .correlate(Shout)  # Убедитесь, что подзапрос правильно связан с основным запросом
     )
-    q, aliased_reaction = query_shouts()
+    q = query_shouts()
     q = q.filter(Shout.id.in_(reaction_subquery))
     return get_shouts_with_stats(q, limit, offset=offset)
 
@@ -674,11 +675,11 @@ async def reacted_shouts_updates(follower_id: int, limit=50, offset=0) -> List[S
         author = session.query(Author).filter(Author.id == follower_id).first()
         if author:
             # Публикации, где подписчик является автором
-            q1, aliased_reaction1 = query_shouts()
+            q1 = query_shouts()
             q1 = q1.filter(Shout.authors.any(id=follower_id))
 
             # Публикации, на которые подписчик реагировал
-            q2, aliased_reaction2 = query_shouts()
+            q2 = query_shouts()
             q2 = q2.options(joinedload(Shout.reactions))
             q2 = q2.filter(Reaction.created_by == follower_id)
 
