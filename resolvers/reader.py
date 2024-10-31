@@ -72,8 +72,6 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     if author_id:
         q = q.filter(Shout.created_by == author_id)
 
-    q = q.order_by(desc(Shout.published_at))
-
     if limit:
         q = q.limit(limit)
     if offset:
@@ -82,12 +80,11 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     with local_session() as session:
         # 1. Получаем шауты одним запросом
         shouts_result = session.execute(q).all()
-        shout_ids = [row.Shout.id for row in shouts_result]
-
-        if not shout_ids:
+        if not shouts_result:
             return []
 
         # 2. Получаем авторов и топики пакетным запросом
+        shout_ids = [row.Shout.id for row in shouts_result]
         authors_and_topics = session.execute(
             select(
                 ShoutAuthor.shout.label('shout_id'),
@@ -110,12 +107,13 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         # 3. Группируем данные эффективно
         shouts_data = {}
         for row in shouts_result:
-            shout = row.Shout.__dict__
+            shout = row.shout
             shout_id = shout['id']
+            viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
             shouts_data[shout_id] = {
                 **shout,
                 'stat': {
-                    'viewed': ViewedStorage.get_shout(shout_id=shout_id) or 0,
+                    'viewed': viewed_stat,
                     'commented': row.comments_count or 0,
                     'rating': row.rating or 0,
                     'last_reacted_at': row.last_reacted_at
@@ -295,7 +293,7 @@ async def load_shouts_by(_, _info, options):
         query_order_by = desc(order_by) if options.get("order_by_desc", True) else asc(order_by)
         q = q.order_by(nulls_last(query_order_by))
     else:
-        q = q.order_by(Shout.published_at.desc().nulls_last())
+        q = q.order_by(Shout.published_at.desc())
 
     # Ограничение и смещение
     offset = options.get("offset", 0)
@@ -368,41 +366,36 @@ async def load_shouts_search(_, _info, text, limit=50, offset=0):
 
 
 @query.field("load_shouts_unrated")
-async def load_shouts_unrated(_, info, limit: int = 50, offset: int = 0):
+async def load_shouts_unrated(_, info, limit=50, offset=0):
     """
-    Загрузка публикаций с наименьшим количеством оценок.
+    Загрузка публикаций с менее чем 3 реакциями типа LIKE/DISLIKE
     """
-    rating_reaction = aliased(Reaction, name="rating_reaction")
-
-    # Подзапрос для подсчета количества оценок (лайков и дизлайков)
-    ratings_count = (
-        select(func.count(distinct(rating_reaction.id)))
-        .select_from(rating_reaction)
+    rated_shouts = (
+        select(Reaction.shout)
         .where(
             and_(
-                rating_reaction.shout == Shout.id,
-                rating_reaction.reply_to.is_(None),
-                rating_reaction.deleted_at.is_(None),
-                rating_reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+                Reaction.deleted_at.is_(None),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
             )
         )
-        .correlate(Shout)
+        .group_by(Reaction.shout)
+        .having(func.count('*') >= 3)
         .scalar_subquery()
-        .label("ratings_count")
     )
 
-    q = query_shouts()
+    q = (
+        select(Shout)
+        .where(
+            and_(
+                Shout.published_at.is_not(None),
+                Shout.deleted_at.is_(None),
+                ~Shout.id.in_(rated_shouts)
+            )
+        )
+        .order_by(desc(Shout.published_at))
+    )
 
-    # Добавляем подсчет рейтингов в основной запрос
-    q = q.add_columns(ratings_count)
-
-    # Фильтруем только опубликованные и не удаленные публикации
-    q = q.filter(and_(Shout.deleted_at.is_(None), Shout.published_at.is_not(None)))
-
-    # Сортируем по количеству оценок (по возрастанию) и случайно среди равных
-    q = q.order_by(ratings_count.asc(), func.random())
-
-    return get_shouts_with_stats(q, limit, offset=offset)
+    return get_shouts_with_stats(q, limit, offset)
 
 
 @query.field("load_shouts_random_top")
