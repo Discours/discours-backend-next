@@ -176,6 +176,23 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
         .scalar_subquery()
     )
 
+    # Подзапрос для captions
+    captions_subquery = (
+        select(
+            func.json_agg(
+                func.json_build_object(
+                    "author_id", Author.id,
+                    "caption", ShoutAuthor.caption
+                )
+            ).label("captions")
+        )
+        .select_from(ShoutAuthor)
+        .join(Author, ShoutAuthor.author == Author.id)
+        .where(ShoutAuthor.shout == Shout.id)
+        .correlate(Shout)
+        .scalar_subquery()
+    )
+
     # Скалярный подзапрос для тем
     topics_subquery = (
         select(
@@ -224,6 +241,7 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
             ).label("rating_stat"),
             func.max(Reaction.created_at).label("last_reacted_at"),
             authors_subquery,
+            captions_subquery,
             topics_subquery,
             main_topic_subquery,
         )
@@ -242,11 +260,15 @@ def get_shouts_with_stats(q, limit=20, offset=0, author_id=None):
     # Формирование списка публикаций с их данными
     shouts = []
     with local_session() as session:
-        for [shout, comments_stat, rating_stat, last_reacted_at, authors_json, topics_json, main_topic_slug] in (
+        for [shout, comments_stat, rating_stat, last_reacted_at, authors_json, captions_json,topics_json, main_topic_slug] in (
             session.execute(query).all() or []
         ):
             # Преобразование JSON данных в объекты
-            shout.authors = [Author(**author) for author in authors_json] if authors_json else []
+            captions = {caption['author_id']: caption['caption'] for caption in captions_json} if captions_json else {}
+            authors = [Author(**author) for author in authors_json] if authors_json else []
+            for author in authors:
+                author.caption = captions.get(author.id, "")
+            shout.authors = authors
             shout.topics = [Topic(**topic) for topic in topics_json] if topics_json else []
             shout.stat = {
                 "viewed": ViewedStorage.get_shout(shout.id),
