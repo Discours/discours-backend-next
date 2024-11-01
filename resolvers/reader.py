@@ -103,7 +103,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
         if not shouts_result:
             return []
 
-        shout_ids = [shout.id for shout in shouts_result]
+        shout_ids = [shout.Shout.id for shout in shouts_result]
         authors_and_topics = []
         if includes_authors or includes_topics:
             query = (
