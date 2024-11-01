@@ -59,10 +59,16 @@ type Reaction {
 
 type MediaItem {
   url: String
-  pic: String
   title: String
   body: String
+  source: String # image
+  pic: String
+
+  # audio specific properties
+  date: String
+  genre: String
   artist: String
+  lyrics: String
 }
 
 type Shout {
