@@ -1,3 +1,5 @@
+# discoursio-api
+
 ## Техстек
 
 - sqlalchemy
@@ -25,27 +27,3 @@ poetry run ruff check . --fix --select I # линтер и сортировка 
 poetry run ruff format . --line-length=120 # форматирование кода
 ```
 
-
-## Подключенные сервисы
-
-Для межсерверной коммуникации используются отдельные логики, папка `services/*` содержит адаптеры для использования базы данных, `redis`, кеширование и клиенты для запросов GraphQL.
-
-### auth.py
-
-Задайте переменную окружения `WEBHOOK_SECRET` чтобы принимать запросы по адресу `/new-author` от [сервера авторизации](https://dev.discours.io/devstack/authorizer). Событие ожидается при создании нового пользователя. Для авторизованных запросов и мутаций фронтенд добавляет к запросу токен авторизации в заголовок `Authorization`.
-
-### viewed.py
-
-Задайте переменные окружения `GOOGLE_KEYFILE_PATH` и `GOOGLE_PROPERTY_ID` для получения данных из [Google Analytics](https://developers.google.com/analytics?hl=ru).
-
-### search.py
-
-Позволяет получать результаты пользовательских поисковых запросов в кешируемом виде от ElasticSearch с оценкой `score`, объединенные с запросами к базе данных, запрашиваем через GraphQL API `load_shouts_search`. Требует установка `ELASTIC_HOST`, `ELASTIC_PORT`, `ELASTIC_USER` и `ELASTIC_PASSWORD`.
-
-### notify.py
-
-Отправка уведомлений по Redis PubSub каналам, согласно структуре данных, за которую отвечает [сервис уведомлений](https://dev.discours.io/discours.io/notifier)
-
-###  unread.py
-
-Счетчик непрочитанных сообщений получается через Redis-запрос к данным [сервиса сообщений](https://dev.discours.io/discours.io/inbox).

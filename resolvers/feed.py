@@ -11,6 +11,7 @@ from services.db import local_session
 from services.schema import query
 from utils.logger import root_logger as logger
 
+
 @query.field("load_shouts_coauthored")
 @login_required
 async def load_shouts_coauthored(_, info, options):
