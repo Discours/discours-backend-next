@@ -180,7 +180,8 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
         if not shouts_result:
             return []
 
-        shouts_result = []
+        shouts = []
+
         for row in shouts_result:
             logger.debug(row)
             shout_id = row.Shout.id
@@ -240,7 +241,10 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                     [dict(t) for t in shout_dict["topics"]], key=lambda x: (not x.get("is_main", False), x["id"])
                 )
 
-        return shouts_result
+            shouts.append(shout_dict)
+
+        return shouts
+    return []
 
 
 def apply_filters(q, filters):
