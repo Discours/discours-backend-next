@@ -52,6 +52,7 @@ def query_with_stat(info):
                 func.coalesce(
                     func.sum(
                         case(
+                            (Reaction.reply_to.is_not(None), 0),
                             (Reaction.kind == ReactionKind.LIKE.value, 1),
                             (Reaction.kind == ReactionKind.DISLIKE.value, -1),
                             else_=0,
