@@ -65,7 +65,6 @@ def query_with_stat(info):
     # Основной запрос без GROUP BY
     q = (
         select(Shout)
-        .distinct()
         .join(Author, Author.id == Shout.created_by)
     )
 
