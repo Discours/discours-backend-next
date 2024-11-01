@@ -65,7 +65,7 @@ def query_with_stat(info):
     # Основной запрос без GROUP BY
     q = (
         select(Shout)
-        .distinct(Shout.id)
+        .distinct()
         .join(Author, Author.id == Shout.created_by)
     )
 
@@ -220,12 +220,18 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 "slug": a.slug,
                                 "pic": a.pic,
                             }
-                        if hasattr(row, "stat") and isinstance(row.stat, dict):
+                        if hasattr(row, "stat"):
+                            stat = {}
+                            # logger.debug(row.stat)
+                            if isinstance(row.stat, str):
+                                stat = json.loads(row.stat)
+                            elif isinstance(row.stat, dict):
+                                stat = row.stat
                             viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
                             shout_dict["stat"] = {
-                                **row.stat, 
+                                **stat, 
                                 "viewed": viewed,
-                                "commented": row.stat.get("comments_count", 0)
+                                "commented": stat.get("comments_count", 0)
                             }
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
@@ -329,9 +335,9 @@ def apply_sorting(q, options):
         # Сортировка по выбранному статистическому полю в указанном порядке
         query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
         # Применение сортировки с размещением NULL значений в конце
-        q = q.order_by(Shout.id, nulls_last(query_order_by))
+        q = q.order_by(nulls_last(query_order_by))
     else:
-        q = q.order_by(Shout.id, Shout.published_at.desc())
+        q = q.order_by(Shout.published_at.desc())
 
     return q
 
