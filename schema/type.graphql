@@ -57,6 +57,14 @@ type Reaction {
   # old_thread: String
 }
 
+type MediaItem {
+  url: String
+  pic: String
+  title: String
+  body: String
+  artist: String
+}
+
 type Shout {
   id: Int!
   title: String!
@@ -87,7 +95,7 @@ type Shout {
 
   version_of: Shout  # TODO: use version_of somewhere
 
-  media: String
+  media: [MediaItem]
   stat: Stat
   score: Float
 }
