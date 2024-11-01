@@ -94,6 +94,7 @@ def query_with_stat(info):
     if has_field(info, "topics"):
         topics_subquery = (
             select(
+                ShoutTopic.shout,
                 json_array_builder(
                     json_builder(
                         "id", Topic.id,
@@ -105,6 +106,7 @@ def query_with_stat(info):
             )
             .outerjoin(Topic, ShoutTopic.topic == Topic.id)
             .where(ShoutTopic.shout == Shout.id)
+            .group_by(ShoutTopic.shout) 
             .subquery()
         )
         q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
@@ -126,6 +128,7 @@ def query_with_stat(info):
             )
             .outerjoin(Author, ShoutAuthor.author == Author.id)
             .where(ShoutAuthor.shout == Shout.id)
+            .group_by(ShoutAuthor.shout)
             .subquery()
         )
         q = q.outerjoin(authors_subquery, authors_subquery.c.shout == Shout.id)
