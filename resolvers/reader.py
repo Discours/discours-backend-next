@@ -65,9 +65,9 @@ def query_with_stat(info):
     # Основной запрос
     q = (
         select(Shout)
+        .distinct(Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .join(Author, Author.id == Shout.created_by)
-        .group_by(Shout.id)
     )
 
     # Создаем алиасы для всех таблиц
@@ -319,23 +319,21 @@ async def get_shout(_, info, slug="", shout_id=0):
 
 def apply_sorting(q, options):
     """
-    Применение сортировки к запросу.
-
-    :param q: Исходный запрос.
-    :param options: Опции фильтрации и сортировки.
-    :return: Запрос с примененной сортировкой.
+    Применение сортировки к запросу с учетом DISTINCT ON.
     """
-    # Определение поля для сортировки
-    order_str = options.get("order_by")
+    # Сначала создаем подзапрос с DISTINCT ON
+    subq = q.order_by(Shout.id).subquery()
+    
+    # Создаем новый запрос к подзапросу
+    q = select(subq)
 
-    # Проверка, требуется ли сортировка по одному из статистических полей
+    # Применяем нужную сортировку
+    order_str = options.get("order_by")
     if order_str in ["rating", "comments_count", "last_reacted_at"]:
-        # Сортировка по выбранному статистическому полю в указанном порядке
         query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
-        # Применение сортировки с размещением NULL значений в конце
         q = q.order_by(nulls_last(query_order_by))
     else:
-        q = q.order_by(Shout.published_at.desc())
+        q = q.order_by(subq.c.published_at.desc())
 
     return q
 
