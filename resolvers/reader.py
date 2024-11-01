@@ -1,7 +1,7 @@
 import json
 import time
 
-from sqlalchemy import text
+from sqlalchemy import nulls_last, text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, select
 
@@ -94,7 +94,6 @@ def query_with_stat(info):
                 "id", main_topic.id, "title", main_topic.title, "slug", main_topic.slug, "is_main", main_topic_join.main
             ).label("main_topic")
         )
-        q = q.group_by(main_topic.id, main_topic.title, main_topic.slug, main_topic_join.main)
 
     if has_field(info, "topics"):
         topics_subquery = (
@@ -109,7 +108,6 @@ def query_with_stat(info):
         )
         q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
         q = q.add_columns(topics_subquery.c.topics)
-        q = q.group_by(topics_subquery.c.topics)
 
     if has_field(info, "authors"):
         authors_subquery = (
@@ -130,7 +128,6 @@ def query_with_stat(info):
         )
         q = q.outerjoin(authors_subquery, authors_subquery.c.shout == Shout.id)
         q = q.add_columns(authors_subquery.c.authors)
-        q = q.group_by(authors_subquery.c.authors)
 
     if has_field(info, "stat"):
         stats_subquery = (
@@ -168,8 +165,7 @@ def query_with_stat(info):
                 "last_reacted_at", stats_subquery.c.last_reacted_at,
             ).label("stat")
         )
-        q = q.group_by(stats_subquery.c.comments_count, stats_subquery.c.rating, stats_subquery.c.last_reacted_at)
-
+        
     return q
 
 
@@ -318,33 +314,22 @@ async def get_shout(_, info, slug="", shout_id=0):
 
 def apply_sorting(q, options):
     """
-    Применение сортировки к запросу с использованием ROW_NUMBER()
+    Применение сортировки с сохранением порядка
     """
     order_str = options.get("order_by")
-    
-    # Определяем сортировку
     if order_str in ["rating", "comments_count", "last_reacted_at"]:
-        sort_expr = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
+        query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
+        q = (
+            q.distinct(text(order_str), Shout.id)  # DISTINCT ON включает поле сортировки
+            .order_by(nulls_last(query_order_by), Shout.id)
+        )
     else:
-        sort_expr = Shout.published_at.desc()
+        q = (
+            q.distinct(Shout.published_at, Shout.id)
+            .order_by(Shout.published_at.desc(), Shout.id)
+        )
 
-    # Добавляем ROW_NUMBER
-    window = func.row_number().over(
-        partition_by=Shout.id,
-        order_by=sort_expr
-    ).label('row_num')
-    
-    # Создаем подзапрос с ROW_NUMBER
-    subq = q.add_columns(window).subquery()
-    
-    # Выбираем только первые строки для каждого id
-    final_q = (
-        select(subq)
-        .where(subq.c.row_num == 1)
-        .order_by(sort_expr)
-    )
-
-    return final_q
+    return q
 
 
 @query.field("load_shouts_by")
@@ -470,13 +455,8 @@ async def load_shouts_random_top(_, info, options):
     )
 
     random_limit = options.get("random_limit", 100)
-    if random_limit:
-        subquery = subquery.limit(random_limit)
-    q = (
-        query_with_stat(info)
-        if has_field(info, "stat")
-        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    )
+    subquery = subquery.limit(random_limit)
+    q = query_with_stat(info)
     q = q.filter(Shout.id.in_(subquery))
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
