@@ -173,6 +173,7 @@ def query_with_stat(info):
 
     # Фильтр опубликованных
     q = q.where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    q = q.group_by(Shout.id)
     return q
 
 
@@ -235,11 +236,11 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             }
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
-                            shout_dict["main_topic"] = json.loads(row.main_topic)
+                            shout_dict["main_topic"] = json.loads(row.main_topic) if isinstance(row.stat, str) else row.main_topic
                         if has_field(info, "authors") and hasattr(row, "authors"):
-                            shout_dict["authors"] = json.loads(row.authors)
+                            shout_dict["authors"] = json.loads(row.authors) if isinstance(row.authors, str) else row.authors
                         if has_field(info, "topics") and hasattr(row, "topics"):
-                            shout_dict["topics"] = json.loads(row.topics)
+                            shout_dict["topics"] = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
 
                     shouts.append(shout_dict)
 
