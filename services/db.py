@@ -5,7 +5,7 @@ import traceback
 import warnings
 from typing import Any, Callable, Dict, TypeVar
 
-from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, inspect
+from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, func, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
 from sqlalchemy.sql.schema import Table
@@ -148,3 +148,19 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
                 logger.debug("*" * (elapsed_n))
                 logger.debug(f"{elapsed:.3f} s")
         del conn.cursor_id  # Удаление идентификатора курсора после выполнения
+
+
+def get_json_builder():
+    """
+    Возвращает подходящие функции для построения JSON объектов в зависимости от драйвера БД
+    """
+    dialect = engine.dialect.name
+    if dialect.startswith('postgres'):
+        return func.json_build_object, func.json_agg
+    elif dialect.startswith('sqlite') or dialect.startswith('mysql'):
+        return func.json_object, func.json_group_array
+    else:
+        raise NotImplementedError(f"JSON builder not implemented for dialect {dialect}")
+
+# Используем их в коде
+json_builder, json_array_builder = get_json_builder()

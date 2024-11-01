@@ -7,7 +7,7 @@ from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from services.db import local_session
+from services.db import local_session, json_builder, json_array_builder
 from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
@@ -71,7 +71,7 @@ def query_with_stat(info):
     # main_author
     q = q.join(main_author, main_author.id == Shout.created_by)
     q = q.add_columns(
-        func.json_object(
+        json_builder(
             'id', main_author.id,
             'name', main_author.name,
             'slug', main_author.slug,
@@ -92,7 +92,7 @@ def query_with_stat(info):
             main_topic.id == main_topic_join.topic
         )
         q = q.add_columns(
-            func.json_object(
+            json_builder(
                 'id', main_topic.id,
                 'title', main_topic.title,
                 'slug', main_topic.slug,
@@ -103,8 +103,8 @@ def query_with_stat(info):
     if has_field(info, "topics"):
         topics_subquery = (
             select(
-                func.json_group_array(
-                    func.json_object(
+                json_array_builder(
+                    json_builder(
                         'id', Topic.id,
                         'title', Topic.title,
                         'slug', Topic.slug,
@@ -122,8 +122,8 @@ def query_with_stat(info):
     if has_field(info, "authors"):
         authors_subquery = (
             select(
-                func.json_group_array(
-                    func.json_object(
+                json_array_builder(
+                    json_builder(
                         'id', Author.id,
                         'name', Author.name,
                         'slug', Author.slug,
@@ -175,7 +175,7 @@ def query_with_stat(info):
         q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
         # aggregate in one column
         q = q.add_columns(
-            func.json_object(
+            json_builder(
                 'comments_count', stats_subquery.c.comments_count,
                 'rating', stats_subquery.c.rating,
                 'last_reacted_at', stats_subquery.c.last_reacted_at,
