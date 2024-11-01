@@ -16,7 +16,7 @@ from utils.logger import root_logger as logger
 def apply_options(q, options, reactions_created_by=0):
     """
     Применяет опции фильтрации и сортировки
-    [опционально] выбирая те публикации, на которые есть реакции от указанного автора
+    [опционально] выбирая те публикации, на которые есть реакции/комментарии от указанного автора
 
     :param q: Исходный запрос.
     :param options: Опции фильтрации и сортировки.
@@ -27,16 +27,10 @@ def apply_options(q, options, reactions_created_by=0):
     if isinstance(filters, dict):
         q = apply_filters(q, filters)
         if reactions_created_by:
-            if "reacted" in filters or "commented" in filters:
-                commented = filters.get("commented")
-                reacted = filters.get("reacted") or commented
-                q = q.join(Reaction, Reaction.shout == Shout.id)
-                if commented:
-                    q = q.filter(Reaction.body.is_not(None))
-                if reacted:
-                    q = q.filter(Reaction.created_by == reactions_created_by)
-                else:
-                    q = q.filter(Reaction.created_by != reactions_created_by)
+            q = q.join(Reaction, Reaction.shout == Shout.id)
+            q = q.filter(Reaction.created_by == reactions_created_by)
+            if "commented" in filters:
+                q = q.filter(Reaction.body.is_not(None))
     q = apply_sorting(q, options)
     limit = options.get("limit", 10)
     offset = options.get("offset", 0)
@@ -98,7 +92,6 @@ def shouts_by_follower(info, follower_id: int, options):
     reader_followed_authors = select(AuthorFollower.author).where(AuthorFollower.follower == follower_id)
     reader_followed_topics = select(TopicFollower.topic).where(TopicFollower.follower == follower_id)
     reader_followed_shouts = select(ShoutReactionsFollower.shout).where(ShoutReactionsFollower.follower == follower_id)
-
     followed_subquery = (
         select(Shout.id)
         .join(ShoutAuthor, ShoutAuthor.shout == Shout.id)
@@ -108,6 +101,7 @@ def shouts_by_follower(info, follower_id: int, options):
             | ShoutTopic.topic.in_(reader_followed_topics)
             | Shout.id.in_(reader_followed_shouts)
         )
+        .scalar_subquery()
     )
     q = q.filter(Shout.id.in_(followed_subquery))
     q, limit, offset = apply_options(q, options)
@@ -152,6 +146,11 @@ async def load_shouts_feed(_, info, options) -> List[Shout]:
 async def load_shouts_authored_by(_, info, slug: str, options) -> List[Shout]:
     """
     Загружает публикации, написанные автором по slug.
+
+    :param info: Информация о контексте GraphQL.
+    :param slug: Slug автора.
+    :param options: Опции фильтрации и сортировки.
+    :return: Список публикаций.
     """
     with local_session() as session:
         author = session.query(Author).filter(Author.slug == slug).first()
@@ -176,6 +175,11 @@ async def load_shouts_authored_by(_, info, slug: str, options) -> List[Shout]:
 async def load_shouts_with_topic(_, info, slug: str, options) -> List[Shout]:
     """
     Загружает публикации, связанные с темой по slug.
+
+    :param info: Информация о контексте GraphQL.
+    :param slug: Slug темы.
+    :param options: Опции фильтрации и сортировки.
+    :return: Список публикаций.
     """
     with local_session() as session:
         topic = session.query(Topic).filter(Topic.slug == slug).first()
