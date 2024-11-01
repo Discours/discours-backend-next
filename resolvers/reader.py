@@ -58,23 +58,15 @@ def has_field(info, fieldname: str) -> bool:
 def query_with_stat(info):
     """
     Добавляет подзапрос статистики
-
-    :param info: Информация о контексте GraphQL
-    :return: Запрос с подзапросом статистики.
     """
-    # Основной запрос
     q = (
         select(Shout)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .join(Author, Author.id == Shout.created_by)
     )
 
-    # Создаем алиасы для всех таблиц
-    main_author = aliased(Author)
-    main_topic_join = aliased(ShoutTopic)
-    main_topic = aliased(Topic)
-    
     # main_author
+    main_author = aliased(Author)
     q = q.join(main_author, main_author.id == Shout.created_by)
     q = q.add_columns(
         json_builder(
@@ -86,12 +78,16 @@ def query_with_stat(info):
     )
 
     if has_field(info, "main_topic"):
-        q = q.join(main_topic_join, and_(main_topic_join.shout == Shout.id, main_topic_join.main.is_(True))).join(
-            main_topic, main_topic.id == main_topic_join.topic
-        )
+        main_topic_join = aliased(ShoutTopic)
+        main_topic = aliased(Topic)
+        q = q.join(main_topic_join, and_(main_topic_join.shout == Shout.id, main_topic_join.main.is_(True)))
+        q = q.join(main_topic, main_topic.id == main_topic_join.topic)
         q = q.add_columns(
             json_builder(
-                "id", main_topic.id, "title", main_topic.title, "slug", main_topic.slug, "is_main", main_topic_join.main
+                "id", main_topic.id,
+                "title", main_topic.title,
+                "slug", main_topic.slug,
+                "is_main", main_topic_join.main
             ).label("main_topic")
         )
 
@@ -99,7 +95,12 @@ def query_with_stat(info):
         topics_subquery = (
             select(
                 json_array_builder(
-                    json_builder("id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main)
+                    json_builder(
+                        "id", Topic.id,
+                        "title", Topic.title,
+                        "slug", Topic.slug,
+                        "is_main", ShoutTopic.main
+                    )
                 ).label("topics")
             )
             .outerjoin(Topic, ShoutTopic.topic == Topic.id)
@@ -112,6 +113,7 @@ def query_with_stat(info):
     if has_field(info, "authors"):
         authors_subquery = (
             select(
+                ShoutAuthor.shout,
                 json_array_builder(
                     json_builder(
                         "id", Author.id,
@@ -136,20 +138,16 @@ def query_with_stat(info):
                 func.count(func.distinct(Reaction.id))
                 .filter(Reaction.kind == ReactionKind.COMMENT.value)
                 .label("comments_count"),
-                func.coalesce(
-                    func.sum(
-                        case(
-                            (Reaction.reply_to.is_not(None), 0),
-                            (Reaction.kind == ReactionKind.LIKE.value, 1),
-                            (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                            else_=0,
-                        )
-                    ),
-                    0,
-                ).label("rating"),
-                func.coalesce(func.max(case((Reaction.reply_to.is_(None), Reaction.created_at), else_=None)), 0).label(
-                    "last_reacted_at"
-                ),
+                func.sum(
+                    case(
+                        (Reaction.kind == ReactionKind.LIKE.value, 1),
+                        (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                        else_=0
+                    )
+                ).filter(Reaction.reply_to.is_(None)).label("rating"),
+                func.max(Reaction.created_at).filter(
+                    Reaction.reply_to.is_(None)
+                ).label("last_reacted_at")
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
@@ -157,7 +155,6 @@ def query_with_stat(info):
         )
 
         q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
-        # aggregate in one column
         q = q.add_columns(
             json_builder(
                 "comments_count", stats_subquery.c.comments_count,
