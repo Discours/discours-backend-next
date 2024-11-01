@@ -43,21 +43,28 @@ def query_with_stat(info):
         stats_subquery = (
             select(
                 Reaction.shout,
-                func.count(case([(Reaction.kind == ReactionKind.COMMENT.value, 1)], else_=None)).label(
-                    "comments_count"
-                ),
-                func.sum(
+                func.count(
                     case(
-                        [
+                        (Reaction.kind == ReactionKind.COMMENT.value, 1),
+                        else_=None,
+                    )
+                ).label("comments_count"),
+                func.coalesce(
+                    func.sum(
+                        case(
                             (Reaction.kind == ReactionKind.LIKE.value, 1),
                             (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                        ],
-                        else_=0,
-                    )
+                            else_=0,
+                        )
+                    ),
+                    0,
                 ).label("rating"),
-                func.max(case([(Reaction.reply_to.is_(None), Reaction.created_at)], else_=None)).label(
-                    "last_reacted_at"
-                ),
+                func.max(
+                    case(
+                        (Reaction.reply_to.is_(None), Reaction.created_at),
+                        else_=None,
+                    )
+                ).label("last_reacted_at"),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
