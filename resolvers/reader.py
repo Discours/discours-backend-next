@@ -1,4 +1,5 @@
 import json
+import time
 
 from sqlalchemy import text
 from sqlalchemy.orm import aliased
@@ -186,8 +187,9 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
 
         with local_session() as session:
             logger.info("Executing query...")
+            t1 = time.time()
             shouts_result = session.execute(q).all()
-            logger.info(f"Query executed, got {len(shouts_result)} results")
+            logger.info(f"Query executed, got {len(shouts_result)} results in {time.time() - t1:.3f} seconds")
 
             if not shouts_result:
                 logger.warning("No results found")
