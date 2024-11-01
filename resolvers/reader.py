@@ -132,10 +132,43 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
             )
             authors_and_topics = session.execute(query).all()
 
-        shouts_data = {shout.id: {**shout.dict(), "authors": [], "topics": set()} for shout in shouts_result}
+        # Создаем словарь для хранения данных публикаций
+        shouts_data = {}
+        for row in shouts_result:
+            shout = row.Shout
+            shout_dict = shout.dict()
+            shout_dict["authors"] = []
+            shout_dict["topics"] = set()
 
+            # Добавляем данные main_author_, если они были запрошены
+            if has_field(info, "created_by"):
+                main_author = {
+                    "id": row.main_author_id,
+                    "name": row.main_author_name or "Аноним",
+                    "slug": row.main_author_slug or "",
+                    "pic": row.main_author_pic or "",
+                    "caption": row.main_author_caption or "",
+                }
+                shout_dict["created_by"] = main_author
+
+            # Добавляем данные main_topic, если они были запрошены
+            if has_field(info, "main_topic"):
+                main_topic = {
+                    "id": row.main_topic_id or 0,
+                    "title": row.main_topic_title or "",
+                    "slug": row.main_topic_slug or "",
+                    # "is_main": True,
+                }
+                shout_dict["main_topic"] = main_topic
+
+            shouts_data[shout.id] = shout_dict
+
+        # Обрабатываем данные authors и topics из дополнительного запроса
         for row in authors_and_topics:
-            shout_data = shouts_data[row.shout_id]
+            shout_data = shouts_data.get(row.shout_id)
+            if not shout_data:
+                continue  # Пропускаем, если shout не найден
+
             if includes_authors:
                 author = {
                     "id": row.author_id,
@@ -156,6 +189,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                 }
                 shout_data["topics"].add(tuple(topic.items()))
 
+        # Обрабатываем дополнительные поля и гарантируем наличие main_topic
         for shout in shouts_data.values():
             if includes_media:
                 shout["media"] = json.dumps(shout.get("media", []))
@@ -169,7 +203,24 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                     "last_reacted_at": shout.get("last_reacted_at"),
                 }
 
-            shout["topics"] = sorted([dict(t) for t in shout["topics"]], key=lambda x: (not x["is_main"], x["id"]))
+            # Гарантируем наличие main_topic, если оно не запрашивалось
+            if not has_field(info, "main_topic"):
+                if "main_topic" not in shout or not shout["main_topic"]:
+                    logger.error(f"Shout ID {shout['id']} не имеет основной темы.")
+                    shout["main_topic"] = {
+                        "id": 0,
+                        "title": "Основная тема",
+                        "slug": "",
+                        # "is_main": True,
+                    }
+
+            # Сортировка topics, если они есть
+            if shout["topics"]:
+                shout["topics"] = sorted(
+                    [dict(t) for t in shout["topics"]], key=lambda x: (not x.get("is_main", False), x["id"])
+                )
+            else:
+                shout["topics"] = []
 
         return list(shouts_data.values())
 
