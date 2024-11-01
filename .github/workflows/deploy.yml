@@ -17,11 +17,11 @@ jobs:
 
       - uses: webfactory/ssh-agent@v0.8.0
         with:
-            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+            ssh-private-key: ${{ github.action.secrets.SSH_PRIVATE_KEY }}
 
       - name: Push to dokku
         env:
-            HOST_KEY: ${{ secrets.HOST_KEY }}
+            HOST_KEY: ${{ github.action.secrets.HOST_KEY }}
         run: |
             echo $HOST_KEY > ~/.ssh/known_hosts
             git remote add dokku dokku@v2.discours.io:discoursio-api
