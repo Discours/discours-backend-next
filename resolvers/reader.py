@@ -220,12 +220,13 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 "slug": a.slug,
                                 "pic": a.pic,
                             }
-                        # logger.info({ **shout_dict, "body": "", "media": []})
-                        stat = json.loads(row.stat) if hasattr(row, "stat") else {}
-                        viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
-                        stat["viewed"] = viewed
-                        if stat:
-                            shout_dict["stat"] = {**stat, "commented": stat.get("comments_count", 0)}
+                        if hasattr(row, "stat") and isinstance(row.stat, dict):
+                            viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
+                            shout_dict["stat"] = {
+                                **row.stat, 
+                                "viewed": viewed,
+                                "commented": row.stat.get("comments_count", 0)
+                            }
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
                             shout_dict["main_topic"] = json.loads(row.main_topic)
