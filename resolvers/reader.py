@@ -16,7 +16,13 @@ from utils.logger import root_logger as logger
 
 
 def has_field(info, fieldname: str) -> bool:
-    """Проверяет, запрошено ли поле :fieldname: в GraphQL запросе"""
+    """
+    Проверяет, запрошено ли поле :fieldname: в GraphQL запросе
+
+    :param info: Информация о контексте GraphQL
+    :param fieldname: Имя запрашиваемого поля
+    :return: True, если поле запрошено, False в противном случае
+    """
     field_node = info.field_nodes[0]
     for selection in field_node.selection_set.selections:
         if hasattr(selection, "name") and selection.name.value == fieldname:
@@ -25,7 +31,11 @@ def has_field(info, fieldname: str) -> bool:
 
 
 def query_with_stat():
-    # Оптимизированный подзапрос статистики
+    """
+    добавляет подзапрос статистики
+
+    :return: Запрос с подзапросом статистики.
+    """
     stats_subquery = (
         select(
             Reaction.shout.label("shout_id"),
@@ -277,6 +287,13 @@ async def get_shout(_, info, slug="", shout_id=0):
 
 
 def apply_sorting(q, options):
+    """
+    Применение сортировки к запросу.
+
+    :param q: Исходный запрос.
+    :param options: Опции фильтрации и сортировки.
+    :return: Запрос с примененной сортировкой.
+    """
     # Определение поля для сортировки
     order_str = options.get("order_by")
 
@@ -298,6 +315,8 @@ async def load_shouts_by(_, info, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
 
+    :param _: Корневой объект запроса (не используется)
+    :param info: Информация о контексте GraphQL
     :param options: Опции фильтрации и сортировки.
     :return: Список публикаций, удовлетворяющих критериям.
     """
@@ -327,6 +346,8 @@ async def load_shouts_search(_, info, text, options):
     """
     Поиск публикаций по тексту.
 
+    :param _: Корневой объект запроса (не используется)
+    :param info: Информация о контексте GraphQL
     :param text: Строка поиска.
     :param options: Опции фильтрации и сортировки.
     :return: Список публикаций, найденных по тексту.
@@ -364,6 +385,11 @@ async def load_shouts_search(_, info, text, options):
 async def load_shouts_unrated(_, info, options):
     """
     Загрузка публикаций с менее чем 3 реакциями типа LIKE/DISLIKE
+
+    :param _: Корневой объект запроса (не используется)
+    :param info: Информация о контексте GraphQL
+    :param options: Опции фильтрации и сортировки.
+    :return: Список публикаций.
     """
     rated_shouts = (
         select(Reaction.shout)
@@ -439,7 +465,7 @@ async def load_shouts_random_topic(_, info, options):
     Загрузка случайной темы и связанных с ней публикаций.
 
     :param info: Информация о контексте GraphQL.
-    :param limit: Максимальное количество публикаций.
+    :param options: Опции фильтрации и сортировки.
     :return: Тема и связанные публикации.
     """
     [topic] = get_topics_random(None, None, 1)

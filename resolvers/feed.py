@@ -15,6 +15,14 @@ from utils.logger import root_logger as logger
 
 
 def apply_options(q, options, author_id: int):
+    """
+    Применяет опции фильтрации и сортировки к запросу для данного автора.
+
+    :param q: Исходный запрос.
+    :param options: Опции фильтрации и сортировки.
+    :param author_id: Идентификатор автора.
+    :return: Запрос с примененными опциями.
+    """
     filters = options.get("filters")
     if isinstance(filters, dict):
         q = apply_filters(q, filters)
@@ -158,8 +166,7 @@ async def reacted_shouts_updates(info, follower_id: int, options) -> List[Shout]
     Обновляет публикации, на которые подписан автор, с учетом реакций.
 
     :param follower_id: Идентификатор подписчика.
-    :param limit: Колиество пукликаций для загрузки.
-    :param offset: Смещение для пагинации.
+    :param options: Опции фильтрации и сортировки.
     :return: Список публикаций.
     """
     shouts: List[Shout] = []
@@ -200,8 +207,7 @@ async def load_shouts_followed(_, info, options) -> List[Shout]:
     Загружает публикации, на которые подписан пользователь.
 
     :param info: Информация о контексте GraphQL.
-    :param limit: Количество публикаций для загрузки.
-    :param offset: Смещение для пагинации.
+    :param options: Опции фильтрации и сортировки.
     :return: Список публикаций.
     """
     user_id = info.context["user_id"]
@@ -224,8 +230,7 @@ async def load_shouts_followed_by(_, info, slug: str, options) -> List[Shout]:
 
     :param info: Информация о контексте GraphQL.
     :param slug: Slug автора.
-    :param limit: Количество публикаций для загрузки.
-    :param offset: Смещение для пагинации.
+    :param options: Опции фильтрации и сортировки.
     :return: Список публикаций.
     """
     with local_session() as session:
