@@ -29,140 +29,160 @@ def has_field(info, fieldname: str) -> bool:
     return False
 
 
-def query_with_stat():
+def query_with_stat(info):
     """
-    добавляет подзапрос статистики
+    Добавляет подзапрос статистики
 
+    :param info: Информация о контексте GraphQL
     :return: Запрос с подзапросом статистики.
     """
-    stats_subquery = (
-        select(
-            Reaction.shout.label("shout_id"),
-            func.count(case((Reaction.kind == ReactionKind.COMMENT.value, 1), else_=None)).label("comments_count"),
-            func.sum(
-                case(
-                    (Reaction.kind == ReactionKind.LIKE.value, 1),
-                    (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                    else_=0,
-                )
-            ).label("rating"),
-            func.max(case((Reaction.reply_to.is_(None), Reaction.created_at), else_=None)).label("last_reacted_at"),
+
+    q = select(Shout)
+
+    if has_field(info, "stat"):
+        stats_subquery = (
+            select(
+                Reaction.shout,
+                func.count(case([(Reaction.kind == ReactionKind.COMMENT.value, 1)], else_=None)).label(
+                    "comments_count"
+                ),
+                func.sum(
+                    case(
+                        [
+                            (Reaction.kind == ReactionKind.LIKE.value, 1),
+                            (Reaction.kind == ReactionKind.DISLIKE.value, -1),
+                        ],
+                        else_=0,
+                    )
+                ).label("rating"),
+                func.max(case([(Reaction.reply_to.is_(None), Reaction.created_at)], else_=None)).label(
+                    "last_reacted_at"
+                ),
+            )
+            .where(Reaction.deleted_at.is_(None))
+            .group_by(Reaction.shout)
+            .subquery()
         )
-        .where(Reaction.deleted_at.is_(None))
-        .group_by(Reaction.shout)
-        .subquery()
-    )
 
-    q = (
-        select(Shout, stats_subquery)
-        .outerjoin(stats_subquery, stats_subquery.c.shout_id == Shout.id)
-        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    )
-    return q
+        q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
+        q = q.add_columns(stats_subquery.c.comments_count, stats_subquery.c.rating, stats_subquery.c.last_reacted_at)
 
-
-def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
-    """
-    Оптимизированное получение публикаций с минимизацией количества запросов.
-    """
-    if author_id:
-        q = q.filter(Shout.created_by == author_id)
-
-    if limit:
-        q = q.limit(limit)
-    if offset:
-        q = q.offset(offset)
-
-    # Предварительно определяем флаги для запрашиваемых полей
-    includes_authors = has_field(info, "authors")
-    includes_topics = has_field(info, "topics")
-    includes_stat = has_field(info, "stat")
-    includes_media = has_field(info, "media")
-
-    #  created_by и main_topic
     if has_field(info, "created_by"):
-        q = q.outerjoin(Author, Shout.created_by == Author.id).add_columns(
+        q = q.outerjoin(Author, Shout.created_by == Author.id)
+        q = q.add_columns(
             Author.id.label("main_author_id"),
             Author.name.label("main_author_name"),
             Author.slug.label("main_author_slug"),
             Author.pic.label("main_author_pic"),
-            # Author.caption.label("main_author_caption"),
         )
+
     if has_field(info, "main_topic"):
         q = q.outerjoin(ShoutTopic, and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
         q = q.outerjoin(Topic, ShoutTopic.topic == Topic.id)
         q = q.add_columns(
-            Topic.id.label("main_topic_id"),
-            Topic.title.label("main_topic_title"),
-            Topic.slug.label("main_topic_slug"),
-            # func.literal(True).label("main_topic_is_main"),
+            Topic.id.label("main_topic_id"), Topic.title.label("main_topic_title"), Topic.slug.label("main_topic_slug")
         )
+
+    if has_field(info, "authors"):
+        topics_subquery = (
+            select(
+                ShoutTopic.shout,
+                Topic.id.label("topic_id"),
+                Topic.title.label("topic_title"),
+                Topic.slug.label("topic_slug"),
+                ShoutTopic.main.label("is_main"),
+            )
+            .outerjoin(Topic, ShoutTopic.topic == Topic.id)
+            .where(ShoutTopic.shout == Shout.id)
+            .subquery()
+        )
+        q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
+        q = q.add_columns(
+            topics_subquery.c.topic_id,
+            topics_subquery.c.topic_title,
+            topics_subquery.c.topic_slug,
+            topics_subquery.c.is_main,
+        )
+
+        authors_subquery = (
+            select(
+                ShoutAuthor.shout,
+                Author.id.label("author_id"),
+                Author.name.label("author_name"),
+                Author.slug.label("author_slug"),
+                Author.pic.label("author_pic"),
+                ShoutAuthor.caption.label("author_caption"),
+            )
+            .outerjoin(Author, ShoutAuthor.author == Author.id)
+            .where(ShoutAuthor.shout == Shout.id)
+            .subquery()
+        )
+        q = q.outerjoin(authors_subquery, authors_subquery.c.shout == Shout.id)
+        q = q.add_columns(
+            authors_subquery.c.author_id,
+            authors_subquery.c.author_name,
+            authors_subquery.c.author_slug,
+            authors_subquery.c.author_pic,
+            authors_subquery.c.author_caption,
+        )
+
+    # Фильтр опубликованных
+    q = q.where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+
+    return q
+
+
+def get_shouts_with_links(info, q, limit=20, offset=0):
+    """
+    получение публикаций с применением пагинации
+    """
+    q = q.limit(limit).offset(offset)
+
+    includes_authors = has_field(info, "authors")
+    includes_topics = has_field(info, "topics")
+    includes_stat = has_field(info, "stat")
+    includes_media = has_field(info, "media")
 
     with local_session() as session:
         shouts_result = session.execute(q).all()
         if not shouts_result:
             return []
 
-        shout_ids = [shout.Shout.id for shout in shouts_result]
-        authors_and_topics = []
-        if includes_authors or includes_topics:
-            query = (
-                select(
-                    ShoutAuthor.shout.label("shout_id"),
-                    Author.id.label("author_id"),
-                    Author.name.label("author_name"),
-                    Author.slug.label("author_slug"),
-                    Author.pic.label("author_pic"),
-                    ShoutAuthor.caption.label("author_caption"),
-                    Topic.id.label("topic_id"),
-                    Topic.title.label("topic_title"),
-                    Topic.slug.label("topic_slug"),
-                    ShoutTopic.main.label("topic_is_main"),
-                )
-                .outerjoin(Author, ShoutAuthor.author == Author.id)
-                .outerjoin(ShoutTopic, ShoutTopic.shout == ShoutAuthor.shout)
-                .outerjoin(Topic, ShoutTopic.topic == Topic.id)
-                .where(ShoutAuthor.shout.in_(shout_ids))
-            )
-            authors_and_topics = session.execute(query).all()
-
-        # Создаем словарь для хранения данных публикаций
-        shouts_data = {}
+        shouts_result = []
         for row in shouts_result:
+            logger.debug(row)
+            shout_id = row.Shout.id
             shout_dict = row.Shout.dict()
-            shout_dict["authors"] = []
-            shout_dict["topics"] = set()
-
-            # Добавляем данные main_author_, если они были запрошены
-            if has_field(info, "created_by"):
-                main_author = {
+            shout_dict.update(
+                {
+                    "authors": [],
+                    "topics": set(),
+                    "media": json.dumps(shout_dict.get("media", [])) if includes_media else [],
+                    "stat": {
+                        "viewed": ViewedStorage.get_shout(shout_id=shout_id) or 0,
+                        "commented": row.comments_count or 0,
+                        "rating": row.rating or 0,
+                        "last_reacted_at": row.last_reacted_at,
+                    }
+                    if includes_stat and hasattr(row, "comments_count")
+                    else {},
+                }
+            )
+            if includes_authors and hasattr(row, "main_author_id"):
+                shout_dict["created_by"] = {
                     "id": row.main_author_id,
                     "name": row.main_author_name or "Аноним",
                     "slug": row.main_author_slug or "",
                     "pic": row.main_author_pic or "",
-                    "caption": row.main_author_caption or "",
                 }
-                shout_dict["created_by"] = main_author
-
-            # Добавляем данные main_topic, если они были запрошены
-            if has_field(info, "main_topic"):
-                main_topic = {
+            if includes_topics and hasattr(row, "main_topic_id"):
+                shout_dict["main_topic"] = {
                     "id": row.main_topic_id or 0,
                     "title": row.main_topic_title or "",
                     "slug": row.main_topic_slug or "",
-                    # "is_main": True,
                 }
-                shout_dict["main_topic"] = main_topic
 
-            shouts_data[row.id] = shout_dict
-
-        # Обрабатываем данные authors и topics из дополнительного запроса
-        for row in authors_and_topics:
-            shout_data = shouts_data.get(row.shout_id)
-            if not shout_data:
-                continue  # Пропускаем, если shout не найден
-
-            if includes_authors:
+            if includes_authors and hasattr(row, "author_id"):
                 author = {
                     "id": row.author_id,
                     "name": row.author_name,
@@ -170,52 +190,25 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                     "pic": row.author_pic,
                     "caption": row.author_caption,
                 }
-                if author not in shout_data["authors"]:
-                    shout_data["authors"].append(author)
+                if not filter(lambda x: x["id"] == author["id"], shout_dict["authors"]):
+                    shout_dict["authors"].append(author)
 
-            if includes_topics and row.topic_id:
+            if includes_topics and hasattr(row, "topic_id"):
                 topic = {
                     "id": row.topic_id,
                     "title": row.topic_title,
                     "slug": row.topic_slug,
-                    "is_main": row.topic_is_main,
+                    "is_main": row.is_main,
                 }
-                shout_data["topics"].add(tuple(topic.items()))
+                if not filter(lambda x: x["id"] == topic["id"], shout_dict["topics"]):
+                    shout_dict["topics"].add(frozenset(topic.items()))
 
-        # Обрабатываем дополнительные поля и гарантируем наличие main_topic
-        for shout in shouts_data.values():
-            if includes_media:
-                shout["media"] = json.dumps(shout.get("media", []))
-            if includes_stat:
-                shout_id = shout["id"]
-                viewed_stat = ViewedStorage.get_shout(shout_id=shout_id) or 0
-                shout["stat"] = {
-                    "viewed": viewed_stat,
-                    "commented": shout.get("comments_count", 0),
-                    "rating": shout.get("rating", 0),
-                    "last_reacted_at": shout.get("last_reacted_at"),
-                }
-
-            # Гарантируем наличие main_topic, если оно не запрашивалось
-            if not has_field(info, "main_topic"):
-                if "main_topic" not in shout or not shout["main_topic"]:
-                    logger.error(f"Shout ID {shout['id']} не имеет основной темы.")
-                    shout["main_topic"] = {
-                        "id": 0,
-                        "title": "Основная тема",
-                        "slug": "",
-                        # "is_main": True,
-                    }
-
-            # Сортировка topics, если они есть
-            if shout["topics"]:
-                shout["topics"] = sorted(
-                    [dict(t) for t in shout["topics"]], key=lambda x: (not x.get("is_main", False), x["id"])
+            if includes_topics:
+                shout_dict["topics"] = sorted(
+                    [dict(t) for t in shout_dict["topics"]], key=lambda x: (not x.get("is_main", False), x["id"])
                 )
-            else:
-                shout["topics"] = []
 
-        return list(shouts_data.values())
+        return shouts_result
 
 
 def apply_filters(q, filters):
@@ -263,7 +256,7 @@ async def get_shout(_, info, slug="", shout_id=0):
     """
     try:
         # Получаем базовый запрос с подзапросами статистики
-        q = query_with_stat()
+        q = query_with_stat(info)
 
         # Применяем фильтр по slug или id
         if slug:
@@ -319,11 +312,7 @@ async def load_shouts_by(_, info, options):
     :return: Список публикаций, удовлетворяющих критериям.
     """
     # Базовый запрос: если запрашиваются статистические данные, используем специальный запрос с статистикой
-    q = (
-        query_with_stat()
-        if has_field(info, "stat")
-        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    )
+    q = query_with_stat(info)
 
     filters = options.get("filters")
     if isinstance(filters, dict):
@@ -364,7 +353,7 @@ async def load_shouts_search(_, info, text, options):
                 hits_ids.append(shout_id)
 
         q = (
-            query_with_stat()
+            query_with_stat(info)
             if has_field(info, "stat")
             else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         )
@@ -447,7 +436,7 @@ async def load_shouts_random_top(_, info, options):
     if random_limit:
         subquery = subquery.limit(random_limit)
     q = (
-        query_with_stat()
+        query_with_stat(info)
         if has_field(info, "stat")
         else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
     )

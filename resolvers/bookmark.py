@@ -1,12 +1,12 @@
 from operator import and_
 
 from graphql import GraphQLError
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert
 
 from orm.author import AuthorBookmark
 from orm.shout import Shout
 from resolvers.feed import apply_options
-from resolvers.reader import get_shouts_with_links, has_field, query_with_stat
+from resolvers.reader import get_shouts_with_links, query_with_stat
 from services.auth import login_required
 from services.common_result import CommonResult
 from services.db import local_session
@@ -31,11 +31,7 @@ def load_shouts_bookmarked(_, info, options):
     if not author_id:
         raise GraphQLError("User not authenticated")
 
-    q = (
-        query_with_stat()
-        if has_field(info, "stat")
-        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    )
+    q = query_with_stat(info)
     q = q.join(AuthorBookmark)
     q = q.filter(
         and_(
