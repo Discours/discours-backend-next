@@ -167,7 +167,7 @@ type SearchResult {
     slug: String!
     title: String!
     cover: String
-    main_topic: String
+    main_topic: Topic
     created_at: Int
     authors: [Author]
     topics: [Topic]
