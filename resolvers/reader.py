@@ -99,7 +99,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
         )
 
     with local_session() as session:
-        shouts_result = session.execute(q).scalars().all()
+        shouts_result = session.execute(q).all()
         if not shouts_result:
             return []
 
@@ -129,7 +129,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
         # Создаем словарь для хранения данных публикаций
         shouts_data = {}
         for row in shouts_result:
-            shout_dict = row.dict()
+            shout_dict = row.Shout.dict()
             shout_dict["authors"] = []
             shout_dict["topics"] = set()
 
