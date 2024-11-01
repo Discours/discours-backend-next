@@ -72,7 +72,7 @@ type Shout {
   cover_caption: String
 
   community: Community!
-  main_topic: Topic!
+  main_topic: Topic
   created_by: Author!
   topics: [Topic]
   authors: [Author]
