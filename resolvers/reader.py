@@ -7,7 +7,7 @@ from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from services.db import local_session, json_builder, json_array_builder
+from services.db import json_array_builder, json_builder, local_session
 from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
@@ -60,8 +60,7 @@ def query_with_stat(info):
     :param info: Информация о контексте GraphQL
     :return: Запрос с подзапросом статистики.
     """
-
-    q = select(Shout).distinct().group_by(Shout.id)
+    q = select(Shout).distinct(Shout.id).group_by(Shout.id)
 
     # Создаем алиасы для всех таблиц
     main_author = aliased(Author)
@@ -72,31 +71,17 @@ def query_with_stat(info):
     q = q.join(main_author, main_author.id == Shout.created_by)
     q = q.add_columns(
         json_builder(
-            'id', main_author.id,
-            'name', main_author.name,
-            'slug', main_author.slug,
-            'pic', main_author.pic
+            "id", main_author.id, "name", main_author.name, "slug", main_author.slug, "pic", main_author.pic
         ).label("main_author")
     )
 
     if has_field(info, "main_topic"):
-        main_topic = aliased(Topic)
-        q = q.join(
-            main_topic_join,
-            and_(
-                main_topic_join.shout == Shout.id,
-                main_topic_join.main.is_(True)
-            )
-        ).join(
-            main_topic,
-            main_topic.id == main_topic_join.topic
+        q = q.join(main_topic_join, and_(main_topic_join.shout == Shout.id, main_topic_join.main.is_(True))).join(
+            main_topic, main_topic.id == main_topic_join.topic
         )
         q = q.add_columns(
             json_builder(
-                'id', main_topic.id,
-                'title', main_topic.title,
-                'slug', main_topic.slug,
-                'is_main', main_topic_join.main
+                "id", main_topic.id, "title", main_topic.title, "slug", main_topic.slug, "is_main", main_topic_join.main
             ).label("main_topic")
         )
 
@@ -104,12 +89,7 @@ def query_with_stat(info):
         topics_subquery = (
             select(
                 json_array_builder(
-                    json_builder(
-                        'id', Topic.id,
-                        'title', Topic.title,
-                        'slug', Topic.slug,
-                        'is_main', ShoutTopic.main
-                    )
+                    json_builder("id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main)
                 ).label("topics")
             )
             .outerjoin(Topic, ShoutTopic.topic == Topic.id)
@@ -124,11 +104,16 @@ def query_with_stat(info):
             select(
                 json_array_builder(
                     json_builder(
-                        'id', Author.id,
-                        'name', Author.name,
-                        'slug', Author.slug,
-                        'pic', Author.pic,
-                        'caption', ShoutAuthor.caption
+                        "id",
+                        Author.id,
+                        "name",
+                        Author.name,
+                        "slug",
+                        Author.slug,
+                        "pic",
+                        Author.pic,
+                        "caption",
+                        ShoutAuthor.caption,
                     )
                 ).label("authors")
             )
@@ -138,34 +123,28 @@ def query_with_stat(info):
         )
         q = q.outerjoin(authors_subquery, authors_subquery.c.shout == Shout.id)
         q = q.add_columns(authors_subquery.c.authors)
-    
+
     if has_field(info, "stat"):
         stats_subquery = (
             select(
                 Reaction.shout,
-                func.count(func.distinct(Reaction.id)).filter(
-                    Reaction.kind == ReactionKind.COMMENT.value
-                ).label("comments_count"),
+                func.count(func.distinct(Reaction.id))
+                .filter(Reaction.kind == ReactionKind.COMMENT.value)
+                .label("comments_count"),
                 func.coalesce(
                     func.sum(
                         case(
                             (Reaction.reply_to.is_not(None), 0),
                             (Reaction.kind == ReactionKind.LIKE.value, 1),
                             (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                            else_=0
+                            else_=0,
                         )
                     ),
-                    0
+                    0,
                 ).label("rating"),
-                func.coalesce(
-                    func.max(
-                        case(
-                            (Reaction.reply_to.is_(None), Reaction.created_at),
-                            else_=None
-                        )
-                    ),
-                    0
-                ).label("last_reacted_at")
+                func.coalesce(func.max(case((Reaction.reply_to.is_(None), Reaction.created_at), else_=None)), 0).label(
+                    "last_reacted_at"
+                ),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
@@ -176,9 +155,12 @@ def query_with_stat(info):
         # aggregate in one column
         q = q.add_columns(
             json_builder(
-                'comments_count', stats_subquery.c.comments_count,
-                'rating', stats_subquery.c.rating,
-                'last_reacted_at', stats_subquery.c.last_reacted_at,
+                "comments_count",
+                stats_subquery.c.comments_count,
+                "rating",
+                stats_subquery.c.rating,
+                "last_reacted_at",
+                stats_subquery.c.last_reacted_at,
             ).label("stat")
         )
 
@@ -195,12 +177,12 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     try:
         logger.info(f"Starting get_shouts_with_links with limit={limit}, offset={offset}")
         q = q.limit(limit).offset(offset)
-        
+
         with local_session() as session:
             logger.info("Executing query...")
             shouts_result = session.execute(q).all()
             logger.info(f"Query executed, got {len(shouts_result)} results")
-            
+
             if not shouts_result:
                 logger.warning("No results found")
                 return []
@@ -216,7 +198,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                     else:
                         logger.warning(f"Row {idx} has no Shout attribute: {row}")
                         continue
-                        
+
                     if shout:
                         shout_id = int(f"{shout.id}")
                         # logger.info(f"Processing shout ID: {shout_id}")
@@ -228,17 +210,14 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 "id": main_author_id,
                                 "name": a.id,
                                 "slug": a.slug,
-                                "pic": a.pic
+                                "pic": a.pic,
                             }
                         # logger.info({ **shout_dict, "body": "", "media": []})
                         stat = json.loads(row.stat) if hasattr(row, "stat") else {}
                         viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
                         stat["viewed"] = viewed
                         if stat:
-                            shout_dict["stat"] = {
-                                **stat,
-                                "commented": stat.get("comments_count", 0)
-                            }
+                            shout_dict["stat"] = {**stat, "commented": stat.get("comments_count", 0)}
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
                             shout_dict["main_topic"] = json.loads(row.main_topic)
@@ -246,17 +225,16 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             shout_dict["authors"] = json.loads(row.authors)
                         if has_field(info, "topics") and hasattr(row, "topics"):
                             shout_dict["topics"] = json.loads(row.topics)
-                            
 
                     shouts.append(shout_dict)
-                    
+
                 except Exception as row_error:
                     logger.error(f"Error processing row {idx}: {row_error}", exc_info=True)
                     continue
     except Exception as e:
         logger.error(f"Fatal error in get_shouts_with_links: {e}", exc_info=True)
         raise
-    finally:    
+    finally:
         return shouts
 
 

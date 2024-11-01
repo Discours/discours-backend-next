@@ -5,6 +5,7 @@ import traceback
 import warnings
 from typing import Any, Callable, Dict, TypeVar
 
+import sqlalchemy
 from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, func, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, configure_mappers
@@ -155,12 +156,15 @@ def get_json_builder():
     Возвращает подходящие функции для построения JSON объектов в зависимости от драйвера БД
     """
     dialect = engine.dialect.name
-    if dialect.startswith('postgres'):
-        return func.json_build_object, func.json_agg
-    elif dialect.startswith('sqlite') or dialect.startswith('mysql'):
-        return func.json_object, func.json_group_array
+    json_cast = lambda x: x  # noqa: E731
+    if dialect.startswith("postgres"):
+        json_cast = lambda x: func.cast(x, sqlalchemy.Text)  # noqa: E731
+        return func.json_build_object, func.json_agg, json_cast
+    elif dialect.startswith("sqlite") or dialect.startswith("mysql"):
+        return func.json_object, func.json_group_array, json_cast
     else:
         raise NotImplementedError(f"JSON builder not implemented for dialect {dialect}")
 
+
 # Используем их в коде
-json_builder, json_array_builder = get_json_builder()
+json_builder, json_array_builder, json_cast = get_json_builder()
