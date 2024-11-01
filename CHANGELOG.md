@@ -2,7 +2,13 @@
 - `docs` added
 - optimized and unified `load_shouts_*` resolvers with `LoadShoutsOptions`
 - `load_shouts_bookmarked` resolver fixed
-- refactored with `resolvers/feed`
+- resolvers updates:
+    - new resolvers group `feed`
+    - `load_shouts_authored_by` resolver added
+    - `load_shouts_with_topic` resolver added
+    - `load_shouts_followed` removed
+    - `load_shouts_random_topic` removed
+    - `get_topics_random` removed
 - model updates:
     - `ShoutsOrderBy` enum added
     - `Shout.main_topic` from `ShoutTopic.main` as `Topic` type output

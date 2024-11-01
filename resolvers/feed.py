@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower, ShoutTopic
-from orm.topic import TopicFollower
+from orm.topic import Topic, TopicFollower
 from resolvers.reader import apply_filters, apply_sorting, get_shouts_with_links, has_field, query_with_stat
 from services.auth import login_required
 from services.db import local_session
@@ -68,29 +68,6 @@ def filter_followed(info, q):
         )
         q = q.filter(Shout.id.in_(subquery))
     return q, reader_id
-
-
-@query.field("load_shouts_feed")
-@login_required
-async def load_shouts_feed(_, info, options):
-    """
-    Загрузка ленты публикаций для авторизованного пользователя.
-
-    :param info: Информация о контексте GraphQL.
-    :param options: Опции фильтрации и сортировки.
-    :return: Список публикаций для ленты.
-    """
-    author_id = info.context.get("author_id")
-    if not author_id:
-        return []
-    q = (
-        query_with_stat()
-        if has_field(info, "stat")
-        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    )
-
-    q, limit, offset = apply_options(q, options, author_id)
-    return get_shouts_with_links(info, q, limit, offset)
 
 
 @query.field("load_shouts_coauthored")
@@ -200,9 +177,9 @@ async def reacted_shouts_updates(info, follower_id: int, options) -> List[Shout]
     return shouts
 
 
-@query.field("load_shouts_followed")
+@query.field("load_shouts_feed")
 @login_required
-async def load_shouts_followed(_, info, options) -> List[Shout]:
+async def load_shouts_feed(_, info, options) -> List[Shout]:
     """
     Загружает публикации, на которые подписан пользователь.
 
@@ -239,6 +216,44 @@ async def load_shouts_followed_by(_, info, slug: str, options) -> List[Shout]:
             try:
                 author_id: int = author.dict()["id"]
                 shouts = await reacted_shouts_updates(info, author_id, options)
+                return shouts
+            except Exception as error:
+                logger.debug(error)
+    return []
+
+
+@query.field("load_shouts_authored_by")
+async def load_shouts_authored_by(_, info, slug: str, options) -> List[Shout]:
+    """
+    Загружает публикации, написанные автором по slug.
+    """
+    with local_session() as session:
+        author = session.query(Author).filter(Author.slug == slug).first()
+        if author:
+            try:
+                author_id: int = author.dict()["id"]
+                q = query_with_stat() if has_field(info, "stat") else select(Shout)
+                q = q.filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+                q = q.filter(Shout.authors.any(id=author_id))
+                q, limit, offset = apply_options(q, options, author_id)
+                shouts = get_shouts_with_links(info, q, limit, offset=offset)
+                return shouts
+            except Exception as error:
+                logger.debug(error)
+    return []
+
+
+@query.field("load_shouts_with_topic")
+async def load_shouts_with_topic(_, info, slug: str, options) -> List[Shout]:
+    """
+    Загружает публикации, связанные с темой по slug.
+    """
+    with local_session() as session:
+        topic = session.query(Topic).filter(Topic.slug == slug).first()
+        if topic:
+            try:
+                topic_id: int = topic.dict()["id"]
+                shouts = await reacted_shouts_updates(info, topic_id, options)
                 return shouts
             except Exception as error:
                 logger.debug(error)

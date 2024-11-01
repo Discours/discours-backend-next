@@ -1,4 +1,5 @@
 from operator import and_
+
 from graphql import GraphQLError
 from sqlalchemy import delete, insert, select
 
@@ -30,14 +31,18 @@ def load_shouts_bookmarked(_, info, options):
     if not author_id:
         raise GraphQLError("User not authenticated")
 
-    q = query_with_stat() if has_field(info, "stat") else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    q = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
     q = q.join(AuthorBookmark)
     q = q.filter(
-            and_(
-                Shout.id == AuthorBookmark.shout,
-                AuthorBookmark.author == author_id,
-            )
+        and_(
+            Shout.id == AuthorBookmark.shout,
+            AuthorBookmark.author == author_id,
         )
+    )
     q, limit, offset = apply_options(q, options, author_id)
     return get_shouts_with_links(info, q, limit, offset)
 

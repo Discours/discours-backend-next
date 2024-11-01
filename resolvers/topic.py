@@ -1,4 +1,4 @@
-from sqlalchemy import distinct, func, select
+from sqlalchemy import select
 
 from cache.cache import (
     get_cached_topic_authors,
@@ -7,7 +7,6 @@ from cache.cache import (
 )
 from cache.memorycache import cache_region
 from orm.author import Author
-from orm.shout import ShoutTopic
 from orm.topic import Topic
 from resolvers.stat import get_with_stat
 from services.auth import login_required
@@ -114,23 +113,6 @@ async def delete_topic(_, info, slug: str):
 
             return {}
     return {"error": "access denied"}
-
-
-# Запрос на получение случайных тем
-@query.field("get_topics_random")
-def get_topics_random(_, _info, amount=12):
-    q = select(Topic)
-    q = q.join(ShoutTopic)
-    q = q.group_by(Topic.id)
-    q = q.having(func.count(distinct(ShoutTopic.shout)) > 2)
-    q = q.order_by(func.random()).limit(amount)
-
-    topics = []
-    with local_session() as session:
-        for [topic] in session.execute(q):
-            topics.append(topic)
-
-    return topics
 
 
 # Запрос на получение подписчиков темы

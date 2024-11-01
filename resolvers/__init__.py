@@ -12,6 +12,12 @@ from resolvers.author import (  # search_authors,
 )
 from resolvers.community import get_communities_all, get_community
 from resolvers.editor import create_shout, delete_shout, update_shout
+from resolvers.feed import (
+    load_shouts_coauthored,
+    load_shouts_discussed,
+    load_shouts_feed,
+    load_shouts_followed_by,
+)
 from resolvers.follower import follow, get_shout_followers, unfollow
 from resolvers.notifier import (
     load_notifications,
@@ -33,16 +39,8 @@ from resolvers.reader import (
     get_shout,
     load_shouts_by,
     load_shouts_random_top,
-    load_shouts_random_topic,
     load_shouts_search,
     load_shouts_unrated,
-)
-from resolvers.feed import (
-    load_shouts_coauthored,
-    load_shouts_discussed,
-    load_shouts_feed,
-    load_shouts_followed,
-    load_shouts_followed_by,
 )
 from resolvers.topic import (
     get_topic,
@@ -81,15 +79,16 @@ __all__ = [
     # reader
     "get_shout",
     "load_shouts_by",
+    "load_shouts_random_top",
+    # feed
     "load_shouts_feed",
     "load_shouts_search",
-    "load_shouts_followed",
     "load_shouts_followed_by",
     "load_shouts_unrated",
     "load_shouts_coauthored",
     "load_shouts_discussed",
-    "load_shouts_random_top",
-    "load_shouts_random_topic",
+    "load_shouts_with_topic",
+    "load_shouts_authored_by",
     # follower
     "follow",
     "unfollow",

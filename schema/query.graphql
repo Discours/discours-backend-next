@@ -19,8 +19,6 @@ type Query {
   get_author_follows(slug: String, user: String, author_id: Int): CommonResult!
   get_author_follows_topics(slug: String, user: String, author_id: Int): [Topic]
   get_author_follows_authors(slug: String, user: String, author_id: Int): [Author]
-  load_shouts_followed(limit: Int, offset: Int): [Shout]
-  load_shouts_followed_by(slug: String, limit: Int, offset: Int): [Shout]
 
   # reaction
   load_reactions_by(by: ReactionBy!, limit: Int, offset: Int): [Reaction]
@@ -33,14 +31,18 @@ type Query {
   load_shouts_by(options: LoadShoutsOptions): [Shout]
   load_shouts_search(text: String!, options: LoadShoutsOptions): [SearchResult]
   load_shouts_bookmarked(options: LoadShoutsOptions): [Shout]
-  load_shouts_random_topic(options: LoadShoutsOptions): CommonResult!  # { topic shouts }
 
-  # feed
+  # public feeds  
+  load_shouts_with_topic(slug: String, options: LoadShoutsOptions): [Shout] # topic feed
+  load_shouts_random_top(options: LoadShoutsOptions): [Shout] # random order, fixed filter, limit offset can be used
+  load_shouts_authored_by(slug: String, options: LoadShoutsOptions): [Shout] # author feed
+  load_shouts_followed_by(slug: String, options: LoadShoutsOptions): [Shout] # another author feed
+
+  # my feeds
   load_shouts_feed(options: LoadShoutsOptions): [Shout]
   load_shouts_unrated(options: LoadShoutsOptions): [Shout]
   load_shouts_coauthored(options: LoadShoutsOptions): [Shout]
   load_shouts_discussed(options: LoadShoutsOptions): [Shout]
-  load_shouts_random_top(options: LoadShoutsOptions): [Shout] # random order, fixed filter, limit offset can be used
 
   # editor
   get_my_shout(shout_id: Int!): CommonResult!
@@ -49,7 +51,6 @@ type Query {
   # topic
   get_topic(slug: String!): Topic
   get_topics_all: [Topic]
-  get_topics_random(amount: Int): [Topic]
   get_topics_by_author(slug: String, user: String, author_id: Int): [Topic]
   get_topics_by_community(slug: String, community_id: Int): [Topic]
 

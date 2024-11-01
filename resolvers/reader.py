@@ -7,7 +7,6 @@ from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.topic import get_topics_random
 from services.db import local_session
 from services.schema import query
 from services.search import search_text
@@ -457,31 +456,3 @@ async def load_shouts_random_top(_, info, options):
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
     return get_shouts_with_links(info, q, limit)
-
-
-@query.field("load_shouts_random_topic")
-async def load_shouts_random_topic(_, info, options):
-    """
-    Загрузка случайной темы и связанных с ней публикаций.
-
-    :param info: Информация о контексте GraphQL.
-    :param options: Опции фильтрации и сортировки.
-    :return: Тема и связанные публикации.
-    """
-    [topic] = get_topics_random(None, None, 1)
-    if topic:
-        q = (
-            query_with_stat()
-            if has_field(info, "stat")
-            else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        )
-        q = q.filter(Shout.topics.any(slug=topic.slug))
-
-        q = apply_filters(q, options)
-        q = apply_sorting(q, options)
-        limit = options.get("limit", 10)
-        offset = options.get("offset", 0)
-        shouts = get_shouts_with_links(info, q, limit, offset)
-        if shouts:
-            return {"topic": topic, "shouts": shouts}
-    return {"error": "failed to get random topic"}
