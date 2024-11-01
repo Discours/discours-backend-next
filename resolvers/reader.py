@@ -3,7 +3,7 @@ import time
 
 from sqlalchemy import text
 from sqlalchemy.orm import aliased
-from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
+from sqlalchemy.sql.expression import and_, asc, case, desc, func, select
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
@@ -65,7 +65,6 @@ def query_with_stat(info):
     # Основной запрос
     q = (
         select(Shout)
-        .distinct(Shout.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
         .join(Author, Author.id == Shout.created_by)
     )
@@ -319,23 +318,33 @@ async def get_shout(_, info, slug="", shout_id=0):
 
 def apply_sorting(q, options):
     """
-    Применение сортировки к запросу с учетом DISTINCT ON.
+    Применение сортировки к запросу с использованием ROW_NUMBER()
     """
-    # Сначала создаем подзапрос с DISTINCT ON
-    subq = q.order_by(Shout.id).subquery()
-    
-    # Создаем новый запрос к подзапросу
-    q = select(subq)
-
-    # Применяем нужную сортировку
     order_str = options.get("order_by")
+    
+    # Определяем сортировку
     if order_str in ["rating", "comments_count", "last_reacted_at"]:
-        query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
-        q = q.order_by(nulls_last(query_order_by))
+        sort_expr = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
     else:
-        q = q.order_by(subq.c.published_at.desc())
+        sort_expr = Shout.published_at.desc()
 
-    return q
+    # Добавляем ROW_NUMBER
+    window = func.row_number().over(
+        partition_by=Shout.id,
+        order_by=sort_expr
+    ).label('row_num')
+    
+    # Создаем подзапрос с ROW_NUMBER
+    subq = q.add_columns(window).subquery()
+    
+    # Выбираем только первые строки для каждого id
+    final_q = (
+        select(subq)
+        .where(subq.c.row_num == 1)
+        .order_by(sort_expr)
+    )
+
+    return final_q
 
 
 @query.field("load_shouts_by")
