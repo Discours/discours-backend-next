@@ -62,11 +62,8 @@ def query_with_stat(info):
     :param info: Информация о контексте GraphQL
     :return: Запрос с подзапросом статистики.
     """
-    # Основной запрос без GROUP BY
-    q = (
-        select(Shout)
-        .join(Author, Author.id == Shout.created_by)
-    )
+    # Основной запрос
+    q = select(Shout).join(Author, Author.id == Shout.created_by)
 
     # Создаем алиасы для всех таблиц
     main_author = aliased(Author)
@@ -172,7 +169,7 @@ def query_with_stat(info):
 
     # Фильтр опубликованных
     q = q.where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    q = q.group_by(Shout.id)
+    q = q.group_by(Shout.id, Author.id)
     return q
 
 
