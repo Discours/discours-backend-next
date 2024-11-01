@@ -129,8 +129,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
         # Создаем словарь для хранения данных публикаций
         shouts_data = {}
         for row in shouts_result:
-            shout = row.Shout
-            shout_dict = shout.dict()
+            shout_dict = row.dict()
             shout_dict["authors"] = []
             shout_dict["topics"] = set()
 
@@ -155,7 +154,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0, author_id=None):
                 }
                 shout_dict["main_topic"] = main_topic
 
-            shouts_data[shout.id] = shout_dict
+            shouts_data[row.id] = shout_dict
 
         # Обрабатываем данные authors и topics из дополнительного запроса
         for row in authors_and_topics:
