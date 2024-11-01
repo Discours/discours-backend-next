@@ -61,7 +61,7 @@ def query_with_stat(info):
     :param info: Информация о контексте GraphQL
     :return: Запрос с подзапросом статистики.
     """
-    q = select(Shout).distinct(Shout.id).group_by(Shout.id)
+    q = select(Shout).group_by(Shout.id)
 
     # Создаем алиасы для всех таблиц
     main_author = aliased(Author)
@@ -321,9 +321,9 @@ def apply_sorting(q, options):
         # Сортировка по выбранному статистическому полю в указанном порядке
         query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
         # Применение сортировки с размещением NULL значений в конце
-        q = q.order_by(Shout.id, nulls_last(query_order_by))
+        q = q.order_by(nulls_last(query_order_by))
     else:
-        q = q.order_by(Shout.id, Shout.published_at.desc())
+        q = q.order_by(Shout.published_at.desc())
 
     return q
 
