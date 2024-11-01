@@ -69,12 +69,15 @@ def query_with_stat(info):
     main_author = aliased(Author)
     main_topic_join = aliased(ShoutTopic)
     main_topic = aliased(Topic)
-
+    
     # main_author
     q = q.join(main_author, main_author.id == Shout.created_by)
     q = q.add_columns(
         json_builder(
-            "id", main_author.id, "name", main_author.name, "slug", main_author.slug, "pic", main_author.pic
+            "id", main_author.id, 
+            "name", main_author.name, 
+            "slug", main_author.slug, 
+            "pic", main_author.pic
         ).label("main_author")
     )
 
@@ -107,16 +110,11 @@ def query_with_stat(info):
             select(
                 json_array_builder(
                     json_builder(
-                        "id",
-                        Author.id,
-                        "name",
-                        Author.name,
-                        "slug",
-                        Author.slug,
-                        "pic",
-                        Author.pic,
-                        "caption",
-                        ShoutAuthor.caption,
+                        "id", Author.id,
+                        "name", Author.name,
+                        "slug", Author.slug,
+                        "pic", Author.pic,
+                        "caption", ShoutAuthor.caption,
                     )
                 ).label("authors")
             )
@@ -158,18 +156,15 @@ def query_with_stat(info):
         # aggregate in one column
         q = q.add_columns(
             json_builder(
-                "comments_count",
-                stats_subquery.c.comments_count,
-                "rating",
-                stats_subquery.c.rating,
-                "last_reacted_at",
-                stats_subquery.c.last_reacted_at,
+                "comments_count", stats_subquery.c.comments_count,
+                "rating", stats_subquery.c.rating,
+                "last_reacted_at", stats_subquery.c.last_reacted_at,
             ).label("stat")
         )
 
     # Фильтр опубликованных
     q = q.where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    q = q.group_by(Shout.id, Author.id)
+    q = q.group_by(Shout.id, main_author.id, main_topic.id)
     return q
 
 
