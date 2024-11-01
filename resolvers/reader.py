@@ -164,7 +164,7 @@ def query_with_stat(info):
 
     # Фильтр опубликованных
     q = q.where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    q = q.group_by(Shout.id, main_author.id, main_topic.id)
+    q = q.group_by(Shout.id, main_author.id)
     return q
 
 
