@@ -1,5 +1,6 @@
 import json
 
+from sqlalchemy import text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, nulls_last, select
 
@@ -318,12 +319,11 @@ def apply_sorting(q, options):
     # Проверка, требуется ли сортировка по одному из статистических полей
     if order_str in ["rating", "comments_count", "last_reacted_at"]:
         # Сортировка по выбранному статистическому полю в указанном порядке
-        q = q.order_by(desc(order_str))
-        query_order_by = desc(order_str) if options.get("order_by_desc", True) else asc(order_str)
+        query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
         # Применение сортировки с размещением NULL значений в конце
-        q = q.order_by(nulls_last(query_order_by))
+        q = q.order_by(Shout.id, nulls_last(query_order_by))
     else:
-        q = q.order_by(Shout.published_at.desc())
+        q = q.order_by(Shout.id, Shout.published_at.desc())
 
     return q
 
