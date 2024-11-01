@@ -26,7 +26,7 @@ def apply_options(q, options, author_id: int):
     filters = options.get("filters")
     if isinstance(filters, dict):
         q = apply_filters(q, filters)
-        if "reacted" in filters:
+        if author_id and "reacted" in filters:
             reacted = filters.get("reacted")
             q = q.join(Reaction, Reaction.shout == Shout.id)
             if reacted:
@@ -137,67 +137,39 @@ async def load_shouts_discussed(_, info, options):
     return get_shouts_with_links(info, q, limit, offset=offset)
 
 
-# применяется сортировка публикаций по последней реакции
-async def reacted_shouts_updates(info, follower_id: int, options) -> List[Shout]:
+def shouts_by_follower(info, follower_id: int, options):
     """
-    Обновляет публикации, на которые подписан автор, с учетом реакций.
-
-    :param follower_id: Идентификатор подписчика.
-    :param options: Опции фильтрации и сортировки.
-    :return: Список публикаций.
-    """
-    shouts: List[Shout] = []
-    with local_session() as session:
-        author = session.query(Author).filter(Author.id == follower_id).first()
-        if author:
-            # Публикации, где подписчик является автором
-            q1 = (
-                query_with_stat()
-                if has_field(info, "stat")
-                else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-            )
-            q1 = q1.filter(Shout.authors.any(id=follower_id))
-
-            # Публикации, на которые подписчик реагировал
-            q2 = (
-                query_with_stat()
-                if has_field(info, "stat")
-                else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-            )
-            q2 = q2.options(joinedload(Shout.reactions))
-            q2 = q2.filter(Reaction.created_by == follower_id)
-
-            # Сортировка публикаций по полю `last_reacted_at`
-            combined_query = union(q1, q2).order_by(desc(text("last_reacted_at")))
-
-            # извлечение ожидаемой структуры данных
-            q, limit, offset = apply_options(combined_query, options, follower_id)
-            shouts = get_shouts_with_links(info, q, limit, offset=offset)
-
-    return shouts
-
-
-@query.field("load_shouts_feed")
-@login_required
-async def load_shouts_feed(_, info, options) -> List[Shout]:
-    """
-    Загружает публикации, на которые подписан пользователь.
+    Загружает публикации, на которые подписан автор.
 
     :param info: Информация о контексте GraphQL.
+    :param follower_id: Идентификатор автора.
     :param options: Опции фильтрации и сортировки.
     :return: Список публикаций.
     """
-    user_id = info.context["user_id"]
-    with local_session() as session:
-        author = session.query(Author).filter(Author.user == user_id).first()
-        if author:
-            try:
-                author_id: int = author.dict()["id"]
-                shouts = await reacted_shouts_updates(info, author_id, options)
-                return shouts
-            except Exception as error:
-                logger.debug(error)
-    return []
+    # Публикации, где подписчик является автором
+    q1 = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
+    q1 = q1.filter(Shout.authors.any(id=follower_id))
+
+    # Публикации, на которые подписчик реагировал
+    q2 = (
+        query_with_stat()
+        if has_field(info, "stat")
+        else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    )
+    q2 = q2.options(joinedload(Shout.reactions))
+    q2 = q2.filter(Reaction.created_by == follower_id)
+
+    # Сортировка публикаций по полю `last_reacted_at`
+    combined_query = union(q1, q2).order_by(desc(text("last_reacted_at")))
+
+    # извлечение ожидаемой структуры данных
+    q, limit, offset = apply_options(combined_query, options, follower_id)
+    shouts = get_shouts_with_links(info, q, limit, offset=offset)
+    return shouts
 
 
 @query.field("load_shouts_followed_by")
@@ -213,13 +185,24 @@ async def load_shouts_followed_by(_, info, slug: str, options) -> List[Shout]:
     with local_session() as session:
         author = session.query(Author).filter(Author.slug == slug).first()
         if author:
-            try:
-                author_id: int = author.dict()["id"]
-                shouts = await reacted_shouts_updates(info, author_id, options)
-                return shouts
-            except Exception as error:
-                logger.debug(error)
+            follower_id = author.dict()["id"]
+            shouts = shouts_by_follower(info, follower_id, options)
+            return shouts
     return []
+
+
+@query.field("load_shouts_feed")
+@login_required
+async def load_shouts_feed(_, info, options) -> List[Shout]:
+    """
+    Загружает публикации, на которые подписан авторизованный пользователь.
+
+    :param info: Информация о контексте GraphQL.
+    :param options: Опции фильтрации и сортировки.
+    :return: Список публикаций.
+    """
+    author_id = info.context.get("author", {}).get("id")
+    return shouts_by_follower(info, author_id, options) if author_id else []
 
 
 @query.field("load_shouts_authored_by")
@@ -232,8 +215,11 @@ async def load_shouts_authored_by(_, info, slug: str, options) -> List[Shout]:
         if author:
             try:
                 author_id: int = author.dict()["id"]
-                q = query_with_stat() if has_field(info, "stat") else select(Shout)
-                q = q.filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+                q = (
+                    query_with_stat()
+                    if has_field(info, "stat")
+                    else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+                )
                 q = q.filter(Shout.authors.any(id=author_id))
                 q, limit, offset = apply_options(q, options, author_id)
                 shouts = get_shouts_with_links(info, q, limit, offset=offset)
@@ -253,7 +239,14 @@ async def load_shouts_with_topic(_, info, slug: str, options) -> List[Shout]:
         if topic:
             try:
                 topic_id: int = topic.dict()["id"]
-                shouts = await reacted_shouts_updates(info, topic_id, options)
+                q = (
+                    query_with_stat()
+                    if has_field(info, "stat")
+                    else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+                )
+                q = q.filter(Shout.topics.any(id=topic_id))
+                q, limit, offset = apply_options(q, options)
+                shouts = get_shouts_with_links(info, q, limit, offset=offset)
                 return shouts
             except Exception as error:
                 logger.debug(error)
