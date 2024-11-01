@@ -63,7 +63,12 @@ def query_with_stat(info):
     :return: Запрос с подзапросом статистики.
     """
     # Основной запрос
-    q = select(Shout).join(Author, Author.id == Shout.created_by)
+    q = (
+        select(Shout)
+        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        .join(Author, Author.id == Shout.created_by)
+        .group_by(Shout.id)
+    )
 
     # Создаем алиасы для всех таблиц
     main_author = aliased(Author)
@@ -90,6 +95,7 @@ def query_with_stat(info):
                 "id", main_topic.id, "title", main_topic.title, "slug", main_topic.slug, "is_main", main_topic_join.main
             ).label("main_topic")
         )
+        q = q.group_by(main_topic.id, main_topic.title, main_topic.slug, main_topic_join.main)
 
     if has_field(info, "topics"):
         topics_subquery = (
@@ -104,6 +110,7 @@ def query_with_stat(info):
         )
         q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
         q = q.add_columns(topics_subquery.c.topics)
+        q = q.group_by(topics_subquery.c.topics)
 
     if has_field(info, "authors"):
         authors_subquery = (
@@ -124,6 +131,7 @@ def query_with_stat(info):
         )
         q = q.outerjoin(authors_subquery, authors_subquery.c.shout == Shout.id)
         q = q.add_columns(authors_subquery.c.authors)
+        q = q.group_by(authors_subquery.c.authors)
 
     if has_field(info, "stat"):
         stats_subquery = (
@@ -161,19 +169,8 @@ def query_with_stat(info):
                 "last_reacted_at", stats_subquery.c.last_reacted_at,
             ).label("stat")
         )
+        q = q.group_by(stats_subquery.c.comments_count, stats_subquery.c.rating, stats_subquery.c.last_reacted_at)
 
-    # Фильтр опубликованных
-    q = q.where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    q = q.group_by(
-        Shout.id, 
-        main_author.id,
-        main_author.name,
-        main_author.slug,
-        main_author.pic,
-        stats_subquery.c.comments_count,
-        stats_subquery.c.rating,
-        stats_subquery.c.last_reacted_at
-    )
     return q
 
 
