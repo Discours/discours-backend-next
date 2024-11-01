@@ -37,6 +37,12 @@ class ViewedStorage:
     auth_result = None
     disabled = False
     start_date = datetime.now().strftime("%Y-%m-%d")
+    running = True
+
+    @staticmethod
+    async def stop():
+        self = ViewedStorage
+        self.running = False
 
     @staticmethod
     async def init():
@@ -196,22 +202,26 @@ class ViewedStorage:
         if self.disabled:
             return
 
-        while True:
-            try:
-                await self.update_pages()
-                failed = 0
-            except Exception as exc:
-                failed += 1
-                logger.debug(exc)
-                logger.info(" - update failed #%d, wait 10 secs" % failed)
-                if failed > 3:
-                    logger.info(" - views update failed, not trying anymore")
-                    break
-            if failed == 0:
-                when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
-                t = format(when.astimezone().isoformat())
-                logger.info("       ⎩ next update: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0]))
-                await asyncio.sleep(self.period)
-            else:
-                await asyncio.sleep(10)
-                logger.info(" - try to update views again")
+        try:
+            while self.running:
+                try:
+                    await self.update_pages()
+                    failed = 0
+                except Exception as exc:
+                    failed += 1
+                    logger.debug(exc)
+                    logger.warning(" - update failed #%d, wait 10 secs" % failed)
+                    if failed > 3 or isinstance(exc, asyncio.CancelledError):
+                        logger.error("ViewedStorage worker cancelled")
+                        break
+        finally:
+            self.running = False
+
+        if failed == 0:
+            when = datetime.now(timezone.utc) + timedelta(seconds=self.period)
+            t = format(when.astimezone().isoformat())
+            logger.info("       ⎩ next update: %s" % (t.split("T")[0] + " " + t.split("T")[1].split(".")[0]))
+            await asyncio.sleep(self.period)
+        else:
+            await asyncio.sleep(10)
+            logger.info(" - try to update views again")

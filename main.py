@@ -74,19 +74,24 @@ async def create_all_tables_async():
 
 
 async def lifespan(app):
-    # Запуск всех сервисов при старте приложения
-    await asyncio.gather(
-        create_all_tables_async(),
-        redis.connect(),
-        precache_data(),
-        ViewedStorage.init(),
-        search_service.info(),
-        start(),
-        revalidation_manager.start(),
-    )
-    yield
-    # Остановка сервисов при завершении работы приложения
-    await redis.disconnect()
+    try:
+        await asyncio.gather(
+            create_all_tables_async(),
+            redis.connect(),
+            precache_data(),
+            ViewedStorage.init(),
+            search_service.info(),
+            start(),
+            revalidation_manager.start(),
+        )
+        yield
+    finally:
+        tasks = [
+            redis.disconnect(),
+            ViewedStorage.stop(),
+            revalidation_manager.stop()
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 # Создаем экземпляр GraphQL

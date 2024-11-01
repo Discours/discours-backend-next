@@ -14,7 +14,7 @@ class CacheRevalidationManager:
 
     async def start(self):
         """Запуск фонового воркера для ревалидации кэша."""
-        asyncio.create_task(self.revalidate_cache())
+        self.task = asyncio.create_task(self.revalidate_cache())
 
     async def revalidate_cache(self):
         """Циклическая проверка и ревалидация кэша каждые self.interval секунд."""
@@ -48,9 +48,15 @@ class CacheRevalidationManager:
         """Отметить сущность для ревалидации."""
         self.items_to_revalidate[entity_type].add(entity_id)
 
-    def stop(self):
+    async def stop(self):
         """Остановка фонового воркера."""
         self.running = False
+        if hasattr(self, 'task'):
+            self.task.cancel()
+            try:
+                await self.task
+            except asyncio.CancelledError:
+                pass
 
 
 revalidation_manager = CacheRevalidationManager(interval=300)  # Ревалидация каждые 5 минут

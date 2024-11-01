@@ -22,7 +22,11 @@ if DB_URL.startswith("postgres"):
         max_overflow=20,
         pool_timeout=30,  # Время ожидания свободного соединения
         pool_recycle=1800,  # Время жизни соединения
-        connect_args={"sslmode": "disable"},
+        pool_pre_ping=True,  # Добавить проверку соединений
+        connect_args={
+            "sslmode": "disable",
+            "connect_timeout": 40  # Добавить таймаут подключения
+        }
     )
 else:
     engine = create_engine(DB_URL, echo=False, connect_args={"check_same_thread": False})
