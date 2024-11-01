@@ -14,6 +14,30 @@ from services.viewed import ViewedStorage
 from utils.logger import root_logger as logger
 
 
+def apply_options(q, options, reactions_created_by=0):
+    """
+    Применяет опции фильтрации и сортировки
+    [опционально] выбирая те публикации, на которые есть реакции/комментарии от указанного автора
+
+    :param q: Исходный запрос.
+    :param options: Опции фильтрации и сортировки.
+    :param reactions_created_by: Идентификатор автора.
+    :return: Запрос с примененными опциями.
+    """
+    filters = options.get("filters")
+    if isinstance(filters, dict):
+        q = apply_filters(q, filters)
+        if reactions_created_by:
+            q = q.join(Reaction, Reaction.shout == Shout.id)
+            q = q.filter(Reaction.created_by == reactions_created_by)
+            if "commented" in filters:
+                q = q.filter(Reaction.body.is_not(None))
+    q = apply_sorting(q, options)
+    limit = options.get("limit", 10)
+    offset = options.get("offset", 0)
+    return q, limit, offset
+
+
 def has_field(info, fieldname: str) -> bool:
     """
     Проверяет, запрошено ли поле :fieldname: в GraphQL запросе
@@ -321,16 +345,7 @@ async def load_shouts_by(_, info, options):
     """
     # Базовый запрос: если запрашиваются статистические данные, используем специальный запрос с статистикой
     q = query_with_stat(info)
-
-    filters = options.get("filters")
-    if isinstance(filters, dict):
-        q = apply_filters(q, filters)
-
-    q = apply_sorting(q, options)
-
-    # Установка лимита и смещения для пагинации
-    offset = options.get("offset", 0)
-    limit = options.get("limit", 10)
+    q, limit, offset = apply_options(q, options)
 
     # Передача сформированного запроса в метод получения публикаций с учетом сортировки и пагинации
     return get_shouts_with_links(info, q, limit, offset)

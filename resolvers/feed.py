@@ -3,39 +3,13 @@ from typing import List
 from sqlalchemy import and_, select
 
 from orm.author import Author, AuthorFollower
-from orm.reaction import Reaction
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.reader import apply_filters, apply_sorting, get_shouts_with_links, has_field, query_with_stat
+from resolvers.reader import apply_options, get_shouts_with_links, has_field, query_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query
 from utils.logger import root_logger as logger
-
-
-def apply_options(q, options, reactions_created_by=0):
-    """
-    Применяет опции фильтрации и сортировки
-    [опционально] выбирая те публикации, на которые есть реакции/комментарии от указанного автора
-
-    :param q: Исходный запрос.
-    :param options: Опции фильтрации и сортировки.
-    :param reactions_created_by: Идентификатор автора.
-    :return: Запрос с примененными опциями.
-    """
-    filters = options.get("filters")
-    if isinstance(filters, dict):
-        q = apply_filters(q, filters)
-        if reactions_created_by:
-            q = q.join(Reaction, Reaction.shout == Shout.id)
-            q = q.filter(Reaction.created_by == reactions_created_by)
-            if "commented" in filters:
-                q = q.filter(Reaction.body.is_not(None))
-    q = apply_sorting(q, options)
-    limit = options.get("limit", 10)
-    offset = options.get("offset", 0)
-    return q, limit, offset
-
 
 @query.field("load_shouts_coauthored")
 @login_required
