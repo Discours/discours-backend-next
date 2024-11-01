@@ -1,21 +1,30 @@
+[0.4.6]
+- optimized and unified `load_shouts_*` resolvers with `LoadShoutsOptions`
+- `load_shouts_bookmarked` resolver fixed
+- `refactored with `resolvers/feed.py`
+- model updates:
+    - `ShoutsOrderBy` enum added
+    - `Shout.main_topic` from `ShoutTopic.main` type output
+    - `Shout.created_by` as `Author` type output
+
 [0.4.5]
-- bookmark_shout mutation resolver added
+- `bookmark_shout` mutation resolver added
 - load_bookmarked_shouts resolver fix
 - community stats in orm
-- get_communities_by_author resolver added
-- get_communities_all resolver fix
+- `get_communities_by_author` resolver added
+- `get_communities_all` resolver fix
 - reaction filter by kinds
-- reaction sort enum added
-- community follower roles enum added
-- invite status enum added
-- topic parents ids added
+- `ReactionSort` enum added
+- `CommunityFollowerRole` enum added
+- `InviteStatus` enum added
+- `Topic.parents` ids added
 - community CUDL resolvers added
-- get_shout resolver accepts slug or shout_id
+- `get_shout` resolver accepts slug or shout_id
 
 [0.4.4]
 - followers_stat removed for shout
 - sqlite3 support added
-- rating_stat and commented_stat fix
+- `rating_stat` and `commented_stat` fixes
 
 [0.4.3]
 - cache reimplemented

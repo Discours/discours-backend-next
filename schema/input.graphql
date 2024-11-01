@@ -54,17 +54,16 @@ input LoadShoutsFilters {
   author: String
   layouts: [String]
   featured: Boolean
-  reacted: Boolean
+  reacted: Boolean  # requires auth, used in load_shouts_feed
   after: Int
 }
 
 input LoadShoutsOptions {
   filters: LoadShoutsFilters
-  with_author_captions: Boolean
   limit: Int!
   random_limit: Int
   offset: Int
-  order_by: String
+  order_by: ShoutsOrderBy
   order_by_desc: Boolean
 }
 

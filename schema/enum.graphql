@@ -13,6 +13,12 @@ enum ReactionSort {
   dislike
 }
 
+enum ShoutsOrderBy {
+  last_reacted_at
+  rating
+  comments_count
+}
+
 enum ReactionKind {
 
   # collabs

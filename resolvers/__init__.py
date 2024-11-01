@@ -32,15 +32,17 @@ from resolvers.reaction import (
 from resolvers.reader import (
     get_shout,
     load_shouts_by,
+    load_shouts_random_top,
+    load_shouts_random_topic,
+    load_shouts_search,
+    load_shouts_unrated,
+)
+from resolvers.feed import (
     load_shouts_coauthored,
     load_shouts_discussed,
     load_shouts_feed,
     load_shouts_followed,
     load_shouts_followed_by,
-    load_shouts_random_top,
-    load_shouts_random_topic,
-    load_shouts_search,
-    load_shouts_unrated,
 )
 from resolvers.topic import (
     get_topic,

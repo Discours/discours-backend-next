@@ -1,15 +1,20 @@
+from operator import and_
 from graphql import GraphQLError
-from sqlalchemy import delete, insert
+from sqlalchemy import delete, insert, select
 
 from orm.author import AuthorBookmark
 from orm.shout import Shout
+from resolvers.feed import apply_options
+from resolvers.reader import get_shouts_with_links, has_field, query_with_stat
+from services.auth import login_required
 from services.common_result import CommonResult
 from services.db import local_session
 from services.schema import mutation, query
 
 
 @query.field("load_shouts_bookmarked")
-def load_shouts_bookmarked(_, info, limit=50, offset=0):
+@login_required
+def load_shouts_bookmarked(_, info, options):
     """
     Load bookmarked shouts for the authenticated user.
 
@@ -24,10 +29,17 @@ def load_shouts_bookmarked(_, info, limit=50, offset=0):
     author_id = author_dict.get("id")
     if not author_id:
         raise GraphQLError("User not authenticated")
-    result = []
-    with local_session() as db:
-        result = db.query(AuthorBookmark).where(AuthorBookmark.author == author_id).offset(offset).limit(limit).all()
-    return result
+
+    q = query_with_stat() if has_field(info, "stat") else select(Shout).filter(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+    q = q.join(AuthorBookmark)
+    q = q.filter(
+            and_(
+                Shout.id == AuthorBookmark.shout,
+                AuthorBookmark.author == author_id,
+            )
+        )
+    q, limit, offset = apply_options(q, options, author_id)
+    return get_shouts_with_links(info, q, limit, offset)
 
 
 @mutation.field("toggle_bookmark_shout")
