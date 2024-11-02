@@ -91,7 +91,7 @@ async def follow(_, info, what, slug):
             # Уведомление автора (только для типа AUTHOR)
             if what == "AUTHOR":
                 logger.debug("Отправка уведомления автору о подписке")
-                await notify_follower(follower=follower_dict, author=entity_id, action="follow")
+                await notify_follower(follower=follower_dict, author_id=entity_id, action="follow")
 
     except Exception as exc:
         logger.exception("Произошла ошибка в функции 'follow'")
@@ -176,7 +176,7 @@ async def unfollow(_, info, what, slug):
 
                 if what == "AUTHOR":
                     logger.debug("Отправка уведомления автору об отписке")
-                    await notify_follower(follower=follower_dict, author=entity_id, action="unfollow")
+                    await notify_follower(follower=follower_dict, author_id=entity_id, action="unfollow")
 
     except Exception as exc:
         logger.exception("Произошла ошибка в функции 'unfollow'")
