@@ -311,7 +311,10 @@ async def create_reaction(_, info, reaction):
                     follow(None, info, "shout", shout_id=shout_id)
                 except Exception:
                     pass
-
+            shout = session.query(Shout).filter(Shout.id == shout_id).first()
+            if not shout:
+                return {"error": "Shout not found"}
+            rdict['shout'] = shout.dict()
             rdict["created_by"] = author_dict
             return {"reaction": rdict}
     except Exception as e:
