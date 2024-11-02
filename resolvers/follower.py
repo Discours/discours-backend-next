@@ -1,5 +1,6 @@
 from typing import List
 
+from graphql import GraphQLError
 from sqlalchemy import select
 from sqlalchemy.sql import and_
 
@@ -28,11 +29,10 @@ async def follow(_, info, what, slug):
     logger.debug("Начало выполнения функции 'follow'")
     user_id = info.context.get("user_id")
     follower_dict = info.context.get("author")
-    logger.debug(f"user_id: {user_id}, follower_dict: {follower_dict}")
+    logger.debug(f"follower: {follower_dict}")
 
     if not user_id or not follower_dict:
-        logger.warning("Неавторизованный доступ при попытке следования")
-        return {"error": "unauthorized"}
+        return GraphQLError("unauthorized")
 
     follower_id = follower_dict.get("id")
     logger.debug(f"follower_id: {follower_id}")
@@ -50,7 +50,7 @@ async def follow(_, info, what, slug):
 
     entity_class, follower_class, get_cached_follows_method, cache_method = entity_classes[what]
     entity_type = what.lower()
-    logger.debug(f"entity_class: {entity_class}, follower_class: {follower_class}, entity_type: {entity_type}")
+    # logger.debug(f"entity_class: {entity_class}, follower_class: {follower_class}, entity_type: {entity_type}")
 
     entity_id = None
     entity_dict = None
@@ -60,7 +60,7 @@ async def follow(_, info, what, slug):
         with local_session() as session:
             entity_query = select(entity_class).filter(entity_class.slug == slug)
             entities = get_with_stat(entity_query)
-            logger.debug(f"Полученные сущности: {entities}")
+            # logger.debug(f"Полученные сущности: {entities}")
             [entity] = entities
             if not entity:
                 logger.warning(f"{what.lower()} не найден по slug: {slug}")
@@ -86,7 +86,7 @@ async def follow(_, info, what, slug):
             if get_cached_follows_method:
                 logger.debug("Получение обновленных подписок из кэша")
                 follows = await get_cached_follows_method(follower_id)
-                logger.debug(f"Текущие подписки: {follows}")
+                # logger.debug(f"Текущие подписки: {follows}")
 
             # Уведомление автора (только для типа AUTHOR)
             if what == "AUTHOR":
@@ -107,7 +107,7 @@ async def unfollow(_, info, what, slug):
     logger.debug("Начало выполнения функции 'unfollow'")
     user_id = info.context.get("user_id")
     follower_dict = info.context.get("author")
-    logger.debug(f"user_id: {user_id}, follower_dict: {follower_dict}")
+    logger.debug(f"follower: {follower_dict}")
 
     if not user_id or not follower_dict:
         logger.warning("Неавторизованный доступ при попытке отписаться")
@@ -133,7 +133,7 @@ async def unfollow(_, info, what, slug):
 
     entity_class, follower_class, get_cached_follows_method, cache_method = entity_classes[what]
     entity_type = what.lower()
-    logger.debug(f"entity_class: {entity_class}, follower_class: {follower_class}, entity_type: {entity_type}")
+    # logger.debug(f"entity_class: {entity_class}, follower_class: {follower_class}, entity_type: {entity_type}")
 
     entity_id = None
     follows = []
@@ -172,7 +172,7 @@ async def unfollow(_, info, what, slug):
                 if get_cached_follows_method:
                     logger.debug("Получение обновленных подписок из кэша")
                     follows = await get_cached_follows_method(follower_id)
-                    logger.debug(f"Текущие подписки: {follows}")
+                    # logger.debug(f"Текущие подписки: {follows}")
 
                 if what == "AUTHOR":
                     logger.debug("Отправка уведомления автору об отписке")
