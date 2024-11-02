@@ -265,7 +265,7 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
 
 @mutation.field("create_reaction")
 @login_required
-async def create_reaction(_, info, reaction_input):
+async def create_reaction(_, info, reaction):
     """
     Create a new reaction through a GraphQL request.
 
@@ -273,6 +273,7 @@ async def create_reaction(_, info, reaction_input):
     :param reaction: Dictionary with reaction data.
     :return: Dictionary with created reaction data or error.
     """
+    reaction_input = reaction
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
     shout_id = int(reaction_input.get("shout", "0"))
