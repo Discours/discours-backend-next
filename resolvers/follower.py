@@ -70,10 +70,11 @@ async def follow(_, info, what, slug):
         if entity_id:
             logger.debug("Проверка существующей подписки")
             with local_session() as session:
-                existing_sub = session.query(follower_class).filter(
-                    follower_class.follower == follower_id,
-                    getattr(follower_class, entity_type) == entity_id
-                ).first()
+                existing_sub = (
+                    session.query(follower_class)
+                    .filter(follower_class.follower == follower_id, getattr(follower_class, entity_type) == entity_id)
+                    .first()
+                )
                 if existing_sub:
                     logger.info(f"Пользователь {follower_id} уже подписан на {what.lower()} с ID {entity_id}")
                 else:
@@ -172,7 +173,7 @@ async def unfollow(_, info, what, slug):
                 if get_cached_follows_method:
                     logger.debug("Получение подписок из кэша")
                     existing_follows = await get_cached_follows_method(follower_id)
-                    follows = filter(lambda x: x['id'] != entity_id, existing_follows)
+                    follows = filter(lambda x: x["id"] != entity_id, existing_follows)
                     logger.debug("Обновлен список подписок")
 
                 if what == "AUTHOR":
