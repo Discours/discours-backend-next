@@ -86,11 +86,7 @@ async def lifespan(app):
         )
         yield
     finally:
-        tasks = [
-            redis.disconnect(),
-            ViewedStorage.stop(),
-            revalidation_manager.stop()
-        ]
+        tasks = [redis.disconnect(), ViewedStorage.stop(), revalidation_manager.stop()]
         await asyncio.gather(*tasks, return_exceptions=True)
 
 

@@ -288,15 +288,15 @@ async def create_reaction(_, info, reaction):
     try:
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
-            
+
             logger.debug(f"Loaded shout: {shout and shout.id}")
-            
+
             if shout:
                 reaction["created_by"] = author_id
                 kind = reaction.get(
                     "kind", ReactionKind.COMMENT.value if isinstance(reaction.get("body"), str) else None
                 )
-                
+
                 logger.debug(f"Reaction kind: {kind}")
 
                 if kind in RATING_REACTIONS:
@@ -306,7 +306,7 @@ async def create_reaction(_, info, reaction):
                         return error_result
 
                 rdict = await _create_reaction(session, info, shout, author_id, reaction)
-                
+
                 logger.debug(f"Created reaction result: {rdict}")
 
                 rdict["created_by"] = author_dict

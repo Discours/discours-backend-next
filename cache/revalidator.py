@@ -52,7 +52,7 @@ class CacheRevalidationManager:
     async def stop(self):
         """Остановка фонового воркера."""
         self.running = False
-        if hasattr(self, 'task'):
+        if hasattr(self, "task"):
             self.task.cancel()
             try:
                 await self.task

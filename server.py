@@ -5,7 +5,6 @@ from granian.server import Granian
 from settings import PORT
 from utils.logger import root_logger as logger
 
-
 if __name__ == "__main__":
     logger.info("started")
 
@@ -20,7 +19,7 @@ if __name__ == "__main__":
             log_level=LogLevels.debug,
             backlog=2048,
         )
-        
+
         granian_instance.serve()
     except Exception as error:
         logger.error(f"Granian error: {error}", exc_info=True)

@@ -84,9 +84,10 @@ async def follow(_, info, what, slug):
                 logger.debug("Обновление кэша")
                 await cache_method(entity_dict)
             if get_cached_follows_method:
-                logger.debug("Получение обновленных подписок из кэша")
-                follows = await get_cached_follows_method(follower_id)
-                # logger.debug(f"Текущие подписки: {follows}")
+                logger.debug("Получение подписок из кэша")
+                existing_follows = await get_cached_follows_method(follower_id)
+                follows = [*existing_follows, entity_dict]
+                logger.debug("Обновлен список подписок")
 
             # Уведомление автора (только для типа AUTHOR)
             if what == "AUTHOR":
@@ -97,7 +98,7 @@ async def follow(_, info, what, slug):
         logger.exception("Произошла ошибка в функции 'follow'")
         return {"error": str(exc)}
 
-    logger.debug(f"Функция 'follow' завершена успешно с результатом: {what.lower()}s={follows}")
+    # logger.debug(f"Функция 'follow' завершена успешно с результатом: {what.lower()}s={follows}")
     return {f"{what.lower()}s": follows}
 
 
@@ -120,11 +121,7 @@ async def unfollow(_, info, what, slug):
         "AUTHOR": (Author, AuthorFollower, get_cached_follower_authors, cache_author),
         "TOPIC": (Topic, TopicFollower, get_cached_follower_topics, cache_topic),
         "COMMUNITY": (Community, CommunityFollower, None, None),  # Нет методов кэша для сообщества
-        "SHOUT": (
-            Shout,
-            ShoutReactionsFollower,
-            None,
-        ),  # Нет методов кэша для shout
+        "SHOUT": (Shout, ShoutReactionsFollower, None, None),  # Нет методов кэша для shout
     }
 
     if what not in entity_classes:
@@ -170,9 +167,10 @@ async def unfollow(_, info, what, slug):
                     logger.debug("Обновление кэша после отписки")
                     await cache_method(entity.dict())
                 if get_cached_follows_method:
-                    logger.debug("Получение обновленных подписок из кэша")
-                    follows = await get_cached_follows_method(follower_id)
-                    # logger.debug(f"Текущие подписки: {follows}")
+                    logger.debug("Получение подписок из кэша")
+                    existing_follows = await get_cached_follows_method(follower_id)
+                    follows = filter(lambda x: x.id != entity_id, existing_follows)
+                    logger.debug("Обновлен список подписок")
 
                 if what == "AUTHOR":
                     logger.debug("Отправка уведомления автору об отписке")
@@ -181,10 +179,11 @@ async def unfollow(_, info, what, slug):
     except Exception as exc:
         logger.exception("Произошла ошибка в функции 'unfollow'")
         import traceback
+
         traceback.print_exc()
         return {"error": str(exc)}
 
-    logger.debug(f"Функция 'unfollow' завершена успешно с результатом: {entity_type}s={follows}, error={error}")
+    # logger.debug(f"Функция 'unfollow' завершена успешно с результатом: {entity_type}s={follows}, error={error}")
     return {f"{entity_type}s": follows, "error": error}
 
 
@@ -211,9 +210,10 @@ def get_shout_followers(_, _info, slug: str = "", shout_id: int | None = None) -
 
     except Exception as _exc:
         import traceback
+
         traceback.print_exc()
         logger.exception("Произошла ошибка в функции 'get_shout_followers'")
         return []
 
-    logger.debug(f"Функция 'get_shout_followers' завершена с {len(followers)} подписчиками")
+    # logger.debug(f"Функция 'get_shout_followers' завершена с {len(followers)} подписчиками")
     return followers

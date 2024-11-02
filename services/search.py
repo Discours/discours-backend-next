@@ -168,12 +168,7 @@ class SearchService:
         if self.client:
             try:
                 await asyncio.wait_for(
-                    self.client.index(
-                        index=self.index_name, 
-                        id=str(shout.id), 
-                        body=index_body
-                    ),
-                    timeout=40.0
+                    self.client.index(index=self.index_name, id=str(shout.id), body=index_body), timeout=40.0
                 )
             except asyncio.TimeoutError:
                 logger.error(f"Indexing timeout for shout {shout.id}")

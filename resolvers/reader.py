@@ -70,11 +70,16 @@ def query_with_stat(info):
     q = q.join(main_author, main_author.id == Shout.created_by)
     q = q.add_columns(
         json_builder(
-            "id", main_author.id, 
-            "name", main_author.name, 
-            "slug", main_author.slug, 
-            "pic", main_author.pic,
-            "created_at", main_author.created_at
+            "id",
+            main_author.id,
+            "name",
+            main_author.name,
+            "slug",
+            main_author.slug,
+            "pic",
+            main_author.pic,
+            "created_at",
+            main_author.created_at,
         ).label("main_author")
     )
 
@@ -85,10 +90,7 @@ def query_with_stat(info):
         q = q.join(main_topic, main_topic.id == main_topic_join.topic)
         q = q.add_columns(
             json_builder(
-                "id", main_topic.id,
-                "title", main_topic.title,
-                "slug", main_topic.slug,
-                "is_main", main_topic_join.main
+                "id", main_topic.id, "title", main_topic.title, "slug", main_topic.slug, "is_main", main_topic_join.main
             ).label("main_topic")
         )
 
@@ -97,17 +99,12 @@ def query_with_stat(info):
             select(
                 ShoutTopic.shout,
                 json_array_builder(
-                    json_builder(
-                        "id", Topic.id,
-                        "title", Topic.title,
-                        "slug", Topic.slug,
-                        "is_main", ShoutTopic.main
-                    )
-                ).label("topics")
+                    json_builder("id", Topic.id, "title", Topic.title, "slug", Topic.slug, "is_main", ShoutTopic.main)
+                ).label("topics"),
             )
             .outerjoin(Topic, ShoutTopic.topic == Topic.id)
             .where(ShoutTopic.shout == Shout.id)
-            .group_by(ShoutTopic.shout) 
+            .group_by(ShoutTopic.shout)
             .subquery()
         )
         q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
@@ -119,14 +116,20 @@ def query_with_stat(info):
                 ShoutAuthor.shout,
                 json_array_builder(
                     json_builder(
-                        "id", Author.id,
-                        "name", Author.name,
-                        "slug", Author.slug,
-                        "pic", Author.pic,
-                        "caption", ShoutAuthor.caption,
-                        "created_at", Author.created_at
+                        "id",
+                        Author.id,
+                        "name",
+                        Author.name,
+                        "slug",
+                        Author.slug,
+                        "pic",
+                        Author.pic,
+                        "caption",
+                        ShoutAuthor.caption,
+                        "created_at",
+                        Author.created_at,
                     )
-                ).label("authors")
+                ).label("authors"),
             )
             .outerjoin(Author, ShoutAuthor.author == Author.id)
             .where(ShoutAuthor.shout == Shout.id)
@@ -147,12 +150,12 @@ def query_with_stat(info):
                     case(
                         (Reaction.kind == ReactionKind.LIKE.value, 1),
                         (Reaction.kind == ReactionKind.DISLIKE.value, -1),
-                        else_=0
+                        else_=0,
                     )
-                ).filter(Reaction.reply_to.is_(None)).label("rating"),
-                func.max(Reaction.created_at).filter(
-                    Reaction.reply_to.is_(None)
-                ).label("last_reacted_at")
+                )
+                .filter(Reaction.reply_to.is_(None))
+                .label("rating"),
+                func.max(Reaction.created_at).filter(Reaction.reply_to.is_(None)).label("last_reacted_at"),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
@@ -162,12 +165,15 @@ def query_with_stat(info):
         q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
         q = q.add_columns(
             json_builder(
-                "comments_count", stats_subquery.c.comments_count,
-                "rating", stats_subquery.c.rating,
-                "last_reacted_at", stats_subquery.c.last_reacted_at,
+                "comments_count",
+                stats_subquery.c.comments_count,
+                "rating",
+                stats_subquery.c.rating,
+                "last_reacted_at",
+                stats_subquery.c.last_reacted_at,
             ).label("stat")
         )
-        
+
     return q
 
 
@@ -223,16 +229,16 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             elif isinstance(row.stat, dict):
                                 stat = row.stat
                             viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
-                            shout_dict["stat"] = {
-                                **stat, 
-                                "viewed": viewed,
-                                "commented": stat.get("comments_count", 0)
-                            }
+                            shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
-                            shout_dict["main_topic"] = json.loads(row.main_topic) if isinstance(row.stat, str) else row.main_topic
+                            shout_dict["main_topic"] = (
+                                json.loads(row.main_topic) if isinstance(row.stat, str) else row.main_topic
+                            )
                         if has_field(info, "authors") and hasattr(row, "authors"):
-                            shout_dict["authors"] = json.loads(row.authors) if isinstance(row.authors, str) else row.authors
+                            shout_dict["authors"] = (
+                                json.loads(row.authors) if isinstance(row.authors, str) else row.authors
+                            )
                         if has_field(info, "topics") and hasattr(row, "topics"):
                             shout_dict["topics"] = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
 
@@ -321,15 +327,11 @@ def apply_sorting(q, options):
     order_str = options.get("order_by")
     if order_str in ["rating", "comments_count", "last_reacted_at"]:
         query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
-        q = (
-            q.distinct(text(order_str), Shout.id)  # DISTINCT ON включает поле сортировки
-            .order_by(nulls_last(query_order_by), Shout.id)
+        q = q.distinct(text(order_str), Shout.id).order_by(  # DISTINCT ON включает поле сортировки
+            nulls_last(query_order_by), Shout.id
         )
     else:
-        q = (
-            q.distinct(Shout.published_at, Shout.id)
-            .order_by(Shout.published_at.desc(), Shout.id)
-        )
+        q = q.distinct(Shout.published_at, Shout.id).order_by(Shout.published_at.desc(), Shout.id)
 
     return q
 
