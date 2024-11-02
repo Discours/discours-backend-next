@@ -214,7 +214,7 @@ async def _create_reaction(session, info, shout_dict, author_id: int, reaction) 
     is_author = bool(list(filter(lambda x: x['id'] == int(author_id), [x for x in shout_dict['authors']])))    
     if r.reply_to and r.kind in PROPOSAL_REACTIONS and is_author:
         handle_proposing(r.kind, r.reply_to, shout_dict['id'])
-        
+
     # Handle rating
     if r.kind in RATING_REACTIONS:
         if check_to_unfeature(session, author_id, r):
@@ -322,6 +322,8 @@ async def create_reaction(_, info, reaction):
                 logger.error(f"Shout not found with ID: {shout_id}")
                 return {"error": "Shout not found"}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"{type(e).__name__}: {e}")
         return {"error": "Cannot create reaction."}
 
