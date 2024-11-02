@@ -73,7 +73,8 @@ def query_with_stat(info):
             "id", main_author.id, 
             "name", main_author.name, 
             "slug", main_author.slug, 
-            "pic", main_author.pic
+            "pic", main_author.pic,
+            "created_at", main_author.created_at
         ).label("main_author")
     )
 
@@ -123,6 +124,7 @@ def query_with_stat(info):
                         "slug", Author.slug,
                         "pic", Author.pic,
                         "caption", ShoutAuthor.caption,
+                        "created_at", Author.created_at
                     )
                 ).label("authors")
             )
