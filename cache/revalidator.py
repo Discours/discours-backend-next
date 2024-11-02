@@ -1,6 +1,7 @@
 import asyncio
 
 from cache.cache import cache_author, cache_topic, get_cached_author, get_cached_topic
+from resolvers.stat import get_with_stat
 from utils.logger import root_logger as logger
 
 
@@ -32,7 +33,7 @@ class CacheRevalidationManager:
         async with self.lock:
             # Ревалидация кэша авторов
             for author_id in self.items_to_revalidate["authors"]:
-                author = await get_cached_author(author_id)
+                author = await get_cached_author(author_id, get_with_stat)
                 if author:
                     await cache_author(author)
             self.items_to_revalidate["authors"].clear()
