@@ -6,7 +6,7 @@ from sqlalchemy.orm import aliased
 from orm.author import Author
 from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
-from orm.shout import Shout
+from orm.shout import Shout, ShoutAuthor
 from resolvers.follower import follow
 from resolvers.proposals import handle_proposing
 from resolvers.stat import update_author_stat
@@ -286,42 +286,34 @@ async def create_reaction(_, info, reaction):
 
     try:
         with local_session() as session:
-            shout = session.query(Shout).filter(Shout.id == shout_id).first()
-            authors = [a.id for a in shout.authors]
-            is_author = bool(list(filter(lambda x: x == int(author_id), authors)))
-            logger.debug(f"Loaded shout: {shout and shout.id}")
+            authors = session.query(ShoutAuthor.author).filter(ShoutAuthor.shout == shout_id).scalar()
+            is_author = (
+                bool(list(filter(lambda x: x == int(author_id), authors))) if isinstance(authors, list) else False
+            )
+            reaction_input["created_by"] = author_id
+            kind = reaction_input.get("kind")
 
-            if shout:
-                shout_dict = shout.dict()
-                reaction_input["created_by"] = author_id
-                kind = reaction_input.get(
-                    "kind", ReactionKind.COMMENT.value if isinstance(reaction_input.get("body"), str) else None
-                )
+            # handle ratings
+            if kind in RATING_REACTIONS:
+                logger.debug(f"creating rating reaction: {kind}")
+                error_result = prepare_new_rating(reaction_input, shout_id, session, author_id)
+                if error_result:
+                    logger.error(f"Rating preparation error: {error_result}")
+                    return error_result
 
-                logger.debug(f"Reaction kind: {kind}")
+            # handle all reactions
+            rdict = await _create_reaction(session, shout_id, is_author, author_id, reaction_input)
+            logger.debug(f"Created reaction result: {rdict}")
 
-                if kind in RATING_REACTIONS:
-                    error_result = prepare_new_rating(reaction_input, shout_id, session, author_id)
-                    if error_result:
-                        logger.error(f"Rating preparation error: {error_result}")
-                        return error_result
+            # follow if liked
+            if kind == ReactionKind.LIKE.value:
+                try:
+                    follow(None, info, "shout", shout_id=shout_id)
+                except Exception:
+                    pass
 
-                logger.debug(f"Creating reaction for shout: {shout_dict['id']}")
-                rdict = await _create_reaction(session, shout_id, is_author, author_id, reaction_input)
-                logger.debug(f"Created reaction result: {rdict}")
-
-                # follow if liked
-                if kind == ReactionKind.LIKE.value:
-                    try:
-                        follow(None, info, "shout", shout_dict["slug"])
-                    except Exception:
-                        pass
-
-                rdict["created_by"] = author_dict
-                return {"reaction": rdict}
-            else:
-                logger.error(f"Shout not found with ID: {shout_id}")
-                return {"error": "Shout not found"}
+            rdict["created_by"] = author_dict
+            return {"reaction": rdict}
     except Exception as e:
         import traceback
 

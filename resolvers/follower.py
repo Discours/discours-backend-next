@@ -25,7 +25,7 @@ from utils.logger import root_logger as logger
 
 @mutation.field("follow")
 @login_required
-async def follow(_, info, what, slug):
+async def follow(_, info, what, slug="", entity_id=0):
     logger.debug("Начало выполнения функции 'follow'")
     user_id = info.context.get("user_id")
     follower_dict = info.context.get("author")
@@ -50,8 +50,6 @@ async def follow(_, info, what, slug):
 
     entity_class, follower_class, get_cached_follows_method, cache_method = entity_classes[what]
     entity_type = what.lower()
-
-    entity_id = None
     entity_dict = None
 
     try:
@@ -63,7 +61,8 @@ async def follow(_, info, what, slug):
             if not entity:
                 logger.warning(f"{what.lower()} не найден по slug: {slug}")
                 return {"error": f"{what.lower()} not found"}
-            entity_id = entity.id
+            if not entity_id and entity:
+                entity_id = entity.id
             entity_dict = entity.dict()
             logger.debug(f"entity_id: {entity_id}, entity_dict: {entity_dict}")
 
@@ -108,7 +107,7 @@ async def follow(_, info, what, slug):
 
 @mutation.field("unfollow")
 @login_required
-async def unfollow(_, info, what, slug):
+async def unfollow(_, info, what, slug="", entity_id=0):
     logger.debug("Начало выполнения функции 'unfollow'")
     user_id = info.context.get("user_id")
     follower_dict = info.context.get("author")
@@ -134,9 +133,6 @@ async def unfollow(_, info, what, slug):
 
     entity_class, follower_class, get_cached_follows_method, cache_method = entity_classes[what]
     entity_type = what.lower()
-    # logger.debug(f"entity_class: {entity_class}, follower_class: {follower_class}, entity_type: {entity_type}")
-
-    entity_id = None
     follows = []
     error = None
 
@@ -148,8 +144,9 @@ async def unfollow(_, info, what, slug):
             if not entity:
                 logger.warning(f"{what.lower()} не найден по slug: {slug}")
                 return {"error": f"{what.lower()} not found"}
-            entity_id = entity.id
-            logger.debug(f"entity_id: {entity_id}")
+            if entity and not entity_id:
+                entity_id = entity.id
+                logger.debug(f"entity_id: {entity_id}")
 
             sub = (
                 session.query(follower_class)
