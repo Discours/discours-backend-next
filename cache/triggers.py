@@ -37,10 +37,10 @@ def after_follower_handler(mapper, connection, target, is_delete=False):
 
     if entity_type:
         revalidation_manager.mark_for_revalidation(
-            target.author_id if entity_type == "authors" else target.topic_id, entity_type
+            target.author if entity_type == "authors" else target.topic, entity_type
         )
         if not is_delete:
-            revalidation_manager.mark_for_revalidation(target.follower_id, "authors")
+            revalidation_manager.mark_for_revalidation(target.follower, "authors")
 
 
 def events_register():
