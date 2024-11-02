@@ -82,9 +82,10 @@ def get_reactions_with_stat(q, limit, offset):
     with local_session() as session:
         result_rows = session.execute(q)
         for reaction, author, shout, commented_stat, rating_stat in result_rows:
-            if shout is None:
-                logger.error(f"пустое поле Shout: {reaction.dict()}")
-                continue  # Или обработайте иначе
+            # Пропускаем реакции с отсутствующими shout или author
+            if not shout or not author:
+                logger.error(f"Пропущена реакция из-за отсутствия shout или author: {reaction.dict()}")
+                continue
 
             reaction.created_by = author.dict()
             reaction.shout = shout.dict()
