@@ -7,8 +7,8 @@ from orm.author import Author
 from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
-from resolvers.proposals import handle_proposing
 from resolvers.follower import follow
+from resolvers.proposals import handle_proposing
 from resolvers.stat import update_author_stat
 from services.auth import add_user_role, login_required
 from services.db import local_session
@@ -190,7 +190,7 @@ def set_unfeatured(session, shout_id):
     session.commit()
 
 
-async def _create_reaction(session, info, shout_dict, author_id: int, reaction) -> dict:
+async def _create_reaction(session, shout_dict, author_id: int, reaction) -> dict:
     """
     Create a new reaction and perform related actions such as updating counters and notification.
 
@@ -211,23 +211,16 @@ async def _create_reaction(session, info, shout_dict, author_id: int, reaction) 
         update_author_stat(author_id)
 
     # Handle proposal
-    is_author = bool(list(filter(lambda x: x['id'] == int(author_id), [x for x in shout_dict['authors']])))    
+    is_author = bool(list(filter(lambda x: x["id"] == int(author_id), [x for x in shout_dict["authors"]])))
     if r.reply_to and r.kind in PROPOSAL_REACTIONS and is_author:
-        handle_proposing(r.kind, r.reply_to, shout_dict['id'])
+        handle_proposing(r.kind, r.reply_to, shout_dict["id"])
 
     # Handle rating
     if r.kind in RATING_REACTIONS:
         if check_to_unfeature(session, author_id, r):
-            set_unfeatured(session, shout_dict['id'])
+            set_unfeatured(session, shout_dict["id"])
         elif check_to_feature(session, author_id, r):
-            await set_featured(session, shout_dict['id'])
-
-        # Follow if liked
-        if r.kind == ReactionKind.LIKE.value:
-            try:
-                follow(None, info, "shout", shout_dict['slug'])
-            except Exception:
-                pass
+            await set_featured(session, shout_dict["id"])
 
     # Notify creation
     await notify_reaction(rdict, "create")
@@ -272,7 +265,7 @@ def prepare_new_rating(reaction: dict, shout_id: int, session, author_id: int):
 
 @mutation.field("create_reaction")
 @login_required
-async def create_reaction(_, info, reaction):
+async def create_reaction(_, info, reaction_input):
     """
     Create a new reaction through a GraphQL request.
 
@@ -282,9 +275,9 @@ async def create_reaction(_, info, reaction):
     """
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
-    shout_id = int(reaction.get("shout", "0"))
+    shout_id = int(reaction_input.get("shout", "0"))
 
-    logger.debug(f"Creating reaction with data: {reaction}")
+    logger.debug(f"Creating reaction with data: {reaction_input}")
     logger.debug(f"Author ID: {author_id}, Shout ID: {shout_id}")
 
     if not shout_id or not author_id:
@@ -298,23 +291,29 @@ async def create_reaction(_, info, reaction):
 
             if shout:
                 shout_dict = shout.dict()
-                reaction["created_by"] = author_id
-                kind = reaction.get(
-                    "kind", ReactionKind.COMMENT.value if isinstance(reaction.get("body"), str) else None
+                reaction_input["created_by"] = author_id
+                kind = reaction_input.get(
+                    "kind", ReactionKind.COMMENT.value if isinstance(reaction_input.get("body"), str) else None
                 )
 
                 logger.debug(f"Reaction kind: {kind}")
 
                 if kind in RATING_REACTIONS:
-                    error_result = prepare_new_rating(reaction, shout_id, session, author_id)
+                    error_result = prepare_new_rating(reaction_input, shout_id, session, author_id)
                     if error_result:
                         logger.error(f"Rating preparation error: {error_result}")
                         return error_result
 
                 logger.debug(f"Creating reaction for shout: {shout_dict['id']}")
-                rdict = await _create_reaction(session, info, shout, author_id, reaction)
-
+                rdict = await _create_reaction(session, shout_dict, author_id, reaction_input)
                 logger.debug(f"Created reaction result: {rdict}")
+
+                # follow if liked
+                if kind == ReactionKind.LIKE.value:
+                    try:
+                        follow(None, info, "shout", shout_dict["slug"])
+                    except Exception:
+                        pass
 
                 rdict["created_by"] = author_dict
                 return {"reaction": rdict}
@@ -323,6 +322,7 @@ async def create_reaction(_, info, reaction):
                 return {"error": "Shout not found"}
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         logger.error(f"{type(e).__name__}: {e}")
         return {"error": "Cannot create reaction."}
