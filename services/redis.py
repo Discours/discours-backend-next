@@ -21,10 +21,12 @@ class RedisService:
             self._client = FakeRedis(decode_responses=True)
         else:
             self._client = await Redis.from_url(self._uri, decode_responses=True)
+            logger.info("Redis connection was established.")
 
     async def disconnect(self):
-        if self._client:
+        if isinstance(self._client, Redis):
             await self._client.close()
+            logger.info("Redis connection was closed.")
 
     async def execute(self, command, *args, **kwargs):
         if self._client:
