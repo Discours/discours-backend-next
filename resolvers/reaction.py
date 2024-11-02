@@ -7,7 +7,7 @@ from orm.author import Author
 from orm.rating import PROPOSAL_REACTIONS, RATING_REACTIONS, is_negative, is_positive
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
-from resolvers.editor import handle_proposing
+from resolvers.proposals import handle_proposing
 from resolvers.follower import follow
 from resolvers.stat import update_author_stat
 from services.auth import add_user_role, login_required
@@ -82,8 +82,12 @@ def get_reactions_with_stat(q, limit, offset):
     with local_session() as session:
         result_rows = session.execute(q)
         for reaction, author, shout, commented_stat, rating_stat in result_rows:
-            reaction.created_by = author
-            reaction.shout = shout
+            if shout is None:
+                logger.error(f"пустое поле Shout: {reaction.dict()}")
+                continue  # Или обработайте иначе
+
+            reaction.created_by = author.dict()
+            reaction.shout = shout.dict()
             reaction.stat = {"rating": rating_stat, "comments": commented_stat}
             reactions.append(reaction)
 
@@ -186,7 +190,7 @@ def set_unfeatured(session, shout_id):
     session.commit()
 
 
-async def _create_reaction(session, info, shout, author_id: int, reaction) -> dict:
+async def _create_reaction(session, info, shout_dict, author_id: int, reaction) -> dict:
     """
     Create a new reaction and perform related actions such as updating counters and notification.
 
@@ -207,20 +211,21 @@ async def _create_reaction(session, info, shout, author_id: int, reaction) -> di
         update_author_stat(author_id)
 
     # Handle proposal
-    if r.reply_to and r.kind in PROPOSAL_REACTIONS and author_id in shout.authors:
-        handle_proposing(session, r, shout)
-
+    is_author = bool(list(filter(lambda x: x['id'] == int(author_id), [x for x in shout_dict['authors']])))    
+    if r.reply_to and r.kind in PROPOSAL_REACTIONS and is_author:
+        handle_proposing(r.kind, r.reply_to, shout_dict['id'])
+        
     # Handle rating
     if r.kind in RATING_REACTIONS:
         if check_to_unfeature(session, author_id, r):
-            set_unfeatured(session, shout.id)
+            set_unfeatured(session, shout_dict['id'])
         elif check_to_feature(session, author_id, r):
-            await set_featured(session, shout.id)
+            await set_featured(session, shout_dict['id'])
 
         # Follow if liked
         if r.kind == ReactionKind.LIKE.value:
             try:
-                follow(None, info, "shout", shout.slug)
+                follow(None, info, "shout", shout_dict['slug'])
             except Exception:
                 pass
 
@@ -292,6 +297,7 @@ async def create_reaction(_, info, reaction):
             logger.debug(f"Loaded shout: {shout and shout.id}")
 
             if shout:
+                shout_dict = shout.dict()
                 reaction["created_by"] = author_id
                 kind = reaction.get(
                     "kind", ReactionKind.COMMENT.value if isinstance(reaction.get("body"), str) else None
@@ -305,6 +311,7 @@ async def create_reaction(_, info, reaction):
                         logger.error(f"Rating preparation error: {error_result}")
                         return error_result
 
+                logger.debug(f"Creating reaction for shout: {shout_dict['id']}")
                 rdict = await _create_reaction(session, info, shout, author_id, reaction)
 
                 logger.debug(f"Created reaction result: {rdict}")

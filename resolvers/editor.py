@@ -6,8 +6,6 @@ from sqlalchemy.sql.functions import coalesce
 
 from cache.cache import cache_author, cache_topic
 from orm.author import Author
-from orm.rating import is_negative, is_positive
-from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from resolvers.follower import follow, unfollow
@@ -17,7 +15,6 @@ from services.db import local_session
 from services.notify import notify_shout
 from services.schema import mutation, query
 from services.search import search_service
-from utils.diff import apply_diff, get_diff
 from utils.logger import root_logger as logger
 
 
@@ -329,40 +326,3 @@ async def delete_shout(_, info, shout_id: int):
                 return {"error": None}
             else:
                 return {"error": "access denied"}
-
-
-def handle_proposing(session, r, shout):
-    if is_positive(r.kind):
-        replied_reaction = session.query(Reaction).filter(Reaction.id == r.reply_to, Reaction.shout == r.shout).first()
-
-        if replied_reaction and replied_reaction.kind is ReactionKind.PROPOSE.value and replied_reaction.quote:
-            # patch all the proposals' quotes
-            proposals = (
-                session.query(Reaction)
-                .filter(
-                    and_(
-                        Reaction.shout == r.shout,
-                        Reaction.kind == ReactionKind.PROPOSE.value,
-                    )
-                )
-                .all()
-            )
-
-            for proposal in proposals:
-                if proposal.quote:
-                    proposal_diff = get_diff(shout.body, proposal.quote)
-                    proposal_dict = proposal.dict()
-                    proposal_dict["quote"] = apply_diff(replied_reaction.quote, proposal_diff)
-                    Reaction.update(proposal, proposal_dict)
-                    session.add(proposal)
-
-            # patch shout's body
-            shout_dict = shout.dict()
-            shout_dict["body"] = replied_reaction.quote
-            Shout.update(shout, shout_dict)
-            session.add(shout)
-            session.commit()
-
-    if is_negative(r.kind):
-        # TODO: rejection logic
-        pass
