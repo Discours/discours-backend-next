@@ -190,7 +190,7 @@ def set_unfeatured(session, shout_id):
     session.commit()
 
 
-async def _create_reaction(session, shout_dict, author_id: int, reaction) -> dict:
+async def _create_reaction(session, shout_id: int, is_author: bool, author_id: int, reaction) -> dict:
     """
     Create a new reaction and perform related actions such as updating counters and notification.
 
@@ -211,16 +211,15 @@ async def _create_reaction(session, shout_dict, author_id: int, reaction) -> dic
         update_author_stat(author_id)
 
     # Handle proposal
-    is_author = bool(list(filter(lambda x: x["id"] == int(author_id), [x for x in shout_dict["authors"]])))
     if r.reply_to and r.kind in PROPOSAL_REACTIONS and is_author:
-        handle_proposing(r.kind, r.reply_to, shout_dict["id"])
+        handle_proposing(r.kind, r.reply_to, shout_id)
 
     # Handle rating
     if r.kind in RATING_REACTIONS:
         if check_to_unfeature(session, author_id, r):
-            set_unfeatured(session, shout_dict["id"])
+            set_unfeatured(session, shout_id)
         elif check_to_feature(session, author_id, r):
-            await set_featured(session, shout_dict["id"])
+            await set_featured(session, shout_id)
 
     # Notify creation
     await notify_reaction(rdict, "create")
@@ -287,7 +286,8 @@ async def create_reaction(_, info, reaction):
     try:
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
-
+            authors = [a.id for a in shout.authors]
+            is_author = bool(list(filter(lambda x: x == int(author_id), authors)))
             logger.debug(f"Loaded shout: {shout and shout.id}")
 
             if shout:
@@ -306,7 +306,7 @@ async def create_reaction(_, info, reaction):
                         return error_result
 
                 logger.debug(f"Creating reaction for shout: {shout_dict['id']}")
-                rdict = await _create_reaction(session, shout_dict, author_id, reaction_input)
+                rdict = await _create_reaction(session, shout_id, is_author, author_id, reaction_input)
                 logger.debug(f"Created reaction result: {rdict}")
 
                 # follow if liked
