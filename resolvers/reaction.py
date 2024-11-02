@@ -277,7 +277,10 @@ async def create_reaction(_, info, reaction):
     """
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
-    shout_id = reaction.get("shout")
+    shout_id = int(reaction.get("shout", "0"))
+
+    logger.debug(f"Creating reaction with data: {reaction}")
+    logger.debug(f"Author ID: {author_id}, Shout ID: {shout_id}")
 
     if not shout_id or not author_id:
         return {"error": "Shout ID and author ID are required to create a reaction."}
@@ -285,22 +288,32 @@ async def create_reaction(_, info, reaction):
     try:
         with local_session() as session:
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
+            
+            logger.debug(f"Loaded shout: {shout and shout.id}")
+            
             if shout:
                 reaction["created_by"] = author_id
                 kind = reaction.get(
                     "kind", ReactionKind.COMMENT.value if isinstance(reaction.get("body"), str) else None
                 )
+                
+                logger.debug(f"Reaction kind: {kind}")
 
                 if kind in RATING_REACTIONS:
                     error_result = prepare_new_rating(reaction, shout_id, session, author_id)
                     if error_result:
+                        logger.error(f"Rating preparation error: {error_result}")
                         return error_result
 
                 rdict = await _create_reaction(session, info, shout, author_id, reaction)
+                
+                logger.debug(f"Created reaction result: {rdict}")
 
-                # Return created reaction
                 rdict["created_by"] = author_dict
                 return {"reaction": rdict}
+            else:
+                logger.error(f"Shout not found with ID: {shout_id}")
+                return {"error": "Shout not found"}
     except Exception as e:
         logger.error(f"{type(e).__name__}: {e}")
         return {"error": "Cannot create reaction."}
