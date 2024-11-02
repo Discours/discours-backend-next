@@ -50,7 +50,6 @@ async def follow(_, info, what, slug):
 
     entity_class, follower_class, get_cached_follows_method, cache_method = entity_classes[what]
     entity_type = what.lower()
-    # logger.debug(f"entity_class: {entity_class}, follower_class: {follower_class}, entity_type: {entity_type}")
 
     entity_id = None
     entity_dict = None
@@ -60,7 +59,6 @@ async def follow(_, info, what, slug):
         with local_session() as session:
             entity_query = select(entity_class).filter(entity_class.slug == slug)
             entities = get_with_stat(entity_query)
-            # logger.debug(f"Полученные сущности: {entities}")
             [entity] = entities
             if not entity:
                 logger.warning(f"{what.lower()} не найден по slug: {slug}")
@@ -70,27 +68,33 @@ async def follow(_, info, what, slug):
             logger.debug(f"entity_id: {entity_id}, entity_dict: {entity_dict}")
 
         if entity_id:
-            logger.debug("Попытка добавить запись в базу данных")
+            logger.debug("Проверка существующей подписки")
             with local_session() as session:
-                sub = follower_class(follower=follower_id, **{entity_type: entity_id})
-                logger.debug(f"Создан объект подписки: {sub}")
-                session.add(sub)
-                session.commit()
-                logger.info(f"Пользователь {follower_id} подписался на {what.lower()} с ID {entity_id}")
+                existing_sub = session.query(follower_class).filter(
+                    follower_class.follower == follower_id,
+                    getattr(follower_class, entity_type) == entity_id
+                ).first()
+                if existing_sub:
+                    logger.info(f"Пользователь {follower_id} уже подписан на {what.lower()} с ID {entity_id}")
+                else:
+                    logger.debug("Добавление новой записи в базу данных")
+                    sub = follower_class(follower=follower_id, **{entity_type: entity_id})
+                    logger.debug(f"Создан объект подписки: {sub}")
+                    session.add(sub)
+                    session.commit()
+                    logger.info(f"Пользователь {follower_id} подписался на {what.lower()} с ID {entity_id}")
 
             follows = None
-            # Обновление кэша
             if cache_method:
                 logger.debug("Обновление кэша")
                 await cache_method(entity_dict)
             if get_cached_follows_method:
                 logger.debug("Получение подписок из кэша")
                 existing_follows = await get_cached_follows_method(follower_id)
-                follows = [*existing_follows, entity_dict]
+                follows = [*existing_follows, entity_dict] if not existing_sub else existing_follows
                 logger.debug("Обновлен список подписок")
 
-            # Уведомление автора (только для типа AUTHOR)
-            if what == "AUTHOR":
+            if what == "AUTHOR" and not existing_sub:
                 logger.debug("Отправка уведомления автору о подписке")
                 await notify_follower(follower=follower_dict, author_id=entity_id, action="follow")
 
@@ -98,7 +102,6 @@ async def follow(_, info, what, slug):
         logger.exception("Произошла ошибка в функции 'follow'")
         return {"error": str(exc)}
 
-    # logger.debug(f"Функция 'follow' завершена успешно с результатом: {what.lower()}s={follows}")
     return {f"{what.lower()}s": follows}
 
 
