@@ -416,8 +416,12 @@ async def load_shouts_unrated(_, info, options):
         .scalar_subquery()
     )
 
+    # add topic inside output data in main_topic field
+    aliased_topic = aliased(Topic)
+
     q = (
         select(Shout)
+        .join(aliased_topic, aliased_topic.id == Shout.main_topic.id)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None), ~Shout.id.in_(rated_shouts)))
         # .order_by(desc(Shout.published_at))
         .order_by(func.random())

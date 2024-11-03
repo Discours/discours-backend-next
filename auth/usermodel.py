@@ -80,16 +80,21 @@ class User(Base):
     userpic = Column(String, nullable=True, comment="Userpic")
     name = Column(String, nullable=True, comment="Display name")
     slug = Column(String, unique=True, comment="User's slug")
-    muted = Column(Boolean, default=False)
-    emailConfirmed = Column(Boolean, default=False)
-    createdAt = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), comment="Created at")
-    lastSeen = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), comment="Was online at")
-    deletedAt = Column(DateTime(timezone=True), nullable=True, comment="Deleted at")
     links = Column(JSON, nullable=True, comment="Links")
     oauth = Column(String, nullable=True)
+    oid = Column(String, nullable=True)
+
+    muted = Column(Boolean, default=False)
+    confirmed = Column(Boolean, default=False)
+
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), comment="Created at")
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), comment="Updated at")
+    last_seen = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), comment="Was online at")
+    deleted_at = Column(DateTime(timezone=True), nullable=True, comment="Deleted at")
+
     ratings = relationship(UserRating, foreign_keys=UserRating.user)
     roles = relationship(lambda: Role, secondary=UserRole.__tablename__)
-    oid = Column(String, nullable=True)
+
 
     def get_permission(self):
         scope = {}
