@@ -162,7 +162,7 @@ def query_with_stat(info):
             .group_by(Reaction.shout)
             .subquery()
         )
-        author_id = info.context.get("author", {}).get("id")
+        author_id = info.context.get("author", {}).get("id") if info.context else None
         user_reaction_subquery = None
         if author_id:
             user_reaction_subquery = (
