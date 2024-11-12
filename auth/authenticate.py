@@ -54,12 +54,8 @@ class JWTAuthenticate(AuthenticationBackend):
 def login_required(func):
     @wraps(func)
     async def wrap(parent, info: GraphQLResolveInfo, *args, **kwargs):
-        # debug only
-        # print('[auth.authenticate] login required for %r with info %r' % (func, info))
         auth: AuthCredentials = info.context["request"].auth
-        # print(auth)
         if not auth or not auth.logged_in:
-            # raise Unauthorized(auth.error_message or "Please login")
             return {"error": "Please login first"}
         return await func(parent, info, *args, **kwargs)
 
@@ -75,6 +71,25 @@ def permission_required(resource, operation, func):
             raise OperationNotAllowed(auth.error_message or "Please login")
 
         # TODO: add actual check permission logix here
+
+        return await func(parent, info, *args, **kwargs)
+
+    return wrap
+
+
+def login_accepted(func):
+    @wraps(func)
+    async def wrap(parent, info: GraphQLResolveInfo, *args, **kwargs):
+        auth: AuthCredentials = info.context["request"].auth
+
+        # Если есть авторизация, добавляем данные автора в контекст
+        if auth and auth.logged_in:
+            # Существующие данные auth остаются
+            pass
+        else:
+            # Очищаем данные автора из контекста если авторизация отсутствует
+            info.context["author"] = None
+            info.context["user_id"] = None
 
         return await func(parent, info, *args, **kwargs)
 

@@ -1,4 +1,5 @@
 #### [0.4.6]
+- login_accepted decorator added
 - `docs` added
 - optimized and unified `load_shouts_*` resolvers with `LoadShoutsOptions`
 - `load_shouts_bookmarked` resolver fixed

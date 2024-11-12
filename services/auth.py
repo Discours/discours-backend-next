@@ -94,3 +94,39 @@ def login_required(f):
         return await f(*args, **kwargs)
 
     return decorated_function
+
+
+def login_accepted(f):
+    """
+    Декоратор, который добавляет данные авторизации в контекст, если они доступны,
+    но не блокирует доступ для неавторизованных пользователей.
+    """
+
+    @wraps(f)
+    async def decorated_function(*args, **kwargs):
+        info = args[1]
+        req = info.context.get("request")
+
+        # Пробуем получить данные авторизации
+        user_id, user_roles = await check_auth(req)
+
+        if user_id and user_roles:
+            # Если пользователь авторизован, добавляем его данные в контекст
+            logger.info(f" got {user_id} roles: {user_roles}")
+            info.context["user_id"] = user_id.strip()
+            info.context["roles"] = user_roles
+
+            # Пробуем получить профиль автора
+            author = await get_cached_author_by_user_id(user_id, get_with_stat)
+            if not author:
+                logger.warning(f"author profile not found for user {user_id}")
+            info.context["author"] = author
+        else:
+            # Для неавторизованных пользователей очищаем контекст
+            info.context["user_id"] = None
+            info.context["roles"] = None
+            info.context["author"] = None
+
+        return await f(*args, **kwargs)
+
+    return decorated_function

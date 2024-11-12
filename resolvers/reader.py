@@ -9,6 +9,7 @@ from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
+from services.auth import login_accepted
 from services.db import json_array_builder, json_builder, local_session
 from services.schema import query
 from services.search import search_text
@@ -161,8 +162,28 @@ def query_with_stat(info):
             .group_by(Reaction.shout)
             .subquery()
         )
+        author_id = info.context.get("author", {}).get("id")
+        user_reaction_subquery = None
+        if author_id:
+            user_reaction_subquery = (
+                select(Reaction.shout, Reaction.kind.label("my_rate"))
+                .where(
+                    and_(
+                        Reaction.created_by == author_id,
+                        Reaction.deleted_at.is_(None),
+                        Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+                        Reaction.reply_to.is_(None),
+                    )
+                )
+                .distinct(Reaction.shout)
+                .subquery()
+            )
 
         q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
+        if user_reaction_subquery:
+            q = q.outerjoin(user_reaction_subquery, user_reaction_subquery.c.shout == Shout.id)
+
+        # Добавляем поле my_rate в JSON
         q = q.add_columns(
             json_builder(
                 "comments_count",
@@ -171,6 +192,8 @@ def query_with_stat(info):
                 stats_subquery.c.rating,
                 "last_reacted_at",
                 stats_subquery.c.last_reacted_at,
+                "my_rate",
+                user_reaction_subquery.c.my_rate if user_reaction_subquery else None,
             ).label("stat")
         )
 
@@ -337,6 +360,7 @@ def apply_sorting(q, options):
 
 
 @query.field("load_shouts_by")
+@login_accepted
 async def load_shouts_by(_, info, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
@@ -346,7 +370,7 @@ async def load_shouts_by(_, info, options):
     :param options: Опции фильтрации и сортировки.
     :return: Список публикаций, удовлетворяющих критериям.
     """
-    # Базовый запрос: если запрашиваются статистические данные, используем специальный запрос с статистикой
+    # Базовый запрос: используем специальный запрос с статистикой
     q = query_with_stat(info)
     q, limit, offset = apply_options(q, options)
 

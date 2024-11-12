@@ -112,6 +112,7 @@ type Stat {
   viewed: Int
   # followed: Int
   last_reacted_at: Int
+  my_rate: ReactionKind
 }
 
 type CommunityStat {

@@ -95,7 +95,6 @@ class User(Base):
     ratings = relationship(UserRating, foreign_keys=UserRating.user)
     roles = relationship(lambda: Role, secondary=UserRole.__tablename__)
 
-
     def get_permission(self):
         scope = {}
         for role in self.roles:

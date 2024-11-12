@@ -314,7 +314,7 @@ async def create_reaction(_, info, reaction):
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
             if not shout:
                 return {"error": "Shout not found"}
-            rdict['shout'] = shout.dict()
+            rdict["shout"] = shout.dict()
             rdict["created_by"] = author_dict
             return {"reaction": rdict}
     except Exception as e:
