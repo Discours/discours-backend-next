@@ -240,7 +240,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             a = session.query(Author).filter(Author.id == main_author_id).first()
                             shout_dict["created_by"] = {
                                 "id": main_author_id,
-                                "name": a.id,
+                                "name": a.name,
                                 "slug": a.slug,
                                 "pic": a.pic,
                             }
@@ -446,7 +446,10 @@ async def load_shouts_unrated(_, info, options):
     q = q.join(Author, Author.id == Shout.created_by)
     q = q.add_columns(
         json_builder(
-            "id", Author.id, "name", Author.name, "slug", Author.slug, "pic", Author.pic
+            "id", Author.id, 
+            "name", Author.name, 
+            "slug", Author.slug, 
+            "pic", Author.pic
         ).label("main_author")
     )
     q = q.join(ShoutTopic, and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
