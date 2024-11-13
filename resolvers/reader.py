@@ -442,7 +442,12 @@ async def load_shouts_unrated(_, info, options):
     q = (
         select(Shout)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .join(Author, Author.id == Shout.created_by)
+    )
+    q = q.join(Author, Author.id == Shout.created_by)
+    q = q.add_columns(
+        json_builder(
+            "id", Author.id, "name", Author.name, "slug", Author.slug, "pic", Author.pic
+        ).label("main_author")
     )
     q = q.join(ShoutTopic, and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
     q = q.join(Topic, Topic.id == ShoutTopic.topic)
