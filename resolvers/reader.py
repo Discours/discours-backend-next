@@ -224,7 +224,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
 
             for idx, row in enumerate(shouts_result):
                 try:
-                    # logger.debug(row)
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
@@ -247,7 +246,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             }
                         if hasattr(row, "stat"):
                             stat = {}
-                            # logger.debug(row.stat)
                             if isinstance(row.stat, str):
                                 stat = json.loads(row.stat)
                             elif isinstance(row.stat, dict):
@@ -257,7 +255,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
                             shout_dict["main_topic"] = (
-                                json.loads(row.main_topic) if isinstance(row.stat, str) else row.main_topic
+                                json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
                             )
                         if has_field(info, "authors") and hasattr(row, "authors"):
                             shout_dict["authors"] = (
