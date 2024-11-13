@@ -439,8 +439,19 @@ async def load_shouts_unrated(_, info, options):
         .scalar_subquery()
     )
 
-    q = query_with_stat(info)
-    q = q.where(~Shout.id.in_(rated_shouts))
+    q = (
+        select(Shout)
+        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
+        .join(Author, Author.id == Shout.created_by)
+    )
+    q = q.join(ShoutTopic, and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
+    q = q.join(Topic, Topic.id == ShoutTopic.topic)
+    q = q.add_columns(
+        json_builder(
+            "id", Topic.id, "title", Topic.title, "slug", Topic.slug
+        ).label("main_topic")
+    )
+    q = q.where(Shout.id.not_in(rated_shouts))
     q = q.order_by(func.random())
     
     limit = options.get("limit", 5)
