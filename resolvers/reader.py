@@ -58,6 +58,9 @@ def has_field(info, fieldname: str) -> bool:
 
 def query_with_stat(info):
     """
+    :param info: Информация о контексте GraphQL - для получения id авторизованного пользователя
+    :return: Запрос с подзапросами статистики.
+
     Добавляет подзапрос статистики
     """
     q = (
@@ -164,12 +167,14 @@ def query_with_stat(info):
             .subquery()
         )
         
+        logger.debug(info)
+        logger.debug(info.context)
+        logger.debug(info.context.get("author"))
         author_dict = info.context.get("author") if info.context else None
         author_id = author_dict.get("id") if author_dict else None
-        logger.info(f"Current author_id: {author_id}")
         
         if author_id:
-            logger.info(f"Building user reaction query for author {author_id}")
+            logger.info(f"detected author_id: {author_id}")
             user_reaction_subquery = (
                 select(
                     Reaction.shout.label("shout_id"),
