@@ -69,7 +69,7 @@ def query_with_stat(info):
         .join(Author, Author.id == Shout.created_by)
     )
 
-    # main_author
+    # Главный автор
     main_author = aliased(Author)
     q = q.join(main_author, main_author.id == Shout.created_by)
     q = q.add_columns(
@@ -144,7 +144,9 @@ def query_with_stat(info):
         q = q.add_columns(authors_subquery.c.authors)
 
     if has_field(info, "stat"):
-        logger.info("Building stat query...")
+        logger.info("Начало построения запроса статистики")
+        
+        # Подзапрос для статистики реакций
         stats_subquery = (
             select(
                 Reaction.shout,
@@ -160,21 +162,25 @@ def query_with_stat(info):
                 )
                 .filter(Reaction.reply_to.is_(None))
                 .label("rating"),
-                func.max(Reaction.created_at).filter(Reaction.reply_to.is_(None)).label("last_reacted_at"),
+                func.max(Reaction.created_at)
+                .filter(Reaction.reply_to.is_(None))
+                .label("last_reacted_at"),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
             .subquery()
         )
-        
-        logger.debug(info)
-        logger.debug(info.context)
-        logger.debug(info.context.get("author"))
+        logger.info("Подзапрос статистики построен")
+
+        # Извлечение author_id из контекста
         author_dict = info.context.get("author") if info.context else None
         author_id = author_dict.get("id") if author_dict else None
-        
+        logger.info(f"Полученный author_id: {author_id}")
+
         if author_id:
-            logger.info(f"detected author_id: {author_id}")
+            logger.info(f"Построение подзапроса реакций пользователя с ID: {author_id}")
+
+            # Подзапрос для реакций текущего пользователя
             user_reaction_subquery = (
                 select(
                     Reaction.shout.label("shout_id"),
@@ -188,16 +194,18 @@ def query_with_stat(info):
                         Reaction.reply_to.is_(None),
                     )
                 )
-                .order_by(Reaction.created_at.desc())
+                .order_by(Reaction.shout, Reaction.created_at.desc())
                 .distinct(Reaction.shout)
                 .subquery()
             )
+            logger.info("Подзапрос реакций пользователя построен")
 
-            logger.info("Joining stats and user reaction subqueries")
+            logger.info("Соединение основного запроса с подзапросом статистики")
             q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
+            logger.info("Соединение основного запроса с подзапросом реакций пользователя")
             q = q.outerjoin(user_reaction_subquery, user_reaction_subquery.c.shout_id == Shout.id)
 
-            logger.info("Building final query with user reactions")
+            logger.info("Добавление колонок статистики в основной запрос")
             q = q.add_columns(
                 json_builder(
                     "comments_count",
@@ -210,8 +218,9 @@ def query_with_stat(info):
                     user_reaction_subquery.c.my_rate
                 ).label("stat")
             )
+            logger.info("Колонки статистики добавлены")
         else:
-            logger.info("No author found, building query without user reactions")
+            logger.info("Автор не найден, строим запрос без подзапроса реакций пользователя")
             q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
             q = q.add_columns(
                 json_builder(
@@ -225,6 +234,7 @@ def query_with_stat(info):
                     None
                 ).label("stat")
             )
+            logger.info("Колонки статистики без my_rate добавлены")
 
     return q
 
@@ -235,34 +245,34 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     """
     shouts = []
     try:
-        logger.info(f"Starting get_shouts_with_links with limit={limit}, offset={offset}")
+        logger.info(f"Начало выполнения get_shouts_with_links с limit={limit}, offset={offset}")
         q = q.limit(limit).offset(offset)
 
         with local_session() as session:
-            logger.info("Executing query...")
+            logger.info("Выполнение основного запроса")
             t1 = time.time()
             shouts_result = session.execute(q).all()
-            logger.info(f"Query executed, got {len(shouts_result)} results in {time.time() - t1:.3f} seconds")
+            logger.info(f"Запрос выполнен, получено {len(shouts_result)} результатов за {time.time() - t1:.3f} секунд")
 
             if not shouts_result:
-                logger.warning("No results found")
+                logger.warning("Нет найденных результатов")
                 return []
-
-            shouts = []
 
             for idx, row in enumerate(shouts_result):
                 try:
+                    logger.debug(f"Обработка строки {idx}")
+                    
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
                     else:
-                        logger.warning(f"Row {idx} has no Shout attribute: {row}")
+                        logger.warning(f"Строка {idx} не содержит атрибута 'Shout': {row}")
                         continue
 
                     if shout:
                         shout_id = int(f"{shout.id}")
-                        # logger.info(f"Processing shout ID: {shout_id}")
                         shout_dict = shout.dict()
+                        
                         if has_field(info, "created_by") and shout_dict.get("created_by"):
                             main_author_id = shout_dict.get("created_by")
                             a = session.query(Author).filter(Author.id == main_author_id).first()
@@ -272,15 +282,21 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 "slug": a.slug,
                                 "pic": a.pic,
                             }
+                        
                         if hasattr(row, "stat"):
+                            logger.debug(f"Строка {idx} - stat: {row.stat}")
                             stat = {}
                             if isinstance(row.stat, str):
                                 stat = json.loads(row.stat)
                             elif isinstance(row.stat, dict):
                                 stat = row.stat
+                            else:
+                                logger.warning(f"Строка {idx} - неизвестный тип stat: {type(row.stat)}")
                             viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
                             shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
-
+                        else:
+                            logger.warning(f"Строка {idx} не содержит атрибута 'stat'")
+                        
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
                             shout_dict["main_topic"] = (
                                 json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
@@ -292,13 +308,13 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                         if has_field(info, "topics") and hasattr(row, "topics"):
                             shout_dict["topics"] = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
 
-                    shouts.append(shout_dict)
+                        shouts.append(shout_dict)
 
                 except Exception as row_error:
-                    logger.error(f"Error processing row {idx}: {row_error}", exc_info=True)
+                    logger.error(f"Ошибка при обработке строки {idx}: {row_error}", exc_info=True)
                     continue
     except Exception as e:
-        logger.error(f"Fatal error in get_shouts_with_links: {e}", exc_info=True)
+        logger.error(f"Фатальная ошибка в get_shouts_with_links: {e}", exc_info=True)
         raise
     finally:
         return shouts
