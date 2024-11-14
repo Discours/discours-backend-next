@@ -162,12 +162,16 @@ def query_with_stat(info):
             .group_by(Reaction.shout)
             .subquery()
         )
+        
         author_dict = info.context.get("author") if info.context else None
         author_id = author_dict.get("id") if author_dict else None
-        user_reaction_subquery = None
+        
         if author_id:
             user_reaction_subquery = (
-                select(Reaction.shout, Reaction.kind.label("my_rate"))
+                select(
+                    Reaction.shout.label("shout_id"),
+                    Reaction.kind.label("my_rate")
+                )
                 .where(
                     and_(
                         Reaction.created_by == author_id,
@@ -176,27 +180,40 @@ def query_with_stat(info):
                         Reaction.reply_to.is_(None),
                     )
                 )
+                .order_by(Reaction.created_at.desc())  # Берем последнюю реакцию
                 .distinct(Reaction.shout)
                 .subquery()
             )
 
-        q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
-        if user_reaction_subquery:
-            q = q.outerjoin(user_reaction_subquery, user_reaction_subquery.c.shout == Shout.id)
+            q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
+            q = q.outerjoin(user_reaction_subquery, user_reaction_subquery.c.shout_id == Shout.id)
 
-        # Добавляем поле my_rate в JSON
-        q = q.add_columns(
-            json_builder(
-                "comments_count",
-                stats_subquery.c.comments_count,
-                "rating",
-                stats_subquery.c.rating,
-                "last_reacted_at",
-                stats_subquery.c.last_reacted_at,
-                "my_rate",
-                user_reaction_subquery.c.my_rate if user_reaction_subquery else None,
-            ).label("stat")
-        )
+            q = q.add_columns(
+                json_builder(
+                    "comments_count",
+                    stats_subquery.c.comments_count,
+                    "rating",
+                    stats_subquery.c.rating,
+                    "last_reacted_at",
+                    stats_subquery.c.last_reacted_at,
+                    "my_rate",
+                    user_reaction_subquery.c.my_rate
+                ).label("stat")
+            )
+        else:
+            q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
+            q = q.add_columns(
+                json_builder(
+                    "comments_count",
+                    stats_subquery.c.comments_count,
+                    "rating",
+                    stats_subquery.c.rating,
+                    "last_reacted_at",
+                    stats_subquery.c.last_reacted_at,
+                    "my_rate",
+                    None
+                ).label("stat")
+            )
 
     return q
 
