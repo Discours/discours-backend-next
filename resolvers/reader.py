@@ -141,6 +141,7 @@ def query_with_stat(info):
         q = q.add_columns(authors_subquery.c.authors)
 
     if has_field(info, "stat"):
+        logger.info("Building stat query...")
         stats_subquery = (
             select(
                 Reaction.shout,
@@ -165,8 +166,10 @@ def query_with_stat(info):
         
         author_dict = info.context.get("author") if info.context else None
         author_id = author_dict.get("id") if author_dict else None
+        logger.info(f"Current author_id: {author_id}")
         
         if author_id:
+            logger.info(f"Building user reaction query for author {author_id}")
             user_reaction_subquery = (
                 select(
                     Reaction.shout.label("shout_id"),
@@ -180,20 +183,22 @@ def query_with_stat(info):
                         Reaction.reply_to.is_(None),
                     )
                 )
-                .order_by(Reaction.created_at.desc())  # Берем последнюю реакцию
+                .order_by(Reaction.created_at.desc())
                 .distinct(Reaction.shout)
                 .subquery()
             )
 
+            logger.info("Joining stats and user reaction subqueries")
             q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
             q = q.outerjoin(user_reaction_subquery, user_reaction_subquery.c.shout_id == Shout.id)
 
+            logger.info("Building final query with user reactions")
             q = q.add_columns(
                 json_builder(
                     "comments_count",
-                    stats_subquery.c.comments_count,
+                    func.coalesce(stats_subquery.c.comments_count, 0),
                     "rating",
-                    stats_subquery.c.rating,
+                    func.coalesce(stats_subquery.c.rating, 0),
                     "last_reacted_at",
                     stats_subquery.c.last_reacted_at,
                     "my_rate",
@@ -201,13 +206,14 @@ def query_with_stat(info):
                 ).label("stat")
             )
         else:
+            logger.info("No author found, building query without user reactions")
             q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
             q = q.add_columns(
                 json_builder(
                     "comments_count",
-                    stats_subquery.c.comments_count,
+                    func.coalesce(stats_subquery.c.comments_count, 0),
                     "rating",
-                    stats_subquery.c.rating,
+                    func.coalesce(stats_subquery.c.rating, 0),
                     "last_reacted_at",
                     stats_subquery.c.last_reacted_at,
                     "my_rate",
