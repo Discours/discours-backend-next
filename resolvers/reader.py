@@ -174,6 +174,7 @@ def query_with_stat(info):
         logger.info("Подзапрос статистики построен")
 
         # Извлечение author_id из контекста
+        logger.info(f"info.context: {info.context}")
         author_dict = info.context.get("author") if info.context else None
         author_id = author_dict.get("id") if author_dict else None
         logger.info(f"Полученный author_id: {author_id}")
@@ -267,7 +268,8 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                     if hasattr(row, "Shout"):
                         shout = row.Shout
                     else:
-                        logger.warning(f"Строка {idx} не содержит атрибута 'Shout': {row}")
+                        if not row == 'stat':
+                            logger.warning(f"Строка {idx} не содержит атрибута 'Shout': {row}")
                         continue
 
                     if shout:
@@ -354,6 +356,7 @@ def apply_filters(q, filters):
 
 
 @query.field("get_shout")
+@login_accepted
 async def get_shout(_, info: GraphQLResolveInfo, slug="", shout_id=0):
     """
     Получение публикации по slug или id.
@@ -423,6 +426,7 @@ async def load_shouts_by(_, info: GraphQLResolveInfo, options):
 
 
 @query.field("load_shouts_search")
+@login_accepted
 async def load_shouts_search(_, info, text, options):
     """
     Поиск публикаций по тексту.
