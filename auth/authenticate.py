@@ -84,8 +84,8 @@ def login_accepted(func):
 
         # Если есть авторизация, добавляем данные автора в контекст
         if auth and auth.logged_in:
-            # Существующие данные auth остаются
-            pass
+            info.context["author"] = auth.author
+            info.context["user_id"] = auth.author.get("id")
         else:
             # Очищаем данные автора из контекста если авторизация отсутствует
             info.context["author"] = None

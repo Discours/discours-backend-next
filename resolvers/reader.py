@@ -1,6 +1,7 @@
 import json
 import time
 
+from graphql import GraphQLResolveInfo
 from sqlalchemy import nulls_last, text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import and_, asc, case, desc, func, select
@@ -353,7 +354,7 @@ def apply_filters(q, filters):
 
 
 @query.field("get_shout")
-async def get_shout(_, info, slug="", shout_id=0):
+async def get_shout(_, info: GraphQLResolveInfo, slug="", shout_id=0):
     """
     Получение публикации по slug или id.
 
@@ -404,7 +405,7 @@ def apply_sorting(q, options):
 
 @query.field("load_shouts_by")
 @login_accepted
-async def load_shouts_by(_, info, options):
+async def load_shouts_by(_, info: GraphQLResolveInfo, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
 
