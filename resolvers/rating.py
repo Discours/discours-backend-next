@@ -52,25 +52,30 @@ async def get_my_rates_shouts(_, info, shouts):
     if not author_id:
         return {"error": "Author not found"}
 
-    # Подзапрос для реакций текущего пользователя
-    rated_query = (
-        select(Reaction.shout.label("shout_id"), Reaction.kind.label("my_rate"))
-        .where(
-            and_(
-                Reaction.shout.in_(shouts),
-                Reaction.reply_to.is_(None),
-                Reaction.created_by == author_id,
-                Reaction.deleted_at.is_(None),
-                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
-            )
-        )
-        .order_by(Reaction.shout, Reaction.created_at.desc())
-        .distinct(Reaction.shout)
-        .subquery()
-    )
     with local_session() as session:
-        shouts_result = session.execute(rated_query).all()
-        return [{"shout_id": row.shout_id, "my_rate": row.my_rate} for row in shouts_result]
+        # Используем прямой запрос без подзапросов
+        result = session.execute(
+            select([
+                Reaction.shout.label("shout_id"),
+                Reaction.kind.label("my_rate")
+            ]).where(
+                and_(
+                    Reaction.shout.in_(shouts),
+                    Reaction.reply_to.is_(None),
+                    Reaction.created_by == author_id,
+                    Reaction.deleted_at.is_(None),
+                    Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
+                )
+            ).order_by(
+                Reaction.shout,
+                Reaction.created_at.desc()
+            ).distinct(Reaction.shout)
+        ).all()
+
+        return [
+            {"shout_id": row.shout_id, "my_rate": row.my_rate}
+            for row in result
+        ]
 
 
 @mutation.field("rate_author")
