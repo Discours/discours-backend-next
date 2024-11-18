@@ -145,8 +145,6 @@ def query_with_stat(info):
         q = q.add_columns(authors_subquery.c.authors)
 
     if has_field(info, "stat"):
-        logger.info("Начало построения запроса статистики")
-
         # Подзапрос для статистики реакций
         stats_subquery = (
             select(
@@ -169,46 +167,17 @@ def query_with_stat(info):
             .group_by(Reaction.shout)
             .subquery()
         )
-        logger.info("Подзапрос статистики построен")
-
-        # Извлечение author_id из контекста
-        logger.info(f"info.context: {info.context}")
-        author_dict = info.context.get("author") if info.context else None
-        author_id = author_dict.get("id") if author_dict else None
-        logger.info(f"Полученный author_id: {author_id}")
-
-        if author_id:
-            logger.info(f"Построение подзапроса реакций пользователя с ID: {author_id}")
-
-            logger.info("Соединение основного запроса с подзапросом статистики")
-            q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
-
-            logger.info("Добавление колонок статистики в основной запрос")
-            q = q.add_columns(
-                json_builder(
-                    "comments_count",
-                    func.coalesce(stats_subquery.c.comments_count, 0),
-                    "rating",
-                    func.coalesce(stats_subquery.c.rating, 0),
-                    "last_reacted_at",
-                    stats_subquery.c.last_reacted_at,
-                ).label("stat")
-            )
-            logger.info("Колонки статистики добавлены")
-        else:
-            logger.info("Автор не найден, строим запрос без подзапроса реакций пользователя")
-            q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
-            q = q.add_columns(
-                json_builder(
-                    "comments_count",
-                    func.coalesce(stats_subquery.c.comments_count, 0),
-                    "rating",
-                    func.coalesce(stats_subquery.c.rating, 0),
-                    "last_reacted_at",
-                    None,
-                ).label("stat")
-            )
-            logger.info("Колонки статистики без my_rate добавлены")
+        q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
+        q = q.add_columns(
+            json_builder(
+                "comments_count",
+                func.coalesce(stats_subquery.c.comments_count, 0),
+                "rating",
+                func.coalesce(stats_subquery.c.rating, 0),
+                "last_reacted_at",
+                None,
+            ).label("stat")
+        )
 
     return q
 
