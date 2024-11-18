@@ -51,17 +51,15 @@ async def get_my_rates_shouts(_, info, shouts):
     author_dict = info.context.get("author") if info.context else None
     author_id = author_dict.get("id") if author_dict else None
     
-    # Возвращаем пустой список вместо None/error
     if not author_id:
         return []
 
     with local_session() as session:
         try:
-            result = session.execute(
-                select([
-                    Reaction.shout.label("shout_id"),
-                    Reaction.kind.label("my_rate")
-                ]).where(
+            stmt = (
+                select(
+                    Reaction
+                ).where(
                     and_(
                         Reaction.shout.in_(shouts),
                         Reaction.reply_to.is_(None),
@@ -73,14 +71,18 @@ async def get_my_rates_shouts(_, info, shouts):
                     Reaction.shout,
                     Reaction.created_at.desc()
                 ).distinct(Reaction.shout)
-            ).all()
+            )
+            
+            result = session.execute(stmt).all()
 
             return [
-                {"shout_id": row.shout_id, "my_rate": row.my_rate}
+                {
+                    "shout_id": row[0].shout,  # Получаем shout_id из объекта Reaction
+                    "my_rate": row[0].kind      # Получаем kind (my_rate) из объекта Reaction
+                }
                 for row in result
             ]
         except Exception as e:
-            # В случае ошибки тоже возвращаем пустой список
             logger.error(f"Error in get_my_rates_shouts: {e}")
             return []
 
