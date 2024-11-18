@@ -22,7 +22,7 @@ def get_my_rates_comments(info, comments: list[int], shout: int) -> list[dict]:
 
     # Подзапрос для реакций текущего пользователя
     rated_query = (
-        select(Reaction.shout.label("shout_id"), Reaction.kind.label("my_rate"))
+        select(Reaction.id.label("comment_id"), Reaction.kind.label("my_rate"))
         .where(
             and_(
                 Reaction.shout == shout,
@@ -38,7 +38,7 @@ def get_my_rates_comments(info, comments: list[int], shout: int) -> list[dict]:
     )
     with local_session() as session:
         comments_result = session.execute(rated_query).all()
-        return [{"comment_id": row.shout_id, "my_rate": row.my_rate} for row in comments_result]
+        return [{"comment_id": row.comment_id, "my_rate": row.my_rate} for row in comments_result]
 
 
 @query.field("get_my_rates_shouts")
