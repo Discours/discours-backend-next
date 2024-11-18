@@ -112,7 +112,6 @@ type Stat {
   viewed: Int
   # followed: Int
   last_reacted_at: Int
-  my_rate: ReactionKind
 }
 
 type CommunityStat {
@@ -234,3 +233,15 @@ type NotificationsResult {
   total: Int!
   error: String
 }
+
+type MyRateShout {
+  shout_id: Int!
+  my_rate: ReactionKind
+}
+
+type MyRateComment {
+  shout_id: Int
+  comment_id: Int!
+  my_rate: ReactionKind
+}
+

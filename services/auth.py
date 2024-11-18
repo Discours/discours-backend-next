@@ -106,11 +106,11 @@ def login_accepted(f):
     async def decorated_function(*args, **kwargs):
         info = args[1]
         req = info.context.get("request")
-        
+
         logger.debug("login_accepted: Проверка авторизации пользователя.")
         user_id, user_roles = await check_auth(req)
         logger.debug(f"login_accepted: user_id={user_id}, user_roles={user_roles}")
-        
+
         if user_id and user_roles:
             logger.info(f"login_accepted: Пользователь авторизован: {user_id} с ролями {user_roles}")
             info.context["user_id"] = user_id.strip()
@@ -123,7 +123,9 @@ def login_accepted(f):
                 # Предполагается, что `author` является объектом с атрибутом `id`
                 info.context["author"] = author.dict()
             else:
-                logger.error(f"login_accepted: Профиль автора не найден для пользователя {user_id}. Используем базовые данные.")# Используем базовую информацию об автор
+                logger.error(
+                    f"login_accepted: Профиль автора не найден для пользователя {user_id}. Используем базовые данные."
+                )  # Используем базовую информацию об автор
         else:
             logger.debug("login_accepted: Пользователь не авторизован. Очищаем контекст.")
             info.context["user_id"] = None
@@ -131,4 +133,5 @@ def login_accepted(f):
             info.context["author"] = None
 
         return await f(*args, **kwargs)
+
     return decorated_function

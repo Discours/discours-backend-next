@@ -25,7 +25,7 @@ from resolvers.notifier import (
     notifications_seen_after,
     notifications_seen_thread,
 )
-from resolvers.rating import rate_author
+from resolvers.rating import get_my_rates_comments, get_my_rates_shouts, rate_author
 from resolvers.reaction import (
     create_reaction,
     delete_reaction,
@@ -63,7 +63,6 @@ __all__ = [
     "get_author_follows_authors",
     "get_authors_all",
     "load_authors_by",
-    "rate_author",
     "update_author",
     ## "search_authors",
     # community
@@ -110,4 +109,8 @@ __all__ = [
     "notifications_seen_thread",
     "notifications_seen_after",
     "notification_mark_seen",
+    # rating
+    "rate_author",
+    "get_my_rates_comments",
+    "get_my_rates_shouts",
 ]

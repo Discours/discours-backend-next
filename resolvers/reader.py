@@ -146,7 +146,7 @@ def query_with_stat(info):
 
     if has_field(info, "stat"):
         logger.info("Начало построения запроса статистики")
-        
+
         # Подзапрос для статистики реакций
         stats_subquery = (
             select(
@@ -163,9 +163,7 @@ def query_with_stat(info):
                 )
                 .filter(Reaction.reply_to.is_(None))
                 .label("rating"),
-                func.max(Reaction.created_at)
-                .filter(Reaction.reply_to.is_(None))
-                .label("last_reacted_at"),
+                func.max(Reaction.created_at).filter(Reaction.reply_to.is_(None)).label("last_reacted_at"),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
@@ -182,30 +180,8 @@ def query_with_stat(info):
         if author_id:
             logger.info(f"Построение подзапроса реакций пользователя с ID: {author_id}")
 
-            # Подзапрос для реакций текущего пользователя
-            user_reaction_subquery = (
-                select(
-                    Reaction.shout.label("shout_id"),
-                    Reaction.kind.label("my_rate")
-                )
-                .where(
-                    and_(
-                        Reaction.created_by == author_id,
-                        Reaction.deleted_at.is_(None),
-                        Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
-                        Reaction.reply_to.is_(None),
-                    )
-                )
-                .order_by(Reaction.shout, Reaction.created_at.desc())
-                .distinct(Reaction.shout)
-                .subquery()
-            )
-            logger.info("Подзапрос реакций пользователя построен")
-
             logger.info("Соединение основного запроса с подзапросом статистики")
             q = q.outerjoin(stats_subquery, stats_subquery.c.shout == Shout.id)
-            logger.info("Соединение основного запроса с подзапросом реакций пользователя")
-            q = q.outerjoin(user_reaction_subquery, user_reaction_subquery.c.shout_id == Shout.id)
 
             logger.info("Добавление колонок статистики в основной запрос")
             q = q.add_columns(
@@ -216,8 +192,6 @@ def query_with_stat(info):
                     func.coalesce(stats_subquery.c.rating, 0),
                     "last_reacted_at",
                     stats_subquery.c.last_reacted_at,
-                    "my_rate",
-                    user_reaction_subquery.c.my_rate
                 ).label("stat")
             )
             logger.info("Колонки статистики добавлены")
@@ -233,7 +207,7 @@ def query_with_stat(info):
                     "last_reacted_at",
                     stats_subquery.c.last_reacted_at,
                     "my_rate",
-                    None
+                    None,
                 ).label("stat")
             )
             logger.info("Колонки статистики без my_rate добавлены")
@@ -263,19 +237,19 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
             for idx, row in enumerate(shouts_result):
                 try:
                     logger.debug(f"Обработка строки {idx}")
-                    
+
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
                     else:
-                        if not row == 'stat':
+                        if not row == "stat":
                             logger.warning(f"Строка {idx} не содержит атрибута 'Shout': {row}")
                         continue
 
                     if shout:
                         shout_id = int(f"{shout.id}")
                         shout_dict = shout.dict()
-                        
+
                         if has_field(info, "created_by") and shout_dict.get("created_by"):
                             main_author_id = shout_dict.get("created_by")
                             a = session.query(Author).filter(Author.id == main_author_id).first()
@@ -285,7 +259,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 "slug": a.slug,
                                 "pic": a.pic,
                             }
-                        
+
                         if hasattr(row, "stat"):
                             logger.debug(f"Строка {idx} - stat: {row.stat}")
                             stat = {}
@@ -299,7 +273,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
                         else:
                             logger.warning(f"Строка {idx} не содержит атрибута 'stat'")
-                        
+
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
                             shout_dict["main_topic"] = (
                                 json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
@@ -407,7 +381,6 @@ def apply_sorting(q, options):
 
 
 @query.field("load_shouts_by")
-@login_accepted
 async def load_shouts_by(_, info: GraphQLResolveInfo, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
@@ -426,7 +399,6 @@ async def load_shouts_by(_, info: GraphQLResolveInfo, options):
 
 
 @query.field("load_shouts_search")
-@login_accepted
 async def load_shouts_search(_, info, text, options):
     """
     Поиск публикаций по тексту.
@@ -488,29 +460,17 @@ async def load_shouts_unrated(_, info, options):
         .scalar_subquery()
     )
 
-    q = (
-        select(Shout)
-        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-    )
+    q = select(Shout).where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
     q = q.join(Author, Author.id == Shout.created_by)
     q = q.add_columns(
-        json_builder(
-            "id", Author.id, 
-            "name", Author.name, 
-            "slug", Author.slug, 
-            "pic", Author.pic
-        ).label("main_author")
+        json_builder("id", Author.id, "name", Author.name, "slug", Author.slug, "pic", Author.pic).label("main_author")
     )
     q = q.join(ShoutTopic, and_(ShoutTopic.shout == Shout.id, ShoutTopic.main.is_(True)))
     q = q.join(Topic, Topic.id == ShoutTopic.topic)
-    q = q.add_columns(
-        json_builder(
-            "id", Topic.id, "title", Topic.title, "slug", Topic.slug
-        ).label("main_topic")
-    )
+    q = q.add_columns(json_builder("id", Topic.id, "title", Topic.title, "slug", Topic.slug).label("main_topic"))
     q = q.where(Shout.id.not_in(rated_shouts))
     q = q.order_by(func.random())
-    
+
     limit = options.get("limit", 5)
     offset = options.get("offset", 0)
     return get_shouts_with_links(info, q, limit, offset)

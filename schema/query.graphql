@@ -32,6 +32,10 @@ type Query {
   load_shouts_search(text: String!, options: LoadShoutsOptions): [SearchResult]
   load_shouts_bookmarked(options: LoadShoutsOptions): [Shout]
 
+  # rating
+  get_my_rates_shouts(shouts: [Int!]!): [MyRateShout]
+  get_my_rates_comments(comments: [Int!]!, shout: Int!): [MyRateComment]
+
   # public feeds  
   load_shouts_with_topic(slug: String, options: LoadShoutsOptions): [Shout] # topic feed
   load_shouts_random_top(options: LoadShoutsOptions): [Shout] # random order, fixed filter, limit offset can be used

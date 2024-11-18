@@ -6,7 +6,71 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
-from services.schema import mutation
+from services.schema import mutation, query
+
+
+@query.field("get_my_rates_comments")
+@login_required
+def get_my_rates_comments(info, comments: list[int], shout: int) -> list[dict]:
+    """
+    Получение реакций пользователя на комментарии
+    """
+    author_dict = info.context.get("author") if info.context else None
+    author_id = author_dict.get("id") if author_dict else None
+    if not author_id:
+        return {"error": "Author not found"}
+
+    # Подзапрос для реакций текущего пользователя
+    rated_query = (
+        select(Reaction.shout.label("shout_id"), Reaction.kind.label("my_rate"))
+        .where(
+            and_(
+                Reaction.shout == shout,
+                Reaction.reply_to.in_(comments),
+                Reaction.created_by == author_id,
+                Reaction.deleted_at.is_(None),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+            )
+        )
+        .order_by(Reaction.shout, Reaction.created_at.desc())
+        .distinct(Reaction.shout)
+        .subquery()
+    )
+    with local_session() as session:
+        comments_result = session.execute(rated_query).all()
+        return [{"comment_id": row.shout_id, "my_rate": row.my_rate} for row in comments_result]
+
+
+@query.field("get_my_rates_shouts")
+@login_required
+def get_my_rates_shouts(info, shouts):
+    """
+    Получение реакций пользователя на публикации
+    """
+    author_dict = info.context.get("author") if info.context else None
+    author_id = author_dict.get("id") if author_dict else None
+    if not author_id:
+        return {"error": "Author not found"}
+
+    # Подзапрос для реакций текущего пользователя
+    rated_query = (
+        select(Reaction.shout.label("shout_id"), Reaction.kind.label("my_rate"))
+        .where(
+            and_(
+                Reaction.shout.in_(shouts),
+                Reaction.reply_to.is_(None),
+                Reaction.created_by == author_id,
+                Reaction.deleted_at.is_(None),
+                Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
+            )
+        )
+        .order_by(Reaction.shout, Reaction.created_at.desc())
+        .distinct(Reaction.shout)
+        .subquery()
+    )
+    with local_session() as session:
+        shouts_result = session.execute(rated_query).all()
+        return [{"shout_id": row.shout_id, "my_rate": row.my_rate} for row in shouts_result]
 
 
 @mutation.field("rate_author")
