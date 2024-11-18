@@ -205,8 +205,6 @@ def query_with_stat(info):
                     "rating",
                     func.coalesce(stats_subquery.c.rating, 0),
                     "last_reacted_at",
-                    stats_subquery.c.last_reacted_at,
-                    "my_rate",
                     None,
                 ).label("stat")
             )
@@ -261,7 +259,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             }
 
                         if hasattr(row, "stat"):
-                            logger.debug(f"Строка {idx} - stat: {row.stat}")
                             stat = {}
                             if isinstance(row.stat, str):
                                 stat = json.loads(row.stat)
