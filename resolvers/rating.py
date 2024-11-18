@@ -7,6 +7,7 @@ from orm.shout import Shout
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
+from utils.logger import root_logger as logger
 
 
 @query.field("get_my_rates_comments")
@@ -49,33 +50,39 @@ async def get_my_rates_shouts(_, info, shouts):
     """
     author_dict = info.context.get("author") if info.context else None
     author_id = author_dict.get("id") if author_dict else None
+    
+    # Возвращаем пустой список вместо None/error
     if not author_id:
-        return {"error": "Author not found"}
+        return []
 
     with local_session() as session:
-        # Используем прямой запрос без подзапросов
-        result = session.execute(
-            select([
-                Reaction.shout.label("shout_id"),
-                Reaction.kind.label("my_rate")
-            ]).where(
-                and_(
-                    Reaction.shout.in_(shouts),
-                    Reaction.reply_to.is_(None),
-                    Reaction.created_by == author_id,
-                    Reaction.deleted_at.is_(None),
-                    Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
-                )
-            ).order_by(
-                Reaction.shout,
-                Reaction.created_at.desc()
-            ).distinct(Reaction.shout)
-        ).all()
+        try:
+            result = session.execute(
+                select([
+                    Reaction.shout.label("shout_id"),
+                    Reaction.kind.label("my_rate")
+                ]).where(
+                    and_(
+                        Reaction.shout.in_(shouts),
+                        Reaction.reply_to.is_(None),
+                        Reaction.created_by == author_id,
+                        Reaction.deleted_at.is_(None),
+                        Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
+                    )
+                ).order_by(
+                    Reaction.shout,
+                    Reaction.created_at.desc()
+                ).distinct(Reaction.shout)
+            ).all()
 
-        return [
-            {"shout_id": row.shout_id, "my_rate": row.my_rate}
-            for row in result
-        ]
+            return [
+                {"shout_id": row.shout_id, "my_rate": row.my_rate}
+                for row in result
+            ]
+        except Exception as e:
+            # В случае ошибки тоже возвращаем пустой список
+            logger.error(f"Error in get_my_rates_shouts: {e}")
+            return []
 
 
 @mutation.field("rate_author")

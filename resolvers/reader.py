@@ -239,11 +239,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
-                    else:
-                        if not row == "stat":
-                            logger.warning(f"Строка {idx} не содержит атрибута 'Shout': {row}")
-                        continue
-
                     if shout:
                         shout_id = int(f"{shout.id}")
                         shout_dict = shout.dict()
@@ -268,8 +263,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 logger.warning(f"Строка {idx} - неизвестный тип stat: {type(row.stat)}")
                             viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
                             shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
-                        else:
-                            logger.warning(f"Строка {idx} не содержит атрибута 'stat'")
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
                             shout_dict["main_topic"] = (
