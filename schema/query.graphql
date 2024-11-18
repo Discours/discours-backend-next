@@ -34,7 +34,7 @@ type Query {
 
   # rating
   get_my_rates_shouts(shouts: [Int!]!): [MyRateShout]
-  get_my_rates_comments(comments: [Int!]!, shout: Int!): [MyRateComment]
+  get_my_rates_comments(comments: [Int!]!): [MyRateComment]
 
   # public feeds  
   load_shouts_with_topic(slug: String, options: LoadShoutsOptions): [Shout] # topic feed

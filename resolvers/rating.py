@@ -12,7 +12,7 @@ from utils.logger import root_logger as logger
 
 @query.field("get_my_rates_comments")
 @login_required
-async def get_my_rates_comments(_, info, comments: list[int], shout: int) -> list[dict]:
+async def get_my_rates_comments(_, info, comments: list[int]) -> list[dict]:
     """
     Получение реакций пользователя на комментарии
     """
@@ -26,7 +26,6 @@ async def get_my_rates_comments(_, info, comments: list[int], shout: int) -> lis
         select(Reaction.id.label("comment_id"), Reaction.kind.label("my_rate"))
         .where(
             and_(
-                Reaction.shout == shout,
                 Reaction.reply_to.in_(comments),
                 Reaction.created_by == author_id,
                 Reaction.deleted_at.is_(None),
