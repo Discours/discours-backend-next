@@ -234,8 +234,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
 
             for idx, row in enumerate(shouts_result):
                 try:
-                    logger.debug(f"Обработка строки {idx}")
-
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
