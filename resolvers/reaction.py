@@ -468,7 +468,7 @@ def apply_reaction_filters(by, q):
 
 
 @query.field("load_reactions_by")
-async def load_reactions_by(_, info, by, limit=50, offset=0):
+async def load_reactions_by(_, _info, by, limit=50, offset=0):
     """
     Load reactions based on specified parameters.
 

@@ -11,7 +11,7 @@ from services.schema import mutation, query
 
 @query.field("get_my_rates_comments")
 @login_required
-def get_my_rates_comments(info, comments: list[int], shout: int) -> list[dict]:
+def get_my_rates_comments(_, info, comments: list[int], shout: int) -> list[dict]:
     """
     Получение реакций пользователя на комментарии
     """
@@ -43,7 +43,7 @@ def get_my_rates_comments(info, comments: list[int], shout: int) -> list[dict]:
 
 @query.field("get_my_rates_shouts")
 @login_required
-def get_my_rates_shouts(info, shouts):
+def get_my_rates_shouts(_,info, shouts):
     """
     Получение реакций пользователя на публикации
     """
