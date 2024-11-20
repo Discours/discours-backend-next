@@ -1,3 +1,20 @@
+#### [0.4.7]
+- `get_my_rates_shouts` resolver added with:
+  - `shout_id` and `my_rate` fields in response
+  - filters by `Reaction.deleted_at.is_(None)`
+  - filters by `Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])`
+  - filters by `Reaction.reply_to.is_(None)`
+  - uses `local_session()` context manager
+  - returns empty list on errors
+- SQLAlchemy syntax updated:
+  - `select()` statement fixed for newer versions
+  - `Reaction` model direct selection instead of labeled columns
+  - proper row access with `row[0].shout` and `row[0].kind`
+- GraphQL resolver fixes:
+  - added root parameter `_` to match schema
+  - proper async/await handling with `@login_required`
+  - error logging added via `logger.error()`
+
 #### [0.4.6]
 - login_accepted decorator added
 - `docs` added
