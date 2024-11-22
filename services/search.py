@@ -111,9 +111,12 @@ class SearchService:
             logger.warning("env var ELASTIC_HOST is not set")
 
     async def info(self):
-        if isinstance(self.client, OpenSearch):
-            logger.info("Поиск подключен")
-            get_indices_stats()
+        try:
+            return get_indices_stats()
+        except ConnectionError as e:
+            logger.error(f"Failed to connect to OpenSearch: {e}")
+            # Возможно стоит добавить fallback поведение
+            return
 
     def delete_index(self):
         if self.client:
@@ -216,3 +219,6 @@ async def search_text(text: str, limit: int = 50, offset: int = 0):
         # Использование метода search_post из OpenSearchService
         payload = await search_service.search(text, limit, offset)
     return payload
+
+# Проверить что URL корректный
+OPENSEARCH_URL = os.getenv('OPENSEARCH_URL', 'rc1a-3n5pi3bhuj9gieel.mdb.yandexcloud.net')
