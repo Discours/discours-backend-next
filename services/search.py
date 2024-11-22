@@ -54,6 +54,9 @@ expected_mapping = index_settings["mappings"]
 # Создание цикла событий
 search_loop = asyncio.get_event_loop()
 
+# В начале файла добавим флаг
+SEARCH_ENABLED = bool(os.environ.get("ELASTIC_HOST", ""))
+
 
 def get_indices_stats():
     indices_stats = search_service.client.cat.indices(format="json")
@@ -87,8 +90,8 @@ class SearchService:
         self.client = None
         self.lock = asyncio.Lock()
 
-        # Инициализация клиента OpenSearch
-        if ELASTIC_HOST:
+        # Инициализация клиента OpenSearch только если поиск включен
+        if SEARCH_ENABLED:
             try:
                 self.client = OpenSearch(
                     hosts=[{"host": ELASTIC_HOST, "port": ELASTIC_PORT}],
@@ -98,25 +101,24 @@ class SearchService:
                     verify_certs=False,
                     ssl_assert_hostname=False,
                     ssl_show_warn=False,
-                    # ca_certs = ca_certs_path
                 )
                 logger.info("Клиент OpenSearch.org подключен")
-
-                # Создание задачи и запуск в цикле событий
                 search_loop.create_task(self.check_index())
             except Exception as exc:
-                logger.error(f"Ошибка подключения к OpenSearch: {exc}")
+                logger.warning(f"Поиск отключен из-за ошибки подключения: {exc}")
                 self.client = None
         else:
-            logger.warning("env var ELASTIC_HOST is not set")
+            logger.info("Поиск отключен (ELASTIC_HOST не установлен)")
 
     async def info(self):
+        if not SEARCH_ENABLED:
+            return {"status": "disabled"}
+            
         try:
             return get_indices_stats()
-        except ConnectionError as e:
-            logger.error(f"Failed to connect to OpenSearch: {e}")
-            # Возможно стоит добавить fallback поведение
-            return
+        except Exception as e:
+            logger.error(f"Failed to get search info: {e}")
+            return {"status": "error", "message": str(e)}
 
     def delete_index(self):
         if self.client:
@@ -154,6 +156,9 @@ class SearchService:
             logger.error("клиент не инициализован, невозможно проверить индекс")
 
     def index(self, shout):
+        if not SEARCH_ENABLED:
+            return
+            
         if self.client:
             logger.info(f"Индексируем пост {shout.id}")
             index_body = {
@@ -164,8 +169,6 @@ class SearchService:
                 "media": shout.media,
             }
             asyncio.create_task(self.perform_index(shout, index_body))
-        else:
-            logger.error("клиент не инициализован, невозможно проидексировать")
 
     async def perform_index(self, shout, index_body):
         if self.client:
@@ -179,6 +182,9 @@ class SearchService:
                 logger.error(f"Indexing error for shout {shout.id}: {e}")
 
     async def search(self, text, limit, offset):
+        if not SEARCH_ENABLED:
+            return []
+            
         logger.info(f"Ищем: {text} {offset}+{limit}")
         search_body = {
             "query": {"multi_match": {"query": text, "fields": ["title", "lead", "subtitle", "body", "media"]}}
