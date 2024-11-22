@@ -176,6 +176,8 @@ async def unfollow(_, info, what, slug="", entity_id=0):
                 if what == "AUTHOR":
                     logger.debug("Отправка уведомления автору об отписке")
                     await notify_follower(follower=follower_dict, author_id=entity_id, action="unfollow")
+            else:
+                return {"error": "following was not found", f"{entity_type}s": follows}
 
     except Exception as exc:
         logger.exception("Произошла ошибка в функции 'unfollow'")
