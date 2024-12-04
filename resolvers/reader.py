@@ -177,8 +177,7 @@ def query_with_stat(info):
                 "rating",
                 func.coalesce(stats_subquery.c.rating, 0),
                 "last_commented_at",
-                func.coalesce(stats_subquery.c.last_commented_at, 0),
-                None,
+                func.coalesce(stats_subquery.c.last_commented_at, 0)
             ).label("stat")
         )
 
