@@ -14,7 +14,7 @@ enum ReactionSort {
 }
 
 enum ShoutsOrderBy {
-  last_reacted_at
+  last_commented_at
   rating
   comments_count
 }

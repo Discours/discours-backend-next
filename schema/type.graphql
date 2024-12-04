@@ -110,8 +110,7 @@ type Stat {
   rating: Int
   commented: Int
   viewed: Int
-  # followed: Int
-  last_reacted_at: Int
+  last_commented_at: Int
 }
 
 type CommunityStat {

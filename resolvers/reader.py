@@ -161,7 +161,9 @@ def query_with_stat(info):
                 )
                 .filter(Reaction.reply_to.is_(None))
                 .label("rating"),
-                func.max(Reaction.created_at).filter(Reaction.reply_to.is_(None)).label("last_reacted_at"),
+                func.max(Reaction.created_at).filter(Reaction.kind == ReactionKind.COMMENT.value).label(
+                    "last_commented_at"
+                ),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
@@ -174,7 +176,8 @@ def query_with_stat(info):
                 func.coalesce(stats_subquery.c.comments_count, 0),
                 "rating",
                 func.coalesce(stats_subquery.c.rating, 0),
-                "last_reacted_at",
+                "last_commented_at",
+                func.coalesce(stats_subquery.c.last_commented_at, 0),
                 None,
             ).label("stat")
         )
@@ -326,7 +329,7 @@ def apply_sorting(q, options):
     Применение сортировки с сохранением порядка
     """
     order_str = options.get("order_by")
-    if order_str in ["rating", "comments_count", "last_reacted_at"]:
+    if order_str in ["rating", "comments_count", "last_commented_at"]:
         query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
         q = q.distinct(text(order_str), Shout.id).order_by(  # DISTINCT ON включает поле сортировки
             nulls_last(query_order_by), Shout.id
