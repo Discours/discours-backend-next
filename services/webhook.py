@@ -1,4 +1,5 @@
 import asyncio
+from asyncio.log import logger
 import os
 import re
 
@@ -12,6 +13,37 @@ from cache.cache import cache_author
 from orm.author import Author
 from resolvers.stat import get_with_stat
 from services.db import local_session
+from services.schema import request_graphql_data
+from settings import ADMIN_SECRET
+
+
+async def create_webhook_endpoint():
+    # TODO: add webhook to authorizer with graphql request
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-authorizer-admin-secret": ADMIN_SECRET,
+    }
+
+    # https://docs.authorizer.dev/core/graphql-api#_add_webhook
+    operation = "AddWebhook"
+    query_name = "_add_webhook"
+    variables = {
+        "params": {
+            "event_name": "user.login",
+            "endpoint": "https://core.dscrs.site/new-author",
+            "enabled": True,
+        }
+    }
+    gql = {
+        "query": f"query {operation}($params: AddWebhookRequest!)  {{"
+        + f"{query_name}(params: $params) {{ message }} "
+        + "}",
+        "variables": variables,
+        "operationName": operation,
+    }
+    result = await request_graphql_data(gql, headers=headers)
+    logger.info(result)
 
 
 class WebhookEndpoint(HTTPEndpoint):

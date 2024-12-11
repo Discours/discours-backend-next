@@ -4,30 +4,9 @@ import httpx
 
 from cache.cache import get_cached_author_by_user_id
 from resolvers.stat import get_with_stat
-from settings import ADMIN_SECRET, AUTH_URL
+from services.schema import request_graphql_data
+from settings import ADMIN_SECRET
 from utils.logger import root_logger as logger
-
-
-async def request_data(gql, headers=None):
-    if headers is None:
-        headers = {"Content-Type": "application/json"}
-    try:
-        # logger.debug(f"{AUTH_URL} {gql} {headers}")
-        async with httpx.AsyncClient() as client:
-            response = await client.post(AUTH_URL, json=gql, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                errors = data.get("errors")
-                if errors:
-                    logger.error(f"{AUTH_URL} response: {data}")
-                else:
-                    return data
-    except Exception as _e:
-        # Handling and logging exceptions during authentication check
-        import traceback
-
-        logger.error(f"request_data error: {traceback.format_exc()}")
-    return None
 
 
 async def check_auth(req):
@@ -48,7 +27,7 @@ async def check_auth(req):
             "variables": variables,
             "operationName": operation,
         }
-        data = await request_data(gql)
+        data = await request_graphql_data(gql)
         if data:
             logger.debug(data)
             user_data = data.get("data", {}).get(query_name, {}).get("claims", {})
@@ -71,7 +50,7 @@ async def add_user_role(user_id):
         "variables": variables,
         "operationName": operation,
     }
-    data = await request_data(gql, headers)
+    data = await request_graphql_data(gql, headers=headers)
     if data:
         user_id = data.get("data", {}).get(query_name, {}).get("id")
         return user_id
