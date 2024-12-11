@@ -1,7 +1,7 @@
 import asyncio
-from asyncio.log import logger
 import os
 import re
+from asyncio.log import logger
 
 from sqlalchemy import select
 from starlette.endpoints import HTTPEndpoint

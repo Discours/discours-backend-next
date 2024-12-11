@@ -1,11 +1,13 @@
 import asyncio
 import os
+import sys
 from importlib import import_module
 from os.path import exists
 
 from ariadne import load_schema_from_path, make_executable_schema
 from ariadne.asgi import GraphQL
 from starlette.applications import Starlette
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
@@ -123,3 +125,11 @@ app = Starlette(
 )
 
 app.add_middleware(ExceptionHandlerMiddleware)
+if "dev" in sys.argv:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["https://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )

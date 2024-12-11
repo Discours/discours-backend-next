@@ -250,7 +250,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     shout_input["slug"] = slug
                     logger.info(f"shout#{shout_id} slug patched")
-                
+
                 if filter(lambda x: x.id == author_id, [x for x in shout_by_id.authors]) or "editor" in roles:
                     logger.info(f"shout#{shout_id} is author or editor")
                     # topics patch

@@ -1,6 +1,7 @@
 from asyncio.log import logger
-from ariadne import MutationType, QueryType
+
 import httpx
+from ariadne import MutationType, QueryType
 
 from settings import AUTH_URL
 
@@ -10,6 +11,8 @@ resolvers = [query, mutation]
 
 
 async def request_graphql_data(gql, url=AUTH_URL, headers=None):
+    if not url:
+        return None
     if headers is None:
         headers = {"Content-Type": "application/json"}
     try:

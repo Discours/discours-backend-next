@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 from granian.constants import Interfaces
 from granian.log import LogLevels
 from granian.server import Granian
@@ -20,6 +23,9 @@ if __name__ == "__main__":
             backlog=2048,
         )
 
+        if "dev" in sys.argv:
+            logger.info("dev mode, building ssl context")
+            granian_instance.build_ssl_context(cert=Path("localhost.pem"), key=Path("localhost-key.pem"), password=None)
         granian_instance.serve()
     except Exception as error:
         logger.error(f"Granian error: {error}", exc_info=True)

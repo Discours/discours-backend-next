@@ -40,13 +40,16 @@ Backend service providing GraphQL API for content management system with reactio
 ### Setup
 
 
-Start API server with `dev` key:
+Start API server with `dev` keyword added and `mkcert` installed:
 
 ```shell
 mkdir .venv
 python3.12 -m venv .venv
 poetry env use .venv/bin/python3.12
 poetry update
+
+mkcert -install
+mkcert localhost
 poetry run server.py dev
 ```
 

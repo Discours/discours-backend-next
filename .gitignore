@@ -157,3 +157,6 @@ dokku_config
 *.db
 *.sqlite3
 views.json
+*.pem
+*.key
+*.crt

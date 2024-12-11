@@ -93,6 +93,7 @@ def login_required(f):
     Возвращает:
     - Обернутую функцию с добавленной проверкой авторизации.
     """
+
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         info = args[1]
@@ -124,6 +125,7 @@ def login_accepted(f):
     Возвращает:
     - Обернутую функцию с добавленной проверкой авторизации.
     """
+
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         info = args[1]
