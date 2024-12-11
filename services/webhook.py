@@ -30,7 +30,7 @@ async def check_webhook_existence() -> bool:
     variables = {"params": {}}
     # https://docs.authorizer.dev/core/graphql-api#_webhooks
     gql = {
-        "query": f"query {operation}($params: GetWebhooksRequest!)"
+        "query": f"query {operation}($params: PaginatedInput!)"
         + "{"
         + f"{query_name}(params: $params) {{ webhooks {{ id event_name endpoint }} }} "
         + "}",
@@ -68,7 +68,7 @@ async def create_webhook_endpoint():
         }
     }
     gql = {
-        "mutation": f"mutation {operation}($params: AddWebhookRequest!)"
+        "query": f"mutation {operation}($params: AddWebhookRequest!)"
         + "{"
         + f"{query_name}(params: $params) {{ message }} "
         + "}",
