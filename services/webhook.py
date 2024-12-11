@@ -17,7 +17,7 @@ from services.schema import request_graphql_data
 from settings import ADMIN_SECRET, WEBHOOK_SECRET
 
 
-async def check_webhook_existence() -> bool:
+async def check_webhook_existence():
     logger.info("check_webhook_existence called")
 
     headers = {
