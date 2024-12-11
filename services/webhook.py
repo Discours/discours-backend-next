@@ -18,7 +18,7 @@ from settings import ADMIN_SECRET
 
 
 async def create_webhook_endpoint():
-    # TODO: add webhook to authorizer with graphql request
+    logger.info("create_webhook_endpoint called")
 
     headers = {
         "Content-Type": "application/json",

@@ -28,7 +28,7 @@ from services.redis import redis
 from services.schema import resolvers
 from services.search import search_service
 from services.viewed import ViewedStorage
-from services.webhook import WebhookEndpoint
+from services.webhook import WebhookEndpoint, create_webhook_endpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
 
 import_module("resolvers")
@@ -80,7 +80,8 @@ async def lifespan(app):
             redis.connect(),
             precache_data(),
             ViewedStorage.init(),
-            search_service.info(),
+            create_webhook_endpoint(),
+            # search_service.info(),
             start(),
             revalidation_manager.start(),
         )
