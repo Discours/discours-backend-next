@@ -39,7 +39,7 @@ async def create_webhook_endpoint():
         }
     }
     gql = {
-        "query": f"query {operation}($params: AddWebhookRequest!)"
+        "query": f"mutation {operation}($params: AddWebhookRequest!)"
         + "{"
         + f"{query_name}(params: $params) {{ message }} "
         + "}",
