@@ -7,12 +7,8 @@ from typing import Dict
 
 # ga
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
-from google.analytics.data_v1beta.types import (
-    DateRange,
-    Dimension,
-    Metric,
-    RunReportRequest,
-)
+from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
+from google.analytics.data_v1beta.types import Filter as GAFilter
 
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
@@ -27,8 +23,8 @@ VIEWS_FILEPATH = "/dump/views.json"
 
 class ViewedStorage:
     lock = asyncio.Lock()
-    views_by_shout_slug = {}
-    views_by_shout_id = {}
+    precounted_by_slug = {}
+    views_by_shout = {}
     shouts_by_topic = {}
     shouts_by_author = {}
     views = None
@@ -84,15 +80,8 @@ class ViewedStorage:
 
             with open(viewfile_path, "r") as file:
                 precounted_views = json.load(file)
-                self.views_by_shout_slug.update(precounted_views)
+                self.precounted_by_slug.update(precounted_views)
                 logger.info(f" * {len(precounted_views)} shouts with views was loaded.")
-
-            # get shout_id by slug
-            with local_session() as session:
-                for slug, views_count in self.views_by_shout_slug.items():
-                    shout_id = session.query(Shout.id).filter(Shout.slug == slug).scalar()
-                    if isinstance(shout_id, int):
-                        self.views_by_shout_id.update({shout_id: views_count})
 
         except Exception as e:
             logger.error(f"precounted views loading error: {e}")
@@ -100,7 +89,7 @@ class ViewedStorage:
     # noinspection PyTypeChecker
     @staticmethod
     async def update_pages():
-        """Запрос всех страниц от Google Analytics, отсортированных по количеству просмотров"""
+        """Запрос всех страниц от Google Analytics, отсортрованных по количеству просмотров"""
         self = ViewedStorage
         logger.info(" ⎧ views update from Google Analytics ---")
         if self.running:
@@ -126,11 +115,11 @@ class ViewedStorage:
                                 if isinstance(row.dimension_values, list):
                                     page_path = row.dimension_values[0].value
                                     slug = page_path.split("discours.io/")[-1]
-                                    views_count = int(row.metric_values[0].value)
+                                    fresh_views = int(row.metric_values[0].value)
 
                                     # Обновление данных в хранилище
                                     self.views_by_shout[slug] = self.views_by_shout.get(slug, 0)
-                                    self.views_by_shout[slug] += views_count
+                                    self.views_by_shout[slug] += fresh_views
                                     self.update_topics(slug)
 
                                     # Запись путей страниц для логирования
@@ -148,12 +137,17 @@ class ViewedStorage:
     def get_shout(shout_slug="", shout_id=0) -> int:
         """Получение метрики просмотров shout по slug или id."""
         self = ViewedStorage
-        return self.views_by_shout_slug.get(shout_slug, self.views_by_shout_id.get(shout_id, 0))
+        fresh_views = self.views_by_shout.get(shout_slug, 0)
+        precounted_views = self.precounted_by_slug.get(shout_slug, 0)
+        return fresh_views + precounted_views
 
     @staticmethod
     def get_shout_media(shout_slug) -> Dict[str, int]:
         """Получение метрики воспроизведения shout по slug."""
         self = ViewedStorage
+
+        # TODO: get media plays from Google Analytics
+
         return self.views_by_shout.get(shout_slug, 0)
 
     @staticmethod
@@ -173,7 +167,7 @@ class ViewedStorage:
         """Обновление счетчиков темы по slug shout"""
         self = ViewedStorage
         with local_session() as session:
-            # Определение вспомогательной функции для избежания повторения кода
+            # Определение вспомогательной функции для избежа��ия повторения кода
             def update_groups(dictionary, key, value):
                 dictionary[key] = list(set(dictionary.get(key, []) + [value]))
 
@@ -222,3 +216,50 @@ class ViewedStorage:
             else:
                 await asyncio.sleep(10)
                 logger.info(" - try to update views again")
+
+    @staticmethod
+    async def update_slug_views(slug: str) -> int:
+        """
+        Получает fresh статистику просмотров для указанного slug.
+
+        Args:
+            slug: Идентификатор страницы
+
+        Returns:
+            int: Количество просмотров
+        """
+        self = ViewedStorage
+        if not self.analytics_client:
+            logger.warning("Google Analytics client not initialized")
+            return 0
+
+        try:
+            # Создаем фильтр для точного совпадения конца URL
+            request = RunReportRequest(
+                property=f"properties/{GOOGLE_PROPERTY_ID}",
+                date_ranges=[DateRange(start_date=self.start_date, end_date="today")],
+                dimensions=[Dimension(name="pagePath")],
+                dimension_filter=GAFilter(
+                    field_name="pagePath",
+                    string_filter=GAFilter.StringFilter(
+                        value=f".*/{slug}$",  # Используем регулярное выражение для точного совпадения конца URL
+                        match_type=GAFilter.StringFilter.MatchType.FULL_REGEXP,
+                        case_sensitive=False,  # Включаем чувствительность к регистру для точности
+                    ),
+                ),
+                metrics=[Metric(name="screenPageViews")],
+            )
+
+            response = self.analytics_client.run_report(request)
+
+            if not response.rows:
+                return 0
+
+            views = int(response.rows[0].metric_values[0].value)
+            # Кэшируем результат
+            self.views_by_shout[slug] = views
+            return views
+
+        except Exception as e:
+            logger.error(f"Google Analytics API Error: {e}")
+            return 0
