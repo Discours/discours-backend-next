@@ -81,7 +81,7 @@ async def lifespan(app):
             precache_data(),
             ViewedStorage.init(),
             create_webhook_endpoint(),
-            # search_service.info(),
+            search_service.info(),
             start(),
             revalidation_manager.start(),
         )
