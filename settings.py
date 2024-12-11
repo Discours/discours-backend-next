@@ -15,3 +15,4 @@ DEV_SERVER_PID_FILE_NAME = "dev-server.pid"
 MODE = "development" if "dev" in sys.argv else "production"
 
 ADMIN_SECRET = environ.get("AUTH_SECRET") or "nothing"
+WEBHOOK_SECRET = environ.get("WEBHOOK_SECRET") or "nothing-else"
