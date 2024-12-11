@@ -240,7 +240,7 @@ def create_author(user_id: str, slug: str, name: str = ""):
 
 
 @query.field("get_author_followers")
-async def get_author_followers(_, _info, slug: str, user: str = "", author_id: int = 0):
+async def get_author_followers(_, _info, slug: str = "", user: str = "", author_id: int = 0):
     logger.debug(f"getting followers for @{slug}")
     author_id = get_author_id_from(slug=slug, user=user, author_id=author_id)
     followers = []
