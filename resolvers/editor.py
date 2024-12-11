@@ -235,8 +235,12 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
             if author_id:
                 logger.info(f"author for shout#{shout_id} detected author #{author_id}")
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
+
                 if not shout_by_id:
+                    logger.error(f"shout#{shout_id} not found")
                     return {"error": "shout not found"}
+                logger.info(f"shout#{shout_id} found")
+
                 if slug != shout_by_id.slug:
                     same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     c = 1
@@ -245,11 +249,14 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         slug = f"{slug}-{c}"
                         same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
                     shout_input["slug"] = slug
-
+                    logger.info(f"shout#{shout_id} slug patched")
+                
                 if filter(lambda x: x.id == author_id, [x for x in shout_by_id.authors]) or "editor" in roles:
+                    logger.info(f"shout#{shout_id} is author or editor")
                     # topics patch
                     topics_input = shout_input.get("topics")
                     if topics_input:
+                        logger.info(f"topics_input: {topics_input}")
                         patch_topics(session, shout_by_id, topics_input)
                         del shout_input["topics"]
                         for tpc in topics_input:
@@ -276,9 +283,10 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         search_service.index(shout_by_id)
                         for a in shout_by_id.authors:
                             await cache_by_id(Author, a.id, cache_author)
-
+                    logger.info(f"shout#{shout_id} updated")
                     return {"shout": shout_dict, "error": None}
                 else:
+                    logger.warning(f"shout#{shout_id} is not author or editor")
                     return {"error": "access denied", "shout": None}
 
     except Exception as exc:
