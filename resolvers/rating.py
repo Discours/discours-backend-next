@@ -34,7 +34,6 @@ async def get_my_rates_comments(_, info, comments: list[int]) -> list[dict]:
         )
         .order_by(Reaction.shout, Reaction.created_at.desc())
         .distinct(Reaction.shout)
-        .subquery()
     )
     with local_session() as session:
         comments_result = session.execute(rated_query).all()

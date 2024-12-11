@@ -8,6 +8,19 @@ from utils.logger import root_logger as logger
 
 
 async def check_auth(req):
+    """
+    Проверка авторизации пользователя.
+
+    Эта функция проверяет токен авторизации, переданный в заголовках запроса,
+    и возвращает идентификатор пользователя и его роли.
+
+    Параметры:
+    - req: Входящий GraphQL запрос, содержащий заголовок авторизации.
+
+    Возвращает:
+    - user_id: str - Идентификатор пользователя.
+    - user_roles: list[str] - Список ролей пользователя.
+    """
     token = req.headers.get("Authorization")
     user_id = ""
     user_roles = []
@@ -19,7 +32,8 @@ async def check_auth(req):
         variables = {"params": {"token_type": "access_token", "token": token}}
 
         gql = {
-            "query": f"query {operation}($params: ValidateJWTTokenInput!)  {{"
+            "query": f"query {operation}($params: ValidateJWTTokenInput!)"
+            + "{"
             + f"{query_name}(params: $params) {{ is_valid claims }} "
             + "}",
             "variables": variables,
@@ -35,6 +49,18 @@ async def check_auth(req):
 
 
 async def add_user_role(user_id):
+    """
+    Добавление роли пользователя.
+
+    Эта функция добавляет роли "author" и "reader" для указанного пользователя
+    в системе авторизации.
+
+    Параметры:
+    - user_id: str - Идентификатор пользователя, которому нужно добавить роли.
+
+    Возвращает:
+    - user_id: str - Идентификатор пользователя, если операция прошла успешно.
+    """
     logger.info(f"add author role for user_id: {user_id}")
     query_name = "_update_user"
     operation = "UpdateUserRoles"
@@ -55,6 +81,18 @@ async def add_user_role(user_id):
 
 
 def login_required(f):
+    """
+    Декоратор для проверки авторизации пользователя.
+
+    Этот декоратор проверяет, авторизован ли пользователь, и добавляет
+    информацию о пользователе в контекст функции.
+
+    Параметры:
+    - f: Функция, которую нужно декорировать.
+
+    Возвращает:
+    - Обернутую функцию с добавленной проверкой авторизации.
+    """
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         info = args[1]
@@ -75,10 +113,17 @@ def login_required(f):
 
 def login_accepted(f):
     """
-    Декоратор, который добавляет данные авторизации в контекст, если они доступны,
-    но не блокирует доступ для неавторизованных пользователей.
-    """
+    Декоратор для добавления данных авторизации в контекст.
 
+    Этот декоратор добавляет данные авторизации в контекст, если они доступны,
+    но не блокирует доступ для неавторизованных пользователей.
+
+    Параметры:
+    - f: Функция, которую нужно декорировать.
+
+    Возвращает:
+    - Обернутую функцию с добавленной проверкой авторизации.
+    """
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         info = args[1]
@@ -101,7 +146,7 @@ def login_accepted(f):
                 info.context["author"] = author.dict()
             else:
                 logger.error(
-                    f"login_accepted: Профиль автора не найден для пользователя {user_id}. Используем базовые данные."
+                    f"login_accepted: Профиль автора не найден для пользователя {user_id}. Исп��льзуем базовые данные."
                 )  # Используем базовую информацию об автор
         else:
             logger.debug("login_accepted: Пользователь не авторизован. Очищаем контекст.")
