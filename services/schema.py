@@ -13,7 +13,7 @@ async def request_graphql_data(gql, url=AUTH_URL, headers=None):
     if headers is None:
         headers = {"Content-Type": "application/json"}
     try:
-        # logger.debug(f"{url} {gql} {headers}")
+        logger.debug(f"{url}:\n{headers}\n{gql}")
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=gql, headers=headers)
             if response.status_code == 200:
