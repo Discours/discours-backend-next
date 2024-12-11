@@ -22,7 +22,7 @@ async def cache_by_id(entity, entity_id: int, cache_method):
     caching_query = select(entity).filter(entity.id == entity_id)
     result = get_with_stat(caching_query)
     if not result or not result[0]:
-        logger.warning(f"cache_by_id: {entity} with id {entity_id} not found")
+        logger.warning(f"{entity.__name__} with id {entity_id} not found")
         return
     x = result[0]
     d = x.dict()  # convert object to dictionary
