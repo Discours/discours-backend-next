@@ -17,6 +17,33 @@ from services.schema import request_graphql_data
 from settings import ADMIN_SECRET, WEBHOOK_SECRET
 
 
+async def check_webhook_existence() -> bool:
+    logger.info("check_webhook_existence called")
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-authorizer-admin-secret": ADMIN_SECRET,
+    }
+
+    operation = "GetWebhooks"
+    query_name = "_webhooks"
+    variables = {
+        "params": {}
+    }
+    # https://docs.authorizer.dev/core/graphql-api#_webhooks
+    gql = {
+        "query": f"query {operation}($params: GetWebhooksRequest!)"
+        + "{"
+        + f"{query_name}(params: $params) {{ webhooks {{ id event_name endpoint }} }} "
+        + "}",
+        "variables": variables,
+        "operationName": operation,
+    }
+    result = await request_graphql_data(gql, headers=headers)
+    logger.info(result)
+    return bool(result.get("data", {}).get(query_name, {}).get("webhooks", []))
+
+
 async def create_webhook_endpoint():
     logger.info("create_webhook_endpoint called")
 
@@ -24,6 +51,10 @@ async def create_webhook_endpoint():
         "Content-Type": "application/json",
         "x-authorizer-admin-secret": ADMIN_SECRET,
     }
+
+    if await check_webhook_existence():
+        logger.info("Webhook already exists")
+        return
 
     # https://docs.authorizer.dev/core/graphql-api#_add_webhook
     operation = "AddWebhook"
