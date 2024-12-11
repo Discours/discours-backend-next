@@ -20,10 +20,11 @@ from utils.logger import root_logger as logger
 
 async def cache_by_id(entity, entity_id: int, cache_method):
     caching_query = select(entity).filter(entity.id == entity_id)
-    [x] = get_with_stat(caching_query)
-    if not x:
+    result = get_with_stat(caching_query)
+    if not result or not result[0]:
+        logger.warning(f"cache_by_id: {entity} with id {entity_id} not found")
         return
-
+    x = result[0]
     d = x.dict()  # convert object to dictionary
     cache_method(d)
     return d
