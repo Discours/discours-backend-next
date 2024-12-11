@@ -113,7 +113,7 @@ class SearchService:
     async def info(self):
         if not SEARCH_ENABLED:
             return {"status": "disabled"}
-            
+
         try:
             return get_indices_stats()
         except Exception as e:
@@ -158,7 +158,7 @@ class SearchService:
     def index(self, shout):
         if not SEARCH_ENABLED:
             return
-            
+
         if self.client:
             logger.info(f"Индексируем пост {shout.id}")
             index_body = {
@@ -184,7 +184,7 @@ class SearchService:
     async def search(self, text, limit, offset):
         if not SEARCH_ENABLED:
             return []
-            
+
         logger.info(f"Ищем: {text} {offset}+{limit}")
         search_body = {
             "query": {"multi_match": {"query": text, "fields": ["title", "lead", "subtitle", "body", "media"]}}
@@ -226,5 +226,6 @@ async def search_text(text: str, limit: int = 50, offset: int = 0):
         payload = await search_service.search(text, limit, offset)
     return payload
 
+
 # Проверить что URL корректный
-OPENSEARCH_URL = os.getenv('OPENSEARCH_URL', 'rc1a-3n5pi3bhuj9gieel.mdb.yandexcloud.net')
+OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "rc1a-3n5pi3bhuj9gieel.mdb.yandexcloud.net")

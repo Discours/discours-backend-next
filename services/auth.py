@@ -1,7 +1,5 @@
 from functools import wraps
 
-import httpx
-
 from cache.cache import get_cached_author_by_user_id
 from resolvers.stat import get_with_stat
 from services.schema import request_graphql_data

@@ -27,9 +27,7 @@ async def check_webhook_existence() -> bool:
 
     operation = "GetWebhooks"
     query_name = "_webhooks"
-    variables = {
-        "params": {}
-    }
+    variables = {"params": {}}
     # https://docs.authorizer.dev/core/graphql-api#_webhooks
     gql = {
         "query": f"query {operation}($params: GetWebhooksRequest!)"
@@ -64,9 +62,7 @@ async def create_webhook_endpoint():
             "event_name": "user.login",
             "endpoint": "https://core.dscrs.site/new-author",
             "enabled": True,
-            "headers": {
-                "Authorization": WEBHOOK_SECRET
-            },
+            "headers": {"Authorization": WEBHOOK_SECRET},
         }
     }
     gql = {
@@ -76,7 +72,6 @@ async def create_webhook_endpoint():
         + "}",
         "variables": variables,
         "operationName": operation,
-
     }
     result = await request_graphql_data(gql, headers=headers)
     logger.info(result)

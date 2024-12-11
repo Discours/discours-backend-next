@@ -161,9 +161,9 @@ def query_with_stat(info):
                 )
                 .filter(Reaction.reply_to.is_(None))
                 .label("rating"),
-                func.max(Reaction.created_at).filter(Reaction.kind == ReactionKind.COMMENT.value).label(
-                    "last_commented_at"
-                ),
+                func.max(Reaction.created_at)
+                .filter(Reaction.kind == ReactionKind.COMMENT.value)
+                .label("last_commented_at"),
             )
             .where(Reaction.deleted_at.is_(None))
             .group_by(Reaction.shout)
@@ -177,7 +177,7 @@ def query_with_stat(info):
                 "rating",
                 func.coalesce(stats_subquery.c.rating, 0),
                 "last_commented_at",
-                func.coalesce(stats_subquery.c.last_commented_at, 0)
+                func.coalesce(stats_subquery.c.last_commented_at, 0),
             ).label("stat")
         )
 

@@ -49,35 +49,33 @@ async def get_my_rates_shouts(_, info, shouts):
     """
     author_dict = info.context.get("author") if info.context else None
     author_id = author_dict.get("id") if author_dict else None
-    
+
     if not author_id:
         return []
 
     with local_session() as session:
         try:
             stmt = (
-                select(
-                    Reaction
-                ).where(
+                select(Reaction)
+                .where(
                     and_(
                         Reaction.shout.in_(shouts),
                         Reaction.reply_to.is_(None),
                         Reaction.created_by == author_id,
                         Reaction.deleted_at.is_(None),
-                        Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value])
+                        Reaction.kind.in_([ReactionKind.LIKE.value, ReactionKind.DISLIKE.value]),
                     )
-                ).order_by(
-                    Reaction.shout,
-                    Reaction.created_at.desc()
-                ).distinct(Reaction.shout)
+                )
+                .order_by(Reaction.shout, Reaction.created_at.desc())
+                .distinct(Reaction.shout)
             )
-            
+
             result = session.execute(stmt).all()
 
             return [
                 {
                     "shout_id": row[0].shout,  # Получаем shout_id из объекта Reaction
-                    "my_rate": row[0].kind      # Получаем kind (my_rate) из объекта Reaction
+                    "my_rate": row[0].kind,  # Получаем kind (my_rate) из объекта Reaction
                 }
                 for row in result
             ]
