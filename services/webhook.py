@@ -38,8 +38,10 @@ async def check_webhook_existence() -> bool:
         "operationName": operation,
     }
     result = await request_graphql_data(gql, headers=headers)
-    logger.info(result)
-    return bool(result.get("data", {}).get(query_name, {}).get("webhooks", []))
+    if result:
+        logger.info(result)
+        return bool(result.get("data", {}).get(query_name, {}).get("webhooks", []))
+    return False
 
 
 async def create_webhook_endpoint():
@@ -66,7 +68,7 @@ async def create_webhook_endpoint():
         }
     }
     gql = {
-        "query": f"mutation {operation}($params: AddWebhookRequest!)"
+        "mutation": f"mutation {operation}($params: AddWebhookRequest!)"
         + "{"
         + f"{query_name}(params: $params) {{ message }} "
         + "}",
