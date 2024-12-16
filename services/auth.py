@@ -23,6 +23,7 @@ async def check_auth(req):
     """
     token = req.headers.get("Authorization")
     host = req.headers.get('host', '')
+    logger.debug(f"check_auth: host={host}")
     auth_url = AUTH_URL
     if host == 'testing.dscrs.site' or host == 'localhost':
         auth_url = "https://auth.dscrs.site/graphql"
