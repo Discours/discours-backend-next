@@ -25,7 +25,7 @@ async def check_auth(req):
     host = req.headers.get('host', '')
     logger.debug(f"check_auth: host={host}")
     auth_url = AUTH_URL
-    if host == 'testing.dscrs.site' or host == 'localhost:3000':
+    if 'testing.dscrs.site' in host or 'localhost' in host:
         auth_url = "https://auth.dscrs.site/graphql"
     user_id = ""
     user_roles = []
@@ -153,7 +153,7 @@ def login_accepted(f):
                 info.context["author"] = author.dict()
             else:
                 logger.error(
-                    f"login_accepted: Профиль автора не найден для пользователя {user_id}. Исп��льзуем базовые данные."
+                    f"login_accepted: Профиль автора не найден для пользователя {user_id}. Используем базовые данные."
                 )  # Используем базовую информацию об автор
         else:
             logger.debug("login_accepted: Пользователь не авторизован. Очищаем контекст.")
