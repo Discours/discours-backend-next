@@ -47,7 +47,6 @@ async def check_webhook_existence():
     if result:
         logger.info(result)
         webhooks = result.get("data", {}).get(query_name, {}).get("webhooks", [])
-        logger.info(webhooks)
         for webhook in webhooks:
             if webhook["event_name"].startswith("user.login"):
                 return True, webhook["id"], webhook["endpoint"]
@@ -75,9 +74,10 @@ async def create_webhook_endpoint():
     if exists:
         # Если вебхук существует, но с другим endpoint или с модифицированным именем
         if current_endpoint != endpoint or webhook_id:
+            # https://docs.authorizer.dev/core/graphql-api#_delete_webhook
             operation = "DeleteWebhook"
             query_name = "_delete_webhook"
-            variables = {"params": {"webhook_id": webhook_id}}  # Изменено с id на webhook_id
+            variables = {"params": {"id": webhook_id}}  # Изменено с id на webhook_id
             gql = {
                 "query": f"mutation {operation}($params: WebhookRequest!)"
                 + "{"
