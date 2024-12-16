@@ -38,7 +38,7 @@ async def check_webhook_existence():
     gql = {
         "query": f"query {operation}($params: PaginatedInput!)"
         + "{"
-        + f"{query_name}(params: $params) {{ webhooks {{ id event_name endpoint enabled }} }} "
+        + f"{query_name}(params: $params) {{ webhooks {{ id event_name endpoint }} }} "
         + "}",
         "variables": variables,
         "operationName": operation,
@@ -47,7 +47,6 @@ async def check_webhook_existence():
     if result:
         logger.info(result)
         webhooks = result.get("data", {}).get(query_name, {}).get("webhooks", [])
-        # Ищем точное совпадение user.login
         for webhook in webhooks:
             if webhook["event_name"].startswith("user.login"):
                 return True, webhook["id"], webhook["endpoint"]
@@ -77,7 +76,6 @@ async def create_webhook_endpoint():
         if current_endpoint != endpoint or webhook_id:
             operation = "DeleteWebhook"
             query_name = "_delete_webhook"
-            # Исправляем тип на WebhookRequest
             variables = {"params": {"webhook_id": webhook_id}}  # Изменено с id на webhook_id
             gql = {
                 "query": f"mutation {operation}($params: WebhookRequest!)"
@@ -99,7 +97,9 @@ async def create_webhook_endpoint():
             return
 
     if not exists:
-        # Создаем новый вебхук
+        # https://docs.authorizer.dev/core/graphql-api#_add_webhook
+        operation = "AddWebhook"
+        query_name = "_add_webhook"
         variables = {
             "params": {
                 "event_name": "user.login",
@@ -108,8 +108,6 @@ async def create_webhook_endpoint():
                 "headers": {"Authorization": WEBHOOK_SECRET},
             }
         }
-        operation = "AddWebhook"
-        query_name = "_add_webhook"
         gql = {
             "query": f"mutation {operation}($params: AddWebhookRequest!)"
             + "{"
