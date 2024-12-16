@@ -25,7 +25,10 @@ async def check_webhook_existence():
         tuple: (bool, str, str) - существует ли вебхук, его id и endpoint если существует
     """
     logger.info("check_webhook_existence called")
-
+    if not ADMIN_SECRET:
+        logger.error("ADMIN_SECRET is not set")
+        return False, None, None
+    
     headers = {
         "Content-Type": "application/json",
         "X-Authorizer-Admin-Secret": ADMIN_SECRET
@@ -45,8 +48,8 @@ async def check_webhook_existence():
     }
     result = await request_graphql_data(gql, headers=headers)
     if result:
-        logger.info(result)
         webhooks = result.get("data", {}).get(query_name, {}).get("webhooks", [])
+        logger.info(webhooks)
         for webhook in webhooks:
             if webhook["event_name"].startswith("user.login"):
                 return True, webhook["id"], webhook["endpoint"]
