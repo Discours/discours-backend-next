@@ -28,7 +28,7 @@ async def check_webhook_existence():
 
     headers = {
         "Content-Type": "application/json",
-        "x-authorizer-admin-secret": ADMIN_SECRET,
+        "x-authorizer-admin-secret": ADMIN_SECRET
     }
 
     operation = "GetWebhooks"
@@ -47,6 +47,7 @@ async def check_webhook_existence():
     if result:
         logger.info(result)
         webhooks = result.get("data", {}).get(query_name, {}).get("webhooks", [])
+        logger.info(webhooks)
         for webhook in webhooks:
             if webhook["event_name"].startswith("user.login"):
                 return True, webhook["id"], webhook["endpoint"]
