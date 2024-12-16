@@ -56,8 +56,8 @@ async def check_webhook_existence():
 
 async def create_webhook_endpoint():
     """
-    Создает вебхук для user.login события если он не существует
-    Удаляет старый вебхук если он существует с модифицированным именем
+    Создает вебхук для user.login события.
+    Если существует старый вебхук - удаляет его и создает новый.
     """
     logger.info("create_webhook_endpoint called")
 
@@ -67,40 +67,49 @@ async def create_webhook_endpoint():
     }
 
     exists, webhook_id, current_endpoint = await check_webhook_existence()
-    endpoint = "https://core.dscrs.site/new-author"
+    
+    # Определяем endpoint в зависимости от окружения
+    host = os.environ.get('HOST', 'core.dscrs.site')
+    endpoint = f"https://{host}/new-author"
     
     if exists:
         # Если вебхук существует, но с другим endpoint или с модифицированным именем
         if current_endpoint != endpoint or webhook_id:
             operation = "DeleteWebhook"
             query_name = "_delete_webhook"
-            variables = {"params": {"id": webhook_id}}
+            # Исправляем тип на WebhookRequest
+            variables = {"params": {"webhook_id": webhook_id}}  # Изменено с id на webhook_id
             gql = {
-                "query": f"mutation {operation}($params: DeleteWebhookRequest!)"
+                "query": f"mutation {operation}($params: WebhookRequest!)"
                 + "{"
                 + f"{query_name}(params: $params) {{ message }} "
                 + "}",
                 "variables": variables,
                 "operationName": operation,
             }
-            await request_graphql_data(gql, headers=headers)
-            exists = False
+            try:
+                await request_graphql_data(gql, headers=headers)
+                exists = False
+            except Exception as e:
+                logger.error(f"Failed to delete webhook: {e}")
+                # Продолжаем выполнение даже при ошибке удаления
+                exists = False
         else:
             logger.info(f"Webhook already exists and configured correctly: {webhook_id}")
             return
 
     if not exists:
-        # Создаем новый вебхук с правильным именем события
-        operation = "AddWebhook"
-        query_name = "_add_webhook"
+        # Создаем новый вебхук
         variables = {
             "params": {
-                "event_name": "user.login",  # Используем базовое имя события
+                "event_name": "user.login",
                 "endpoint": endpoint,
                 "enabled": True,
                 "headers": {"Authorization": WEBHOOK_SECRET},
             }
         }
+        operation = "AddWebhook"
+        query_name = "_add_webhook"
         gql = {
             "query": f"mutation {operation}($params: AddWebhookRequest!)"
             + "{"
@@ -109,8 +118,11 @@ async def create_webhook_endpoint():
             "variables": variables,
             "operationName": operation,
         }
-        result = await request_graphql_data(gql, headers=headers)
-        logger.info(result)
+        try:
+            result = await request_graphql_data(gql, headers=headers)
+            logger.info(result)
+        except Exception as e:
+            logger.error(f"Failed to create webhook: {e}")
 
 
 class WebhookEndpoint(HTTPEndpoint):
