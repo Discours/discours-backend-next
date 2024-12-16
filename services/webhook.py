@@ -18,6 +18,12 @@ from settings import ADMIN_SECRET, WEBHOOK_SECRET
 
 
 async def check_webhook_existence():
+    """
+    Проверяет существование вебхука для user.login события
+    
+    Returns:
+        tuple: (bool, str, str) - существует ли вебхук, его id и endpoint если существует
+    """
     logger.info("check_webhook_existence called")
 
     headers = {
@@ -32,7 +38,7 @@ async def check_webhook_existence():
     gql = {
         "query": f"query {operation}($params: PaginatedInput!)"
         + "{"
-        + f"{query_name}(params: $params) {{ webhooks {{ id event_name endpoint }} }} "
+        + f"{query_name}(params: $params) {{ webhooks {{ id event_name endpoint enabled }} }} "
         + "}",
         "variables": variables,
         "operationName": operation,
@@ -40,11 +46,19 @@ async def check_webhook_existence():
     result = await request_graphql_data(gql, headers=headers)
     if result:
         logger.info(result)
-        return bool(result.get("data", {}).get(query_name, {}).get("webhooks", []))
-    return False
+        webhooks = result.get("data", {}).get(query_name, {}).get("webhooks", [])
+        # Ищем точное совпадение user.login
+        for webhook in webhooks:
+            if webhook["event_name"].startswith("user.login"):
+                return True, webhook["id"], webhook["endpoint"]
+    return False, None, None
 
 
 async def create_webhook_endpoint():
+    """
+    Создает вебхук для user.login события если он не существует
+    Удаляет старый вебхук если он существует с модифицированным именем
+    """
     logger.info("create_webhook_endpoint called")
 
     headers = {
@@ -52,31 +66,51 @@ async def create_webhook_endpoint():
         "x-authorizer-admin-secret": ADMIN_SECRET,
     }
 
-    if await check_webhook_existence():
-        logger.info("Webhook already exists")
-        return
+    exists, webhook_id, current_endpoint = await check_webhook_existence()
+    endpoint = "https://core.dscrs.site/new-author"
+    
+    if exists:
+        # Если вебхук существует, но с другим endpoint или с модифицированным именем
+        if current_endpoint != endpoint or webhook_id:
+            operation = "DeleteWebhook"
+            query_name = "_delete_webhook"
+            variables = {"params": {"id": webhook_id}}
+            gql = {
+                "query": f"mutation {operation}($params: DeleteWebhookRequest!)"
+                + "{"
+                + f"{query_name}(params: $params) {{ message }} "
+                + "}",
+                "variables": variables,
+                "operationName": operation,
+            }
+            await request_graphql_data(gql, headers=headers)
+            exists = False
+        else:
+            logger.info(f"Webhook already exists and configured correctly: {webhook_id}")
+            return
 
-    # https://docs.authorizer.dev/core/graphql-api#_add_webhook
-    operation = "AddWebhook"
-    query_name = "_add_webhook"
-    variables = {
-        "params": {
-            "event_name": "user.login",
-            "endpoint": "https://core.dscrs.site/new-author",
-            "enabled": True,
-            "headers": {"Authorization": WEBHOOK_SECRET},
+    if not exists:
+        # Создаем новый вебхук с правильным именем события
+        operation = "AddWebhook"
+        query_name = "_add_webhook"
+        variables = {
+            "params": {
+                "event_name": "user.login",  # Используем базовое имя события
+                "endpoint": endpoint,
+                "enabled": True,
+                "headers": {"Authorization": WEBHOOK_SECRET},
+            }
         }
-    }
-    gql = {
-        "query": f"mutation {operation}($params: AddWebhookRequest!)"
-        + "{"
-        + f"{query_name}(params: $params) {{ message }} "
-        + "}",
-        "variables": variables,
-        "operationName": operation,
-    }
-    result = await request_graphql_data(gql, headers=headers)
-    logger.info(result)
+        gql = {
+            "query": f"mutation {operation}($params: AddWebhookRequest!)"
+            + "{"
+            + f"{query_name}(params: $params) {{ message }} "
+            + "}",
+            "variables": variables,
+            "operationName": operation,
+        }
+        result = await request_graphql_data(gql, headers=headers)
+        logger.info(result)
 
 
 class WebhookEndpoint(HTTPEndpoint):
