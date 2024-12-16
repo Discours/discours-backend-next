@@ -3,7 +3,7 @@ from functools import wraps
 from cache.cache import get_cached_author_by_user_id
 from resolvers.stat import get_with_stat
 from services.schema import request_graphql_data
-from settings import ADMIN_SECRET
+from settings import ADMIN_SECRET, AUTH_URL
 from utils.logger import root_logger as logger
 
 
@@ -22,6 +22,10 @@ async def check_auth(req):
     - user_roles: list[str] - Список ролей пользователя.
     """
     token = req.headers.get("Authorization")
+    host = req.headers.get('host', '')
+    auth_url = AUTH_URL
+    if host == 'testing.dscrs.site' or host == 'localhost':
+        auth_url = "https://auth.dscrs.site/graphql"
     user_id = ""
     user_roles = []
     if token:
@@ -39,7 +43,7 @@ async def check_auth(req):
             "variables": variables,
             "operationName": operation,
         }
-        data = await request_graphql_data(gql)
+        data = await request_graphql_data(gql, url=auth_url)
         if data:
             logger.debug(data)
             user_data = data.get("data", {}).get(query_name, {}).get("claims", {})

@@ -8,7 +8,6 @@ DB_URL = (
     or "sqlite:///discoursio-db.sqlite3"
 )
 REDIS_URL = environ.get("REDIS_URL") or "redis://127.0.0.1"
-API_BASE = environ.get("API_BASE") or ""
 AUTH_URL = environ.get("AUTH_URL") or ""
 GLITCHTIP_DSN = environ.get("GLITCHTIP_DSN")
 DEV_SERVER_PID_FILE_NAME = "dev-server.pid"
