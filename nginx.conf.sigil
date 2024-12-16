@@ -6,7 +6,7 @@
 {{ $cors_headers_get := "if ($request_method = 'GET') { add_header 'Access-Control-Allow-Origin' '$allow_origin' always; add_header 'Access-Control-Allow-Credentials' 'true' always; add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always; add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always; add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always; }" }}
 
 map $http_origin $allow_origin {
-    ~^https?:\/\/((.*\.)?localhost(:\d+)?|(.*\.)?dscrs\.site|testingdiscoursio-git-.*-discoursio\.vercel\.app|(.*\.)?discours\.io|testing\.dscrs\.site)$ $http_origin;
+    "~^https?://((.*\.)?localhost(:\d+)?|(.*\.)?dscrs\.site|(.*\.)?discours\.io|)$" $http_origin;
     default "";
 }
 
