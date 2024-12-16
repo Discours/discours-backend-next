@@ -28,7 +28,7 @@ async def check_webhook_existence():
 
     headers = {
         "Content-Type": "application/json",
-        "x-authorizer-admin-secret": ADMIN_SECRET
+        "X-Authorizer-Admin-Secret": ADMIN_SECRET
     }
 
     operation = "GetWebhooks"
@@ -63,7 +63,7 @@ async def create_webhook_endpoint():
 
     headers = {
         "Content-Type": "application/json",
-        "x-authorizer-admin-secret": ADMIN_SECRET,
+        "X-Authorizer-Admin-Secret": ADMIN_SECRET
     }
 
     exists, webhook_id, current_endpoint = await check_webhook_existence()
