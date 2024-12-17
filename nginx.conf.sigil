@@ -11,8 +11,13 @@ map $http_origin $allow_origin {
     default "";
 }
 
-proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g 
-                 inactive=60m use_temp_path=off;
+# Определим переменную для CORS заголовков
+map $request_method $cors_method {
+    OPTIONS 204;
+    default $request_method;
+}
+
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g inactive=60m use_temp_path=off;
 limit_conn_zone $binary_remote_addr zone=addr:10m;
 limit_req_zone $binary_remote_addr zone=req_zone:10m rate=20r/s;
 
@@ -56,6 +61,13 @@ server {
 
     location / {
         if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' $allow_origin always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+            add_header 'Access-Control-Allow-Credentials' 'true' always;
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+            add_header 'Access-Control-Max-Age' 1728000 always;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
             return 204;
         }
 
@@ -64,6 +76,12 @@ server {
         proxy_hide_header 'Access-Control-Allow-Headers';
         proxy_hide_header 'Access-Control-Allow-Credentials';
         proxy_hide_header 'Access-Control-Max-Age';
+
+        add_header 'Access-Control-Allow-Origin' $allow_origin always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Max-Age' 1728000 always;
 
         proxy_pass http://{{ $.APP }}-{{ $upstream_port }};
         {{ $proxy_settings }}
