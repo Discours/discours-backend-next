@@ -48,24 +48,26 @@ server {
         client_max_body_size 100M;
     {{ end }}
 
-    location / {
-        proxy_pass  http://{{ $.APP }}-{{ $upstream_port }};
-        {{ $proxy_settings }}
-        {{ $gzip_settings }}
+    add_header 'Access-Control-Allow-Origin' $allow_origin always;
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+    add_header 'Access-Control-Allow-Credentials' 'true' always;
+    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+    add_header 'Access-Control-Max-Age' 1728000 always;
 
-        proxy_hide_header 'Access-Control-Allow-Origin';
-        
-        add_header 'Access-Control-Allow-Origin' $allow_origin always;
-        add_header 'Access-Control-Allow-Credentials' 'true' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, X-Requested-With, DNT, Cache-Control' always;
-        add_header 'Access-Control-Max-Age' '1728000' always;
-        
+    location / {
         if ($request_method = 'OPTIONS') {
-            add_header 'Content-Type' 'text/plain charset=UTF-8';
-            add_header 'Content-Length' 0;
             return 204;
         }
+
+        proxy_hide_header 'Access-Control-Allow-Origin';
+        proxy_hide_header 'Access-Control-Allow-Methods';
+        proxy_hide_header 'Access-Control-Allow-Headers';
+        proxy_hide_header 'Access-Control-Allow-Credentials';
+        proxy_hide_header 'Access-Control-Max-Age';
+
+        proxy_pass http://{{ $.APP }}-{{ $upstream_port }};
+        {{ $proxy_settings }}
+        {{ $gzip_settings }}
 
         proxy_cache my_cache;
         proxy_cache_revalidate on;
@@ -81,17 +83,9 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
         expires 30d;
         add_header Cache-Control "public, no-transform";
-        add_header 'Access-Control-Allow-Origin' $allow_origin always;
-        add_header 'Access-Control-Allow-Credentials' 'true' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, X-Requested-With, DNT, Cache-Control' always;
     }
 
     location ~* \.(mp3)$ {
-        add_header 'Access-Control-Allow-Origin' $allow_origin always;
-        add_header 'Access-Control-Allow-Credentials' 'true' always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, X-Requested-With, DNT, Cache-Control' always;
         add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
     }
 
