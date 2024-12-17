@@ -2,13 +2,11 @@
 {{ $gzip_settings := "gzip on; gzip_min_length  1100; gzip_buffers  4 32k; gzip_types text/css text/javascript text/xml text/plain text/x-component application/javascript application/x-javascript application/json application/xml application/rss+xml font/truetype application/x-font-ttf font/opentype application/vnd.ms-fontobject image/svg+xml; gzip_vary on; gzip_comp_level  6;" }}
 
 map $http_origin $allow_origin {
-    "https://testing.dscrs.site" "https://testing.dscrs.site";
-    "https://testing.discours.io" "https://testing.discours.io";
-    "https://core.dscrs.site" "https://core.dscrs.site";
-    "~^https?://(.*\.)?dscrs\.site$" $http_origin;
-    "~^https?://(.*\.)?discours\.io$" $http_origin;
-    "~^https?://localhost(:[0-9]+)?$" $http_origin;
-    default "";
+    "https://testing.dscrs.site"    "https://testing.dscrs.site";
+    "https://testing.discours.io"   "https://testing.discours.io";
+    "https://core.dscrs.site"       "https://core.dscrs.site";
+    "https://localhost:3000"        "https://localhost:3000";
+    default                         "";
 }
 
 # Определим переменную для CORS заголовков
@@ -32,6 +30,15 @@ server {
         listen [::]:{{ $listen_port }};
         listen {{ $listen_port }};
         server_name {{ $.NOSSL_SERVER_NAME }};
+
+        # CORS headers first
+        add_header 'Access-Control-Allow-Origin' $allow_origin always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Max-Age' 1728000 always;
+
+        # Then other headers
         access_log  /var/log/nginx/{{ $.APP }}-access.log;
         error_log   /var/log/nginx/{{ $.APP }}-error.log;
         client_max_body_size 100M;
@@ -53,12 +60,6 @@ server {
         client_max_body_size 100M;
     {{ end }}
 
-    add_header 'Access-Control-Allow-Origin' $allow_origin always;
-    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-    add_header 'Access-Control-Allow-Credentials' 'true' always;
-    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-    add_header 'Access-Control-Max-Age' 1728000 always;
-
     location / {
         if ($request_method = 'OPTIONS') {
             add_header 'Access-Control-Allow-Origin' $allow_origin always;
@@ -66,8 +67,6 @@ server {
             add_header 'Access-Control-Allow-Credentials' 'true' always;
             add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
             add_header 'Access-Control-Max-Age' 1728000 always;
-            add_header 'Content-Type' 'text/plain charset=UTF-8';
-            add_header 'Content-Length' 0;
             return 204;
         }
 
@@ -76,12 +75,6 @@ server {
         proxy_hide_header 'Access-Control-Allow-Headers';
         proxy_hide_header 'Access-Control-Allow-Credentials';
         proxy_hide_header 'Access-Control-Max-Age';
-
-        add_header 'Access-Control-Allow-Origin' $allow_origin always;
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
-        add_header 'Access-Control-Allow-Credentials' 'true' always;
-        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-        add_header 'Access-Control-Max-Age' 1728000 always;
 
         proxy_pass http://{{ $.APP }}-{{ $upstream_port }};
         {{ $proxy_settings }}
@@ -145,3 +138,6 @@ upstream {{ $.APP }}-{{ $upstream_port }} {
 {{ end }}
 }
 {{ end }}
+
+log_format cors '$request_method $http_origin -> $allow_origin';
+access_log /var/log/nginx/cors-debug.log cors;
