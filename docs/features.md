@@ -26,10 +26,10 @@
 ## CORS Configuration
 
 - Поддерживаются домены:
-  - localhost (включая поддомены и порты)
-  - *.dscrs.site (включая testing.dscrs.site)
-  - *.discours.io
+  - *.dscrs.site (включая testing.dscrs.site, core.dscrs.site)
+  - *.discours.io (включая testing.discours.io)
+  - localhost (включая порты)
 - Поддерживаемые методы: GET, POST, OPTIONS
 - Настроена поддержка credentials
-- Настроена обработка preflight-запросов
+- Разрешенные заголовки: Authorization, Content-Type, X-Requested-With, DNT, Cache-Control
 - Настроено кэширование preflight-ответов на 20 дней (1728000 секунд)
