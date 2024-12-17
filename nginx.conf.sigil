@@ -6,10 +6,12 @@
 {{ $cors_headers_get := "if ($request_method = 'GET') { add_header 'Access-Control-Allow-Origin' '$allow_origin' always; add_header 'Access-Control-Allow-Credentials' 'true' always; add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always; add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always; add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always; }" }}
 
 map $http_origin $allow_origin {
-    "https://testing.dscrs.site" $http_origin;
-    "https://core.dscrs.site"    $http_origin;
-    ~^https?:\/\/((.*\.)?localhost(:\d+)?|(.*\.)?dscrs\.site|(.*\.)?discours\.io)$ $http_origin;
-    default "";
+    "https://testing.dscrs.site"    "https://testing.dscrs.site";
+    "https://core.dscrs.site"       "https://core.dscrs.site";
+    "~^https?://localhost(:[0-9]+)?$"   $http_origin;
+    "~^https?://(.*\.)?dscrs\.site$"    $http_origin;
+    "~^https?://(.*\.)?discours\.io$"   $http_origin;
+    default                             "";
 }
 
 proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g 
@@ -58,10 +60,17 @@ server {
         add_header 'Access-Control-Allow-Credentials' 'true' always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
         add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
 
-        {{ $cors_headers_options }}
-        {{ $cors_headers_post }}
-        {{ $cors_headers_get }}
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' $allow_origin always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+            add_header 'Access-Control-Max-Age' 1728000 always;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
 
         proxy_cache my_cache;
         proxy_cache_revalidate on;
