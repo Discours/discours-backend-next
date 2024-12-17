@@ -6,7 +6,9 @@
 {{ $cors_headers_get := "if ($request_method = 'GET') { add_header 'Access-Control-Allow-Origin' '$allow_origin' always; add_header 'Access-Control-Allow-Credentials' 'true' always; add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always; add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always; add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always; }" }}
 
 map $http_origin $allow_origin {
-    ~^https?:\/\/((.*\.)?localhost(:\d+)?|(.*\.)?dscrs\.site|(.*\.)?discours\.io|(.*\.)?testing\.dscrs\.site)$ $http_origin;
+    "https://testing.dscrs.site" $http_origin;
+    "https://core.dscrs.site"    $http_origin;
+    ~^https?:\/\/((.*\.)?localhost(:\d+)?|(.*\.)?dscrs\.site|(.*\.)?discours\.io)$ $http_origin;
     default "";
 }
 
@@ -22,6 +24,13 @@ limit_req_zone $binary_remote_addr zone=req_zone:10m rate=20r/s;
 {{ $upstream_port := index $port_map_list 2 }}
 
 server {
+    log_format cors '$remote_addr - $remote_user [$time_local] '
+                    '"$request" $status $body_bytes_sent '
+                    '"$http_referer" "$http_user_agent" '
+                    '"$http_origin" "$allow_origin"';
+
+    access_log /var/log/nginx/cors-debug.log cors;
+
     {{ if eq $scheme "http" }}
         listen [::]:{{ $listen_port }};
         listen {{ $listen_port }};
@@ -53,6 +62,12 @@ server {
         proxy_pass  http://{{ $.APP }}-{{ $upstream_port }};
         {{ $proxy_settings }}
         {{ $gzip_settings }}
+
+        add_header 'Access-Control-Allow-Origin' $allow_origin always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
+
         {{ $cors_headers_options }}
         {{ $cors_headers_post }}
         {{ $cors_headers_get }}
