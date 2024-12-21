@@ -26,10 +26,10 @@ jobs:
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Push to dokku for dev branch
-        if: github.ref == 'refs/heads/dev' && steps.check_container.outcome == 'success'
+        if: github.ref == 'refs/heads/dev'
         uses: dokku/github-action@master
         with:
           branch: 'dev'
           force: true
-          git_remote_url: 'ssh://dokku@staging.discours.io:22/core'
+          git_remote_url: 'ssh://dokku@v2.discours.io:22/core'
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
