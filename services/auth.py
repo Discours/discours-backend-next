@@ -29,7 +29,7 @@ async def check_auth(req):
     host = req.headers.get('host', '')
     logger.debug(f"check_auth: host={host}")
     auth_url = AUTH_URL
-    if 'testing.dscrs.site' in host or 'localhost' in host:
+    if '.dscrs.site' in host or 'localhost' in host:
         auth_url = "https://auth.dscrs.site/graphql"
     user_id = ""
     user_roles = []
@@ -38,7 +38,7 @@ async def check_auth(req):
         logger.debug(f"{token}")
         query_name = "validate_jwt_token"
         operation = "ValidateToken"
-        variables = {"params": {"token_type": "access_token", "token": "Bearer " + token}}
+        variables = {"params": {"token_type": "access_token", "token": token}}
 
         gql = {
             "query": f"query {operation}($params: ValidateJWTTokenInput!)"
