@@ -22,6 +22,10 @@ async def check_auth(req):
     - user_roles: list[str] - Список ролей пользователя.
     """
     token = req.headers.get("Authorization")
+    # Проверяем и очищаем токен от префикса Bearer если он есть
+    if token.startswith('Bearer '):
+        token = token.split('Bearer ')[-1].strip()
+    
     host = req.headers.get('host', '')
     logger.debug(f"check_auth: host={host}")
     auth_url = AUTH_URL
