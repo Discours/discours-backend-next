@@ -34,7 +34,7 @@ async def check_auth(req):
         logger.debug(f"{token}")
         query_name = "validate_jwt_token"
         operation = "ValidateToken"
-        variables = {"params": {"token_type": "access_token", "token": token}}
+        variables = {"params": {"token_type": "access_token", "token": "Bearer " + token}}
 
         gql = {
             "query": f"query {operation}($params: ValidateJWTTokenInput!)"
@@ -46,8 +46,15 @@ async def check_auth(req):
         }
         data = await request_graphql_data(gql, url=auth_url)
         if data:
-            logger.debug(data)
-            user_data = data.get("data", {}).get(query_name, {}).get("claims", {})
+            logger.debug(f"Auth response: {data}")
+            validation_result = data.get("data", {}).get(query_name, {})
+            logger.debug(f"Validation result: {validation_result}")
+            is_valid = validation_result.get("is_valid", False)
+            if not is_valid:
+                logger.error(f"Token validation failed: {validation_result}")
+                return "", []
+            user_data = validation_result.get("claims", {})
+            logger.debug(f"User claims: {user_data}")
             user_id = user_data.get("sub", "")
             user_roles = user_data.get("allowed_roles", [])
     return user_id, user_roles
