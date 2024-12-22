@@ -22,9 +22,6 @@ async def check_auth(req):
     - user_roles: list[str] - Список ролей пользователя.
     """
     token = req.headers.get("Authorization")
-    # Проверяем и очищаем токен от префикса Bearer если он есть
-    if token.startswith('Bearer '):
-        token = token.split('Bearer ')[-1].strip()
     
     host = req.headers.get('host', '')
     logger.debug(f"check_auth: host={host}")
@@ -34,8 +31,11 @@ async def check_auth(req):
     user_id = ""
     user_roles = []
     if token:
+        # Проверяем и очищаем токен от префикса Bearer если он есть
+        if token.startswith('Bearer '):
+            token = token.split('Bearer ')[-1].strip()
         # Logging the authentication token
-        logger.debug(f"{token}")
+        logger.debug(f"TOKEN: {token}")
         query_name = "validate_jwt_token"
         operation = "ValidateToken"
         variables = {"params": {"token_type": "access_token", "token": token}}
