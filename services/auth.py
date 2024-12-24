@@ -45,13 +45,9 @@ async def check_auth(req):
         operation = "ValidateToken"
         variables = {"params": {"token_type": "access_token", "token": token}}
 
-        # Добавляем CORS заголовки
+        # Только необходимые заголовки для GraphQL запроса
         headers = {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': ', '.join(ALLOWED_HEADERS),
-            'Access-Control-Allow-Credentials': 'true'
+            'Content-Type': 'application/json'
         }
 
         gql = {
@@ -114,7 +110,7 @@ def login_required(f):
     """
     Декоратор для проверки авторизации пользователя.
 
-    Этот декоратор проверяет, авторизован ли пользователь, и добавляет
+    Этот декоратор проверяет, авторизован ли пользователь, �� добавляет
     информацию о пользователе в контекст функции.
 
     Параметры:

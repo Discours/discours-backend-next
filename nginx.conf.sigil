@@ -6,7 +6,11 @@
 {{ $cors_headers_get := "if ($request_method = 'GET') { add_header 'Access-Control-Allow-Origin' '$allow_origin' always; add_header 'Access-Control-Allow-Methods' 'POST, GET, OPTIONS' always; add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always; add_header 'Access-Control-Allow-Credentials' 'true' always; }" }}
 
 map $http_origin $allow_origin {
-    ~^https?:\/\/((.*\.)?localhost(:\d+)?|discoursio-webapp(-(.*))?\.vercel\.app|(.*\.)?discours\.io|(.*\.)?dscrs\.site)$ $http_origin;
+    ~^https?:\/\/(.*\.)?localhost(:\d+)?$ $http_origin;
+    ~^https?:\/\/(.*\.)?discours\.io$ $http_origin;
+    ~^https?:\/\/(.*\.)?dscrs\.site$ $http_origin;
+    ~^https?:\/\/testing\.(discours\.io|dscrs\.site)$ $http_origin;
+    ~^https?:\/\/discoursio-webapp(-.*)?\.vercel\.app$ $http_origin;
     default "";
 }
 
