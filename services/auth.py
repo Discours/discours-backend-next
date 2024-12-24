@@ -6,6 +6,11 @@ from services.schema import request_graphql_data
 from settings import ADMIN_SECRET, AUTH_URL
 from utils.logger import root_logger as logger
 
+# Список разрешенных заголовков
+ALLOWED_HEADERS = [
+    'Authorization',
+    'Content-Type'
+]
 
 async def check_auth(req):
     """
@@ -40,6 +45,15 @@ async def check_auth(req):
         operation = "ValidateToken"
         variables = {"params": {"token_type": "access_token", "token": token}}
 
+        # Добавляем CORS заголовки
+        headers = {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': ', '.join(ALLOWED_HEADERS),
+            'Access-Control-Allow-Credentials': 'true'
+        }
+
         gql = {
             "query": f"query {operation}($params: ValidateJWTTokenInput!)"
             + "{"
@@ -48,7 +62,7 @@ async def check_auth(req):
             "variables": variables,
             "operationName": operation,
         }
-        data = await request_graphql_data(gql, url=auth_url)
+        data = await request_graphql_data(gql, url=auth_url, headers=headers)
         if data:
             logger.debug(f"Auth response: {data}")
             validation_result = data.get("data", {}).get(query_name, {})
