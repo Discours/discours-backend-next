@@ -329,3 +329,28 @@ async def get_cached_topic_authors(topic_id: int):
         return authors
 
     return []
+
+
+async def invalidate_shouts_cache(cache_keys: List[str]):
+    """
+    Инвалидирует кэш выборок публикаций по переданным ключам.
+    
+    Args:
+        cache_keys: Список ключей кэша для инвалидации
+        
+    Example:
+        await invalidate_shouts_cache([
+            "feed",  # общая лента
+            "author_123",  # публикации автора
+            "topic_456"  # публикации по теме
+        ])
+    """
+    from services.redis import redis_client
+    
+    for key in cache_keys:
+        cache_key = f"shouts:{key}"
+        try:
+            await redis_client.delete(cache_key)
+            logger.debug(f"Invalidated cache key: {cache_key}")
+        except Exception as e:
+            logger.error(f"Error invalidating cache key {cache_key}: {e}")

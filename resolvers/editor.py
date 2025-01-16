@@ -4,7 +4,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from cache.cache import cache_author, cache_topic
+from cache.cache import cache_author, cache_topic, invalidate_shouts_cache
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
@@ -329,6 +329,27 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     session.commit()
 
                     shout_dict = shout_by_id.dict()
+
+                    # Инвалидация кэша после обновления
+                    try:
+                        logger.info("Invalidating cache after shout update")
+                        
+                        # Инвалидируем кэш для всех связанных выборок
+                        await invalidate_shouts_cache([
+                            "feed",  # лента
+                            f"author_{author_id}",  # публикации автора
+                            "random_top",  # случайные топовые
+                            "unrated",  # неоцененные
+                        ])
+                        
+                        # Инвалидируем кэш для каждой связанной темы
+                        for topic in shout_by_id.topics:
+                            await invalidate_shouts_cache([f"topic_{topic.id}"])
+                            
+                        logger.info("Cache invalidated successfully")
+                    except Exception as cache_error:
+                        logger.warning(f"Cache invalidation error: {cache_error}", exc_info=True)
+                        # Не возвращаем ошибку, так как это некритично
 
                     if not publish:
                         await notify_shout(shout_dict, "update")
