@@ -348,8 +348,29 @@ async def invalidate_shouts_cache(cache_keys: List[str]):
     """
     for key in cache_keys:
         try:
-            await redis_operation('DEL', key)
-            await redis_operation('SETEX', f"{key}:invalidated", value="1", ttl=CACHE_TTL)
+            # Формируем полный ключ кэша
+            cache_key = f"shouts:{key}"
+            
+            # Удаляем основной кэш
+            await redis_operation('DEL', cache_key)
+            logger.debug(f"Invalidated cache key: {cache_key}")
+            
+            # Добавляем ключ в список инвалидированных с TTL
+            await redis_operation('SETEX', f"{cache_key}:invalidated", value="1", ttl=CACHE_TTL)
+            
+            # Если это кэш темы, инвалидируем также связанные ключи
+            if key.startswith("topic_"):
+                topic_id = key.split("_")[1]
+                related_keys = [
+                    f"topic:id:{topic_id}",
+                    f"topic:authors:{topic_id}",
+                    f"topic:followers:{topic_id}",
+                    f"topic:stats:{topic_id}"
+                ]
+                for related_key in related_keys:
+                    await redis_operation('DEL', related_key)
+                    logger.debug(f"Invalidated related key: {related_key}")
+                    
         except Exception as e:
             logger.error(f"Error invalidating cache key {key}: {e}")
 
@@ -386,18 +407,37 @@ async def invalidate_shout_related_cache(shout: Shout, author_id: int):
     """
     Инвалидирует весь кэш, связанный с публикацией
     """
+    # Базовые ленты
     cache_keys = [
-        "feed",
-        f"author_{author_id}",
-        "random_top",
-        "unrated"
+        "feed",  # основная лента
+        f"author_{author_id}",  # публикации автора
+        "random_top",  # случайные топовые
+        "unrated",  # неоцененные
+        "recent",  # последние публикации
+        "coauthored",  # совместные публикации
+        f"authored_{author_id}",  # авторские публикации
+        f"followed_{author_id}",  # подписки автора
     ]
+    
+    # Добавляем ключи для всех авторов публикации
+    for author in shout.authors:
+        cache_keys.extend([
+            f"author_{author.id}",
+            f"authored_{author.id}",
+            f"followed_{author.id}",
+            f"coauthored_{author.id}"
+        ])
     
     # Добавляем ключи для тем
     for topic in shout.topics:
-        cache_keys.append(f"topic_{topic.id}")
-        cache_keys.append(f"topic_shouts_{topic.id}")
+        cache_keys.extend([
+            f"topic_{topic.id}",
+            f"topic_shouts_{topic.id}",
+            f"topic_recent_{topic.id}",
+            f"topic_top_{topic.id}"
+        ])
     
+    # Инвалидируем все ключи
     await invalidate_shouts_cache(cache_keys)
 
 
