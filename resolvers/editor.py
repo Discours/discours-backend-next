@@ -94,67 +94,122 @@ async def get_shouts_drafts(_, info):
 @mutation.field("create_shout")
 @login_required
 async def create_shout(_, info, inp):
+    logger.info(f"Starting create_shout with input: {inp}")
     user_id = info.context.get("user_id")
     author_dict = info.context.get("author")
+    logger.debug(f"Context user_id: {user_id}, author: {author_dict}")
+
     if not author_dict:
+        logger.error("Author profile not found in context")
         return {"error": "author profile was not found"}
+
     author_id = author_dict.get("id")
     if user_id and author_id:
-        with local_session() as session:
-            author_id = int(author_id)
-            current_time = int(time.time())
-            slug = inp.get("slug") or f"draft-{current_time}"
-            shout_dict = {
-                "title": inp.get("title", ""),
-                "subtitle": inp.get("subtitle", ""),
-                "lead": inp.get("lead", ""),
-                "description": inp.get("description", ""),
-                "body": inp.get("body", ""),
-                "layout": inp.get("layout", "article"),
-                "created_by": author_id,
-                "authors": [],
-                "slug": slug,
-                "topics": inp.get("topics", []),
-                "published_at": None,
-                "community": 1,
-                "created_at": current_time,  # Set created_at as Unix timestamp
-            }
-            same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
-            c = 1
-            while same_slug_shout is not None:
+        try:
+            with local_session() as session:
+                author_id = int(author_id)
+                current_time = int(time.time())
+                slug = inp.get("slug") or f"draft-{current_time}"
+                
+                logger.info(f"Creating shout with slug: {slug}")
+                
+                shout_dict = {
+                    "title": inp.get("title", ""),
+                    "subtitle": inp.get("subtitle", ""),
+                    "lead": inp.get("lead", ""),
+                    "description": inp.get("description", ""),
+                    "body": inp.get("body", ""),
+                    "layout": inp.get("layout", "article"),
+                    "created_by": author_id,
+                    "authors": [],
+                    "slug": slug,
+                    "topics": inp.get("topics", []),
+                    "published_at": None,
+                    "community": 1,
+                    "created_at": current_time,
+                }
+
+                # Check for duplicate slug
+                logger.debug(f"Checking for existing slug: {slug}")
                 same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
-                c += 1
-                shout_dict["slug"] += f"-{c}"
-            new_shout = Shout(**shout_dict)
-            session.add(new_shout)
-            session.commit()
+                c = 1
+                while same_slug_shout is not None:
+                    logger.debug(f"Found duplicate slug, trying iteration {c}")
+                    same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
+                    c += 1
+                    shout_dict["slug"] += f"-{c}"
 
-            # NOTE: requesting new shout back
-            shout = session.query(Shout).where(Shout.slug == slug).first()
-            if shout:
-                # Проверка на существование записи
-                existing_sa = session.query(ShoutAuthor).filter_by(shout=shout.id, author=author_id).first()
-                if not existing_sa:
-                    sa = ShoutAuthor(shout=shout.id, author=author_id)
-                    session.add(sa)
+                try:
+                    logger.info("Creating new shout object")
+                    new_shout = Shout(**shout_dict)
+                    session.add(new_shout)
+                    session.commit()
+                    logger.info(f"Created shout with ID: {new_shout.id}")
+                except Exception as e:
+                    logger.error(f"Error creating shout object: {e}", exc_info=True)
+                    return {"error": f"Database error: {str(e)}"}
 
-                topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
-                for topic in topics:
-                    existing_st = session.query(ShoutTopic).filter_by(shout=shout.id, author=topic.id).first()
-                    if not existing_st:
-                        t = ShoutTopic(topic=topic.id, shout=shout.id)
-                        session.add(t)
+                # Get created shout
+                try:
+                    logger.debug(f"Retrieving created shout with slug: {slug}")
+                    shout = session.query(Shout).where(Shout.slug == slug).first()
+                    if not shout:
+                        logger.error("Created shout not found in database")
+                        return {"error": "Shout creation failed - not found after commit"}
+                except Exception as e:
+                    logger.error(f"Error retrieving created shout: {e}", exc_info=True)
+                    return {"error": f"Error retrieving created shout: {str(e)}"}
 
-                session.commit()
+                # Link author
+                try:
+                    logger.debug(f"Linking author {author_id} to shout {shout.id}")
+                    existing_sa = session.query(ShoutAuthor).filter_by(shout=shout.id, author=author_id).first()
+                    if not existing_sa:
+                        sa = ShoutAuthor(shout=shout.id, author=author_id)
+                        session.add(sa)
+                        logger.info(f"Added author {author_id} to shout {shout.id}")
+                except Exception as e:
+                    logger.error(f"Error linking author: {e}", exc_info=True)
+                    return {"error": f"Error linking author: {str(e)}"}
 
-                follow(None, info, "shout", shout.slug)
+                # Link topics
+                try:
+                    logger.debug(f"Linking topics: {inp.get('topics', [])}")
+                    topics = session.query(Topic).filter(Topic.slug.in_(inp.get("topics", []))).all()
+                    for topic in topics:
+                        existing_st = session.query(ShoutTopic).filter_by(shout=shout.id, topic=topic.id).first()
+                        if not existing_st:
+                            t = ShoutTopic(topic=topic.id, shout=shout.id)
+                            session.add(t)
+                            logger.info(f"Added topic {topic.id} to shout {shout.id}")
+                except Exception as e:
+                    logger.error(f"Error linking topics: {e}", exc_info=True)
+                    return {"error": f"Error linking topics: {str(e)}"}
 
-                # notifier
-                # await notify_shout(shout_dict, 'create')
+                try:
+                    session.commit()
+                    logger.info("Final commit successful")
+                except Exception as e:
+                    logger.error(f"Error in final commit: {e}", exc_info=True)
+                    return {"error": f"Error in final commit: {str(e)}"}
 
+                try:
+                    logger.debug("Following created shout")
+                    await follow(None, info, "shout", shout.slug)
+                except Exception as e:
+                    logger.warning(f"Error following shout: {e}", exc_info=True)
+                    # Don't return error as this is not critical
+
+                logger.info(f"Successfully created shout {shout.id}")
                 return {"shout": shout}
 
-    return {"error": "cant create shout" if user_id else "unauthorized"}
+        except Exception as e:
+            logger.error(f"Unexpected error in create_shout: {e}", exc_info=True)
+            return {"error": f"Unexpected error: {str(e)}"}
+
+    error_msg = "cant create shout" if user_id else "unauthorized"
+    logger.error(f"Create shout failed: {error_msg}")
+    return {"error": error_msg}
 
 
 def patch_main_topic(session, main_topic, shout):

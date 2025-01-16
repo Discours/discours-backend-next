@@ -88,7 +88,7 @@ server {
     add_header Cache-Control "public, no-transform";
     }
 
-    location ~* \.(mp3)$ {
+    location ~* \.(mp3|wav|ogg|flac|aac|aif|webm)$ {
       if ($request_method = 'GET') {
         add_header 'Access-Control-Allow-Origin' $allow_origin always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
