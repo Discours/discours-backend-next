@@ -19,6 +19,8 @@ DEFAULT_FOLLOWS = {
     "communities": [{"id": 1, "name": "Дискурс", "slug": "discours", "pic": ""}],
 }
 
+CACHE_TTL = 300  # 5 минут
+
 
 # Cache topic data
 async def cache_topic(topic: dict):
@@ -334,23 +336,15 @@ async def get_cached_topic_authors(topic_id: int):
 async def invalidate_shouts_cache(cache_keys: List[str]):
     """
     Инвалидирует кэш выборок публикаций по переданным ключам.
-    
-    Args:
-        cache_keys: Список ключей кэша для инвалидации
-        
-    Example:
-        await invalidate_shouts_cache([
-            "feed",  # общая лента
-            "author_123",  # публикации автора
-            "topic_456"  # публикации по теме
-        ])
     """
-    from services.redis import redis
-    
     for key in cache_keys:
         cache_key = f"shouts:{key}"
         try:
             await redis.execute("DEL", cache_key)
             logger.debug(f"Invalidated cache key: {cache_key}")
+            
+            # Добавляем ключ в список инвалидированных с TTL
+            await redis.execute("SETEX", f"{cache_key}:invalidated", CACHE_TTL, "1")
+            
         except Exception as e:
             logger.error(f"Error invalidating cache key {cache_key}: {e}")
