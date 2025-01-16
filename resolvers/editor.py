@@ -334,22 +334,36 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     try:
                         logger.info("Invalidating cache after shout update")
                         
-                        # Инвалидируем кэш для всех связанных выборок
-                        await invalidate_shouts_cache([
+                        cache_keys = [
                             "feed",  # лента
                             f"author_{author_id}",  # публикации автора
                             "random_top",  # случайные топовые
                             "unrated",  # неоцененные
-                        ])
-                        
-                        # Инвалидируем кэш для каждой связанной темы
+                        ]
+
+                        # Добавляем ключи для старых тем (до обновления)
                         for topic in shout_by_id.topics:
-                            await invalidate_shouts_cache([f"topic_{topic.id}"])
+                            cache_keys.append(f"topic_{topic.id}")
+                            cache_keys.append(f"topic_shouts_{topic.id}")
+                            
+                        # Добавляем ключи для новых тем (если есть в shout_input)
+                        if shout_input.get("topics"):
+                            for topic in shout_input["topics"]:
+                                if topic.get("id"):
+                                    cache_keys.append(f"topic_{topic.id}")
+                                    cache_keys.append(f"topic_shouts_{topic.id}")
+
+                        await invalidate_shouts_cache(cache_keys)
+                        
+                        # Обновляем кэш тем и авторов
+                        for topic in shout_by_id.topics:
+                            await cache_by_id(Topic, topic.id, cache_topic)
+                        for author in shout_by_id.authors:
+                            await cache_author(author.dict())
                             
                         logger.info("Cache invalidated successfully")
                     except Exception as cache_error:
                         logger.warning(f"Cache invalidation error: {cache_error}", exc_info=True)
-                        # Не возвращаем ошибку, так как это некритично
 
                     if not publish:
                         await notify_shout(shout_dict, "update")

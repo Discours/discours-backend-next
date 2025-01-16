@@ -340,11 +340,40 @@ async def invalidate_shouts_cache(cache_keys: List[str]):
     for key in cache_keys:
         cache_key = f"shouts:{key}"
         try:
+            # Удаляем основной кэш
             await redis.execute("DEL", cache_key)
             logger.debug(f"Invalidated cache key: {cache_key}")
             
             # Добавляем ключ в список инвалидированных с TTL
             await redis.execute("SETEX", f"{cache_key}:invalidated", CACHE_TTL, "1")
             
+            # Если это кэш темы, инвалидируем также связанные ключи
+            if key.startswith("topic_"):
+                topic_id = key.split("_")[1]
+                related_keys = [
+                    f"topic:id:{topic_id}",
+                    f"topic:authors:{topic_id}",
+                    f"topic:followers:{topic_id}"
+                ]
+                for related_key in related_keys:
+                    await redis.execute("DEL", related_key)
+                    logger.debug(f"Invalidated related key: {related_key}")
+            
         except Exception as e:
             logger.error(f"Error invalidating cache key {cache_key}: {e}")
+
+
+async def cache_topic_shouts(topic_id: int, shouts: List[dict]):
+    """Кэширует список публикаций для темы"""
+    key = f"topic_shouts_{topic_id}"
+    payload = json.dumps(shouts, cls=CustomJSONEncoder)
+    await redis.execute("SETEX", key, CACHE_TTL, payload)
+
+
+async def get_cached_topic_shouts(topic_id: int) -> List[dict]:
+    """Получает кэшированный список публикаций для темы"""
+    key = f"topic_shouts_{topic_id}"
+    cached = await redis.execute("GET", key)
+    if cached:
+        return json.loads(cached)
+    return None
