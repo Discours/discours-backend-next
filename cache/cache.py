@@ -7,7 +7,6 @@ from sqlalchemy import and_, join, select
 from orm.author import Author, AuthorFollower
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.editor import cache_by_id
 from services.db import local_session
 from services.redis import redis
 from utils.encoders import CustomJSONEncoder
@@ -348,25 +347,11 @@ async def invalidate_shouts_cache(cache_keys: List[str]):
     Инвалидирует кэш выборок публикаций по переданным ключам.
     """
     for key in cache_keys:
-        cache_key = f"shouts:{key}"
         try:
-            await redis_operation('DEL', cache_key)
-            logger.debug(f"Invalidated cache key: {cache_key}")
-            
-            await redis_operation('SETEX', f"{cache_key}:invalidated", value="1", ttl=CACHE_TTL)
-            
-            if key.startswith("topic_"):
-                topic_id = key.split("_")[1]
-                related_keys = [
-                    CACHE_KEYS['TOPIC_ID'].format(topic_id),
-                    CACHE_KEYS['TOPIC_AUTHORS'].format(topic_id),
-                    CACHE_KEYS['TOPIC_FOLLOWERS'].format(topic_id)
-                ]
-                for related_key in related_keys:
-                    await redis_operation('DEL', related_key)
-                    
+            await redis_operation('DEL', key)
+            await redis_operation('SETEX', f"{key}:invalidated", value="1", ttl=CACHE_TTL)
         except Exception as e:
-            logger.error(f"Error invalidating cache key {cache_key}: {e}")
+            logger.error(f"Error invalidating cache key {key}: {e}")
 
 
 async def cache_topic_shouts(topic_id: int, shouts: List[dict]):
