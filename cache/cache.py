@@ -7,6 +7,7 @@ from sqlalchemy import and_, join, select
 from orm.author import Author, AuthorFollower
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic, TopicFollower
+from resolvers.editor import cache_by_id
 from services.db import local_session
 from services.redis import redis
 from utils.encoders import CustomJSONEncoder
@@ -21,24 +22,33 @@ DEFAULT_FOLLOWS = {
 
 CACHE_TTL = 300  # 5 минут
 
+CACHE_KEYS = {
+    'TOPIC_ID': 'topic:id:{}',
+    'TOPIC_SLUG': 'topic:slug:{}',
+    'TOPIC_AUTHORS': 'topic:authors:{}',
+    'TOPIC_FOLLOWERS': 'topic:followers:{}',
+    'TOPIC_SHOUTS': 'topic_shouts_{}',
+    'AUTHOR_ID': 'author:id:{}',
+    'AUTHOR_USER': 'author:user:{}',
+    'SHOUTS': 'shouts:{}'
+}
+
 
 # Cache topic data
 async def cache_topic(topic: dict):
     payload = json.dumps(topic, cls=CustomJSONEncoder)
-    # Cache by id and slug for quick access
     await asyncio.gather(
-        redis.execute("SET", f"topic:id:{topic['id']}", payload),
-        redis.execute("SET", f"topic:slug:{topic['slug']}", payload),
+        redis.execute("SET", CACHE_KEYS['TOPIC_ID'].format(topic['id']), payload),
+        redis.execute("SET", CACHE_KEYS['TOPIC_SLUG'].format(topic['slug']), payload),
     )
 
 
 # Cache author data
 async def cache_author(author: dict):
     payload = json.dumps(author, cls=CustomJSONEncoder)
-    # Cache author data by user and id
     await asyncio.gather(
-        redis.execute("SET", f"author:user:{author['user'].strip()}", str(author["id"])),
-        redis.execute("SET", f"author:id:{author['id']}", payload),
+        redis.execute("SET", CACHE_KEYS['AUTHOR_USER'].format(author['user'].strip()), str(author["id"])),
+        redis.execute("SET", CACHE_KEYS['AUTHOR_ID'].format(author['id']), payload),
     )
 
 
@@ -340,25 +350,21 @@ async def invalidate_shouts_cache(cache_keys: List[str]):
     for key in cache_keys:
         cache_key = f"shouts:{key}"
         try:
-            # Удаляем основной кэш
-            await redis.execute("DEL", cache_key)
+            await redis_operation('DEL', cache_key)
             logger.debug(f"Invalidated cache key: {cache_key}")
             
-            # Добавляем ключ в список инвалидированных с TTL
-            await redis.execute("SETEX", f"{cache_key}:invalidated", CACHE_TTL, "1")
+            await redis_operation('SETEX', f"{cache_key}:invalidated", value="1", ttl=CACHE_TTL)
             
-            # Если это кэш темы, инвалидируем также связанные ключи
             if key.startswith("topic_"):
                 topic_id = key.split("_")[1]
                 related_keys = [
-                    f"topic:id:{topic_id}",
-                    f"topic:authors:{topic_id}",
-                    f"topic:followers:{topic_id}"
+                    CACHE_KEYS['TOPIC_ID'].format(topic_id),
+                    CACHE_KEYS['TOPIC_AUTHORS'].format(topic_id),
+                    CACHE_KEYS['TOPIC_FOLLOWERS'].format(topic_id)
                 ]
                 for related_key in related_keys:
-                    await redis.execute("DEL", related_key)
-                    logger.debug(f"Invalidated related key: {related_key}")
-            
+                    await redis_operation('DEL', related_key)
+                    
         except Exception as e:
             logger.error(f"Error invalidating cache key {cache_key}: {e}")
 
@@ -377,3 +383,100 @@ async def get_cached_topic_shouts(topic_id: int) -> List[dict]:
     if cached:
         return json.loads(cached)
     return None
+
+
+async def cache_related_entities(shout: Shout):
+    """
+    Кэширует все связанные с публикацией сущности (авторов и темы)
+    """
+    tasks = []
+    for author in shout.authors:
+        tasks.append(cache_by_id(Author, author.id, cache_author))
+    for topic in shout.topics:
+        tasks.append(cache_by_id(Topic, topic.id, cache_topic))
+    await asyncio.gather(*tasks)
+
+
+async def invalidate_shout_related_cache(shout: Shout, author_id: int):
+    """
+    Инвалидирует весь кэш, связанный с публикацией
+    """
+    cache_keys = [
+        "feed",
+        f"author_{author_id}",
+        "random_top",
+        "unrated"
+    ]
+    
+    # Добавляем ключи для тем
+    for topic in shout.topics:
+        cache_keys.append(f"topic_{topic.id}")
+        cache_keys.append(f"topic_shouts_{topic.id}")
+    
+    await invalidate_shouts_cache(cache_keys)
+
+
+async def redis_operation(operation: str, key: str, value=None, ttl=None):
+    """
+    Унифицированная функция для работы с Redis
+    
+    Args:
+        operation: 'GET', 'SET', 'DEL', 'SETEX'
+        key: ключ
+        value: значение (для SET/SETEX)
+        ttl: время жизни в секундах (для SETEX)
+    """
+    try:
+        if operation == 'GET':
+            return await redis.execute('GET', key)
+        elif operation == 'SET':
+            await redis.execute('SET', key, value)
+        elif operation == 'SETEX':
+            await redis.execute('SETEX', key, ttl or CACHE_TTL, value)
+        elif operation == 'DEL':
+            await redis.execute('DEL', key)
+    except Exception as e:
+        logger.error(f"Redis {operation} error for key {key}: {e}")
+
+
+async def get_cached_entity(entity_type: str, entity_id: int, get_method, cache_method):
+    """
+    Универсальная функция получения кэшированной сущности
+    
+    Args:
+        entity_type: 'author' или 'topic'
+        entity_id: ID сущности
+        get_method: метод получения из БД
+        cache_method: метод кэширования
+    """
+    key = f"{entity_type}:id:{entity_id}"
+    cached = await redis.execute("GET", key)
+    if cached:
+        return json.loads(cached)
+        
+    entity = await get_method(entity_id)
+    if entity:
+        await cache_method(entity)
+        return entity
+    return None
+
+
+async def cache_by_id(entity, entity_id: int, cache_method):
+    """
+    Кэширует сущность по ID, используя указанный метод кэширования
+    
+    Args:
+        entity: класс сущности (Author/Topic)
+        entity_id: ID сущности
+        cache_method: функция кэширования
+    """
+    from resolvers.stat import get_with_stat
+    caching_query = select(entity).filter(entity.id == entity_id)
+    result = get_with_stat(caching_query)
+    if not result or not result[0]:
+        logger.warning(f"{entity.__name__} with id {entity_id} not found")
+        return
+    x = result[0]
+    d = x.dict()
+    await cache_method(d)
+    return d

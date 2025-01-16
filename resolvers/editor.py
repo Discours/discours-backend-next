@@ -4,7 +4,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from cache.cache import cache_author, cache_topic, invalidate_shouts_cache
+from cache.cache import cache_author, cache_topic, invalidate_shouts_cache, cache_related_entities
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
