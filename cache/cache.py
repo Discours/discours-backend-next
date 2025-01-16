@@ -345,12 +345,12 @@ async def invalidate_shouts_cache(cache_keys: List[str]):
             "topic_456"  # публикации по теме
         ])
     """
-    from services.redis import redis_client
+    from services.redis import redis
     
     for key in cache_keys:
         cache_key = f"shouts:{key}"
         try:
-            await redis_client.delete(cache_key)
+            await redis.execute("DEL", cache_key)
             logger.debug(f"Invalidated cache key: {cache_key}")
         except Exception as e:
             logger.error(f"Error invalidating cache key {cache_key}: {e}")
