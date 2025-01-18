@@ -4,7 +4,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from cache.cache import cache_author, cache_topic, invalidate_shouts_cache, cache_related_entities
+from cache.cache import cache_author, cache_topic, invalidate_shouts_cache
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
@@ -113,35 +113,33 @@ async def create_shout(_, info, inp):
                 
                 logger.info(f"Creating shout with slug: {slug}")
                 
-                shout_dict = {
-                    "title": inp.get("title", ""),
-                    "subtitle": inp.get("subtitle", ""),
-                    "lead": inp.get("lead", ""),
-                    "description": inp.get("description", ""),
-                    "body": inp.get("body", ""),
-                    "layout": inp.get("layout", "article"),
-                    "created_by": author_id,
-                    "authors": [],
-                    "slug": slug,
-                    "topics": inp.get("topics", []),
-                    "published_at": None,
-                    "community": 1,
-                    "created_at": current_time,
-                }
+                # Создаем объект Shout напрямую, без промежуточного словаря
+                new_shout = Shout(
+                    title=inp.get("title", ""),
+                    subtitle=inp.get("subtitle", ""),
+                    lead=inp.get("lead", ""),
+                    description=inp.get("description", ""),
+                    body=inp.get("body", ""),
+                    layout=inp.get("layout", "article"),
+                    created_by=author_id,
+                    slug=slug,
+                    published_at=None,
+                    community=1,
+                    created_at=current_time
+                )
 
                 # Check for duplicate slug
                 logger.debug(f"Checking for existing slug: {slug}")
-                same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
+                same_slug_shout = session.query(Shout).filter(Shout.slug == new_shout.slug).first()
                 c = 1
                 while same_slug_shout is not None:
                     logger.debug(f"Found duplicate slug, trying iteration {c}")
-                    same_slug_shout = session.query(Shout).filter(Shout.slug == shout_dict.get("slug")).first()
+                    new_shout.slug = f"{slug}-{c}"
+                    same_slug_shout = session.query(Shout).filter(Shout.slug == new_shout.slug).first()
                     c += 1
-                    shout_dict["slug"] += f"-{c}"
 
                 try:
                     logger.info("Creating new shout object")
-                    new_shout = Shout(**shout_dict)
                     session.add(new_shout)
                     session.commit()
                     logger.info(f"Created shout with ID: {new_shout.id}")
