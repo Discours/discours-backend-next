@@ -104,7 +104,6 @@ async def create_shout(_, info, inp):
 
     try:
         with local_session() as session:
-            # Добавляем текущее время как published_at если публикация не черновик
             current_time = int(time.time())
             is_draft = inp.get("is_draft", False)
             if not is_draft:
@@ -117,6 +116,10 @@ async def create_shout(_, info, inp):
             inp["community"] = inp.get("community", 1)  # Устанавливаем значение по умолчанию
             inp["slug"] = inp.get("slug") or f"draft-{current_time}"  # Генерируем slug если не указан
             inp["lang"] = inp.get("lang", "ru")  # Устанавливаем язык по умолчанию
+
+            # Добавляем обязательные поля контента
+            inp["title"] = inp.get("title", "Без названия")  # Значение по умолчанию для заголовка
+            inp["body"] = inp.get("body", "")  # Пустое тело по умолчанию
 
             new_shout = Shout(**inp)
             session.add(new_shout)
