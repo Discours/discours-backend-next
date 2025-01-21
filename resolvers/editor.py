@@ -114,7 +114,12 @@ async def create_shout(_, info, inp):
                 logger.info(f"Creating shout with slug: {slug}")
                 
                 # Создаем объект Shout напрямую, без промежуточного словаря
-                new_shout = Shout(**inp)
+                new_shout = Shout({ 
+                    **inp, 
+                    "slug": slug, 
+                    "created_by": author_id, 
+                    "created_at": current_time
+                })
 
                 # Check for duplicate slug
                 logger.debug(f"Checking for existing slug: {slug}")

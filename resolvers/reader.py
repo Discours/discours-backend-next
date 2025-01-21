@@ -2,9 +2,9 @@ import json
 import time
 
 from graphql import GraphQLResolveInfo
-from sqlalchemy import nulls_last, text
+from sqlalchemy import nulls_last, text, and_
 from sqlalchemy.orm import aliased
-from sqlalchemy.sql.expression import and_, asc, case, desc, func, select
+from sqlalchemy.sql.expression import asc, case, desc, func, select
 
 from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
@@ -343,14 +343,16 @@ def apply_sorting(q, options):
 async def load_shouts_by(_, info: GraphQLResolveInfo, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
-
+    
     :param _: Корневой объект запроса (не используется)
     :param info: Информация о контексте GraphQL
-    :param options: Опции фильтрации и сортировки.
-    :return: Список публикаций, удовлетворяющих критериям.
+    :param options: Опции фильтрации и сортировки
+    :return: Список публикаций, удовлетворяющих критериям
     """
-    # Базовый запрос: используем специальный запрос с статистикой
+    # Базовый запрос со статистикой
     q = query_with_stat(info)
+    
+    # Применяем остальные опции фильтрации
     q, limit, offset = apply_options(q, options)
 
     # Передача сформированного запроса в метод получения публикаций с учетом сортировки и пагинации
