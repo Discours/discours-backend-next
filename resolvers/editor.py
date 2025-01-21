@@ -321,7 +321,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         patch_main_topic(session, main_topic, shout_by_id)
 
                     shout_input["updated_at"] = current_time
-                    shout_input["published_at"] = current_time if publish else None
+                    if publish:
+                        logger.info(f"publishing shout#{shout_id} with input: {shout_input}")
+                        shout_input["published_at"] = current_time
                     Shout.update(shout_by_id, shout_input)
                     session.add(shout_by_id)
                     session.commit()
