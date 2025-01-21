@@ -119,6 +119,7 @@ async def create_shout(_, info, inp):
                     slug=slug,  # явно указываем именованные аргументы
                     created_by=author_id,
                     created_at=current_time,
+                    community=1
                 )
 
                 # Check for duplicate slug
