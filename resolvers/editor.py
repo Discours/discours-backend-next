@@ -111,12 +111,15 @@ async def create_shout(_, info, inp):
                 current_time = int(time.time())
                 slug = inp.get("slug") or f"draft-{current_time}"
 
-                logger.info(f"Creating shout with slug: {slug}")
-
-                # Правильно:
+                logger.info(f"Creating shout with input: {inp}")
+                
                 new_shout = Shout(
-                    **inp,  # распаковываем входные данные
-                    slug=slug,  # явно указываем именованные аргументы
+                    slug=slug,
+                    published_at=None,
+                    body=inp.get("body", ""),
+                    layout=inp.get("layout", "article"),
+                    title=inp.get("title", ""),
+                    topics=inp.get("topics", []),
                     created_by=author_id,
                     created_at=current_time,
                     community=1
