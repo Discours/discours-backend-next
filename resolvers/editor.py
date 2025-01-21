@@ -110,9 +110,9 @@ async def create_shout(_, info, inp):
                 author_id = int(author_id)
                 current_time = int(time.time())
                 slug = inp.get("slug") or f"draft-{current_time}"
-                
+
                 logger.info(f"Creating shout with slug: {slug}")
-                
+
                 # Создаем объект Shout напрямую, без промежуточного словаря
                 new_shout = Shout(
                     title=inp.get("title", ""),
@@ -125,7 +125,14 @@ async def create_shout(_, info, inp):
                     slug=slug,
                     published_at=None,
                     community=1,
-                    created_at=current_time
+                    created_at=current_time,
+                    stat={  # Добавляем начальную статистику
+                        "views": 0,
+                        "comments": 0,
+                        "reactions": 0,
+                        "shares": 0,
+                        "bookmarks": 0,
+                    },
                 )
 
                 # Check for duplicate slug
@@ -198,8 +205,29 @@ async def create_shout(_, info, inp):
                     logger.warning(f"Error following shout: {e}", exc_info=True)
                     # Don't return error as this is not critical
 
-                logger.info(f"Successfully created shout {shout.id}")
-                return {"shout": shout}
+                # После успешного создания обновляем статистику автора
+                try:
+                    author = session.query(Author).filter(Author.id == author_id).first()
+                    if author and author.stat:
+                        author.stat["shouts"] = author.stat.get("shouts", 0) + 1
+                        session.add(author)
+                        session.commit()
+                        await cache_author(author.dict())
+                except Exception as e:
+                    logger.warning(f"Error updating author stats: {e}", exc_info=True)
+                    # Не возвращаем ошибку, так как это некритично
+
+                # Преобразуем связанные сущности в словари
+                try:
+                    shout_dict = shout.dict()
+                    shout_dict["authors"] = [author.dict() for author in shout.authors]
+                    shout_dict["topics"] = [topic.dict() for topic in shout.topics]
+                    logger.info(f"Successfully created shout {shout.id} with authors and topics as dicts")
+                    return {"shout": shout_dict}
+                except Exception as e:
+                    logger.warning(f"Error converting related entities to dicts: {e}", exc_info=True)
+                    # Если преобразование не удалось, возвращаем исходный объект
+                    return {"shout": shout}
 
         except Exception as e:
             logger.error(f"Unexpected error in create_shout: {e}", exc_info=True)
@@ -327,11 +355,17 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     session.commit()
 
                     shout_dict = shout_by_id.dict()
+                    # Преобразуем связанные сущности в словари
+                    try:
+                        shout_dict["authors"] = [author.dict() for author in shout_by_id.authors]
+                        shout_dict["topics"] = [topic.dict() for topic in shout_by_id.topics]
+                    except Exception as e:
+                        logger.warning(f"Error converting related entities to dicts: {e}", exc_info=True)
 
                     # Инвалидация кэша после обновления
                     try:
                         logger.info("Invalidating cache after shout update")
-                        
+
                         cache_keys = [
                             "feed",  # лента
                             f"author_{author_id}",  # публикации автора
@@ -343,7 +377,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         for topic in shout_by_id.topics:
                             cache_keys.append(f"topic_{topic.id}")
                             cache_keys.append(f"topic_shouts_{topic.id}")
-                            
+
                         # Добавляем ключи для новых тем (если есть в shout_input)
                         if shout_input.get("topics"):
                             for topic in shout_input["topics"]:
@@ -352,13 +386,13 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                                     cache_keys.append(f"topic_shouts_{topic.id}")
 
                         await invalidate_shouts_cache(cache_keys)
-                        
+
                         # Обновляем кэш тем и авторов
                         for topic in shout_by_id.topics:
                             await cache_by_id(Topic, topic.id, cache_topic)
                         for author in shout_by_id.authors:
                             await cache_author(author.dict())
-                            
+
                         logger.info("Cache invalidated successfully")
                     except Exception as cache_error:
                         logger.warning(f"Cache invalidation error: {cache_error}", exc_info=True)
