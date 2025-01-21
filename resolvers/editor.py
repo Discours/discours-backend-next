@@ -112,17 +112,15 @@ async def create_shout(_, info, inp):
                 slug = inp.get("slug") or f"draft-{current_time}"
 
                 logger.info(f"Creating shout with input: {inp}")
-                
                 # Создаем публикацию без topics
                 new_shout = Shout(
                     slug=slug,
-                    published_at=None,
                     body=inp.get("body", ""),
                     layout=inp.get("layout", "article"),
                     title=inp.get("title", ""),
                     created_by=author_id,
                     created_at=current_time,
-                    community=1
+                    community=1,
                 )
 
                 # Проверяем уникальность slug
@@ -154,14 +152,20 @@ async def create_shout(_, info, inp):
                     return {"error": f"Error linking author: {str(e)}"}
 
                 # Связываем с темами
-                topics_slugs = inp.get("topics", [])
-                if topics_slugs:
+
+                input_topics = inp.get("topics", [])
+                if input_topics:
                     try:
-                        logger.debug(f"Linking topics: {topics_slugs}")
-                        topics = session.query(Topic).filter(Topic.slug.in_(topics_slugs)).all()
-                        for topic in topics:
-                            st = ShoutTopic(topic=topic.id, shout=new_shout.id)
+                        logger.debug(f"Linking topics: {[t.slug for t in input_topics]}")
+                        main_topic = inp.get("main_topic")
+                        for topic in input_topics:
+                            st = ShoutTopic(
+                                topic=topic.id,
+                                shout=new_shout.id,
+                                main=(topic.slug == main_topic) if main_topic else False,
+                            )
                             session.add(st)
+                            logger.debug(f"Added topic {topic.slug} {'(main)' if st.main else ''}")
                     except Exception as e:
                         logger.error(f"Error linking topics: {e}", exc_info=True)
                         return {"error": f"Error linking topics: {str(e)}"}
