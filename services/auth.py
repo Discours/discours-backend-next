@@ -7,10 +7,8 @@ from settings import ADMIN_SECRET, AUTH_URL
 from utils.logger import root_logger as logger
 
 # Список разрешенных заголовков
-ALLOWED_HEADERS = [
-    'Authorization',
-    'Content-Type'
-]
+ALLOWED_HEADERS = ["Authorization", "Content-Type"]
+
 
 async def check_auth(req):
     """
@@ -27,18 +25,18 @@ async def check_auth(req):
     - user_roles: list[str] - Список ролей пользователя.
     """
     token = req.headers.get("Authorization")
-    
-    host = req.headers.get('host', '')
+
+    host = req.headers.get("host", "")
     logger.debug(f"check_auth: host={host}")
     auth_url = AUTH_URL
-    if '.dscrs.site' in host or 'localhost' in host:
+    if ".dscrs.site" in host or "localhost" in host:
         auth_url = "https://auth.dscrs.site/graphql"
     user_id = ""
     user_roles = []
     if token:
         # Проверяем и очищаем токен от префикса Bearer если он есть
-        if token.startswith('Bearer '):
-            token = token.split('Bearer ')[-1].strip()
+        if token.startswith("Bearer "):
+            token = token.split("Bearer ")[-1].strip()
         # Logging the authentication token
         logger.debug(f"TOKEN: {token}")
         query_name = "validate_jwt_token"
@@ -46,9 +44,7 @@ async def check_auth(req):
         variables = {"params": {"token_type": "access_token", "token": token}}
 
         # Только необходимые заголовки для GraphQL запроса
-        headers = {
-            'Content-Type': 'application/json'
-        }
+        headers = {"Content-Type": "application/json"}
 
         gql = {
             "query": f"query {operation}($params: ValidateJWTTokenInput!)"

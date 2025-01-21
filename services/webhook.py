@@ -20,7 +20,7 @@ from settings import ADMIN_SECRET, WEBHOOK_SECRET
 async def check_webhook_existence():
     """
     Проверяет существование вебхука для user.login события
-    
+
     Returns:
         tuple: (bool, str, str) - существует ли вебхук, его id и endpoint если существует
     """
@@ -28,11 +28,8 @@ async def check_webhook_existence():
     if not ADMIN_SECRET:
         logger.error("ADMIN_SECRET is not set")
         return False, None, None
-    
-    headers = {
-        "Content-Type": "application/json",
-        "X-Authorizer-Admin-Secret": ADMIN_SECRET
-    }
+
+    headers = {"Content-Type": "application/json", "X-Authorizer-Admin-Secret": ADMIN_SECRET}
 
     operation = "GetWebhooks"
     query_name = "_webhooks"
@@ -63,17 +60,14 @@ async def create_webhook_endpoint():
     """
     logger.info("create_webhook_endpoint called")
 
-    headers = {
-        "Content-Type": "application/json",
-        "X-Authorizer-Admin-Secret": ADMIN_SECRET
-    }
+    headers = {"Content-Type": "application/json", "X-Authorizer-Admin-Secret": ADMIN_SECRET}
 
     exists, webhook_id, current_endpoint = await check_webhook_existence()
-    
+
     # Определяем endpoint в зависимости от окружения
-    host = os.environ.get('HOST', 'core.dscrs.site')
+    host = os.environ.get("HOST", "core.dscrs.site")
     endpoint = f"https://{host}/new-author"
-    
+
     if exists:
         # Если вебхук существует, но с другим endpoint или с модифицированным именем
         if current_endpoint != endpoint or webhook_id:
