@@ -322,8 +322,11 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 
                     shout_input["updated_at"] = current_time
                     if publish:
-                        logger.info(f"publishing shout#{shout_id} with input: {shout_input}")
+                        logger.info(f"Publishing shout#{shout_id}")
+                        logger.debug(f"Before update: published_at={shout_by_id.published_at}")
                         shout_input["published_at"] = current_time
+                        Shout.update(shout_by_id, shout_input)
+                        logger.debug(f"After update: published_at={shout_by_id.published_at}")
                     Shout.update(shout_by_id, shout_input)
                     session.add(shout_by_id)
                     session.commit()
