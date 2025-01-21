@@ -343,7 +343,7 @@ def apply_sorting(q, options):
 async def load_shouts_by(_, info: GraphQLResolveInfo, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
-    
+
     :param _: Корневой объект запроса (не используется)
     :param info: Информация о контексте GraphQL
     :param options: Опции фильтрации и сортировки
@@ -351,7 +351,7 @@ async def load_shouts_by(_, info: GraphQLResolveInfo, options):
     """
     # Базовый запрос со статистикой
     q = query_with_stat(info)
-    
+
     # Применяем остальные опции фильтрации
     q, limit, offset = apply_options(q, options)
 
