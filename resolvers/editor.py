@@ -114,26 +114,7 @@ async def create_shout(_, info, inp):
                 logger.info(f"Creating shout with slug: {slug}")
                 
                 # Создаем объект Shout напрямую, без промежуточного словаря
-                new_shout = Shout(
-                    title=inp.get("title", ""),
-                    subtitle=inp.get("subtitle", ""),
-                    lead=inp.get("lead", ""),
-                    description=inp.get("description", ""),
-                    body=inp.get("body", ""),
-                    layout=inp.get("layout", "article"),
-                    created_by=author_id,
-                    slug=slug,
-                    published_at=None,
-                    community=1,
-                    created_at=current_time,
-                    stat={  # Добавляем начальную статистику
-                        "views": 0,
-                        "comments": 0,
-                        "reactions": 0,
-                        "shares": 0,
-                        "bookmarks": 0
-                    }
-                )
+                new_shout = Shout(**inp)
 
                 # Check for duplicate slug
                 logger.debug(f"Checking for existing slug: {slug}")
