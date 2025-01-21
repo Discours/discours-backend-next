@@ -125,14 +125,7 @@ async def create_shout(_, info, inp):
                     slug=slug,
                     published_at=None,
                     community=1,
-                    created_at=current_time,
-                    stat={  # Добавляем начальную статистику
-                        "views": 0,
-                        "comments": 0,
-                        "reactions": 0,
-                        "shares": 0,
-                        "bookmarks": 0,
-                    },
+                    created_at=current_time
                 )
 
                 # Check for duplicate slug
