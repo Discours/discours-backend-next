@@ -110,9 +110,13 @@ async def create_shout(_, info, inp):
             if not is_draft:
                 inp["published_at"] = current_time
 
+            # Устанавливаем обязательные поля
             inp["created_at"] = current_time
             inp["updated_at"] = current_time
             inp["created_by"] = author_dict.get("id")
+            inp["community"] = inp.get("community", 1)  # Устанавливаем значение по умолчанию
+            inp["slug"] = inp.get("slug") or f"draft-{current_time}"  # Генерируем slug если не указан
+            inp["lang"] = inp.get("lang", "ru")  # Устанавливаем язык по умолчанию
 
             new_shout = Shout(**inp)
             session.add(new_shout)
