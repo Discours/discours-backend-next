@@ -117,20 +117,20 @@ async def create_shout(_, info, inp):
 
             # Генерация уникального slug с ограничением длины
             base_slug = inp.get("slug") or f"draft-{current_time}"
-            slug = base_slug
+            slug = base_slug[:50]  # Сразу ограничиваем длину базового slug
             counter = 1
-            max_attempts = 10  # Ограничиваем количество попыток
+            max_attempts = 10
 
             while counter <= max_attempts:
                 existing_slug = session.query(Shout).filter(Shout.slug == slug).first()
                 if not existing_slug:
                     break
-                slug = f"{base_slug[:50]}-{counter}"  # Ограничиваем длину базового slug
+                slug = f"{base_slug[:40]}-{counter}"  # Оставляем место для счетчика
                 counter += 1
 
             if counter > max_attempts:
-                # Если не удалось создать уникальный slug, используем timestamp
-                slug = f"draft-{current_time}-{author_dict.get('id')}"
+                # Если не удалось создать уникальный slug, используем короткий вариант
+                slug = f"d-{current_time}-{author_dict.get('id')}"
 
             inp["slug"] = slug
             inp["lang"] = inp.get("lang", "ru")
@@ -139,23 +139,12 @@ async def create_shout(_, info, inp):
             inp["title"] = inp.get("title", "Без названия")
             inp["body"] = inp.get("body", "")
 
+            logger.info("Creating new shout object")
             new_shout = Shout(**inp)
             session.add(new_shout)
             session.flush()
 
-            # Check for duplicate slug
-            logger.debug(f"Checking for existing slug: {new_shout.slug}")
-            same_slug_shout = session.query(Shout).filter(Shout.slug == new_shout.slug).first()
-            c = 1
-            while same_slug_shout is not None:
-                logger.debug(f"Found duplicate slug, trying iteration {c}")
-                new_shout.slug = f"{new_shout.slug}-{c}"
-                same_slug_shout = session.query(Shout).filter(Shout.slug == new_shout.slug).first()
-                c += 1
-
             try:
-                logger.info("Creating new shout object")
-                session.add(new_shout)
                 session.commit()
                 logger.info(f"Created shout with ID: {new_shout.id}")
             except Exception as e:
@@ -339,7 +328,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                 logger.info(f"shout#{shout_id} found")
 
                 if slug != shout_by_id.slug:
-                    base_slug = slug[:50]  # Ограничиваем длину базового slug
+                    base_slug = slug[:50]
                     new_slug = base_slug
                     counter = 1
                     max_attempts = 10
@@ -350,11 +339,11 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         )
                         if not same_slug_shout:
                             break
-                        new_slug = f"{base_slug}-{counter}"
+                        new_slug = f"{base_slug[:40]}-{counter}"
                         counter += 1
 
                     if counter > max_attempts:
-                        new_slug = f"{base_slug}-{current_time}"
+                        new_slug = f"d-{current_time}-{shout_id}"
 
                     shout_input["slug"] = new_slug
                     logger.info(f"shout#{shout_id} slug patched")
