@@ -335,9 +335,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                             sa = ShoutAuthor(shout=shout_id, author=author_id)
                             session.add(sa)
                             session.flush()
-                            logger.info(f"Author link added successfully")
+                            logger.info("Author link added successfully")
                         else:
-                            logger.info(f"Author link already exists")
+                            logger.info("Author link already exists")
 
                     Shout.update(shout_by_id, shout_input)
                     session.add(shout_by_id)
