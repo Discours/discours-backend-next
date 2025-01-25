@@ -64,7 +64,6 @@ def query_with_stat(info):
 
     Добавляет подзапрос статистики
     """
-    logger.info("Starting query_with_stat")
     q = (
         select(Shout)
         .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
@@ -89,10 +88,7 @@ def query_with_stat(info):
         ).label("main_author")
     )
 
-    logger.info(f"Checking fields - main_topic: {has_field(info, 'main_topic')}, authors: {has_field(info, 'authors')}, topics: {has_field(info, 'topics')}")
-
     if has_field(info, "main_topic"):
-        logger.info("Adding main_topic join")
         main_topic_join = aliased(ShoutTopic)
         main_topic = aliased(Topic)
         q = q.join(main_topic_join, and_(main_topic_join.shout == Shout.id, main_topic_join.main.is_(True)))
@@ -104,7 +100,6 @@ def query_with_stat(info):
         )
 
     if has_field(info, "authors"):
-        logger.info("Adding authors subquery")
         authors_subquery = (
             select(
                 ShoutAuthor.shout,
@@ -134,7 +129,6 @@ def query_with_stat(info):
         q = q.add_columns(authors_subquery.c.authors)
 
     if has_field(info, "topics"):
-        logger.info("Adding topics subquery")
         topics_subquery = (
             select(
                 ShoutTopic.shout,
@@ -151,8 +145,6 @@ def query_with_stat(info):
         q = q.add_columns(topics_subquery.c.topics)
 
     if has_field(info, "stat"):
-        logger.info("Adding stats subquery")
-        # Подзапрос для статистики реакций
         stats_subquery = (
             select(
                 Reaction.shout,
@@ -197,17 +189,12 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     """
     shouts = []
     try:
-        logger.info(f"Начало выполнения get_shouts_with_links с limit={limit}, offset={offset}")
         q = q.limit(limit).offset(offset)
 
         with local_session() as session:
-            logger.info("Выполнение основного запроса")
-            t1 = time.time()
             shouts_result = session.execute(q).all()
-            logger.info(f"Запрос выполнен, получено {len(shouts_result)} результатов за {time.time() - t1:.3f} секунд")
 
             if not shouts_result:
-                logger.warning("Нет найденных результатов")
                 return []
 
             for idx, row in enumerate(shouts_result):
@@ -241,20 +228,15 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
 
                         if has_field(info, "main_topic") and hasattr(row, "main_topic"):
-                            logger.debug(f"Processing main_topic for shout {shout_id}")
                             shout_dict["main_topic"] = (
                                 json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
                             )
                         if has_field(info, "authors") and hasattr(row, "authors"):
-                            logger.debug(f"Processing authors for shout {shout_id}, authors data: {row.authors}")
                             shout_dict["authors"] = (
                                 json.loads(row.authors) if isinstance(row.authors, str) else row.authors
                             )
                         if has_field(info, "topics") and hasattr(row, "topics"):
-                            logger.debug(f"Processing topics for shout {shout_id}, topics data: {row.topics}")
                             shout_dict["topics"] = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
-
-                        logger.debug(f"Final shout_dict for {shout_id}: {shout_dict}")
 
                         shouts.append(shout_dict)
 
@@ -487,3 +469,29 @@ async def load_shouts_random_top(_, info, options):
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
     return get_shouts_with_links(info, q, limit)
+
+
+@query.field("Shout.media")
+def resolve_shout_media(shout, _):
+    """
+    Резолвер для поля media типа Shout
+    Преобразует JSON из БД в список MediaItem
+    """
+    if not shout.media:
+        return []
+    
+    # Если media это строка JSON, парсим её
+    if isinstance(shout.media, str):
+        try:
+            media_data = json.loads(shout.media)
+        except json.JSONDecodeError:
+            return []
+    else:
+        media_data = shout.media
+    
+    # Если media_data это словарь, оборачиваем его в список
+    if isinstance(media_data, dict):
+        return [media_data]
+    elif isinstance(media_data, list):
+        return media_data
+    return []
