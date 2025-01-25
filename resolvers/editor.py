@@ -324,6 +324,21 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     if publish:
                         logger.info(f"publishing shout#{shout_id} with input: {shout_input}")
                         shout_input["published_at"] = current_time
+                        # Проверяем наличие связи с автором
+                        logger.info(f"Checking author link for shout#{shout_id} and author#{author_id}")
+                        author_link = session.query(ShoutAuthor).filter(
+                            and_(ShoutAuthor.shout == shout_id, ShoutAuthor.author == author_id)
+                        ).first()
+
+                        if not author_link:
+                            logger.info(f"Adding missing author link for shout#{shout_id}")
+                            sa = ShoutAuthor(shout=shout_id, author=author_id)
+                            session.add(sa)
+                            session.flush()
+                            logger.info(f"Author link added successfully")
+                        else:
+                            logger.info(f"Author link already exists")
+
                     Shout.update(shout_by_id, shout_input)
                     session.add(shout_by_id)
                     session.commit()
