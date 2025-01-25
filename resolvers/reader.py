@@ -330,7 +330,9 @@ def apply_sorting(q, options):
     order_str = options.get("order_by")
     if order_str in ["rating", "comments_count", "last_commented_at"]:
         query_order_by = desc(text(order_str)) if options.get("order_by_desc", True) else asc(text(order_str))
-        q = q.distinct(text(order_str), Shout.id).order_by(nulls_last(query_order_by), Shout.id)
+        q = q.distinct(text(order_str), Shout.id).order_by(  # DISTINCT ON включает поле сортировки
+            nulls_last(query_order_by), Shout.id
+        )
     else:
         q = q.distinct(Shout.published_at, Shout.id).order_by(Shout.published_at.desc(), Shout.id)
 
@@ -341,21 +343,19 @@ def apply_sorting(q, options):
 async def load_shouts_by(_, info: GraphQLResolveInfo, options):
     """
     Загрузка публикаций с фильтрацией, сортировкой и пагинацией.
+
+    :param _: Корневой объект запроса (не используется)
+    :param info: Информация о контексте GraphQL
+    :param options: Опции фильтрации и сортировки
+    :return: Список публикаций, удовлетворяющих критериям
     """
     # Базовый запрос со статистикой
     q = query_with_stat(info)
-    logger.debug(f"Base query created with options: {options}")
 
     # Применяем остальные опции фильтрации
     q, limit, offset = apply_options(q, options)
 
-    # Логируем SQL запрос для отладки
-    from sqlalchemy.dialects import postgresql
-
-    sql = q.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
-    logger.debug(f"Final SQL query: {sql}")
-
-    # Передача сформированного запроса в метод получения публикаций
+    # Передача сформированного запроса в метод получения публикаций с учетом сортировки и пагинации
     return get_shouts_with_links(info, q, limit, offset)
 
 

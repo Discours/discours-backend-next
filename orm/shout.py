@@ -41,34 +41,34 @@ class ShoutAuthor(Base):
 class Shout(Base):
     __tablename__ = "shout"
 
-    created_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    updated_at = Column(Integer, nullable=True, index=True)
-    published_at = Column(Integer, nullable=True, index=True)
-    featured_at = Column(Integer, nullable=True, index=True)
-    deleted_at = Column(Integer, nullable=True, index=True)
+    created_at: int = Column(Integer, nullable=False, default=lambda: int(time.time()))
+    updated_at: int | None = Column(Integer, nullable=True, index=True)
+    published_at: int | None = Column(Integer, nullable=True, index=True)
+    featured_at: int | None = Column(Integer, nullable=True, index=True)
+    deleted_at: int | None = Column(Integer, nullable=True, index=True)
 
-    created_by = Column(ForeignKey("author.id"), nullable=False)
-    updated_by = Column(ForeignKey("author.id"), nullable=True)
-    deleted_by = Column(ForeignKey("author.id"), nullable=True)
-    community = Column(ForeignKey("community.id"), nullable=False)
+    created_by: int = Column(ForeignKey("author.id"), nullable=False)
+    updated_by: int | None = Column(ForeignKey("author.id"), nullable=True)
+    deleted_by: int | None = Column(ForeignKey("author.id"), nullable=True)
+    community: int = Column(ForeignKey("community.id"), nullable=False)
 
-    body = Column(String, nullable=False, comment="Body")
-    slug = Column(String, unique=True)
-    cover = Column(String, nullable=True, comment="Cover image url")
-    cover_caption = Column(String, nullable=True, comment="Cover image alt caption")
-    lead = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    title = Column(String, nullable=False)
-    subtitle = Column(String, nullable=True)
-    layout = Column(String, nullable=False, default="article")
-    media = Column(JSON, nullable=True)
+    body: str = Column(String, nullable=False, comment="Body")
+    slug: str = Column(String, unique=True)
+    cover: str | None = Column(String, nullable=True, comment="Cover image url")
+    cover_caption: str | None = Column(String, nullable=True, comment="Cover image alt caption")
+    lead: str | None = Column(String, nullable=True)
+    description: str | None = Column(String, nullable=True)
+    title: str = Column(String, nullable=False)
+    subtitle: str | None = Column(String, nullable=True)
+    layout: str = Column(String, nullable=False, default="article")
+    media: dict | None = Column(JSON, nullable=True)
 
     authors = relationship(Author, secondary="shout_author")
     topics = relationship(Topic, secondary="shout_topic")
     reactions = relationship(Reaction)
 
-    lang = Column(String, nullable=False, default="ru", comment="Language")
-    version_of = Column(ForeignKey("shout.id"), nullable=True)
-    oid = Column(String, nullable=True)
+    lang: str = Column(String, nullable=False, default="ru", comment="Language")
+    version_of: int | None = Column(ForeignKey("shout.id"), nullable=True)
+    oid: str | None = Column(String, nullable=True)
 
-    seo = Column(String, nullable=True)  # JSON
+    seo: str | None = Column(String, nullable=True)  # JSON

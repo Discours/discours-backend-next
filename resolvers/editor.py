@@ -4,7 +4,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from cache.cache import cache_author, cache_topic, invalidate_shouts_cache
+from cache.cache import cache_author, cache_topic, invalidate_shouts_cache, invalidate_shout_related_cache
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
@@ -322,11 +322,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 
                     shout_input["updated_at"] = current_time
                     if publish:
-                        logger.info(f"Publishing shout#{shout_id}")
-                        logger.debug(f"Before update: published_at={shout_by_id.published_at}")
+                        logger.info(f"publishing shout#{shout_id} with input: {shout_input}")
                         shout_input["published_at"] = current_time
-                        Shout.update(shout_by_id, shout_input)
-                        logger.debug(f"After update: published_at={shout_by_id.published_at}")
                     Shout.update(shout_by_id, shout_input)
                     session.add(shout_by_id)
                     session.commit()
@@ -344,19 +341,13 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                             "unrated",  # неоцененные
                         ]
 
-                        # Добавляем ключи для старых тем (до обновления)
+                        # Добавляем ключи для тем публикации
                         for topic in shout_by_id.topics:
                             cache_keys.append(f"topic_{topic.id}")
                             cache_keys.append(f"topic_shouts_{topic.id}")
 
-                        # Добавляем ключи для новых тем (если есть в shout_input)
-                        if shout_input.get("topics"):
-                            for topic in shout_input["topics"]:
-                                if topic.get("id"):
-                                    cache_keys.append(f"topic_{topic.id}")
-                                    cache_keys.append(f"topic_shouts_{topic.id}")
-
                         await invalidate_shouts_cache(cache_keys)
+                        await invalidate_shout_related_cache(shout_by_id, author_id)
 
                         # Обновляем кэш тем и авторов
                         for topic in shout_by_id.topics:
