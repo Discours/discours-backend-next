@@ -1,7 +1,7 @@
 import json
 
 from graphql import GraphQLResolveInfo
-from sqlalchemy import nulls_last, text, and_
+from sqlalchemy import and_, nulls_last, text
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import asc, case, desc, func, select
 
@@ -472,6 +472,7 @@ async def load_shouts_random_top(_, info, options):
 
 shout = type_("Shout")
 
+
 @shout.field("media")
 def resolve_shout_media(shout, _):
     """
@@ -480,7 +481,7 @@ def resolve_shout_media(shout, _):
     """
     if not shout.media:
         return []
-    
+
     # Если media это строка JSON, парсим её
     if isinstance(shout.media, str):
         try:
@@ -489,7 +490,7 @@ def resolve_shout_media(shout, _):
             return []
     else:
         media_data = shout.media
-    
+
     # Если media_data это словарь, оборачиваем его в список
     if isinstance(media_data, dict):
         return [media_data]

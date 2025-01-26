@@ -4,7 +4,7 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from cache.cache import cache_author, cache_topic, invalidate_shouts_cache, invalidate_shout_related_cache
+from cache.cache import cache_author, cache_topic, invalidate_shout_related_cache, invalidate_shouts_cache
 from orm.author import Author
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
@@ -326,9 +326,11 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         shout_input["published_at"] = current_time
                         # Проверяем наличие связи с автором
                         logger.info(f"Checking author link for shout#{shout_id} and author#{author_id}")
-                        author_link = session.query(ShoutAuthor).filter(
-                            and_(ShoutAuthor.shout == shout_id, ShoutAuthor.author == author_id)
-                        ).first()
+                        author_link = (
+                            session.query(ShoutAuthor)
+                            .filter(and_(ShoutAuthor.shout == shout_id, ShoutAuthor.author == author_id))
+                            .first()
+                        )
 
                         if not author_link:
                             logger.info(f"Adding missing author link for shout#{shout_id}")
