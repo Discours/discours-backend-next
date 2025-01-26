@@ -11,7 +11,7 @@ from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from services.auth import login_accepted
 from services.db import json_array_builder, json_builder, local_session
-from services.schema import query, type_
+from services.schema import query
 from services.search import search_text
 from services.viewed import ViewedStorage
 from utils.logger import root_logger as logger
@@ -215,14 +215,12 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 "pic": a.pic,
                             }
 
-                        if hasattr(row, "stat"):
+                        if has_field(info, "stat"):
                             stat = {}
                             if isinstance(row.stat, str):
                                 stat = json.loads(row.stat)
                             elif isinstance(row.stat, dict):
                                 stat = row.stat
-                            else:
-                                logger.warning(f"Строка {idx} - неизвестный тип stat: {type(row.stat)}")
                             viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
                             shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
 
@@ -236,6 +234,16 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             )
                         if has_field(info, "topics") and hasattr(row, "topics"):
                             shout_dict["topics"] = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
+
+                        if has_field(info, "media") and shout.media:
+                            # Обработка поля media
+                            media_data = shout.media
+                            if isinstance(media_data, str):
+                                try:
+                                    media_data = json.loads(media_data)
+                                except json.JSONDecodeError:
+                                    media_data = []
+                            shout_dict["media"] = [media_data] if isinstance(media_data, dict) else media_data
 
                         shouts.append(shout_dict)
 
@@ -468,32 +476,3 @@ async def load_shouts_random_top(_, info, options):
     q = q.order_by(func.random())
     limit = options.get("limit", 10)
     return get_shouts_with_links(info, q, limit)
-
-
-shout = type_("Shout")
-
-
-@shout.field("media")
-def resolve_shout_media(shout, _):
-    """
-    Резолвер для поля media типа Shout
-    Преобразует JSON из БД в список MediaItem
-    """
-    if not shout.media:
-        return []
-
-    # Если media это строка JSON, парсим её
-    if isinstance(shout.media, str):
-        try:
-            media_data = json.loads(shout.media)
-        except json.JSONDecodeError:
-            return []
-    else:
-        media_data = shout.media
-
-    # Если media_data это словарь, оборачиваем его в список
-    if isinstance(media_data, dict):
-        return [media_data]
-    elif isinstance(media_data, list):
-        return media_data
-    return []
