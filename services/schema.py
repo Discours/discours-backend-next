@@ -1,12 +1,24 @@
 from asyncio.log import logger
 
 import httpx
-from ariadne import MutationType, QueryType
+from ariadne import MutationType, QueryType, ObjectType
 
 from settings import AUTH_URL
 
 query = QueryType()
 mutation = MutationType()
+
+def type_(name: str) -> ObjectType:
+    """
+    Создает резолвер для объектного типа
+    
+    :param name: Имя типа в схеме GraphQL
+    :return: Резолвер объектного типа
+    """
+    resolver = ObjectType(name)
+    resolvers.append(resolver)
+    return resolver
+
 resolvers = [query, mutation]
 
 

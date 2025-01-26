@@ -1,5 +1,4 @@
 import json
-import time
 
 from graphql import GraphQLResolveInfo
 from sqlalchemy import nulls_last, text, and_
@@ -12,7 +11,7 @@ from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
 from services.auth import login_accepted
 from services.db import json_array_builder, json_builder, local_session
-from services.schema import query
+from services.schema import query, type_
 from services.search import search_text
 from services.viewed import ViewedStorage
 from utils.logger import root_logger as logger
@@ -471,7 +470,9 @@ async def load_shouts_random_top(_, info, options):
     return get_shouts_with_links(info, q, limit)
 
 
-@query.field("Shout.media")
+shout = type_("Shout")
+
+@shout.field("media")
 def resolve_shout_media(shout, _):
     """
     Резолвер для поля media типа Shout
