@@ -123,6 +123,11 @@ server {
     internal;
   }
 
+  log_format custom '$remote_addr - $remote_user [$time_local] "$request" '
+                  'status=$status allow_origin=$allow_origin '
+                  '"$http_referer" "$http_user_agent"';
+  access_log /var/log/nginx/access.log custom;
+
   include {{ $.DOKKU_ROOT }}/{{ $.APP }}/nginx.conf.d/*.conf;
 }
 {{ end }}
