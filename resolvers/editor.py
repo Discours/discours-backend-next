@@ -187,17 +187,6 @@ async def create_shout(_, info, inp):
                 except Exception as e:
                     logger.warning(f"Error following shout: {e}", exc_info=True)
 
-                # Обновляем статистику автора
-                try:
-                    author = session.query(Author).filter(Author.id == author_id).first()
-                    if author and author.stat:
-                        author.stat["shouts"] = author.stat.get("shouts", 0) + 1
-                        session.add(author)
-                        session.commit()
-                        await cache_author(author.dict())
-                except Exception as e:
-                    logger.warning(f"Error updating author stats: {e}", exc_info=True)
-
                 logger.info(f"Successfully created shout {shout.id}")
                 return {"shout": shout}
 
