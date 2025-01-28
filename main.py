@@ -124,12 +124,33 @@ app = Starlette(
     debug=True,
 )
 
+# Define allowed origins based on environment
+allowed_origins_dev = ["https://localhost:3000"]  # Dev environment
+allowed_origins_prod = [
+    "https://testing.dscrs.site",  # Preview environment
+    "https://testing.discours.io",  # Preview environment
+]
+
+# Add ExceptionHandlerMiddleware
 app.add_middleware(ExceptionHandlerMiddleware)
+
+# Add CORS middleware for "dev" mode
 if "dev" in sys.argv:
+    print("Running in development mode with CORS for localhost.")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["https://localhost:3000"],
+        allow_origins=allowed_origins_dev,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+else:
+    # Add CORS middleware for production/preview mode
+    print(f"Running in {MODE} mode with CORS for production/preview.")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins_prod,
+        allow_credentials=True,
+        allow_methods=["*"],  # Allow all HTTP methods
+        allow_headers=["*"],  # Allow all headers
     )
