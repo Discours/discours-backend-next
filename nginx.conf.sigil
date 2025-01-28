@@ -1,5 +1,5 @@
 log_format custom '$remote_addr - $remote_user [$time_local] "$request" '
-                  'status=$status allow_origin=$allow_origin '
+                  'origin=$http_origin status=$status allow_origin=$allow_origin '
                   '"$http_referer" "$http_user_agent"';
 
 {{ $proxy_settings := "proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $http_connection; proxy_set_header Host $http_host; proxy_set_header X-Request-Start $msec;" }}
@@ -12,7 +12,7 @@ log_format custom '$remote_addr - $remote_user [$time_local] "$request" '
 map $http_origin $allow_origin {
     ~^https?:\/\/(.*\.)?localhost(:\d+)?$ $http_origin;
     ~^https?:\/\/(.*\.)?discours\.io$ $http_origin;
-    ~^https?:\/\/(.*\.)?dscrs\.site(:\d+)?$ $http_origin;
+    ~^https?:\/\/(.*\.)?dscrs\.site$ $http_origin;
     ~^https?:\/\/discoursio-webapp(-.*)?\.vercel\.app$ $http_origin;
     default "";
 }
