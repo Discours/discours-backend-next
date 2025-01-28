@@ -6,11 +6,7 @@ log_format custom '$remote_addr - $remote_user [$time_local] "$request" '
 {{ $gzip_settings := "gzip on; gzip_min_length  1100; gzip_buffers  4 32k; gzip_types text/css text/javascript text/xml text/plain text/x-component application/javascript application/x-javascript application/json application/xml application/rss+xml font/truetype application/x-font-ttf font/opentype application/vnd.ms-fontobject image/svg+xml; gzip_vary on; gzip_comp_level  6;" }}
 
 map $http_origin $allow_origin {
-    ~^https?:\/\/(.*\.)?localhost(:\d+)?$ $http_origin;
-    ~^https?:\/\/(.*\.)?discours\.io$ $http_origin;
-    ~^https?:\/\/(.*\.)?dscrs\.site$ $http_origin;
-    ~^https?:\/\/discoursio-webapp(-.*)?\.vercel\.app$ $http_origin;
-    default "";
+   default $http_origin;
 }
 
 proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=my_cache:10m max_size=1g
