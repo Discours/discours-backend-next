@@ -12,9 +12,7 @@ log_format custom '$remote_addr - $remote_user [$time_local] "$request" '
 map $http_origin $allow_origin {
     ~^https?:\/\/(.*\.)?localhost(:\d+)?$ $http_origin;
     ~^https?:\/\/(.*\.)?discours\.io$ $http_origin;
-    ~^https?:\/\/(.*\.)?dscrs\.site$ $http_origin;
-    ~^https?:\/\/testing\.discours\.io$ $http_origin;
-    ~^https?:\/\/testing\.dscrs\.site$ $http_origin;
+    ~^https?:\/\/(.*\.)?dscrs\.site(:\d+)?$ $http_origin;
     ~^https?:\/\/discoursio-webapp(-.*)?\.vercel\.app$ $http_origin;
     default "";
 }
@@ -65,6 +63,8 @@ server {
         {{ $cors_headers_options }}
         {{ $cors_headers_post }}
         {{ $cors_headers_get }}
+
+        add_header Debug-Allow-Origin $allow_origin;
 
         proxy_cache my_cache;
         proxy_cache_revalidate on;
