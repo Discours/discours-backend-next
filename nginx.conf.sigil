@@ -12,7 +12,7 @@ log_format custom '$remote_addr - $remote_user [$time_local] "$request" '
 map $http_origin $allow_origin {
     ~^https?:\/\/(.*\.)?localhost(:\d+)?$ $http_origin;
     ~^https?:\/\/(.*\.)?discours\.io$ $http_origin;
-    ~^https?:\/\/(.*\.)?dscrs\.site$ $http_origin;
+    ~^https?:\/\/(.*\.)?dscrs\.site$ "https://testing.discours.io";
     ~^https?:\/\/discoursio-webapp(-.*)?\.vercel\.app$ $http_origin;
     default "";
 }
