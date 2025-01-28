@@ -13,7 +13,7 @@ resolvers = [query, mutation]
 async def request_graphql_data(gql, url=AUTH_URL, headers=None):
     """
     Выполняет GraphQL запрос к указанному URL
-    
+
     :param gql: GraphQL запрос
     :param url: URL для запроса, по умолчанию AUTH_URL
     :param headers: Заголовки запроса
@@ -37,5 +37,6 @@ async def request_graphql_data(gql, url=AUTH_URL, headers=None):
                 logger.error(f"{url}: {response.status_code} {response.text}")
     except Exception as _e:
         import traceback
+
         logger.error(f"request_graphql_data error: {traceback.format_exc()}")
     return None

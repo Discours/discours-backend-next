@@ -1,3 +1,4 @@
+import json
 import time
 
 from sqlalchemy import and_, desc, select
@@ -51,6 +52,18 @@ async def get_my_shout(_, info, shout_id: int):
         )
         if not shout:
             return {"error": "no shout found", "shout": None}
+
+        # Преобразуем media JSON в список объектов MediaItem
+        if hasattr(shout, "media") and shout.media:
+            if isinstance(shout.media, str):
+                try:
+                    shout.media = json.loads(shout.media)
+                except:
+                    shout.media = []
+            if not isinstance(shout.media, list):
+                shout.media = [shout.media] if shout.media else []
+        else:
+            shout.media = []
 
         logger.debug(f"got {len(shout.authors)} shout authors, created by {shout.created_by}")
         is_editor = "editor" in roles
