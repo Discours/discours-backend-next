@@ -461,34 +461,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         for a in shout_by_id.authors:
                             await cache_by_id(Author, a.id, cache_author)
                     logger.info(f"shout#{shout_id} updated")
-                    # Получаем полные данные шаута со связями
-                    shout_with_relations = (
-                        session.query(Shout)
-                        .options(joinedload(Shout.topics), joinedload(Shout.authors))
-                        .filter(Shout.id == shout_id)
-                        .first()
-                    )
-
-                    shout_dict = shout_with_relations.dict()
-                    # Явно добавляем связанные данные в словарь
-                    shout_dict["topics"] = (
-                        [
-                            {"id": topic.id, "slug": topic.slug, "title": topic.title}
-                            for topic in shout_with_relations.topics
-                        ]
-                        if shout_with_relations.topics
-                        else []
-                    )
-
-                    shout_dict["authors"] = (
-                        [
-                            {"id": author.id, "name": author.name, "slug": author.slug}
-                            for author in shout_with_relations.authors
-                        ]
-                        if shout_with_relations.authors
-                        else []
-                    )
-
+                    # Используем уже обновленный объект shout_by_id вместо нового запроса
+                    shout_dict = shout_by_id.dict()  # dict() теперь включает все связи
                     logger.info(f"Final shout data with relations: {shout_dict}")
                     return {"shout": shout_dict, "error": None}
                 else:
