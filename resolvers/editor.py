@@ -58,7 +58,8 @@ async def get_my_shout(_, info, shout_id: int):
             if isinstance(shout.media, str):
                 try:
                     shout.media = json.loads(shout.media)
-                except:
+                except Exception as e:
+                    logger.error(f"Error parsing shout media: {e}")
                     shout.media = []
             if not isinstance(shout.media, list):
                 shout.media = [shout.media] if shout.media else []
@@ -212,89 +213,136 @@ async def create_shout(_, info, inp):
     return {"error": error_msg}
 
 
-def patch_main_topic(session, main_topic, shout):
+def patch_main_topic(session, main_topic_slug, shout):
+    logger.info(f"Starting patch_main_topic for shout#{shout.id} with slug '{main_topic_slug}'")
+
     with session.begin():
-        shout = session.query(Shout).options(joinedload(Shout.topics)).filter(Shout.id == shout.id).first()
-        if not shout:
-            return
-        old_main_topic = (
+        # Получаем текущий главный топик
+        old_main = (
             session.query(ShoutTopic).filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main.is_(True))).first()
         )
+        if old_main:
+            logger.info(f"Found current main topic: {old_main.topic}")
 
-        main_topic = session.query(Topic).filter(Topic.slug == main_topic).first()
+        # Находим новый главный топик
+        main_topic = session.query(Topic).filter(Topic.slug == main_topic_slug).first()
+        if not main_topic:
+            logger.error(f"Main topic with slug '{main_topic_slug}' not found")
+            return
 
-        if main_topic:
-            new_main_topic = (
-                session.query(ShoutTopic)
-                .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
-                .first()
-            )
+        logger.info(f"Found new main topic: {main_topic.id}")
 
-            if old_main_topic and new_main_topic and old_main_topic is not new_main_topic:
-                ShoutTopic.update(old_main_topic, {"main": False})
-                session.add(old_main_topic)
+        # Находим связь с новым главным топиком
+        new_main = (
+            session.query(ShoutTopic)
+            .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
+            .first()
+        )
 
-                ShoutTopic.update(new_main_topic, {"main": True})
-                session.add(new_main_topic)
+        if old_main and new_main and old_main is not new_main:
+            logger.info("Updating main topic flags")
+            old_main.main = False
+            session.add(old_main)
+
+            new_main.main = True
+            session.add(new_main)
+
+            session.flush()
+            logger.info(f"Main topic updated for shout#{shout.id}")
 
 
 def patch_topics(session, shout, topics_input):
+    logger.info(f"Starting patch_topics for shout#{shout.id}")
+    logger.info(f"Received topics_input: {topics_input}")
+
+    # Создаем новые топики если есть
     new_topics_to_link = [Topic(**new_topic) for new_topic in topics_input if new_topic["id"] < 0]
     if new_topics_to_link:
+        logger.info(f"Creating new topics: {[t.dict() for t in new_topics_to_link]}")
         session.add_all(new_topics_to_link)
-        session.commit()
+        session.flush()  # Получаем ID для новых топиков
 
-    for new_topic_to_link in new_topics_to_link:
-        created_unlinked_topic = ShoutTopic(shout=shout.id, topic=new_topic_to_link.id)
-        session.add(created_unlinked_topic)
+    # Получаем текущие связи
+    current_links = session.query(ShoutTopic).filter(ShoutTopic.shout == shout.id).all()
+    logger.info(f"Current topic links: {[{t.topic: t.main} for t in current_links]}")
 
-    existing_topics_input = [topic_input for topic_input in topics_input if topic_input.get("id", 0) > 0]
-    existing_topic_to_link_ids = [
-        existing_topic_input["id"]
-        for existing_topic_input in existing_topics_input
-        if existing_topic_input["id"] not in [topic.id for topic in shout.topics]
-    ]
+    # Удаляем старые связи
+    if current_links:
+        logger.info(f"Removing old topic links for shout#{shout.id}")
+        for link in current_links:
+            session.delete(link)
+        session.flush()
 
-    for existing_topic_to_link_id in existing_topic_to_link_ids:
-        created_unlinked_topic = ShoutTopic(shout=shout.id, topic=existing_topic_to_link_id)
-        session.add(created_unlinked_topic)
+    # Создаем новые связи
+    for topic_input in topics_input:
+        topic_id = topic_input["id"]
+        if topic_id < 0:
+            # Для новых топиков берем ID из созданных
+            topic = next(t for t in new_topics_to_link if t.slug == topic_input["slug"])
+            topic_id = topic.id
 
-    topic_to_unlink_ids = [
-        topic.id
-        for topic in shout.topics
-        if topic.id not in [topic_input["id"] for topic_input in existing_topics_input]
-    ]
+        logger.info(f"Creating new topic link: shout#{shout.id} -> topic#{topic_id}")
+        new_link = ShoutTopic(
+            shout=shout.id,
+            topic=topic_id,
+            main=False,  # main topic устанавливается отдельно через patch_main_topic
+        )
+        session.add(new_link)
 
-    session.query(ShoutTopic).filter(
-        and_(ShoutTopic.shout == shout.id, ShoutTopic.topic.in_(topic_to_unlink_ids))
-    ).delete(synchronize_session=False)
+    try:
+        session.flush()
+        logger.info(f"Successfully updated topics for shout#{shout.id}")
+    except Exception as e:
+        logger.error(f"Error flushing topic changes: {e}", exc_info=True)
+        raise
+
+    # Проверяем результат
+    new_links = session.query(ShoutTopic).filter(ShoutTopic.shout == shout.id).all()
+    logger.info(f"New topic links: {[{t.topic: t.main} for t in new_links]}")
 
 
 @mutation.field("update_shout")
 @login_required
 async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
+    logger.info(f"Starting update_shout with id={shout_id}, publish={publish}")
+    logger.debug(f"Full shout_input: {shout_input}")
+
     user_id = info.context.get("user_id")
     roles = info.context.get("roles", [])
     author_dict = info.context.get("author")
     if not author_dict:
+        logger.error("Author profile not found")
         return {"error": "author profile was not found"}
+
     author_id = author_dict.get("id")
     shout_input = shout_input or {}
     current_time = int(time.time())
     shout_id = shout_id or shout_input.get("id", shout_id)
     slug = shout_input.get("slug")
+
     if not user_id:
+        logger.error("Unauthorized update attempt")
         return {"error": "unauthorized"}
+
     try:
         with local_session() as session:
             if author_id:
-                logger.info(f"author for shout#{shout_id} detected author #{author_id}")
+                logger.info(f"Processing update for shout#{shout_id} by author #{author_id}")
                 shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
 
                 if not shout_by_id:
                     logger.error(f"shout#{shout_id} not found")
                     return {"error": "shout not found"}
-                logger.info(f"shout#{shout_id} found")
+
+                logger.info(f"Found shout#{shout_id}")
+
+                # Логируем текущие топики
+                current_topics = (
+                    [{"id": t.id, "slug": t.slug, "title": t.title} for t in shout_by_id.topics]
+                    if shout_by_id.topics
+                    else []
+                )
+                logger.info(f"Current topics for shout#{shout_id}: {current_topics}")
 
                 if slug != shout_by_id.slug:
                     same_slug_shout = session.query(Shout).filter(Shout.slug == slug).first()
@@ -307,24 +355,34 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     logger.info(f"shout#{shout_id} slug patched")
 
                 if filter(lambda x: x.id == author_id, [x for x in shout_by_id.authors]) or "editor" in roles:
-                    logger.info(f"shout#{shout_id} is author or editor")
+                    logger.info(f"Author #{author_id} has permission to edit shout#{shout_id}")
+
                     # topics patch
                     topics_input = shout_input.get("topics")
                     if topics_input:
-                        logger.info(f"topics_input: {topics_input}")
-                        patch_topics(session, shout_by_id, topics_input)
+                        logger.info(f"Received topics_input for shout#{shout_id}: {topics_input}")
+                        try:
+                            patch_topics(session, shout_by_id, topics_input)
+                            logger.info(f"Successfully patched topics for shout#{shout_id}")
+                        except Exception as e:
+                            logger.error(f"Error patching topics: {e}", exc_info=True)
+                            return {"error": f"Failed to update topics: {str(e)}"}
+
                         del shout_input["topics"]
                         for tpc in topics_input:
                             await cache_by_id(Topic, tpc["id"], cache_topic)
+                    else:
+                        logger.warning(f"No topics_input received for shout#{shout_id}")
 
                     # main topic
                     main_topic = shout_input.get("main_topic")
                     if main_topic:
+                        logger.info(f"Updating main topic for shout#{shout_id} to {main_topic}")
                         patch_main_topic(session, main_topic, shout_by_id)
 
                     shout_input["updated_at"] = current_time
                     if publish:
-                        logger.info(f"publishing shout#{shout_id} with input: {shout_input}")
+                        logger.info(f"Publishing shout#{shout_id}")
                         shout_input["published_at"] = current_time
                         # Проверяем наличие связи с автором
                         logger.info(f"Checking author link for shout#{shout_id} and author#{author_id}")
@@ -343,11 +401,25 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         else:
                             logger.info("Author link already exists")
 
+                    # Логируем финальное состояние перед сохранением
+                    logger.info(f"Final shout_input for update: {shout_input}")
                     Shout.update(shout_by_id, shout_input)
                     session.add(shout_by_id)
-                    session.commit()
 
-                    shout_dict = shout_by_id.dict()
+                    try:
+                        session.commit()
+                        logger.info(f"Successfully committed updates for shout#{shout_id}")
+                    except Exception as e:
+                        logger.error(f"Commit failed: {e}", exc_info=True)
+                        return {"error": f"Failed to save changes: {str(e)}"}
+
+                    # После обновления проверяем топики
+                    updated_topics = (
+                        [{"id": t.id, "slug": t.slug, "title": t.title} for t in shout_by_id.topics]
+                        if shout_by_id.topics
+                        else []
+                    )
+                    logger.info(f"Updated topics for shout#{shout_id}: {updated_topics}")
 
                     # Инвалидация кэша после обновления
                     try:
@@ -379,25 +451,23 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         logger.warning(f"Cache invalidation error: {cache_error}", exc_info=True)
 
                     if not publish:
-                        await notify_shout(shout_dict, "update")
+                        await notify_shout(shout_by_id.dict(), "update")
                     else:
-                        await notify_shout(shout_dict, "published")
+                        await notify_shout(shout_by_id.dict(), "published")
                         # search service indexing
                         search_service.index(shout_by_id)
                         for a in shout_by_id.authors:
                             await cache_by_id(Author, a.id, cache_author)
                     logger.info(f"shout#{shout_id} updated")
-                    return {"shout": shout_dict, "error": None}
+                    return {"shout": shout_by_id.dict(), "error": None}
                 else:
-                    logger.warning(f"updater for shout#{shout_id} is not author or editor")
+                    logger.warning(f"Access denied: author #{author_id} cannot edit shout#{shout_id}")
                     return {"error": "access denied", "shout": None}
 
     except Exception as exc:
-        import traceback
-
-        traceback.print_exc()
-        logger.error(exc)
-        logger.error(f" cannot update with data: {shout_input}")
+        logger.error(f"Unexpected error in update_shout: {exc}", exc_info=True)
+        logger.error(f"Failed input data: {shout_input}")
+        return {"error": "cant update shout"}
 
     return {"error": "cant update shout"}
 
