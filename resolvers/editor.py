@@ -260,7 +260,7 @@ def patch_topics(session, shout, topics_input):
     if new_topics_to_link:
         logger.info(f"Creating new topics: {[t.dict() for t in new_topics_to_link]}")
         session.add_all(new_topics_to_link)
-        session.flush()  # Получаем ID для новых топиков
+        session.flush()
 
     # Получаем текущие связи
     current_links = session.query(ShoutTopic).filter(ShoutTopic.shout == shout.id).all()
@@ -277,28 +277,19 @@ def patch_topics(session, shout, topics_input):
     for topic_input in topics_input:
         topic_id = topic_input["id"]
         if topic_id < 0:
-            # Для новых топиков берем ID из созданных
             topic = next(t for t in new_topics_to_link if t.slug == topic_input["slug"])
             topic_id = topic.id
 
         logger.info(f"Creating new topic link: shout#{shout.id} -> topic#{topic_id}")
-        new_link = ShoutTopic(
-            shout=shout.id,
-            topic=topic_id,
-            main=False,  # main topic устанавливается отдельно через patch_main_topic
-        )
+        new_link = ShoutTopic(shout=shout.id, topic=topic_id, main=False)
         session.add(new_link)
 
-    try:
-        session.flush()
-        logger.info(f"Successfully updated topics for shout#{shout.id}")
-    except Exception as e:
-        logger.error(f"Error flushing topic changes: {e}", exc_info=True)
-        raise
+    session.flush()
+    # Обновляем связи в объекте шаута
+    session.refresh(shout)
 
-    # Проверяем результат
-    new_links = session.query(ShoutTopic).filter(ShoutTopic.shout == shout.id).all()
-    logger.info(f"New topic links: {[{t.topic: t.main} for t in new_links]}")
+    logger.info(f"Successfully updated topics for shout#{shout.id}")
+    logger.info(f"Final shout topics: {[t.dict() for t in shout.topics]}")
 
 
 @mutation.field("update_shout")
@@ -328,7 +319,12 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
         with local_session() as session:
             if author_id:
                 logger.info(f"Processing update for shout#{shout_id} by author #{author_id}")
-                shout_by_id = session.query(Shout).filter(Shout.id == shout_id).first()
+                shout_by_id = (
+                    session.query(Shout)
+                    .options(joinedload(Shout.authors), joinedload(Shout.topics))
+                    .filter(Shout.id == shout_id)
+                    .first()
+                )
 
                 if not shout_by_id:
                     logger.error(f"shout#{shout_id} not found")
@@ -364,6 +360,10 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         try:
                             patch_topics(session, shout_by_id, topics_input)
                             logger.info(f"Successfully patched topics for shout#{shout_id}")
+
+                            # Обновляем связи в сессии после patch_topics
+                            session.refresh(shout_by_id)
+
                         except Exception as e:
                             logger.error(f"Error patching topics: {e}", exc_info=True)
                             return {"error": f"Failed to update topics: {str(e)}"}
@@ -408,6 +408,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
 
                     try:
                         session.commit()
+                        # Обновляем объект после коммита чтобы получить все связи
+                        session.refresh(shout_by_id)
                         logger.info(f"Successfully committed updates for shout#{shout_id}")
                     except Exception as e:
                         logger.error(f"Commit failed: {e}", exc_info=True)
@@ -459,7 +461,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         for a in shout_by_id.authors:
                             await cache_by_id(Author, a.id, cache_author)
                     logger.info(f"shout#{shout_id} updated")
-                    return {"shout": shout_by_id.dict(), "error": None}
+                    shout_dict = shout_by_id.dict()
+                    logger.info(f"Final shout data: {shout_dict}")  # Добавляем лог финальных данных
+                    return {"shout": shout_dict, "error": None}
                 else:
                     logger.warning(f"Access denied: author #{author_id} cannot edit shout#{shout_id}")
                     return {"error": "access denied", "shout": None}
