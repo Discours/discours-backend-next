@@ -173,3 +173,21 @@ async def load_shouts_with_topic(_, info, slug: str, options) -> List[Shout]:
             except Exception as error:
                 logger.debug(error)
     return []
+
+
+def apply_filters(q, filters):
+    """
+    Применяет фильтры к запросу
+    """
+    logger.info(f"Applying filters: {filters}")
+
+    if filters.get("published"):
+        q = q.filter(Shout.published_at.is_not(None))
+        logger.info("Added published filter")
+
+    if filters.get("topic"):
+        topic_slug = filters["topic"]
+        q = q.join(ShoutTopic).join(Topic).filter(Topic.slug == topic_slug)
+        logger.info(f"Added topic filter: {topic_slug}")
+
+    return q

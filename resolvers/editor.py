@@ -464,6 +464,11 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     # Используем уже обновленный объект shout_by_id вместо нового запроса
                     shout_dict = shout_by_id.dict()  # dict() теперь включает все связи
                     logger.info(f"Final shout data with relations: {shout_dict}")
+                    # После успешного сохранения
+                    logger.info(f"Checking saved shout: {shout_dict}")
+                    logger.info(f"published_at: {shout_dict.get('published_at')}")
+                    logger.info(f"deleted_at: {shout_dict.get('deleted_at')}")
+                    logger.info(f"topics: {shout_dict.get('topics')}")
                     return {"shout": shout_dict, "error": None}
                 else:
                     logger.warning(f"Access denied: author #{author_id} cannot edit shout#{shout_id}")

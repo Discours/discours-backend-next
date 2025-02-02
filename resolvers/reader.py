@@ -63,11 +63,15 @@ def query_with_stat(info):
 
     Добавляет подзапрос статистики
     """
-    q = (
-        select(Shout)
-        .where(and_(Shout.published_at.is_not(None), Shout.deleted_at.is_(None)))
-        .join(Author, Author.id == Shout.created_by)
+    q = select(Shout).filter(
+        and_(
+            Shout.published_at.is_not(None),  # Проверяем published_at
+            Shout.deleted_at.is_(None),  # Проверяем deleted_at
+        )
     )
+
+    # Добавим логирование
+    logger.info(f"Base query filters: published_at IS NOT NULL AND deleted_at IS NULL")
 
     # Главный автор
     main_author = aliased(Author)
@@ -142,6 +146,9 @@ def query_with_stat(info):
         )
         q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
         q = q.add_columns(topics_subquery.c.topics)
+
+        # Добавим логирование
+        logger.info("Added topics join to query")
 
     if has_field(info, "stat"):
         stats_subquery = (
