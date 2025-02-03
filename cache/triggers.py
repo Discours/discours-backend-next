@@ -6,6 +6,7 @@ from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from utils.logger import root_logger as logger
+from services.db import local_session
 
 
 def mark_for_revalidation(entity, *args):
@@ -71,24 +72,32 @@ def after_reaction_handler(mapper, connection, target):
     is_comment = target.kind == ReactionKind.COMMENT.value
     
     # Получаем связанный пост
-    shout = target.shout
-    if not shout:
+    shout_id = target.shout if isinstance(target.shout, int) else target.shout.id
+    if not shout_id:
         return
         
     # Обновляем счетчики для автора комментария
     if target.created_by:
         revalidation_manager.mark_for_revalidation(target.created_by, "authors")
     
-    # Обновляем счетчики для поста и его авторов/тем
-    revalidation_manager.mark_for_revalidation(shout.id, "shouts")
+    # Обновляем счетчики для поста
+    revalidation_manager.mark_for_revalidation(shout_id, "shouts")
     
-    if is_comment and shout.published_at and not shout.deleted_at:
-        # Для комментариев к опубликованным постам обновляем также:
-        for author in shout.authors:
-            revalidation_manager.mark_for_revalidation(author.id, "authors")
+    if is_comment:
+        # Для комментариев обновляем также авторов и темы
+        with local_session() as session:
+            shout = session.query(Shout).filter(
+                Shout.id == shout_id,
+                Shout.published_at.is_not(None),
+                Shout.deleted_at.is_(None)
+            ).first()
             
-        for topic in shout.topics:
-            revalidation_manager.mark_for_revalidation(topic.id, "topics")
+            if shout:
+                for author in shout.authors:
+                    revalidation_manager.mark_for_revalidation(author.id, "authors")
+                    
+                for topic in shout.topics:
+                    revalidation_manager.mark_for_revalidation(topic.id, "topics")
 
 
 def events_register():
