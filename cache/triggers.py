@@ -51,29 +51,44 @@ def after_shout_handler(mapper, connection, target):
     # Проверяем изменение статуса публикации
     was_published = target.published_at is not None and target.deleted_at is None
     
-    if was_published:
-        # Обновляем счетчики для авторов
-        for author in target.authors:
-            revalidation_manager.mark_for_revalidation(author.id, "authors")
-            
-        # Обновляем счетчики для тем
-        for topic in target.topics:
-            revalidation_manager.mark_for_revalidation(topic.id, "topics")
+    # Всегда обновляем счетчики для авторов и тем при любом изменении поста
+    for author in target.authors:
+        revalidation_manager.mark_for_revalidation(author.id, "authors")
+        
+    for topic in target.topics:
+        revalidation_manager.mark_for_revalidation(topic.id, "topics")
+        
+    # Обновляем сам пост
+    revalidation_manager.mark_for_revalidation(target.id, "shouts")
 
 
 def after_reaction_handler(mapper, connection, target):
     """Обработчик для комментариев"""
-    if not isinstance(target, Reaction) or target.kind != ReactionKind.COMMENT.value:
+    if not isinstance(target, Reaction):
         return
         
-    # Проверяем что комментарий относится к опубликованному посту
+    # Проверяем что это комментарий
+    is_comment = target.kind == ReactionKind.COMMENT.value
+    
+    # Получаем связанный пост
     shout = target.shout
-    if shout and shout.published_at and not shout.deleted_at:
-        # Обновляем счетчики для автора комментария
-        revalidation_manager.mark_for_revalidation(target.created_by.id, "authors")
+    if not shout:
+        return
         
-        # Обновляем счетчики для поста
-        revalidation_manager.mark_for_revalidation(shout.id, "shouts")
+    # Обновляем счетчики для автора комментария
+    if target.created_by:
+        revalidation_manager.mark_for_revalidation(target.created_by.id, "authors")
+    
+    # Обновляем счетчики для поста и его авторов/тем
+    revalidation_manager.mark_for_revalidation(shout.id, "shouts")
+    
+    if is_comment and shout.published_at and not shout.deleted_at:
+        # Для комментариев к опубликованным постам обновляем также:
+        for author in shout.authors:
+            revalidation_manager.mark_for_revalidation(author.id, "authors")
+            
+        for topic in shout.topics:
+            revalidation_manager.mark_for_revalidation(topic.id, "topics")
 
 
 def events_register():
@@ -98,8 +113,10 @@ def events_register():
     event.listen(Author, "after_update", mark_for_revalidation)
     event.listen(Topic, "after_update", mark_for_revalidation)
     event.listen(Shout, "after_update", after_shout_handler)
+    event.listen(Shout, "after_delete", after_shout_handler)
 
     event.listen(Reaction, "after_insert", after_reaction_handler)
+    event.listen(Reaction, "after_update", after_reaction_handler)
     event.listen(Reaction, "after_delete", after_reaction_handler)
 
     logger.info("Event handlers registered successfully.")
