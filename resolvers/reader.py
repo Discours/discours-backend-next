@@ -69,10 +69,7 @@ def query_with_stat(info):
             Shout.deleted_at.is_(None),  # Проверяем deleted_at
         )
     )
-
-    # Добавим логирование
-    logger.info(f"Base query filters: published_at IS NOT NULL AND deleted_at IS NULL")
-
+    
     # Главный автор
     main_author = aliased(Author)
     q = q.join(main_author, main_author.id == Shout.created_by)

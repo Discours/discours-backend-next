@@ -461,14 +461,37 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         for a in shout_by_id.authors:
                             await cache_by_id(Author, a.id, cache_author)
                     logger.info(f"shout#{shout_id} updated")
-                    # Используем уже обновленный объект shout_by_id вместо нового запроса
-                    shout_dict = shout_by_id.dict()  # dict() теперь включает все связи
+                    # Получаем полные данные шаута со связями
+                    shout_with_relations = (
+                        session.query(Shout)
+                        .options(joinedload(Shout.topics), joinedload(Shout.authors))
+                        .filter(Shout.id == shout_id)
+                        .first()
+                    )
+                    
+                    # Создаем словарь с базовыми полями
+                    shout_dict = shout_with_relations.dict()
+                    
+                    # Явно добавляем связанные данные
+                    shout_dict["topics"] = [
+                        {
+                            "id": topic.id,
+                            "slug": topic.slug,
+                            "title": topic.title
+                        }
+                        for topic in shout_with_relations.topics
+                    ] if shout_with_relations.topics else []
+                    
+                    shout_dict["authors"] = [
+                        {
+                            "id": author.id,
+                            "name": author.name,
+                            "slug": author.slug
+                        }
+                        for author in shout_with_relations.authors
+                    ] if shout_with_relations.authors else []
+
                     logger.info(f"Final shout data with relations: {shout_dict}")
-                    # После успешного сохранения
-                    logger.info(f"Checking saved shout: {shout_dict}")
-                    logger.info(f"published_at: {shout_dict.get('published_at')}")
-                    logger.info(f"deleted_at: {shout_dict.get('deleted_at')}")
-                    logger.info(f"topics: {shout_dict.get('topics')}")
                     return {"shout": shout_dict, "error": None}
                 else:
                     logger.warning(f"Access denied: author #{author_id} cannot edit shout#{shout_id}")
