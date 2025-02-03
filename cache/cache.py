@@ -158,8 +158,11 @@ async def get_cached_topic_followers(topic_id: int):
     Получает подписчиков темы по ID, используя кеш Redis.
     Если данные отсутствуют в кеше, извлекает из базы данных и кеширует их.
 
-    :param topic_id: Идентификатор темы, подписчиков которой необходимо получить.
-    :return: Список подписчиков темы, каждый элемент представляет собой словарь с ID и именем автора.
+    Args:
+        topic_id: Идентификатор темы, подписчиков которой необходимо получить.
+    
+    Returns:
+        List[dict]: Список подписчиков темы, каждый элемент представляет собой словарь с данными автора.
     """
     try:
         # Попытка получить данные из кеша
@@ -171,21 +174,21 @@ async def get_cached_topic_followers(topic_id: int):
             return followers
 
         # Если данные не найдены в кеше, загрузка из базы данных
-        async with local_session() as session:
-            result = await session.execute(
-                session.query(Author.id)
-                .join(TopicFollower, TopicFollower.follower == Author.id)
-                .filter(TopicFollower.topic == topic_id)
-            )
-            followers_ids = [f[0] for f in result.scalars().all()]
+        with local_session() as session:
+            result = session.query(Author.id)\
+                .join(TopicFollower, TopicFollower.follower == Author.id)\
+                .filter(TopicFollower.topic == topic_id)\
+                .all()
+            followers_ids = [f[0] for f in result]
 
-            # Кеширование результатов
+            # Кэширование результатов
             await redis_operation("SET", f"topic:followers:{topic_id}", json.dumps(followers_ids))
 
             # Получение подробной информации о подписчиках по их ID
             followers = await get_cached_authors_by_ids(followers_ids)
-            logger.debug(followers)
+            logger.debug(f"Topic#{topic_id} followers fetched and cached: {len(followers)} followers found.")
             return followers
+
     except Exception as e:
         logger.error(f"Ошибка при получении подписчиков для темы #{topic_id}: {str(e)}")
         return []
