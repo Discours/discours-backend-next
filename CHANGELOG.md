@@ -1,3 +1,7 @@
+#### [0.4.8]
+- `Reaction.deleted_at` filter on `update_reaction` resolver added
+- `triggers` module updated with `after_shout_handler`, `after_reaction_handler` for cache revalidation
+
 #### [0.4.7]
 - `get_my_rates_shouts` resolver added with:
   - `shout_id` and `my_rate` fields in response

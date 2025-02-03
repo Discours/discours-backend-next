@@ -2,7 +2,7 @@ from sqlalchemy import event
 
 from cache.revalidator import revalidation_manager
 from orm.author import Author, AuthorFollower
-from orm.reaction import Reaction
+from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
 from utils.logger import root_logger as logger
@@ -43,6 +43,39 @@ def after_follower_handler(mapper, connection, target, is_delete=False):
             revalidation_manager.mark_for_revalidation(target.follower, "authors")
 
 
+def after_shout_handler(mapper, connection, target):
+    """Обработчик изменения статуса публикации"""
+    if not isinstance(target, Shout):
+        return
+        
+    # Проверяем изменение статуса публикации
+    was_published = target.published_at is not None and target.deleted_at is None
+    
+    if was_published:
+        # Обновляем счетчики для авторов
+        for author in target.authors:
+            revalidation_manager.mark_for_revalidation(author.id, "authors")
+            
+        # Обновляем счетчики для тем
+        for topic in target.topics:
+            revalidation_manager.mark_for_revalidation(topic.id, "topics")
+
+
+def after_reaction_handler(mapper, connection, target):
+    """Обработчик для комментариев"""
+    if not isinstance(target, Reaction) or target.kind != ReactionKind.COMMENT.value:
+        return
+        
+    # Проверяем что комментарий относится к опубликованному посту
+    shout = target.shout
+    if shout and shout.published_at and not shout.deleted_at:
+        # Обновляем счетчики для автора комментария
+        revalidation_manager.mark_for_revalidation(target.created_by.id, "authors")
+        
+        # Обновляем счетчики для поста
+        revalidation_manager.mark_for_revalidation(shout.id, "shouts")
+
+
 def events_register():
     """Регистрация обработчиков событий для всех сущностей."""
     event.listen(ShoutAuthor, "after_insert", mark_for_revalidation)
@@ -64,6 +97,9 @@ def events_register():
     event.listen(Reaction, "after_update", mark_for_revalidation)
     event.listen(Author, "after_update", mark_for_revalidation)
     event.listen(Topic, "after_update", mark_for_revalidation)
-    event.listen(Shout, "after_update", mark_for_revalidation)
+    event.listen(Shout, "after_update", after_shout_handler)
+
+    event.listen(Reaction, "after_insert", after_reaction_handler)
+    event.listen(Reaction, "after_delete", after_reaction_handler)
 
     logger.info("Event handlers registered successfully.")

@@ -100,10 +100,7 @@ def add_author_stat_columns(q):
 
 def get_topic_shouts_stat(topic_id: int) -> int:
     """
-    Получает количество публикаций для указанной темы.
-
-    :param topic_id: Идентификатор темы.
-    :return: Количество уникальных публикаций для темы.
+    Получает количество опубликованных постов для темы
     """
     q = (
         select(func.count(distinct(ShoutTopic.shout)))
@@ -116,7 +113,7 @@ def get_topic_shouts_stat(topic_id: int) -> int:
             )
         )
     )
-    # Выполнение запроса и получение результата
+    
     with local_session() as session:
         result = session.execute(q).first()
     return result[0] if result else 0
@@ -198,10 +195,7 @@ def get_topic_comments_stat(topic_id: int) -> int:
 
 def get_author_shouts_stat(author_id: int) -> int:
     """
-    Получает количество публикаций для указанного автора.
-
-    :param author_id: Идентификатор автора.
-    :return: Количество уникальных публикаций автора.
+    Получает количество опубликованных постов для автора
     """
     aliased_shout_author = aliased(ShoutAuthor)
     aliased_shout = aliased(Shout)
@@ -214,6 +208,7 @@ def get_author_shouts_stat(author_id: int) -> int:
             and_(
                 aliased_shout_author.author == author_id,
                 aliased_shout.published_at.is_not(None),
+                aliased_shout.deleted_at.is_(None)  # Добавляем проверку на удаление
             )
         )
     )
