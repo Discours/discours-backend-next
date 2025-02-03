@@ -77,7 +77,7 @@ def after_reaction_handler(mapper, connection, target):
         
     # Обновляем счетчики для автора комментария
     if target.created_by:
-        revalidation_manager.mark_for_revalidation(target.created_by.id, "authors")
+        revalidation_manager.mark_for_revalidation(target.created_by, "authors")
     
     # Обновляем счетчики для поста и его авторов/тем
     revalidation_manager.mark_for_revalidation(shout.id, "shouts")

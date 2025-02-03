@@ -281,8 +281,10 @@ async def create_reaction(_, info, reaction):
     logger.debug(f"Creating reaction with data: {reaction_input}")
     logger.debug(f"Author ID: {author_id}, Shout ID: {shout_id}")
 
-    if not shout_id or not author_id:
-        return {"error": "Shout ID and author ID are required to create a reaction."}
+    if not author_id:
+        return {"error": "Author ID is required to create a reaction."}
+    if not shout_id:
+        return {"error": "Shout ID is required to create a reaction."}
 
     try:
         with local_session() as session:
