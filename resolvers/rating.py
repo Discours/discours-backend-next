@@ -15,11 +15,21 @@ from utils.logger import root_logger as logger
 async def get_my_rates_comments(_, info, comments: list[int]) -> list[dict]:
     """
     Получение реакций пользователя на комментарии
+
+    Args:
+        info: Контекст запроса
+        comments: Список ID комментариев
+
+    Returns:
+        list[dict]: Список словарей с реакциями пользователя на комментарии
+        Каждый словарь содержит:
+            - comment_id: ID комментария
+            - my_rate: Тип реакции (LIKE/DISLIKE)
     """
     author_dict = info.context.get("author") if info.context else None
     author_id = author_dict.get("id") if author_dict else None
     if not author_id:
-        return {"error": "Author not found"}
+        return []  # Возвращаем пустой список вместо словаря с ошибкой
 
     # Подзапрос для реакций текущего пользователя
     rated_query = (

@@ -160,7 +160,7 @@ async def get_cached_topic_followers(topic_id: int):
 
     Args:
         topic_id: Идентификатор темы, подписчиков которой необходимо получить.
-    
+
     Returns:
         List[dict]: Список подписчиков темы, каждый элемент представляет собой словарь с данными автора.
     """
@@ -175,10 +175,12 @@ async def get_cached_topic_followers(topic_id: int):
 
         # Если данные не найдены в кеше, загрузка из базы данных
         with local_session() as session:
-            result = session.query(Author.id)\
-                .join(TopicFollower, TopicFollower.follower == Author.id)\
-                .filter(TopicFollower.topic == topic_id)\
+            result = (
+                session.query(Author.id)
+                .join(TopicFollower, TopicFollower.follower == Author.id)
+                .filter(TopicFollower.topic == topic_id)
                 .all()
+            )
             followers_ids = [f[0] for f in result]
 
             # Кэширование результатов

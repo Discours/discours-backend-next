@@ -2,6 +2,8 @@
 - `Reaction.deleted_at` filter on `update_reaction` resolver added
 - `triggers` module updated with `after_shout_handler`, `after_reaction_handler` for cache revalidation
 - `after_shout_handler`, `after_reaction_handler` now also handle `deleted_at` field
+- `get_cached_topic_followers` fixed
+- `get_my_rates_comments` fixed
 
 #### [0.4.7]
 - `get_my_rates_shouts` resolver added with:

@@ -5,8 +5,8 @@ from orm.author import Author, AuthorFollower
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower
 from orm.topic import Topic, TopicFollower
-from utils.logger import root_logger as logger
 from services.db import local_session
+from utils.logger import root_logger as logger
 
 
 def mark_for_revalidation(entity, *args):
@@ -48,17 +48,17 @@ def after_shout_handler(mapper, connection, target):
     """Обработчик изменения статуса публикации"""
     if not isinstance(target, Shout):
         return
-        
+
     # Проверяем изменение статуса публикации
     was_published = target.published_at is not None and target.deleted_at is None
-    
+
     # Всегда обновляем счетчики для авторов и тем при любом изменении поста
     for author in target.authors:
         revalidation_manager.mark_for_revalidation(author.id, "authors")
-        
+
     for topic in target.topics:
         revalidation_manager.mark_for_revalidation(topic.id, "topics")
-        
+
     # Обновляем сам пост
     revalidation_manager.mark_for_revalidation(target.id, "shouts")
 
@@ -67,35 +67,35 @@ def after_reaction_handler(mapper, connection, target):
     """Обработчик для комментариев"""
     if not isinstance(target, Reaction):
         return
-        
+
     # Проверяем что это комментарий
     is_comment = target.kind == ReactionKind.COMMENT.value
-    
+
     # Получаем связанный пост
     shout_id = target.shout if isinstance(target.shout, int) else target.shout.id
     if not shout_id:
         return
-        
+
     # Обновляем счетчики для автора комментария
     if target.created_by:
         revalidation_manager.mark_for_revalidation(target.created_by, "authors")
-    
+
     # Обновляем счетчики для поста
     revalidation_manager.mark_for_revalidation(shout_id, "shouts")
-    
+
     if is_comment:
         # Для комментариев обновляем также авторов и темы
         with local_session() as session:
-            shout = session.query(Shout).filter(
-                Shout.id == shout_id,
-                Shout.published_at.is_not(None),
-                Shout.deleted_at.is_(None)
-            ).first()
-            
+            shout = (
+                session.query(Shout)
+                .filter(Shout.id == shout_id, Shout.published_at.is_not(None), Shout.deleted_at.is_(None))
+                .first()
+            )
+
             if shout:
                 for author in shout.authors:
                     revalidation_manager.mark_for_revalidation(author.id, "authors")
-                    
+
                 for topic in shout.topics:
                     revalidation_manager.mark_for_revalidation(topic.id, "topics")
 

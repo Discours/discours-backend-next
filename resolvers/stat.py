@@ -113,7 +113,7 @@ def get_topic_shouts_stat(topic_id: int) -> int:
             )
         )
     )
-    
+
     with local_session() as session:
         result = session.execute(q).first()
     return result[0] if result else 0
@@ -208,7 +208,7 @@ def get_author_shouts_stat(author_id: int) -> int:
             and_(
                 aliased_shout_author.author == author_id,
                 aliased_shout.published_at.is_not(None),
-                aliased_shout.deleted_at.is_(None)  # Добавляем проверку на удаление
+                aliased_shout.deleted_at.is_(None),  # Добавляем проверку на удаление
             )
         )
     )
