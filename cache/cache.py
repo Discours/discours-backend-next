@@ -156,43 +156,37 @@ async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
 async def get_cached_topic_followers(topic_id: int):
     """
     Получает подписчиков темы по ID, используя кеш Redis.
-    Если данные отсутствуют в кеше, извлекает из базы данных и кеширует их.
-
+    
     Args:
-        topic_id: Идентификатор темы, подписчиков которой необходимо получить.
-
+        topic_id: ID темы
+        
     Returns:
-        List[dict]: Список подписчиков темы, каждый элемент представляет собой словарь с данными автора.
+        List[dict]: Список подписчиков с их данными
     """
     try:
-        # Попытка получить данные из кеша
-        cached = await redis_operation("GET", f"topic:followers:{topic_id}")
+        cache_key = CACHE_KEYS["TOPIC_FOLLOWERS"].format(topic_id)
+        cached = await redis_operation("GET", cache_key)
+        
         if cached:
             followers_ids = json.loads(cached)
-            logger.debug(f"Cached {len(followers_ids)} followers for topic #{topic_id}")
-            followers = await get_cached_authors_by_ids(followers_ids)
-            return followers
+            logger.debug(f"Found {len(followers_ids)} cached followers for topic #{topic_id}")
+            return await get_cached_authors_by_ids(followers_ids)
 
-        # Если данные не найдены в кеше, загрузка из базы данных
         with local_session() as session:
-            result = (
-                session.query(Author.id)
+            followers_ids = [
+                f[0] for f in session.query(Author.id)
                 .join(TopicFollower, TopicFollower.follower == Author.id)
                 .filter(TopicFollower.topic == topic_id)
                 .all()
-            )
-            followers_ids = [f[0] for f in result]
-
-            # Кэширование результатов
-            await redis_operation("SET", f"topic:followers:{topic_id}", json.dumps(followers_ids))
-
-            # Получение подробной информации о подписчиках по их ID
+            ]
+            
+            await redis_operation("SETEX", cache_key, value=json.dumps(followers_ids), ttl=CACHE_TTL)
             followers = await get_cached_authors_by_ids(followers_ids)
-            logger.debug(f"Topic#{topic_id} followers fetched and cached: {len(followers)} followers found.")
+            logger.debug(f"Cached {len(followers)} followers for topic #{topic_id}")
             return followers
 
     except Exception as e:
-        logger.error(f"Ошибка при получении подписчиков для темы #{topic_id}: {str(e)}")
+        logger.error(f"Error getting followers for topic #{topic_id}: {str(e)}")
         return []
 
 
@@ -410,34 +404,38 @@ async def cache_related_entities(shout: Shout):
 
 async def invalidate_shout_related_cache(shout: Shout, author_id: int):
     """
-    Инвалидирует весь кэш, связанный с публикацией
+    Инвалидирует весь кэш, связанный с публикацией и её связями
+    
+    Args:
+        shout: Объект публикации
+        author_id: ID автора
     """
-    # Базовые ленты
-    cache_keys = [
+    cache_keys = {
         "feed",  # основная лента
         f"author_{author_id}",  # публикации автора
         "random_top",  # случайные топовые
         "unrated",  # неоцененные
-        "recent",  # последние публикации
-        "coauthored",  # совместные публикации
-        f"authored_{author_id}",  # авторские публикации
-        f"followed_{author_id}",  # подписки автора
-    ]
+        "recent",  # последние
+        "coauthored",  # совместные
+    }
+    
+    # Добавляем ключи авторов
+    cache_keys.update(
+        f"author_{a.id}" for a in shout.authors
+    )
+    cache_keys.update(
+        f"authored_{a.id}" for a in shout.authors
+    )
+    
+    # Добавляем ключи тем
+    cache_keys.update(
+        f"topic_{t.id}" for t in shout.topics
+    )
+    cache_keys.update(
+        f"topic_shouts_{t.id}" for t in shout.topics
+    )
 
-    # Добавляем ключи для всех авторов публикации
-    for author in shout.authors:
-        cache_keys.extend(
-            [f"author_{author.id}", f"authored_{author.id}", f"followed_{author.id}", f"coauthored_{author.id}"]
-        )
-
-    # Добавляем ключи для тем
-    for topic in shout.topics:
-        cache_keys.extend(
-            [f"topic_{topic.id}", f"topic_shouts_{topic.id}", f"topic_recent_{topic.id}", f"topic_top_{topic.id}"]
-        )
-
-    # Инвалидируем все ключи
-    await invalidate_shouts_cache(cache_keys)
+    await invalidate_shouts_cache(list(cache_keys))
 
 
 async def redis_operation(operation: str, key: str, value=None, ttl=None):

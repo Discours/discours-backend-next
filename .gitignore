@@ -160,3 +160,4 @@ views.json
 *.pem
 *.key
 *.crt
+*cache.json

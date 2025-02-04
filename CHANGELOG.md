@@ -1,4 +1,4 @@
-#### [0.4.8]
+#### [0.4.8] - 2025-02-03
 - `Reaction.deleted_at` filter on `update_reaction` resolver added
 - `triggers` module updated with `after_shout_handler`, `after_reaction_handler` for cache revalidation
 - `after_shout_handler`, `after_reaction_handler` now also handle `deleted_at` field
