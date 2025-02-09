@@ -1,3 +1,9 @@
+#### [0.4.9] - 2025-02-09
+- `Shout.draft` field added
+- `Draft` entity added
+- `create_draft`, `update_draft`, `delete_draft` mutations and resolvers added
+- `get_shout_drafts` resolver updated
+
 #### [0.4.8] - 2025-02-03
 - `Reaction.deleted_at` filter on `update_reaction` resolver added
 - `triggers` module updated with `after_shout_handler`, `after_reaction_handler` for cache revalidation

@@ -1,4 +1,4 @@
-input ShoutInput {
+input DraftInput {
   slug: String
   title: String
   body: String

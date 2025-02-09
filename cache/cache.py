@@ -156,17 +156,17 @@ async def get_cached_authors_by_ids(author_ids: List[int]) -> List[dict]:
 async def get_cached_topic_followers(topic_id: int):
     """
     Получает подписчиков темы по ID, используя кеш Redis.
-    
+
     Args:
         topic_id: ID темы
-        
+
     Returns:
         List[dict]: Список подписчиков с их данными
     """
     try:
         cache_key = CACHE_KEYS["TOPIC_FOLLOWERS"].format(topic_id)
         cached = await redis_operation("GET", cache_key)
-        
+
         if cached:
             followers_ids = json.loads(cached)
             logger.debug(f"Found {len(followers_ids)} cached followers for topic #{topic_id}")
@@ -174,12 +174,13 @@ async def get_cached_topic_followers(topic_id: int):
 
         with local_session() as session:
             followers_ids = [
-                f[0] for f in session.query(Author.id)
+                f[0]
+                for f in session.query(Author.id)
                 .join(TopicFollower, TopicFollower.follower == Author.id)
                 .filter(TopicFollower.topic == topic_id)
                 .all()
             ]
-            
+
             await redis_operation("SETEX", cache_key, value=json.dumps(followers_ids), ttl=CACHE_TTL)
             followers = await get_cached_authors_by_ids(followers_ids)
             logger.debug(f"Cached {len(followers)} followers for topic #{topic_id}")
@@ -405,7 +406,7 @@ async def cache_related_entities(shout: Shout):
 async def invalidate_shout_related_cache(shout: Shout, author_id: int):
     """
     Инвалидирует весь кэш, связанный с публикацией и её связями
-    
+
     Args:
         shout: Объект публикации
         author_id: ID автора
@@ -418,22 +419,14 @@ async def invalidate_shout_related_cache(shout: Shout, author_id: int):
         "recent",  # последние
         "coauthored",  # совместные
     }
-    
+
     # Добавляем ключи авторов
-    cache_keys.update(
-        f"author_{a.id}" for a in shout.authors
-    )
-    cache_keys.update(
-        f"authored_{a.id}" for a in shout.authors
-    )
-    
+    cache_keys.update(f"author_{a.id}" for a in shout.authors)
+    cache_keys.update(f"authored_{a.id}" for a in shout.authors)
+
     # Добавляем ключи тем
-    cache_keys.update(
-        f"topic_{t.id}" for t in shout.topics
-    )
-    cache_keys.update(
-        f"topic_shouts_{t.id}" for t in shout.topics
-    )
+    cache_keys.update(f"topic_{t.id}" for t in shout.topics)
+    cache_keys.update(f"topic_shouts_{t.id}" for t in shout.topics)
 
     await invalidate_shouts_cache(list(cache_keys))
 

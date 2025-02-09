@@ -7,8 +7,10 @@ from sqlalchemy.sql.functions import coalesce
 
 from cache.cache import cache_author, cache_topic, invalidate_shout_related_cache, invalidate_shouts_cache
 from orm.author import Author
+from orm.draft import Draft
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
+from resolvers.draft import create_draft, publish_draft
 from resolvers.follower import follow, unfollow
 from resolvers.stat import get_with_stat
 from services.auth import login_required
@@ -20,6 +22,23 @@ from utils.logger import root_logger as logger
 
 
 async def cache_by_id(entity, entity_id: int, cache_method):
+    """Cache an entity by its ID using the provided cache method.
+
+    Args:
+        entity: The SQLAlchemy model class to query
+        entity_id (int): The ID of the entity to cache
+        cache_method: The caching function to use
+
+    Returns:
+        dict: The cached entity data if successful, None if entity not found
+
+    Example:
+        >>> async def test_cache():
+        ...     author = await cache_by_id(Author, 1, cache_author)
+        ...     assert author['id'] == 1
+        ...     assert 'name' in author
+        ...     return author
+    """
     caching_query = select(entity).filter(entity.id == entity_id)
     result = get_with_stat(caching_query)
     if not result or not result[0]:
@@ -34,7 +53,34 @@ async def cache_by_id(entity, entity_id: int, cache_method):
 @query.field("get_my_shout")
 @login_required
 async def get_my_shout(_, info, shout_id: int):
-    # logger.debug(info)
+    """Get a shout by ID if the requesting user has permission to view it.
+
+    DEPRECATED: use `load_drafts` instead
+
+    Args:
+        info: GraphQL resolver info containing context
+        shout_id (int): ID of the shout to retrieve
+
+    Returns:
+        dict: Contains either:
+            - error (str): Error message if retrieval failed
+            - shout (Shout): The requested shout if found and accessible
+
+    Permissions:
+        User must be:
+        - The shout creator
+        - Listed as an author
+        - Have editor role
+
+    Example:
+        >>> async def test_get_my_shout():
+        ...     context = {'user_id': '123', 'author': {'id': 1}, 'roles': []}
+        ...     info = type('Info', (), {'context': context})()
+        ...     result = await get_my_shout(None, info, 1)
+        ...     assert result['error'] is None
+        ...     assert result['shout'].id == 1
+        ...     return result
+    """
     user_id = info.context.get("user_id", "")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
@@ -105,8 +151,8 @@ async def get_shouts_drafts(_, info):
     return {"shouts": shouts}
 
 
-@mutation.field("create_shout")
-@login_required
+# @mutation.field("create_shout")
+# @login_required
 async def create_shout(_, info, inp):
     logger.info(f"Starting create_shout with input: {inp}")
     user_id = info.context.get("user_id")
@@ -214,6 +260,27 @@ async def create_shout(_, info, inp):
 
 
 def patch_main_topic(session, main_topic_slug, shout):
+    """Update the main topic for a shout.
+
+    Args:
+        session: SQLAlchemy session
+        main_topic_slug (str): Slug of the topic to set as main
+        shout (Shout): The shout to update
+
+    Side Effects:
+        - Updates ShoutTopic.main flags in database
+        - Only one topic can be main at a time
+
+    Example:
+        >>> def test_patch_main_topic():
+        ...     with local_session() as session:
+        ...         shout = session.query(Shout).first()
+        ...         patch_main_topic(session, 'tech', shout)
+        ...         main_topic = session.query(ShoutTopic).filter_by(
+        ...             shout=shout.id, main=True).first()
+        ...         assert main_topic.topic.slug == 'tech'
+        ...         return main_topic
+    """
     logger.info(f"Starting patch_main_topic for shout#{shout.id} with slug '{main_topic_slug}'")
 
     with session.begin():
@@ -252,6 +319,34 @@ def patch_main_topic(session, main_topic_slug, shout):
 
 
 def patch_topics(session, shout, topics_input):
+    """Update the topics associated with a shout.
+
+    Args:
+        session: SQLAlchemy session
+        shout (Shout): The shout to update
+        topics_input (list): List of topic dicts with fields:
+            - id (int): Topic ID (<0 for new topics)
+            - slug (str): Topic slug
+            - title (str): Topic title (for new topics)
+
+    Side Effects:
+        - Creates new topics if needed
+        - Updates shout-topic associations
+        - Refreshes shout object with new topics
+
+    Example:
+        >>> def test_patch_topics():
+        ...     topics = [
+        ...         {'id': -1, 'slug': 'new-topic', 'title': 'New Topic'},
+        ...         {'id': 1, 'slug': 'existing-topic'}
+        ...     ]
+        ...     with local_session() as session:
+        ...         shout = session.query(Shout).first()
+        ...         patch_topics(session, shout, topics)
+        ...         assert len(shout.topics) == 2
+        ...         assert any(t.slug == 'new-topic' for t in shout.topics)
+        ...         return shout.topics
+    """
     logger.info(f"Starting patch_topics for shout#{shout.id}")
     logger.info(f"Received topics_input: {topics_input}")
 
@@ -292,8 +387,8 @@ def patch_topics(session, shout, topics_input):
     logger.info(f"Final shout topics: {[t.dict() for t in shout.topics]}")
 
 
-@mutation.field("update_shout")
-@login_required
+# @mutation.field("update_shout")
+# @login_required
 async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     logger.info(f"Starting update_shout with id={shout_id}, publish={publish}")
     logger.debug(f"Full shout_input: {shout_input}")
@@ -505,8 +600,8 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
     return {"error": "cant update shout"}
 
 
-@mutation.field("delete_shout")
-@login_required
+# @mutation.field("delete_shout")
+# @login_required
 async def delete_shout(_, info, shout_id: int):
     user_id = info.context.get("user_id")
     roles = info.context.get("roles", [])

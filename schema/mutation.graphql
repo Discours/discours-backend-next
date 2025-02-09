@@ -3,10 +3,15 @@ type Mutation {
   rate_author(rated_slug: String!, value: Int!): CommonResult!
   update_author(profile: ProfileInput!): CommonResult!
 
-  # editor
-  create_shout(inp: ShoutInput!): CommonResult!
-  update_shout(shout_id: Int!, shout_input: ShoutInput, publish: Boolean): CommonResult!
-  delete_shout(shout_id: Int!): CommonResult!
+  # draft
+  create_draft(input: DraftInput!): CommonResult!
+  update_draft(draft_id: Int!, input: DraftInput!): CommonResult!
+  delete_draft(draft_id: Int!): CommonResult!
+  # publication
+  publish_shout(shout_id: Int!): CommonResult!
+  publish_draft(draft_id: Int!): CommonResult!
+  unpublish_draft(draft_id: Int!): CommonResult!
+  unpublish_shout(shout_id: Int!): CommonResult!
 
   # follower
   follow(what: FollowingEntity!, slug: String!): AuthorFollowsResult!

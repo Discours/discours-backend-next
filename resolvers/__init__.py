@@ -11,6 +11,14 @@ from resolvers.author import (  # search_authors,
     update_author,
 )
 from resolvers.community import get_communities_all, get_community
+from resolvers.draft import (
+    create_draft,
+    delete_draft,
+    load_drafts,
+    publish_draft,
+    unpublish_draft,
+    update_draft,
+)
 from resolvers.editor import create_shout, delete_shout, update_shout
 from resolvers.feed import (
     load_shouts_coauthored,
@@ -113,4 +121,12 @@ __all__ = [
     "rate_author",
     "get_my_rates_comments",
     "get_my_rates_shouts",
+    # draft
+    "load_drafts",
+    "create_draft",
+    "update_draft",
+    "delete_draft",
+    "publish_draft",
+    "publish_shout",
+    "unpublish_shout",
 ]

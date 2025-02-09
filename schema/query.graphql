@@ -51,6 +51,7 @@ type Query {
   # editor
   get_my_shout(shout_id: Int!): CommonResult!
   get_shouts_drafts: CommonResult!
+  load_drafts: CommonResult!
 
   # topic
   get_topic(slug: String!): Topic
