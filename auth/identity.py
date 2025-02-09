@@ -2,13 +2,13 @@ from binascii import hexlify
 from hashlib import sha256
 
 # from base.exceptions import InvalidPassword, InvalidToken
-from base.orm import local_session
-from jwt import DecodeError, ExpiredSignatureError
+from services.db import local_session
+from auth.exceptions import ExpiredToken, InvalidToken
 from passlib.hash import bcrypt
 
 from auth.jwtcodec import JWTCodec
 from auth.tokenstorage import TokenStorage
-from orm import User
+from orm.user import User
 
 
 class Password:
@@ -79,10 +79,10 @@ class Identity:
             if not await TokenStorage.exist(f"{payload.user_id}-{payload.username}-{token}"):
                 # raise InvalidToken("Login token has expired, please login again")
                 return {"error": "Token has expired"}
-        except ExpiredSignatureError:
+        except ExpiredToken:
             # raise InvalidToken("Login token has expired, please try again")
             return {"error": "Token has expired"}
-        except DecodeError:
+        except InvalidToken:
             # raise InvalidToken("token format error") from e
             return {"error": "Token format error"}
         with local_session() as session:

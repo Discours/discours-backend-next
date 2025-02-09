@@ -188,6 +188,8 @@ type Topic {
 
 type CommonResult {
   error: String
+  drafts: [Draft]
+  draft: Draft
   slugs: [String]
   shout: Shout
   shouts: [Shout]

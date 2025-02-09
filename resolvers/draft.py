@@ -1,16 +1,21 @@
 import time
-from importlib import invalidate_caches
-
+from orm.topic import Topic
 from sqlalchemy import select
+from sqlalchemy.sql import and_
 
-from cache.cache import invalidate_shout_related_cache, invalidate_shouts_cache
+from cache.cache import (
+    cache_author, cache_by_id, cache_topic, 
+    invalidate_shout_related_cache, invalidate_shouts_cache
+)
 from orm.author import Author
 from orm.draft import Draft
-from orm.shout import Shout
+from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from services.auth import login_required
 from services.db import local_session
 from services.schema import mutation, query
 from utils.logger import root_logger as logger
+from services.notify import notify_shout
+from services.search import search_service
 
 
 @query.field("load_drafts")
@@ -119,9 +124,10 @@ async def unpublish_draft(_, info, draft_id: int):
 @login_required
 async def publish_shout(_, info, shout_id: int, draft=None):
     """Publish draft as a shout or update existing shout.
-
+    
     Args:
-        session: SQLAlchemy session to use for database operations
+        shout_id: ID существующей публикации или 0 для новой
+        draft: Объект черновика (опционально)
     """
     user_id = info.context.get("user_id")
     author_dict = info.context.get("author", {})
@@ -130,16 +136,25 @@ async def publish_shout(_, info, shout_id: int, draft=None):
         return {"error": "User ID and author ID are required"}
 
     try:
-        # Use proper SQLAlchemy query
         with local_session() as session:
+            # Находим черновик если не передан
             if not draft:
                 find_draft_stmt = select(Draft).where(Draft.shout == shout_id)
                 draft = session.execute(find_draft_stmt).scalar_one_or_none()
+                if not draft:
+                    return {"error": "Draft not found"}
 
             now = int(time.time())
-
+            
+            # Находим существующую публикацию или создаем новую
+            shout = None
+            was_published = False
+            if shout_id:
+                shout = session.query(Shout).filter(Shout.id == shout_id).first()
+                was_published = shout and shout.published_at is not None
+            
             if not shout:
-                # Create new shout from draft
+                # Создаем новую публикацию
                 shout = Shout(
                     body=draft.body,
                     slug=draft.slug,
@@ -155,15 +170,11 @@ async def publish_shout(_, info, shout_id: int, draft=None):
                     seo=draft.seo,
                     created_by=author_id,
                     community=draft.community,
-                    authors=draft.authors.copy(),  # Create copies of relationships
-                    topics=draft.topics.copy(),
                     draft=draft.id,
                     deleted_at=None,
                 )
             else:
-                # Update existing shout
-                shout.authors = draft.authors.copy()
-                shout.topics = draft.topics.copy()
+                # Обновляем существующую публикацию
                 shout.draft = draft.id
                 shout.created_by = author_id
                 shout.title = draft.title
@@ -178,24 +189,78 @@ async def publish_shout(_, info, shout_id: int, draft=None):
                 shout.lang = draft.lang
                 shout.seo = draft.seo
 
+            # Обновляем временные метки
             shout.updated_at = now
-            shout.published_at = now
+            
+            # Устанавливаем published_at только если это новая публикация
+            # или публикация была ранее снята с публикации
+            if not was_published:
+                shout.published_at = now
+            
             draft.updated_at = now
             draft.published_at = now
+
+            # Обрабатываем связи с авторами
+            if not session.query(ShoutAuthor).filter(
+                and_(ShoutAuthor.shout == shout.id, ShoutAuthor.author == author_id)
+            ).first():
+                sa = ShoutAuthor(shout=shout.id, author=author_id)
+                session.add(sa)
+
+            # Обрабатываем темы
+            if draft.topics:
+                for topic in draft.topics:
+                    st = ShoutTopic(
+                        topic=topic.id,
+                        shout=shout.id,
+                        main=topic.main if hasattr(topic, 'main') else False
+                    )
+                    session.add(st)
+
             session.add(shout)
             session.add(draft)
+            session.flush()
+
+            # Инвалидируем кэш только если это новая публикация или была снята с публикации
+            if not was_published:
+                cache_keys = [
+                    "feed",
+                    f"author_{author_id}",
+                    "random_top",
+                    "unrated"
+                ]
+                
+                # Добавляем ключи для тем
+                for topic in shout.topics:
+                    cache_keys.append(f"topic_{topic.id}")
+                    cache_keys.append(f"topic_shouts_{topic.id}")
+                    await cache_by_id(Topic, topic.id, cache_topic)
+
+                # Инвалидируем кэш
+                await invalidate_shouts_cache(cache_keys)
+                await invalidate_shout_related_cache(shout, author_id)
+
+                # Обновляем кэш авторов
+                for author in shout.authors:
+                    await cache_by_id(Author, author.id, cache_author)
+
+                # Отправляем уведомление о публикации
+                await notify_shout(shout.dict(), "published")
+
+                # Обновляем поисковый индекс
+                search_service.index(shout)
+            else:
+                # Для уже опубликованных материалов просто отправляем уведомление об обновлении
+                await notify_shout(shout.dict(), "update")
+
             session.commit()
+            return {"shout": shout}
 
-        invalidate_shout_related_cache(shout)
-        invalidate_shouts_cache()
-        return {"shout": shout}
     except Exception as e:
-        import traceback
-
-        logger.error(f"Failed to publish shout: {e}")
-        logger.error(traceback.format_exc())
-        session.rollback()
-        return {"error": "Failed to publish shout"}
+        logger.error(f"Failed to publish shout: {e}", exc_info=True)
+        if 'session' in locals():
+            session.rollback()
+        return {"error": f"Failed to publish shout: {str(e)}"}
 
 
 @mutation.field("unpublish_shout")

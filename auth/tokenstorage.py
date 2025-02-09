@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from base.redis import redis
-from validations.auth import AuthInput
+from services.redis import redis
+from auth.validations import AuthInput
 
 from auth.jwtcodec import JWTCodec
 from settings import ONETIME_TOKEN_LIFE_SPAN, SESSION_TOKEN_LIFE_SPAN

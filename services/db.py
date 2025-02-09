@@ -7,8 +7,7 @@ from typing import Any, Callable, Dict, TypeVar
 
 import sqlalchemy
 from sqlalchemy import JSON, Column, Engine, Integer, create_engine, event, exc, func, inspect
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, configure_mappers
+from sqlalchemy.orm import Session, configure_mappers, declarative_base
 from sqlalchemy.sql.schema import Table
 
 from settings import DB_URL
