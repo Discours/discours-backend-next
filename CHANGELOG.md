@@ -1,3 +1,7 @@
+#### [0.4.10] - 2025-02-10
+- `add_author_stat_columns` fixed
+
+
 #### [0.4.9] - 2025-02-09
 - `Shout.draft` field added
 - `Draft` entity added
