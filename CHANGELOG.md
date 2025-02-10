@@ -6,7 +6,7 @@
 - `load_drafts` resolver implemented
 - `publish_` and `unpublish_` mutations and resolvers added
 - `create_`, `update_`, `delete_` mutations and resolvers added for `Draft` entity
-- tests with pytest for auth, shouts, drafts
+- tests with pytest for original auth, shouts, drafts
 
 #### [0.4.8] - 2025-02-03
 - `Reaction.deleted_at` filter on `update_reaction` resolver added
