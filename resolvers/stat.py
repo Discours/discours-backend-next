@@ -63,37 +63,34 @@ def add_author_stat_columns(q):
     :param q: SQL-запрос для получения авторов.
     :return: Запрос с добавленными колонками статистики.
     """
-    # Алиасирование таблиц для предотвращения конфликтов имен
-    aliased_shout_author = aliased(ShoutAuthor)
-    aliased_shout = aliased(Shout)
-    aliased_author_follower = aliased(AuthorFollower)
+    # Подзапрос для подсчета публикаций
+    shouts_subq = (
+        select(func.count(distinct(Shout.id)))
+        .select_from(ShoutAuthor)
+        .join(Shout, and_(
+            Shout.id == ShoutAuthor.shout,
+            Shout.deleted_at.is_(None)
+        ))
+        .where(ShoutAuthor.author == Author.id)
+        .scalar_subquery()
+    )
 
-    # Применение фильтров и добавление колонок статистики
+    # Подзапрос для подсчета подписчиков
+    followers_subq = (
+        select(func.count(distinct(AuthorFollower.follower)))
+        .where(AuthorFollower.author == Author.id)
+        .scalar_subquery()
+    )
+
+    # Основной запрос
     q = (
         q.select_from(Author)
-        .join(
-            aliased_shout_author,
-            aliased_shout_author.author == Author.id,
-        )
-        .join(
-            aliased_shout,
-            and_(
-                aliased_shout.id == aliased_shout_author.shout,
-                aliased_shout.deleted_at.is_(None),
-            ),
-        )
         .add_columns(
-            func.count(distinct(aliased_shout.id)).label("shouts_stat")
-        )  # Подсчет уникальных публикаций автора
+            shouts_subq.label("shouts_stat"),
+            followers_subq.label("followers_stat")
+        )
+        .group_by(Author.id)
     )
-
-    # Добавляем количество подписчиков автора
-    q = q.outerjoin(aliased_author_follower, aliased_author_follower.author == Author.id).add_columns(
-        func.count(distinct(aliased_author_follower.follower)).label("followers_stat")
-    )
-
-    # Группировка по идентификатору автора
-    q = q.group_by(Author.id)
 
     return q
 

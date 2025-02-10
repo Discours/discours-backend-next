@@ -17,7 +17,6 @@ from cache.revalidator import revalidation_manager
 from services.exception import ExceptionHandlerMiddleware
 from services.redis import redis
 from services.schema import create_all_tables, resolvers
-from services.db import engine
 from services.search import search_service
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint, create_webhook_endpoint
