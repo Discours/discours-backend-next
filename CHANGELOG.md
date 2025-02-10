@@ -7,6 +7,7 @@
 - `publish_` and `unpublish_` mutations and resolvers added
 - `create_`, `update_`, `delete_` mutations and resolvers added for `Draft` entity
 - tests with pytest for original auth, shouts, drafts
+- `Dockerfile` and `pyproject.toml` removed for the simplicity: `Procfile` and `requirements.txt`
 
 #### [0.4.8] - 2025-02-03
 - `Reaction.deleted_at` filter on `update_reaction` resolver added

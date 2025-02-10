@@ -1,0 +1,26 @@
+# own auth
+bcrypt
+authlib
+passlib
+
+google-analytics-data
+dogpile-cache
+opensearch-py
+colorlog
+psycopg2-binary
+dogpile-cache
+httpx
+redis[hiredis]
+sentry-sdk[starlette,sqlalchemy]
+starlette
+gql
+ariadne
+granian
+
+pydantic
+fakeredis
+pytest
+pytest-asyncio
+pytest-cov
+mypy
+ruff

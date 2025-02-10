@@ -14,24 +14,15 @@ from starlette.routing import Route
 
 from cache.precache import precache_data
 from cache.revalidator import revalidation_manager
-from orm import (
-    # collection,
-    # invite,
-    author,
-    community,
-    notification,
-    reaction,
-    shout,
-    topic,
-)
-from services.db import create_table_if_not_exists, engine
 from services.exception import ExceptionHandlerMiddleware
 from services.redis import redis
-from services.schema import resolvers
+from services.schema import create_all_tables, resolvers
 from services.search import search_service
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint, create_webhook_endpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
+from services.db import engine
+from utils.logger import root_logger as logger
 
 import_module("resolvers")
 schema = make_executable_schema(load_schema_from_path("schema/"), resolvers)
@@ -44,30 +35,6 @@ async def start():
             with open(DEV_SERVER_PID_FILE_NAME, "w", encoding="utf-8") as f:
                 f.write(str(os.getpid()))
     print(f"[main] process started in {MODE} mode")
-
-
-def create_all_tables():
-    for model in [
-        # user.User,
-        author.Author,
-        author.AuthorFollower,
-        community.Community,
-        community.CommunityFollower,
-        shout.Shout,
-        shout.ShoutAuthor,
-        author.AuthorBookmark,
-        topic.Topic,
-        topic.TopicFollower,
-        shout.ShoutTopic,
-        reaction.Reaction,
-        shout.ShoutReactionsFollower,
-        author.AuthorRating,
-        notification.Notification,
-        notification.NotificationSeen,
-        # collection.Collection, collection.ShoutCollection,
-        # invite.Invite
-    ]:
-        create_table_if_not_exists(engine, model)
 
 
 async def create_all_tables_async():
@@ -133,3 +100,18 @@ if "dev" in sys.argv:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+def init_database():
+    """Initialize database tables before starting the server"""
+    logger.info("Initializing database...")
+    create_all_tables(engine)
+    logger.info("Database initialized")
+
+def main():
+    # Инициализируем базу данных перед запуском сервера
+    init_database()
+    
+    # Остальной код запуска сервера...
+    
+if __name__ == "__main__":
+    main()

@@ -53,4 +53,3 @@ class Draft(Base):
     deleted_by: int | None = Column(ForeignKey("author.id"), nullable=True)
     authors = relationship(Author, secondary="draft_author")
     topics = relationship(Topic, secondary="draft_topic")
-    shout: int | None = Column(ForeignKey("shout.id"), nullable=True)

@@ -10,7 +10,6 @@ from utils.logger import root_logger as logger
 
 if __name__ == "__main__":
     logger.info("started")
-
     try:
         granian_instance = Granian(
             "main:app",
@@ -28,7 +27,7 @@ if __name__ == "__main__":
             granian_instance.build_ssl_context(cert=Path("localhost.pem"), key=Path("localhost-key.pem"), password=None)
         granian_instance.serve()
     except Exception as error:
-        logger.error(f"Granian error: {error}", exc_info=True)
+        logger.error(error, exc_info=True)
         raise
     finally:
         logger.info("stopped")

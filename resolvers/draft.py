@@ -18,6 +18,30 @@ from services.notify import notify_shout
 from services.search import search_service
 
 
+
+def create_shout_from_draft(session, draft, author_id):
+    # Создаем новую публикацию
+    shout = Shout(
+        body=draft.body,
+        slug=draft.slug,
+        cover=draft.cover,
+        cover_caption=draft.cover_caption,
+        lead=draft.lead,
+        description=draft.description,
+        title=draft.title,
+        subtitle=draft.subtitle,
+        layout=draft.layout,
+        media=draft.media,
+        lang=draft.lang,
+        seo=draft.seo,
+        created_by=author_id,
+        community=draft.community,
+        draft=draft.id,
+        deleted_at=None,
+    )
+    return shout
+
+
 @query.field("load_drafts")
 @login_required
 async def load_drafts(_, info):
@@ -45,8 +69,6 @@ async def create_draft(_, info, shout_id: int = 0):
 
     with local_session() as session:
         draft = Draft(created_by=author_id)
-        if shout_id:
-            draft.shout = shout_id
         session.add(draft)
         session.commit()
         return {"draft": draft}
@@ -84,6 +106,8 @@ async def delete_draft(_, info, draft_id: int):
         draft = session.query(Draft).filter(Draft.id == draft_id).first()
         if not draft:
             return {"error": "Draft not found"}
+        if author_id != draft.created_by and draft.authors.filter(Author.id == author_id).count() == 0:
+            return {"error": "You are not allowed to delete this draft"}
         session.delete(draft)
         session.commit()
         return {"draft": draft}
@@ -102,7 +126,10 @@ async def publish_draft(_, info, draft_id: int):
         draft = session.query(Draft).filter(Draft.id == draft_id).first()
         if not draft:
             return {"error": "Draft not found"}
-        return publish_shout(None, None, draft.shout, draft)
+        shout = create_shout_from_draft(session, draft, author_id)
+        session.add(shout)
+        session.commit()
+        return {"shout": shout}
 
 
 @mutation.field("unpublish_draft")
@@ -116,8 +143,14 @@ async def unpublish_draft(_, info, draft_id: int):
 
     with local_session() as session:
         draft = session.query(Draft).filter(Draft.id == draft_id).first()
-        shout_id = draft.shout
-        unpublish_shout(None, None, shout_id)
+        if not draft:
+            return {"error": "Draft not found"}
+        shout = session.query(Shout).filter(Shout.draft == draft.id).first()
+        if shout:
+            shout.published_at = None
+            session.commit()
+            return {"shout": shout}
+        return {"error": "Failed to unpublish draft"}
 
 
 @mutation.field("publish_shout")
@@ -132,47 +165,23 @@ async def publish_shout(_, info, shout_id: int, draft=None):
     user_id = info.context.get("user_id")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
+    now = int(time.time())
     if not user_id or not author_id:
         return {"error": "User ID and author ID are required"}
 
     try:
         with local_session() as session:
-            # Находим черновик если не передан
-            if not draft:
-                find_draft_stmt = select(Draft).where(Draft.shout == shout_id)
-                draft = session.execute(find_draft_stmt).scalar_one_or_none()
-                if not draft:
-                    return {"error": "Draft not found"}
-
-            now = int(time.time())
-            
-            # Находим существующую публикацию или создаем новую
-            shout = None
-            was_published = False
-            if shout_id:
-                shout = session.query(Shout).filter(Shout.id == shout_id).first()
-                was_published = shout and shout.published_at is not None
-            
+            shout = session.query(Shout).filter(Shout.id == shout_id).first()
             if not shout:
-                # Создаем новую публикацию
-                shout = Shout(
-                    body=draft.body,
-                    slug=draft.slug,
-                    cover=draft.cover,
-                    cover_caption=draft.cover_caption,
-                    lead=draft.lead,
-                    description=draft.description,
-                    title=draft.title,
-                    subtitle=draft.subtitle,
-                    layout=draft.layout,
-                    media=draft.media,
-                    lang=draft.lang,
-                    seo=draft.seo,
-                    created_by=author_id,
-                    community=draft.community,
-                    draft=draft.id,
-                    deleted_at=None,
-                )
+                return {"error": "Shout not found"}
+            was_published = shout and shout.published_at is not None
+            draft = draft or session.query(Draft).where(Draft.id == shout.draft).first()
+            if not draft:
+                return {"error": "Draft not found"}
+            # Находим черновик если не передан
+
+            if not shout:
+                shout = create_shout_from_draft(session, draft, author_id)
             else:
                 # Обновляем существующую публикацию
                 shout.draft = draft.id
@@ -189,17 +198,14 @@ async def publish_shout(_, info, shout_id: int, draft=None):
                 shout.lang = draft.lang
                 shout.seo = draft.seo
 
-            # Обновляем временные метки
-            shout.updated_at = now
-            
-            # Устанавливаем published_at только если это новая публикация
-            # или публикация была ранее снята с публикации
-            if not was_published:
-                shout.published_at = now
-            
-            draft.updated_at = now
-            draft.published_at = now
-
+                draft.updated_at = now
+                draft.published_at = now
+                shout.updated_at = now
+                # Устанавливаем published_at только если это новая публикация
+                # или публикация была ранее снята с публикации
+                if not was_published:
+                    shout.published_at = now
+                    
             # Обрабатываем связи с авторами
             if not session.query(ShoutAuthor).filter(
                 and_(ShoutAuthor.shout == shout.id, ShoutAuthor.author == author_id)
@@ -293,3 +299,5 @@ async def unpublish_shout(_, info, shout_id: int):
             return {"error": "Failed to unpublish shout"}
 
     return {"shout": shout}
+
+

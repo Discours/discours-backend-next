@@ -37,36 +37,43 @@ Backend service providing GraphQL API for content management system with reactio
 
 ## Development
 
-### Setup
-
-
-Start API server with `dev` keyword added and `mkcert` installed:
+### Prepare environment:
 
 ```shell
 mkdir .venv
 python3.12 -m venv venv
-poetry env use venv/bin/python3.12
-poetry update
+source venv/bin/activate
+```
 
+### Run server
+
+First, certifcates are required to run the server.
+
+```shell
 mkcert -install
 mkcert localhost
-poetry run server.py dev
+```
+
+Then, run the server:
+
+```shell
+python server.py dev
 ```
 
 ### Useful Commands
 
 ```shell
 # Linting and import sorting
-poetry run ruff check . --fix --select I 
+ruff check . --fix --select I 
 
 # Code formatting
-poetry run ruff format . --line-length=120 
+ruff format . --line-length=120 
 
 # Run tests
-poetry run pytest
+pytest
 
 # Type checking
-poetry run mypy .
+mypy .
 ```
 
 ### Code Style
