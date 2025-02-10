@@ -17,12 +17,11 @@ from cache.revalidator import revalidation_manager
 from services.exception import ExceptionHandlerMiddleware
 from services.redis import redis
 from services.schema import create_all_tables, resolvers
+from services.db import engine
 from services.search import search_service
 from services.viewed import ViewedStorage
 from services.webhook import WebhookEndpoint, create_webhook_endpoint
 from settings import DEV_SERVER_PID_FILE_NAME, MODE
-from services.db import engine
-from utils.logger import root_logger as logger
 
 import_module("resolvers")
 schema = make_executable_schema(load_schema_from_path("schema/"), resolvers)
@@ -37,15 +36,10 @@ async def start():
     print(f"[main] process started in {MODE} mode")
 
 
-async def create_all_tables_async():
-    # Оборачиваем синхронную функцию в асинхронную
-    await asyncio.to_thread(create_all_tables)
-
-
-async def lifespan(app):
+async def lifespan(_app):
     try:
+        create_all_tables()
         await asyncio.gather(
-            create_all_tables_async(),
             redis.connect(),
             precache_data(),
             ViewedStorage.init(),
@@ -100,18 +94,3 @@ if "dev" in sys.argv:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-def init_database():
-    """Initialize database tables before starting the server"""
-    logger.info("Initializing database...")
-    create_all_tables(engine)
-    logger.info("Database initialized")
-
-def main():
-    # Инициализируем базу данных перед запуском сервера
-    init_database()
-    
-    # Остальной код запуска сервера...
-    
-if __name__ == "__main__":
-    main()
