@@ -1,14 +1,15 @@
 from binascii import hexlify
 from hashlib import sha256
 
-# from base.exceptions import InvalidPassword, InvalidToken
-from services.db import local_session
-from auth.exceptions import ExpiredToken, InvalidToken
 from passlib.hash import bcrypt
 
+from auth.exceptions import ExpiredToken, InvalidToken
 from auth.jwtcodec import JWTCodec
 from auth.tokenstorage import TokenStorage
 from orm.user import User
+
+# from base.exceptions import InvalidPassword, InvalidToken
+from services.db import local_session
 
 
 class Password:

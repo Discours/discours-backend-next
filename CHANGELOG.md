@@ -1,5 +1,7 @@
 #### [0.4.10] - 2025-02-10
 - `add_author_stat_columns` fixed
+- `Draft` orm and schema tuning and fixes
+- `create_draft` and `update_draft` mutations and resolvers fixed
 
 
 #### [0.4.9] - 2025-02-09

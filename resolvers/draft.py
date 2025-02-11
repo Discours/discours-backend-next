@@ -1,22 +1,25 @@
 import time
-from orm.topic import Topic
+
 from sqlalchemy import select
 from sqlalchemy.sql import and_
 
 from cache.cache import (
-    cache_author, cache_by_id, cache_topic, 
-    invalidate_shout_related_cache, invalidate_shouts_cache
+    cache_author,
+    cache_by_id,
+    cache_topic,
+    invalidate_shout_related_cache,
+    invalidate_shouts_cache,
 )
 from orm.author import Author
 from orm.draft import Draft
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
+from orm.topic import Topic
 from services.auth import login_required
 from services.db import local_session
-from services.schema import mutation, query
-from utils.logger import root_logger as logger
 from services.notify import notify_shout
+from services.schema import mutation, query
 from services.search import search_service
-
+from utils.logger import root_logger as logger
 
 
 def create_shout_from_draft(session, draft, author_id):
@@ -59,16 +62,19 @@ async def load_drafts(_, info):
 
 @mutation.field("create_draft")
 @login_required
-async def create_draft(_, info, shout_id: int = 0):
+async def create_draft(_, info, draft_input):
     user_id = info.context.get("user_id")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
+    draft_id = draft_input.get("id")
 
+    if not draft_id:
+        return {"error": "Draft ID is required"}
     if not user_id or not author_id:
-        return {"error": "User ID and author ID are required"}
+        return {"error": "Author ID are required"}
 
     with local_session() as session:
-        draft = Draft(created_by=author_id)
+        draft = Draft(created_by=author_id, **draft_input)
         session.add(draft)
         session.commit()
         return {"draft": draft}
@@ -81,11 +87,14 @@ async def update_draft(_, info, draft_input):
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
     draft_id = draft_input.get("id")
+    if not draft_id:
+        return {"error": "Draft ID is required"}
     if not user_id or not author_id:
-        return {"error": "User ID and author ID are required"}
+        return {"error": "Author ID are required"}
 
     with local_session() as session:
         draft = session.query(Draft).filter(Draft.id == draft_id).first()
+        del draft_input["id"]
         Draft.update(draft, {**draft_input})
         if not draft:
             return {"error": "Draft not found"}
@@ -129,7 +138,7 @@ async def publish_draft(_, info, draft_id: int):
         shout = create_shout_from_draft(session, draft, author_id)
         session.add(shout)
         session.commit()
-        return {"shout": shout}
+        return {"shout": shout, "draft": draft}
 
 
 @mutation.field("unpublish_draft")
@@ -149,15 +158,15 @@ async def unpublish_draft(_, info, draft_id: int):
         if shout:
             shout.published_at = None
             session.commit()
-            return {"shout": shout}
+            return {"shout": shout, "draft": draft}
         return {"error": "Failed to unpublish draft"}
 
 
 @mutation.field("publish_shout")
 @login_required
-async def publish_shout(_, info, shout_id: int, draft=None):
+async def publish_shout(_, info, shout_id: int):
     """Publish draft as a shout or update existing shout.
-    
+
     Args:
         shout_id: ID существующей публикации или 0 для новой
         draft: Объект черновика (опционально)
@@ -205,11 +214,13 @@ async def publish_shout(_, info, shout_id: int, draft=None):
                 # или публикация была ранее снята с публикации
                 if not was_published:
                     shout.published_at = now
-                    
+
             # Обрабатываем связи с авторами
-            if not session.query(ShoutAuthor).filter(
-                and_(ShoutAuthor.shout == shout.id, ShoutAuthor.author == author_id)
-            ).first():
+            if (
+                not session.query(ShoutAuthor)
+                .filter(and_(ShoutAuthor.shout == shout.id, ShoutAuthor.author == author_id))
+                .first()
+            ):
                 sa = ShoutAuthor(shout=shout.id, author=author_id)
                 session.add(sa)
 
@@ -217,9 +228,7 @@ async def publish_shout(_, info, shout_id: int, draft=None):
             if draft.topics:
                 for topic in draft.topics:
                     st = ShoutTopic(
-                        topic=topic.id,
-                        shout=shout.id,
-                        main=topic.main if hasattr(topic, 'main') else False
+                        topic=topic.id, shout=shout.id, main=topic.main if hasattr(topic, "main") else False
                     )
                     session.add(st)
 
@@ -229,13 +238,8 @@ async def publish_shout(_, info, shout_id: int, draft=None):
 
             # Инвалидируем кэш только если это новая публикация или была снята с публикации
             if not was_published:
-                cache_keys = [
-                    "feed",
-                    f"author_{author_id}",
-                    "random_top",
-                    "unrated"
-                ]
-                
+                cache_keys = ["feed", f"author_{author_id}", "random_top", "unrated"]
+
                 # Добавляем ключи для тем
                 for topic in shout.topics:
                     cache_keys.append(f"topic_{topic.id}")
@@ -264,7 +268,7 @@ async def publish_shout(_, info, shout_id: int, draft=None):
 
     except Exception as e:
         logger.error(f"Failed to publish shout: {e}", exc_info=True)
-        if 'session' in locals():
+        if "session" in locals():
             session.rollback()
         return {"error": f"Failed to publish shout: {str(e)}"}
 
@@ -299,5 +303,3 @@ async def unpublish_shout(_, info, shout_id: int):
             return {"error": "Failed to unpublish shout"}
 
     return {"shout": shout}
-
-

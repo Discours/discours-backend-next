@@ -28,27 +28,27 @@ class DraftAuthor(Base):
 
 class Draft(Base):
     __tablename__ = "draft"
-
+    # required
     created_at: int = Column(Integer, nullable=False, default=lambda: int(time.time()))
-    updated_at: int | None = Column(Integer, nullable=True, index=True)
-    deleted_at: int | None = Column(Integer, nullable=True, index=True)
+    created_by: int = Column(ForeignKey("author.id"), nullable=False)
 
-    body: str = Column(String, nullable=False, comment="Body")
+    # optional
+    layout: str = Column(String, nullable=True, default="article")
     slug: str = Column(String, unique=True)
-    cover: str | None = Column(String, nullable=True, comment="Cover image url")
-    cover_caption: str | None = Column(String, nullable=True, comment="Cover image alt caption")
+    title: str = Column(String, nullable=True)
+    subtitle: str | None = Column(String, nullable=True)
     lead: str | None = Column(String, nullable=True)
     description: str | None = Column(String, nullable=True)
-    title: str = Column(String, nullable=False)
-    subtitle: str | None = Column(String, nullable=True)
-    layout: str = Column(String, nullable=False, default="article")
+    body: str = Column(String, nullable=False, comment="Body")
     media: dict | None = Column(JSON, nullable=True)
-
+    cover: str | None = Column(String, nullable=True, comment="Cover image url")
+    cover_caption: str | None = Column(String, nullable=True, comment="Cover image alt caption")
     lang: str = Column(String, nullable=False, default="ru", comment="Language")
-    oid: str | None = Column(String, nullable=True)
     seo: str | None = Column(String, nullable=True)  # JSON
 
-    created_by: int = Column(ForeignKey("author.id"), nullable=False)
+    # auto
+    updated_at: int | None = Column(Integer, nullable=True, index=True)
+    deleted_at: int | None = Column(Integer, nullable=True, index=True)
     updated_by: int | None = Column(ForeignKey("author.id"), nullable=True)
     deleted_by: int | None = Column(ForeignKey("author.id"), nullable=True)
     authors = relationship(Author, secondary="draft_author")

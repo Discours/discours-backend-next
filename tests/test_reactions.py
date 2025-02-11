@@ -1,8 +1,11 @@
+from datetime import datetime
+
 import pytest
+
+from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout
-from orm.author import Author
-from datetime import datetime
+
 
 @pytest.fixture
 def test_setup(db_session):
@@ -11,9 +14,9 @@ def test_setup(db_session):
     author = Author(name="Test Author", slug="test-author", user="test-user-id")
     db_session.add(author)
     db_session.flush()
-    
+
     shout = Shout(
-        title="Test Shout", 
+        title="Test Shout",
         slug="test-shout",
         created_by=author.id,
         body="This is a test shout",
@@ -21,11 +24,12 @@ def test_setup(db_session):
         lang="ru",
         community=1,
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
     db_session.add_all([author, shout])
     db_session.commit()
     return {"author": author, "shout": shout}
+
 
 @pytest.mark.asyncio
 async def test_create_reaction(test_client, db_session, test_setup):
@@ -49,16 +53,12 @@ async def test_create_reaction(test_client, db_session, test_setup):
             }
             """,
             "variables": {
-                    "reaction": {
-                        "shout": test_setup["shout"].id,
-                        "kind": ReactionKind.LIKE.value,
-                        "body": "Great post!"
-                    }
-            }
-        }
+                "reaction": {"shout": test_setup["shout"].id, "kind": ReactionKind.LIKE.value, "body": "Great post!"}
+            },
+        },
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "error" not in data
-    assert data["data"]["create_reaction"]["reaction"]["kind"] == ReactionKind.LIKE.value 
+    assert data["data"]["create_reaction"]["reaction"]["kind"] == ReactionKind.LIKE.value

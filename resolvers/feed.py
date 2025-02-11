@@ -5,7 +5,12 @@ from sqlalchemy import and_, select
 from orm.author import Author, AuthorFollower
 from orm.shout import Shout, ShoutAuthor, ShoutReactionsFollower, ShoutTopic
 from orm.topic import Topic, TopicFollower
-from resolvers.reader import apply_options, get_shouts_with_links, has_field, query_with_stat
+from resolvers.reader import (
+    apply_options,
+    get_shouts_with_links,
+    has_field,
+    query_with_stat,
+)
 from services.auth import login_required
 from services.db import local_session
 from services.schema import query

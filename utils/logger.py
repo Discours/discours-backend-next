@@ -6,16 +6,25 @@ import colorlog
 _lib_path = Path(__file__).parents[1]
 _leng_path = len(_lib_path.as_posix())
 
+
 def filter(record: logging.LogRecord):
     # Define `package` attribute with the relative path.
-    record.package = record.pathname[_leng_path+1:].replace(".py", "")
-    record.emoji = "🔍" if record.levelno == logging.DEBUG \
-        else "🖊️" if record.levelno == logging.INFO \
-        else "🚧" if record.levelno == logging.WARNING \
-        else "❌" if record.levelno == logging.ERROR \
-        else "🧨" if record.levelno == logging.CRITICAL \
+    record.package = record.pathname[_leng_path + 1 :].replace(".py", "")
+    record.emoji = (
+        "🔍"
+        if record.levelno == logging.DEBUG
+        else "🖊️"
+        if record.levelno == logging.INFO
+        else "🚧"
+        if record.levelno == logging.WARNING
+        else "❌"
+        if record.levelno == logging.ERROR
+        else "🧨"
+        if record.levelno == logging.CRITICAL
         else ""
+    )
     return record
+
 
 # Define the color scheme
 color_scheme = {
@@ -55,9 +64,9 @@ class MultilineColoredFormatter(colorlog.ColoredFormatter):
 
     def format(self, record):
         # Add default emoji if not present
-        if not hasattr(record, 'emoji'):
+        if not hasattr(record, "emoji"):
             record = filter(record)
-        
+
         message = record.getMessage()
         if "\n" in message:
             lines = message.split("\n")

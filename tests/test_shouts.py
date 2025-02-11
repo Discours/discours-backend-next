@@ -1,7 +1,10 @@
+from datetime import datetime
+
 import pytest
+
 from orm.author import Author
 from orm.shout import Shout
-from datetime import datetime
+
 
 @pytest.fixture
 def test_shout(db_session):
@@ -10,7 +13,7 @@ def test_shout(db_session):
     author = Author(name="Test Author", slug="test-author", user="test-user-id")
     db_session.add(author)
     db_session.flush()
-    
+
     now = int(datetime.now().timestamp())
 
     shout = Shout(
@@ -22,11 +25,12 @@ def test_shout(db_session):
         lang="ru",
         community=1,
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
     db_session.add(shout)
     db_session.commit()
     return shout
+
 
 @pytest.mark.asyncio
 async def test_get_shout(test_client, db_session):
@@ -36,7 +40,7 @@ async def test_get_shout(test_client, db_session):
     db_session.add(author)
     db_session.flush()
     now = int(datetime.now().timestamp())
-    
+
     # Создаем публикацию со всеми обязательными полями
     shout = Shout(
         title="Test Shout",
@@ -47,11 +51,11 @@ async def test_get_shout(test_client, db_session):
         lang="ru",
         community=1,
         created_at=now,
-        updated_at=now
+        updated_at=now,
     )
     db_session.add(shout)
     db_session.commit()
-    
+
     response = test_client.post(
         "/",
         json={
@@ -71,13 +75,11 @@ async def test_get_shout(test_client, db_session):
                 }
             }
             """,
-            "variables": {
-                "slug": "test-shout"
-            }
-        }
+            "variables": {"slug": "test-shout"},
+        },
     )
-    
+
     data = response.json()
     assert response.status_code == 200
     assert "errors" not in data
-    assert data["data"]["get_shout"]["title"] == "Test Shout" 
+    assert data["data"]["get_shout"]["title"] == "Test Shout"

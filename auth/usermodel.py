@@ -1,6 +1,15 @@
 import time
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import relationship
 
 from services.db import Base

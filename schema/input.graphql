@@ -1,15 +1,47 @@
-input DraftInput {
-  slug: String
+input MediaItemInput {
+  url: String
   title: String
   body: String
+  source: String
+  pic: String
+  date: String
+  genre: String
+  artist: String
+  lyrics: String
+}
+
+input AuthorInput {
+  id: Int!
+  slug: String
+}
+
+input TopicInput {
+  id: Int
+  slug: String!
+  title: String
+  body: String
+  pic: String
+}
+
+input DraftInput {
+  id: Int
+  # no created_at, updated_at, deleted_at, updated_by, deleted_by
+  layout: String
+  shout_id: Int  # Changed from shout: Shout
+  author_ids: [Int!]  # Changed from authors: [Author]
+  topic_ids: [Int!]  # Changed from topics: [Topic]
+  main_topic_id: Int  # Changed from main_topic: Topic
+  media: [MediaItemInput]  # Changed to use MediaItemInput
   lead: String
   description: String
-  layout: String
-  media: String
-  topics: [TopicInput]
-  community: Int
   subtitle: String
+  lang: String
+  seo: String
+  body: String
+  title: String
+  slug: String
   cover: String
+  cover_caption: String
 }
 
 input ProfileInput {
@@ -19,14 +51,6 @@ input ProfileInput {
   links: [String]
   bio: String
   about: String
-}
-
-input TopicInput {
-  id: Int
-  slug: String!
-  title: String
-  body: String
-  pic: String
 }
 
 input ReactionInput {

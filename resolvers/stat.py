@@ -67,10 +67,7 @@ def add_author_stat_columns(q):
     shouts_subq = (
         select(func.count(distinct(Shout.id)))
         .select_from(ShoutAuthor)
-        .join(Shout, and_(
-            Shout.id == ShoutAuthor.shout,
-            Shout.deleted_at.is_(None)
-        ))
+        .join(Shout, and_(Shout.id == ShoutAuthor.shout, Shout.deleted_at.is_(None)))
         .where(ShoutAuthor.author == Author.id)
         .scalar_subquery()
     )
@@ -85,10 +82,7 @@ def add_author_stat_columns(q):
     # Основной запрос
     q = (
         q.select_from(Author)
-        .add_columns(
-            shouts_subq.label("shouts_stat"),
-            followers_subq.label("followers_stat")
-        )
+        .add_columns(shouts_subq.label("shouts_stat"), followers_subq.label("followers_stat"))
         .group_by(Author.id)
     )
 

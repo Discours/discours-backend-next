@@ -43,7 +43,6 @@ async def request_graphql_data(gql, url=AUTH_URL, headers=None):
     return None
 
 
-
 def create_all_tables():
     """Create all database tables in the correct order."""
     from orm import author, community, draft, notification, reaction, shout, topic, user
@@ -54,26 +53,21 @@ def create_all_tables():
         author.Author,  # Базовая таблица
         community.Community,  # Базовая таблица
         topic.Topic,  # Базовая таблица
-        
         # Связи для базовых таблиц
         author.AuthorFollower,  # Зависит от Author
         community.CommunityFollower,  # Зависит от Community
         topic.TopicFollower,  # Зависит от Topic
-        
         # Черновики (теперь без зависимости от Shout)
         draft.Draft,  # Зависит только от Author
         draft.DraftAuthor,  # Зависит от Draft и Author
         draft.DraftTopic,  # Зависит от Draft и Topic
-        
         # Основные таблицы контента
         shout.Shout,  # Зависит от Author и Draft
         shout.ShoutAuthor,  # Зависит от Shout и Author
         shout.ShoutTopic,  # Зависит от Shout и Topic
-        
         # Реакции
         reaction.Reaction,  # Зависит от Author и Shout
         shout.ShoutReactionsFollower,  # Зависит от Shout и Reaction
-        
         # Дополнительные таблицы
         author.AuthorRating,  # Зависит от Author
         notification.Notification,  # Зависит от Author
@@ -87,7 +81,7 @@ def create_all_tables():
         for model in models_in_order:
             try:
                 create_table_if_not_exists(session.get_bind(), model)
-                logger.info(f"Created or verified table: {model.__tablename__}")
+                # logger.info(f"Created or verified table: {model.__tablename__}")
             except Exception as e:
                 logger.error(f"Error creating table {model.__tablename__}: {e}")
                 raise

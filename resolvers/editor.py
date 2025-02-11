@@ -5,7 +5,12 @@ from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import coalesce
 
-from cache.cache import cache_author, cache_topic, invalidate_shout_related_cache, invalidate_shouts_cache
+from cache.cache import (
+    cache_author,
+    cache_topic,
+    invalidate_shout_related_cache,
+    invalidate_shouts_cache,
+)
 from orm.author import Author
 from orm.draft import Draft
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
@@ -114,11 +119,11 @@ async def get_my_shout(_, info, shout_id: int):
 
         logger.debug(f"got {len(shout.authors)} shout authors, created by {shout.created_by}")
         is_editor = "editor" in roles
-        logger.debug(f'viewer is{'' if is_editor else ' not'} editor')
+        logger.debug(f"viewer is{'' if is_editor else ' not'} editor")
         is_creator = author_id == shout.created_by
-        logger.debug(f'viewer is{'' if is_creator else ' not'} creator')
+        logger.debug(f"viewer is{'' if is_creator else ' not'} creator")
         is_author = bool(list(filter(lambda x: x.id == int(author_id), [x for x in shout.authors])))
-        logger.debug(f'viewer is{'' if is_creator else ' not'} author')
+        logger.debug(f"viewer is{'' if is_creator else ' not'} author")
         can_edit = is_editor or is_author or is_creator
 
         if not can_edit:

@@ -4,8 +4,8 @@ type Mutation {
   update_author(profile: ProfileInput!): CommonResult!
 
   # draft
-  create_draft(input: DraftInput!): CommonResult!
-  update_draft(draft_id: Int!, input: DraftInput!): CommonResult!
+  create_draft(draft_input: DraftInput!): CommonResult!
+  update_draft(draft_id: Int!, draft_input: DraftInput!): CommonResult!
   delete_draft(draft_id: Int!): CommonResult!
   # publication
   publish_shout(shout_id: Int!): CommonResult!
@@ -18,8 +18,8 @@ type Mutation {
   unfollow(what: FollowingEntity!, slug: String!): AuthorFollowsResult!
 
   # topic
-  create_topic(input: TopicInput!): CommonResult!
-  update_topic(input: TopicInput!): CommonResult!
+  create_topic(topic_input: TopicInput!): CommonResult!
+  update_topic(topic_input: TopicInput!): CommonResult!
   delete_topic(slug: String!): CommonResult!
 
   # reaction
@@ -45,7 +45,7 @@ type Mutation {
   # community
   join_community(slug: String!): CommonResult!
   leave_community(slug: String!): CommonResult!
-  create_community(input: CommunityInput!): CommonResult!
-  update_community(input: CommunityInput!): CommonResult!
+  create_community(community_input: CommunityInput!): CommonResult!
+  update_community(community_input: CommunityInput!): CommonResult!
   delete_community(slug: String!): CommonResult!
 }

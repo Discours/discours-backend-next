@@ -66,11 +66,11 @@ async def get_topic(_, _info, slug: str):
 # Мутация для создания новой темы
 @mutation.field("create_topic")
 @login_required
-async def create_topic(_, _info, inp):
+async def create_topic(_, _info, topic_input):
     with local_session() as session:
         # TODO: проверить права пользователя на создание темы для конкретного сообщества
         # и разрешение на создание
-        new_topic = Topic(**inp)
+        new_topic = Topic(**topic_input)
         session.add(new_topic)
         session.commit()
 
@@ -80,14 +80,14 @@ async def create_topic(_, _info, inp):
 # Мутация для обновления темы
 @mutation.field("update_topic")
 @login_required
-async def update_topic(_, _info, inp):
-    slug = inp["slug"]
+async def update_topic(_, _info, topic_input):
+    slug = topic_input["slug"]
     with local_session() as session:
         topic = session.query(Topic).filter(Topic.slug == slug).first()
         if not topic:
             return {"error": "topic not found"}
         else:
-            Topic.update(topic, inp)
+            Topic.update(topic, topic_input)
             session.add(topic)
             session.commit()
 

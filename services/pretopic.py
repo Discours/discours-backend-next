@@ -1,7 +1,10 @@
 import concurrent.futures
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
+
 from txtai.embeddings import Embeddings
+
 from services.logger import root_logger as logger
+
 
 class TopicClassifier:
     def __init__(self, shouts_by_topic: Dict[str, str], publications: List[Dict[str, str]]):
@@ -32,27 +35,21 @@ class TopicClassifier:
         Подготавливает векторные представления для тем и поиска.
         """
         logger.info("Начинается подготовка векторных представлений...")
-        
+
         # Модель для русского языка
         # TODO: model local caching
         model_path = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-        
+
         # Инициализируем embeddings для классификации тем
         self.topic_embeddings = Embeddings(path=model_path)
-        topic_documents = [
-            (topic, text) 
-            for topic, text in self.shouts_by_topic.items()
-        ]
+        topic_documents = [(topic, text) for topic, text in self.shouts_by_topic.items()]
         self.topic_embeddings.index(topic_documents)
-        
+
         # Инициализируем embeddings для поиска публикаций
         self.search_embeddings = Embeddings(path=model_path)
-        search_documents = [
-            (str(pub['id']), f"{pub['title']} {pub['text']}")
-            for pub in self.publications
-        ]
+        search_documents = [(str(pub["id"]), f"{pub['title']} {pub['text']}") for pub in self.publications]
         self.search_embeddings.index(search_documents)
-        
+
         logger.info("Подготовка векторных представлений завершена.")
 
     def predict_topic(self, text: str) -> Tuple[float, str]:
@@ -66,13 +63,13 @@ class TopicClassifier:
         if not self.is_ready():
             logger.error("Векторные представления не готовы. Вызовите initialize() и дождитесь завершения.")
             return 0.0, "unknown"
-        
+
         try:
             # Ищем наиболее похожую тему
             results = self.topic_embeddings.search(text, 1)
             if not results:
                 return 0.0, "unknown"
-            
+
             score, topic = results[0]
             return float(score), topic
 
@@ -92,25 +89,19 @@ class TopicClassifier:
         if not self.is_ready():
             logger.error("Векторные представления не готовы. Вызовите initialize() и дождитесь завершения.")
             return []
-        
+
         try:
             # Ищем похожие публикации
             results = self.search_embeddings.search(query, limit)
-            
+
             # Формируем результаты
             found_publications = []
             for score, pub_id in results:
                 # Находим публикацию по id
-                publication = next(
-                    (pub for pub in self.publications if str(pub['id']) == pub_id),
-                    None
-                )
+                publication = next((pub for pub in self.publications if str(pub["id"]) == pub_id), None)
                 if publication:
-                    found_publications.append({
-                        **publication,
-                        'relevance': float(score)
-                    })
-            
+                    found_publications.append({**publication, "relevance": float(score)})
+
             return found_publications
 
         except Exception as e:
@@ -136,6 +127,7 @@ class TopicClassifier:
         """
         if self._executor:
             self._executor.shutdown(wait=False)
+
 
 # Пример использования:
 """
@@ -176,4 +168,3 @@ for pub in similar_publications:
     print(f"Заголовок: {pub['title']}")
     print(f"Текст: {pub['text'][:100]}...")
 """
-

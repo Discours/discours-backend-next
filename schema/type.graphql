@@ -108,27 +108,30 @@ type Shout {
 
 type Draft {
   id: Int!
-  shout: Shout
   created_at: Int!
+  created_by: Author!
+
+  layout: String
+  slug: String
+  title: String
+  subtitle: String
+  lead: String
+  description: String
+  body: String
+  media: [MediaItem]
+  cover: String
+  cover_caption: String
+  lang: String
+  seo: String
+  
+  # auto
   updated_at: Int
   deleted_at: Int
-  created_by: Author!
   updated_by: Author
   deleted_by: Author
   authors: [Author]
   topics: [Topic]
-  media: [MediaItem]
-  lead: String
-  description: String
-  subtitle: String
-  layout: String
-  lang: String
-  seo: String
-  body: String
-  title: String
-  slug: String
-  cover: String
-  cover_caption: String
+
 }
 
 type Stat {
