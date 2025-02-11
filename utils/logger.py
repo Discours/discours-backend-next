@@ -105,7 +105,7 @@ root_logger.setLevel(logging.DEBUG)
 root_logger.addHandler(stream)
 root_logger.addFilter(filter)
 
-ignore_logs = ["_trace", "httpx", "_client", "_trace.atrace", "aiohttp", "_client"]
+ignore_logs = ["_trace", "httpx", "_client", "atrace", "aiohttp", "_client"]
 for lgr in ignore_logs:
     loggr = logging.getLogger(lgr)
     loggr.setLevel(logging.INFO)

@@ -6,9 +6,7 @@ from pydantic import ValidationError
 from auth.validations import (
     AuthInput,
     AuthResponse,
-    OAuthInput,
     TokenPayload,
-    UserLoginInput,
     UserRegistrationInput,
 )
 

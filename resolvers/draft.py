@@ -1,6 +1,5 @@
 import time
 
-from sqlalchemy import select
 from sqlalchemy.sql import and_
 
 from cache.cache import (

@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from orm.author import Author
-from orm.reaction import Reaction, ReactionKind
+from orm.reaction import ReactionKind
 from orm.shout import Shout
 
 

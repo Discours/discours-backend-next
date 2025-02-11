@@ -9,7 +9,6 @@ from starlette.testclient import TestClient
 from main import app
 from services.db import Base
 from services.redis import redis
-from settings import DB_URL
 
 # Use SQLite for testing
 TEST_DB_URL = "sqlite:///test.db"

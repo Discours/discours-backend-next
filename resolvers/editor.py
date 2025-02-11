@@ -12,16 +12,14 @@ from cache.cache import (
     invalidate_shouts_cache,
 )
 from orm.author import Author
-from orm.draft import Draft
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from resolvers.draft import create_draft, publish_draft
 from resolvers.follower import follow, unfollow
 from resolvers.stat import get_with_stat
 from services.auth import login_required
 from services.db import local_session
 from services.notify import notify_shout
-from services.schema import mutation, query
+from services.schema import query
 from services.search import search_service
 from utils.logger import root_logger as logger
 
@@ -582,6 +580,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                         else []
                     )
 
+                    # Add main_topic to the shout dictionary
+                    shout_dict["main_topic"] = get_main_topic_slug(shout_with_relations.topics)
+
                     shout_dict["authors"] = (
                         [
                             {"id": author.id, "name": author.name, "slug": author.slug}
@@ -641,3 +642,19 @@ async def delete_shout(_, info, shout_id: int):
                 return {"error": None}
             else:
                 return {"error": "access denied"}
+
+
+def get_main_topic_slug(topics):
+    """Get the slug of the main topic from a list of topics.
+    
+    Args:
+        topics: List of ShoutTopic objects
+        
+    Returns:
+        str: Slug of the main topic, or None if no main topic found
+    """
+    if not topics:
+        return None
+    
+    main_topic = next((t for t in topics.reverse() if t.main), None)
+    return main_topic.topic.slug if main_topic else { "slug": "notopic", "title": "no topic", "id": 0 }
