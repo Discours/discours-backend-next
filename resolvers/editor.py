@@ -662,11 +662,7 @@ def get_main_topic_slug(topics):
     
     main_topic = next((t for t in topics_list if t.main), None)
     if main_topic:
-        return {
-            "slug": main_topic.topic.slug,
-            "title": main_topic.topic.title,
-            "id": main_topic.topic.id
-        }
+        return main_topic.topic.dict()
     
     # If no main topic found, return default
     return {"slug": "notopic", "title": "no topic", "id": 0}

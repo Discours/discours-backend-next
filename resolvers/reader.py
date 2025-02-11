@@ -293,7 +293,6 @@ def apply_filters(q, filters):
 
 
 @query.field("get_shout")
-@login_accepted
 async def get_shout(_, info: GraphQLResolveInfo, slug="", shout_id=0):
     """
     Получение публикации по slug или id.
