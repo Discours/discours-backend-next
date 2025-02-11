@@ -45,11 +45,11 @@ async def request_graphql_data(gql, url=AUTH_URL, headers=None):
 
 def create_all_tables():
     """Create all database tables in the correct order."""
-    from orm import author, community, draft, notification, reaction, shout, topic, user
+    from orm import author, community, draft, notification, reaction, shout, topic
 
     # Порядок важен - сначала таблицы без внешних ключей, затем зависимые таблицы
     models_in_order = [
-        user.User,  # Базовая таблица auth
+        # user.User,  # Базовая таблица auth
         author.Author,  # Базовая таблица
         community.Community,  # Базовая таблица
         topic.Topic,  # Базовая таблица
