@@ -651,10 +651,22 @@ def get_main_topic_slug(topics):
         topics: List of ShoutTopic objects
         
     Returns:
-        str: Slug of the main topic, or None if no main topic found
+        dict: Topic dictionary with slug, title and id
     """
     if not topics:
-        return None
+        return {"slug": "notopic", "title": "no topic", "id": 0}
     
-    main_topic = next((t for t in topics.reverse() if t.main), None)
-    return main_topic.topic.slug if main_topic else { "slug": "notopic", "title": "no topic", "id": 0 }
+    # Convert to list if it's not already and reverse
+    topics_list = list(topics)
+    topics_list.reverse()
+    
+    main_topic = next((t for t in topics_list if t.main), None)
+    if main_topic:
+        return {
+            "slug": main_topic.topic.slug,
+            "title": main_topic.topic.title,
+            "id": main_topic.topic.id
+        }
+    
+    # If no main topic found, return default
+    return {"slug": "notopic", "title": "no topic", "id": 0}

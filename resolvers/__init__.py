@@ -129,4 +129,5 @@ __all__ = [
     "publish_draft",
     "publish_shout",
     "unpublish_shout",
+    "unpublish_draft",
 ]

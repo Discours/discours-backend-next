@@ -191,7 +191,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     try:
         q = q.limit(limit).offset(offset)
 
-        logger.info(f"get shouts query: {q}")
+        # logger.info(f"get shouts query: {q}")
 
         with local_session() as session:
             shouts_result = session.execute(q).all()

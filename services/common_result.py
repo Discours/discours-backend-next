@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from orm.author import Author
 from orm.community import Community
@@ -23,32 +23,3 @@ class CommonResult:
     community: Optional[Community] = None
     communities: Optional[List[Community]] = None
 
-    @classmethod
-    def ok(cls, data: Dict[str, Any]) -> "CommonResult":
-        """
-        Создает успешный результат.
-
-        Args:
-            data: Словарь с данными для включения в результат.
-
-        Returns:
-            CommonResult: Экземпляр с предоставленными данными.
-        """
-        result = cls()
-        for key, value in data.items():
-            if hasattr(result, key):
-                setattr(result, key, value)
-        return result
-
-    @classmethod
-    def error(cls, message: str):
-        """
-        Create an error result.
-
-        Args:
-            message: The error message.
-
-        Returns:
-            CommonResult: An instance with the error message.
-        """
-        return cls(error=message)

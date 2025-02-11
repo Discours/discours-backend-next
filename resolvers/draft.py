@@ -106,7 +106,6 @@ async def update_draft(_, info, draft_input):
 @mutation.field("delete_draft")
 @login_required
 async def delete_draft(_, info, draft_id: int):
-    user_id = info.context.get("user_id")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
 
@@ -182,8 +181,8 @@ async def publish_shout(_, info, shout_id: int):
             shout = session.query(Shout).filter(Shout.id == shout_id).first()
             if not shout:
                 return {"error": "Shout not found"}
-            was_published = shout and shout.published_at is not None
-            draft = draft or session.query(Draft).where(Draft.id == shout.draft).first()
+            was_published = shout.published_at is not None
+            draft = session.query(Draft).where(Draft.id == shout.draft).first()
             if not draft:
                 return {"error": "Draft not found"}
             # Находим черновик если не передан
@@ -207,10 +206,9 @@ async def publish_shout(_, info, shout_id: int):
                 shout.seo = draft.seo
 
                 draft.updated_at = now
-                draft.published_at = now
                 shout.updated_at = now
-                # Устанавливаем published_at только если это новая публикация
-                # или публикация была ранее снята с публикации
+                
+                # Устанавливаем published_at только если была ранее снята с публикации
                 if not was_published:
                     shout.published_at = now
 

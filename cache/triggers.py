@@ -50,7 +50,7 @@ def after_shout_handler(mapper, connection, target):
         return
 
     # Проверяем изменение статуса публикации
-    was_published = target.published_at is not None and target.deleted_at is None
+    # was_published = target.published_at is not None and target.deleted_at is None
 
     # Всегда обновляем счетчики для авторов и тем при любом изменении поста
     for author in target.authors:
