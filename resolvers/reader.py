@@ -191,6 +191,8 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     try:
         q = q.limit(limit).offset(offset)
 
+        logger.info(f"get shouts query: {q}")
+
         with local_session() as session:
             shouts_result = session.execute(q).all()
 
@@ -316,7 +318,6 @@ async def get_shout(_, info: GraphQLResolveInfo, slug="", shout_id=0):
 
         # Получаем результат через get_shouts_with_stats с limit=1
         shouts = get_shouts_with_links(info, q, limit=1)
-        logger.info(f"get shout result: {shouts}")
 
         # Возвращаем первую (и единственную) публикацию, если она найдена
         return shouts[0] if shouts else None
