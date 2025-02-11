@@ -2,7 +2,6 @@
 - `add_author_stat_columns` fixed
 - `Draft` orm and schema tuning and fixes
 - `create_draft` and `update_draft` mutations and resolvers fixed
-- deploy faster
 
 
 #### [0.4.9] - 2025-02-09

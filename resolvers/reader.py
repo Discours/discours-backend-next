@@ -144,9 +144,6 @@ def query_with_stat(info):
         q = q.outerjoin(topics_subquery, topics_subquery.c.shout == Shout.id)
         q = q.add_columns(topics_subquery.c.topics)
 
-        # Добавим логирование
-        logger.info("Added topics join to query")
-
     if has_field(info, "stat"):
         stats_subquery = (
             select(
@@ -319,6 +316,7 @@ async def get_shout(_, info: GraphQLResolveInfo, slug="", shout_id=0):
 
         # Получаем результат через get_shouts_with_stats с limit=1
         shouts = get_shouts_with_links(info, q, limit=1)
+        logger.info(f"get shout result: {shouts}")
 
         # Возвращаем первую (и единственную) публикацию, если она найдена
         return shouts[0] if shouts else None
