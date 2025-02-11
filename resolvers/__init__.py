@@ -19,7 +19,7 @@ from resolvers.draft import (
     unpublish_draft,
     update_draft,
 )
-from resolvers.editor import create_shout, delete_shout, update_shout
+
 from resolvers.feed import (
     load_shouts_coauthored,
     load_shouts_discussed,
@@ -100,10 +100,6 @@ __all__ = [
     "follow",
     "unfollow",
     "get_shout_followers",
-    # editor
-    "create_shout",
-    "update_shout",
-    "delete_shout",
     # reaction
     "create_reaction",
     "update_reaction",

@@ -9,7 +9,6 @@ from orm.author import Author
 from orm.reaction import Reaction, ReactionKind
 from orm.shout import Shout, ShoutAuthor, ShoutTopic
 from orm.topic import Topic
-from services.auth import login_accepted
 from services.db import json_array_builder, json_builder, local_session
 from services.schema import query
 from services.search import search_text
