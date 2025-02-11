@@ -584,7 +584,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     )
 
                     # Add main_topic to the shout dictionary
-                    shout_dict["main_topic"] = get_main_topic(shout_with_relations.topics)
+                    shout_dict["main_topic"] = get_main_topic_json(shout_with_relations.topics)
 
                     shout_dict["authors"] = (
                         [
@@ -648,7 +648,7 @@ async def delete_shout(_, info, shout_id: int):
                 return {"error": "access denied"}
 
 
-def get_main_topic(topics):
+def get_main_topic_json(topics):
     """Get the main topic from a list of ShoutTopic objects."""
     if not topics:
         return None
@@ -657,18 +657,21 @@ def get_main_topic(topics):
     main_topic_rel = next((st for st in topics if st.main), None)
     
     if main_topic_rel and main_topic_rel.topic:
-        return {
+        topic_dict = {
             "slug": main_topic_rel.topic.slug,
             "title": main_topic_rel.topic.title,
             "id": main_topic_rel.topic.id
         }
+        # Convert to JSON string to match reader.py behavior
+        return json.dumps(topic_dict)
     
     # If no main found but topics exist, return first
     if topics and topics[0].topic:
-        return {
+        topic_dict = {
             "slug": topics[0].topic.slug,
             "title": topics[0].topic.title,
             "id": topics[0].topic.id
         }
+        return json.dumps(topic_dict)
     
-    return {"slug": "notopic", "title": "no topic", "id": 0}
+    return json.dumps({"slug": "notopic", "title": "no topic", "id": 0})
