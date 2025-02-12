@@ -562,10 +562,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     # Получаем полные данные шаута со связями
                     shout_with_relations = (
                         session.query(Shout)
-                        .options(
-                            joinedload(Shout.topics).joinedload(ShoutTopic.topic),
-                            joinedload(Shout.authors)
-                        )
+                        .options(joinedload(Shout.topics).joinedload(ShoutTopic.topic), joinedload(Shout.authors))
                         .filter(Shout.id == shout_id)
                         .first()
                     )
@@ -596,7 +593,9 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     )
 
                     logger.info(f"Final shout data with relations: {shout_dict}")
-                    logger.debug(f"Loaded topics details: {[(t.topic.slug if t.topic else 'no-topic', t.main) for t in shout_with_relations.topics]}")
+                    logger.debug(
+                        f"Loaded topics details: {[(t.topic.slug if t.topic else 'no-topic', t.main) for t in shout_with_relations.topics]}"
+                    )
                     return {"shout": shout_dict, "error": None}
                 else:
                     logger.warning(f"Access denied: author #{author_id} cannot edit shout#{shout_id}")
@@ -652,26 +651,22 @@ def get_main_topic_json(topics):
     """Get the main topic from a list of ShoutTopic objects."""
     if not topics:
         return None
-    
+
     # Find first main topic in original order
     main_topic_rel = next((st for st in topics if st.main), None)
-    
+
     if main_topic_rel and main_topic_rel.topic:
         topic_dict = {
             "slug": main_topic_rel.topic.slug,
             "title": main_topic_rel.topic.title,
-            "id": main_topic_rel.topic.id
+            "id": main_topic_rel.topic.id,
         }
         # Convert to JSON string to match reader.py behavior
         return json.dumps(topic_dict)
-    
+
     # If no main found but topics exist, return first
     if topics and topics[0].topic:
-        topic_dict = {
-            "slug": topics[0].topic.slug,
-            "title": topics[0].topic.title,
-            "id": topics[0].topic.id
-        }
+        topic_dict = {"slug": topics[0].topic.slug, "title": topics[0].topic.title, "id": topics[0].topic.id}
         return json.dumps(topic_dict)
-    
+
     return json.dumps({"slug": "notopic", "title": "no topic", "id": 0})

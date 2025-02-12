@@ -161,3 +161,4 @@ views.json
 *.key
 *.crt
 *cache.json
+.cursor

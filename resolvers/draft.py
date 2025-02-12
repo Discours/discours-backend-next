@@ -207,7 +207,7 @@ async def publish_shout(_, info, shout_id: int):
 
                 draft.updated_at = now
                 shout.updated_at = now
-                
+
                 # Устанавливаем published_at только если была ранее снята с публикации
                 if not was_published:
                     shout.published_at = now

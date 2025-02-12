@@ -19,7 +19,6 @@ from resolvers.draft import (
     unpublish_draft,
     update_draft,
 )
-
 from resolvers.feed import (
     load_shouts_coauthored,
     load_shouts_discussed,

@@ -190,8 +190,6 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     try:
         q = q.limit(limit).offset(offset)
 
-        # logger.info(f"get shouts query: {q}")
-
         with local_session() as session:
             shouts_result = session.execute(q).all()
 
@@ -226,16 +224,33 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             viewed = ViewedStorage.get_shout(shout_id=shout_id) or 0
                             shout_dict["stat"] = {**stat, "viewed": viewed, "commented": stat.get("comments_count", 0)}
 
-                        if has_field(info, "main_topic") and hasattr(row, "main_topic"):
-                            shout_dict["main_topic"] = (
-                                json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
-                            )
+                        # Обработка main_topic и topics
+                        topics = None
+                        if has_field(info, "topics") and hasattr(row, "topics"):
+                            topics = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
+                            shout_dict["topics"] = topics
+
+                        if has_field(info, "main_topic"):
+                            main_topic = None
+                            if hasattr(row, "main_topic"):
+                                main_topic = (
+                                    json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
+                                )
+
+                            # Если main_topic не определен, берем первый топик из списка
+                            if not main_topic and topics and len(topics) > 0:
+                                main_topic = {
+                                    "id": topics[0]["id"],
+                                    "title": topics[0]["title"],
+                                    "slug": topics[0]["slug"],
+                                    "is_main": True,
+                                }
+                            shout_dict["main_topic"] = main_topic
+
                         if has_field(info, "authors") and hasattr(row, "authors"):
                             shout_dict["authors"] = (
                                 json.loads(row.authors) if isinstance(row.authors, str) else row.authors
                             )
-                        if has_field(info, "topics") and hasattr(row, "topics"):
-                            shout_dict["topics"] = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
 
                         if has_field(info, "media") and shout.media:
                             # Обработка поля media

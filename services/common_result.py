@@ -22,4 +22,3 @@ class CommonResult:
     topics: Optional[List[Topic]] = None
     community: Optional[Community] = None
     communities: Optional[List[Community]] = None
-
