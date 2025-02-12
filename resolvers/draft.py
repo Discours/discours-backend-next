@@ -68,7 +68,7 @@ async def create_draft(_, info, draft_input):
         info: GraphQL context
         draft_input (dict): Draft data including optional fields:
             - title (str)
-            - body (str)
+            - body (str, required) - текст черновика
             - slug (str)
             - etc.
 
@@ -93,12 +93,19 @@ async def create_draft(_, info, draft_input):
     if not user_id or not author_id:
         return {"error": "Author ID is required"}
 
+    # Проверяем обязательные поля
+    if "body" not in draft_input or not draft_input["body"]:
+        draft_input["body"] = "" # Пустая строка вместо NULL
+        
     try:
         with local_session() as session:
             # Remove id from input if present since it's auto-generated
             if "id" in draft_input:
                 del draft_input["id"]
 
+            # Добавляем текущее время создания
+            draft_input["created_at"] = int(time.time())
+            
             draft = Draft(created_by=author_id, **draft_input)
             session.add(draft)
             session.commit()

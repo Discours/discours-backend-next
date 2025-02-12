@@ -1,5 +1,6 @@
 #### [0.4.11] - 2025-02-12
 - `create_draft` resolver requires draft_id fixed
+- `create_draft` resolver defaults body field to empty string
 
 
 #### [0.4.9] - 2025-02-09
