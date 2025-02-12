@@ -581,7 +581,7 @@ async def update_shout(_, info, shout_id: int, shout_input=None, publish=False):
                     )
 
                     # Add main_topic to the shout dictionary
-                    shout_dict["main_topic"] = get_main_topic_json(shout_with_relations.topics)
+                    shout_dict["main_topic"] = get_main_topic(shout_with_relations.topics)
 
                     shout_dict["authors"] = (
                         [
@@ -647,26 +647,52 @@ async def delete_shout(_, info, shout_id: int):
                 return {"error": "access denied"}
 
 
-def get_main_topic_json(topics):
-    """Get the main topic from a list of ShoutTopic objects."""
+def get_main_topic(topics):
+    """Get the main topic from a list of ShoutTopic objects.
+    
+    Args:
+        topics: List of ShoutTopic objects
+        
+    Returns:
+        dict: Main topic data with id, slug, title and is_main fields
+        
+    Example:
+        >>> topics = [ShoutTopic(main=True, topic=Topic(id=1, slug='test', title='Test'))]
+        >>> result = get_main_topic(topics)
+        >>> assert result['id'] == 1
+        >>> assert result['is_main'] == True
+    """
     if not topics:
-        return None
+        return {
+            "id": 0,
+            "title": "no topic", 
+            "slug": "notopic",
+            "is_main": True
+        }
 
     # Find first main topic in original order
     main_topic_rel = next((st for st in topics if st.main), None)
 
     if main_topic_rel and main_topic_rel.topic:
-        topic_dict = {
+        return {
             "slug": main_topic_rel.topic.slug,
             "title": main_topic_rel.topic.title,
             "id": main_topic_rel.topic.id,
+            "is_main": True
         }
-        # Convert to JSON string to match reader.py behavior
-        return json.dumps(topic_dict)
 
     # If no main found but topics exist, return first
     if topics and topics[0].topic:
-        topic_dict = {"slug": topics[0].topic.slug, "title": topics[0].topic.title, "id": topics[0].topic.id}
-        return json.dumps(topic_dict)
+        return {
+            "slug": topics[0].topic.slug,
+            "title": topics[0].topic.title,
+            "id": topics[0].topic.id,
+            "is_main": True
+        }
 
-    return json.dumps({"slug": "notopic", "title": "no topic", "id": 0})
+    return {
+        "slug": "notopic",
+        "title": "no topic",
+        "id": 0,
+        "is_main": True
+    }

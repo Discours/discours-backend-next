@@ -233,18 +233,31 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                         if has_field(info, "main_topic"):
                             main_topic = None
                             if hasattr(row, "main_topic"):
-                                main_topic = (
-                                    json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
-                                )
-
-                            # Если main_topic не определен, берем первый топик из списка
-                            if not main_topic and topics and len(topics) > 0:
+                                main_topic = json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
+                            
+                            # Если main_topic не определен, ищем топик с main=True или берем первый
+                            if not main_topic and topics:
+                                # Сначала ищем топик с main=True
+                                main_topic = next((t for t in topics if t.get("is_main")), None)
+                                
+                                # Если не нашли main=True, берем первый топик
+                                if not main_topic and len(topics) > 0:
+                                    main_topic = {
+                                        "id": topics[0]["id"],
+                                        "title": topics[0]["title"],
+                                        "slug": topics[0]["slug"],
+                                        "is_main": True
+                                    }
+                            
+                            # Если все еще нет main_topic, используем заглушку
+                            if not main_topic:
                                 main_topic = {
-                                    "id": topics[0]["id"],
-                                    "title": topics[0]["title"],
-                                    "slug": topics[0]["slug"],
-                                    "is_main": True,
+                                    "id": 0,
+                                    "title": "no topic",
+                                    "slug": "notopic",
+                                    "is_main": True
                                 }
+                                
                             shout_dict["main_topic"] = main_topic
 
                         if has_field(info, "authors") and hasattr(row, "authors"):
