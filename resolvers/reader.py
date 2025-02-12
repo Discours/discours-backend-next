@@ -239,7 +239,9 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                             main_topic = None
                             if hasattr(row, "main_topic"):
                                 logger.debug(f"Raw main_topic for shout#{shout_id}: {row.main_topic}")
-                                main_topic = json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
+                                main_topic = (
+                                    json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
+                                )
                                 logger.debug(f"Parsed main_topic for shout#{shout_id}: {main_topic}")
 
                             if not main_topic and topics and len(topics) > 0:
@@ -248,16 +250,11 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                     "id": topics[0]["id"],
                                     "title": topics[0]["title"],
                                     "slug": topics[0]["slug"],
-                                    "is_main": True
+                                    "is_main": True,
                                 }
                             elif not main_topic:
                                 logger.warning(f"No main_topic and no topics found for shout#{shout_id}")
-                                main_topic = {
-                                    "id": 0,
-                                    "title": "no topic",
-                                    "slug": "notopic",
-                                    "is_main": True
-                                }
+                                main_topic = {"id": 0, "title": "no topic", "slug": "notopic", "is_main": True}
                             shout_dict["main_topic"] = main_topic
                             logger.debug(f"Final main_topic for shout#{shout_id}: {main_topic}")
 

@@ -636,27 +636,26 @@ async def delete_shout(_, info, shout_id: int):
 def get_main_topic(topics):
     """Get the main topic from a list of ShoutTopic objects."""
     logger.info(f"Starting get_main_topic with {len(topics) if topics else 0} topics")
-    logger.debug(f"Topics data: {[(t.topic.slug if t.topic else 'no-topic', t.main) for t in topics] if topics else []}")
+    logger.debug(
+        f"Topics data: {[(t.topic.slug if t.topic else 'no-topic', t.main) for t in topics] if topics else []}"
+    )
 
     if not topics:
         logger.warning("No topics provided to get_main_topic")
-        return {
-            "id": 0,
-            "title": "no topic", 
-            "slug": "notopic",
-            "is_main": True
-        }
+        return {"id": 0, "title": "no topic", "slug": "notopic", "is_main": True}
 
     # Find first main topic in original order
     main_topic_rel = next((st for st in topics if st.main), None)
-    logger.debug(f"Found main topic relation: {main_topic_rel.topic.slug if main_topic_rel and main_topic_rel.topic else None}")
+    logger.debug(
+        f"Found main topic relation: {main_topic_rel.topic.slug if main_topic_rel and main_topic_rel.topic else None}"
+    )
 
     if main_topic_rel and main_topic_rel.topic:
         result = {
             "slug": main_topic_rel.topic.slug,
             "title": main_topic_rel.topic.title,
             "id": main_topic_rel.topic.id,
-            "is_main": True
+            "is_main": True,
         }
         logger.info(f"Returning main topic: {result}")
         return result
@@ -668,14 +667,9 @@ def get_main_topic(topics):
             "slug": topics[0].topic.slug,
             "title": topics[0].topic.title,
             "id": topics[0].topic.id,
-            "is_main": True
+            "is_main": True,
         }
         return result
 
     logger.warning("No valid topics found, returning default")
-    return {
-        "slug": "notopic",
-        "title": "no topic",
-        "id": 0,
-        "is_main": True
-    }
+    return {"slug": "notopic", "title": "no topic", "id": 0, "is_main": True}

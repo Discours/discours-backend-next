@@ -62,21 +62,50 @@ async def load_drafts(_, info):
 @mutation.field("create_draft")
 @login_required
 async def create_draft(_, info, draft_input):
+    """Create a new draft.
+
+    Args:
+        info: GraphQL context
+        draft_input (dict): Draft data including optional fields:
+            - title (str)
+            - body (str)
+            - slug (str)
+            - etc.
+
+    Returns:
+        dict: Contains either:
+            - draft: The created draft object
+            - error: Error message if creation failed
+
+    Example:
+        >>> async def test_create():
+        ...     context = {'user_id': '123', 'author': {'id': 1}}
+        ...     info = type('Info', (), {'context': context})()
+        ...     result = await create_draft(None, info, {'title': 'Test'})
+        ...     assert result.get('error') is None
+        ...     assert result['draft'].title == 'Test'
+        ...     return result
+    """
     user_id = info.context.get("user_id")
     author_dict = info.context.get("author", {})
     author_id = author_dict.get("id")
-    draft_id = draft_input.get("id")
 
-    if not draft_id:
-        return {"error": "Draft ID is required"}
     if not user_id or not author_id:
-        return {"error": "Author ID are required"}
+        return {"error": "Author ID is required"}
 
-    with local_session() as session:
-        draft = Draft(created_by=author_id, **draft_input)
-        session.add(draft)
-        session.commit()
-        return {"draft": draft}
+    try:
+        with local_session() as session:
+            # Remove id from input if present since it's auto-generated
+            if "id" in draft_input:
+                del draft_input["id"]
+
+            draft = Draft(created_by=author_id, **draft_input)
+            session.add(draft)
+            session.commit()
+            return {"draft": draft}
+    except Exception as e:
+        logger.error(f"Failed to create draft: {e}", exc_info=True)
+        return {"error": f"Failed to create draft: {str(e)}"}
 
 
 @mutation.field("update_draft")
