@@ -188,12 +188,15 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     """
     shouts = []
     try:
+        logger.info(f"Starting get_shouts_with_links with limit={limit}, offset={offset}")
         q = q.limit(limit).offset(offset)
 
         with local_session() as session:
             shouts_result = session.execute(q).all()
+            logger.info(f"Got {len(shouts_result) if shouts_result else 0} shouts from query")
 
             if not shouts_result:
+                logger.warning("No shouts found in query result")
                 return []
 
             for idx, row in enumerate(shouts_result):
@@ -201,6 +204,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
+                        logger.debug(f"Processing shout#{shout.id} at index {idx}")
                     if shout:
                         shout_id = int(f"{shout.id}")
                         shout_dict = shout.dict()
@@ -228,37 +232,34 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                         topics = None
                         if has_field(info, "topics") and hasattr(row, "topics"):
                             topics = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
+                            logger.debug(f"Shout#{shout_id} topics: {topics}")
                             shout_dict["topics"] = topics
 
                         if has_field(info, "main_topic"):
                             main_topic = None
                             if hasattr(row, "main_topic"):
+                                logger.debug(f"Raw main_topic for shout#{shout_id}: {row.main_topic}")
                                 main_topic = json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
-                            
-                            # Если main_topic не определен, ищем топик с main=True или берем первый
-                            if not main_topic and topics:
-                                # Сначала ищем топик с main=True
-                                main_topic = next((t for t in topics if t.get("is_main")), None)
-                                
-                                # Если не нашли main=True, берем первый топик
-                                if not main_topic and len(topics) > 0:
-                                    main_topic = {
-                                        "id": topics[0]["id"],
-                                        "title": topics[0]["title"],
-                                        "slug": topics[0]["slug"],
-                                        "is_main": True
-                                    }
-                            
-                            # Если все еще нет main_topic, используем заглушку
-                            if not main_topic:
+                                logger.debug(f"Parsed main_topic for shout#{shout_id}: {main_topic}")
+
+                            if not main_topic and topics and len(topics) > 0:
+                                logger.info(f"No main_topic found for shout#{shout_id}, using first topic from list")
+                                main_topic = {
+                                    "id": topics[0]["id"],
+                                    "title": topics[0]["title"],
+                                    "slug": topics[0]["slug"],
+                                    "is_main": True
+                                }
+                            elif not main_topic:
+                                logger.warning(f"No main_topic and no topics found for shout#{shout_id}")
                                 main_topic = {
                                     "id": 0,
                                     "title": "no topic",
                                     "slug": "notopic",
                                     "is_main": True
                                 }
-                                
                             shout_dict["main_topic"] = main_topic
+                            logger.debug(f"Final main_topic for shout#{shout_id}: {main_topic}")
 
                         if has_field(info, "authors") and hasattr(row, "authors"):
                             shout_dict["authors"] = (
@@ -278,12 +279,14 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                         shouts.append(shout_dict)
 
                 except Exception as row_error:
-                    logger.error(f"Ошибка при обработке строки {idx}: {row_error}", exc_info=True)
+                    logger.error(f"Error processing row {idx}: {row_error}", exc_info=True)
                     continue
+
     except Exception as e:
-        logger.error(f"Фатальная ошибка в get_shouts_with_links: {e}", exc_info=True)
+        logger.error(f"Fatal error in get_shouts_with_links: {e}", exc_info=True)
         raise
     finally:
+        logger.info(f"Returning {len(shouts)} shouts from get_shouts_with_links")
         return shouts
 
 

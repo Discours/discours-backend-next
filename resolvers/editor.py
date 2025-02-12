@@ -263,28 +263,9 @@ async def create_shout(_, info, inp):
 
 
 def patch_main_topic(session, main_topic_slug, shout):
-    """Update the main topic for a shout.
-
-    Args:
-        session: SQLAlchemy session
-        main_topic_slug (str): Slug of the topic to set as main
-        shout (Shout): The shout to update
-
-    Side Effects:
-        - Updates ShoutTopic.main flags in database
-        - Only one topic can be main at a time
-
-    Example:
-        >>> def test_patch_main_topic():
-        ...     with local_session() as session:
-        ...         shout = session.query(Shout).first()
-        ...         patch_main_topic(session, 'tech', shout)
-        ...         main_topic = session.query(ShoutTopic).filter_by(
-        ...             shout=shout.id, main=True).first()
-        ...         assert main_topic.topic.slug == 'tech'
-        ...         return main_topic
-    """
+    """Update the main topic for a shout."""
     logger.info(f"Starting patch_main_topic for shout#{shout.id} with slug '{main_topic_slug}'")
+    logger.debug(f"Current shout topics: {[(t.topic.slug, t.main) for t in shout.topics]}")
 
     with session.begin():
         # Получаем текущий главный топик
@@ -292,7 +273,9 @@ def patch_main_topic(session, main_topic_slug, shout):
             session.query(ShoutTopic).filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.main.is_(True))).first()
         )
         if old_main:
-            logger.info(f"Found current main topic: {old_main.topic}")
+            logger.info(f"Found current main topic: {old_main.topic.slug}")
+        else:
+            logger.info("No current main topic found")
 
         # Находим новый главный топик
         main_topic = session.query(Topic).filter(Topic.slug == main_topic_slug).first()
@@ -300,7 +283,7 @@ def patch_main_topic(session, main_topic_slug, shout):
             logger.error(f"Main topic with slug '{main_topic_slug}' not found")
             return
 
-        logger.info(f"Found new main topic: {main_topic.id}")
+        logger.info(f"Found new main topic: {main_topic.slug} (id={main_topic.id})")
 
         # Находим связь с новым главным топиком
         new_main = (
@@ -308,9 +291,10 @@ def patch_main_topic(session, main_topic_slug, shout):
             .filter(and_(ShoutTopic.shout == shout.id, ShoutTopic.topic == main_topic.id))
             .first()
         )
+        logger.debug(f"Found new main topic relation: {new_main is not None}")
 
         if old_main and new_main and old_main is not new_main:
-            logger.info("Updating main topic flags")
+            logger.info(f"Updating main topic flags: {old_main.topic.slug} -> {new_main.topic.slug}")
             old_main.main = False
             session.add(old_main)
 
@@ -319,6 +303,8 @@ def patch_main_topic(session, main_topic_slug, shout):
 
             session.flush()
             logger.info(f"Main topic updated for shout#{shout.id}")
+        else:
+            logger.warning(f"No changes needed for main topic (old={old_main is not None}, new={new_main is not None})")
 
 
 def patch_topics(session, shout, topics_input):
@@ -648,21 +634,12 @@ async def delete_shout(_, info, shout_id: int):
 
 
 def get_main_topic(topics):
-    """Get the main topic from a list of ShoutTopic objects.
-    
-    Args:
-        topics: List of ShoutTopic objects
-        
-    Returns:
-        dict: Main topic data with id, slug, title and is_main fields
-        
-    Example:
-        >>> topics = [ShoutTopic(main=True, topic=Topic(id=1, slug='test', title='Test'))]
-        >>> result = get_main_topic(topics)
-        >>> assert result['id'] == 1
-        >>> assert result['is_main'] == True
-    """
+    """Get the main topic from a list of ShoutTopic objects."""
+    logger.info(f"Starting get_main_topic with {len(topics) if topics else 0} topics")
+    logger.debug(f"Topics data: {[(t.topic.slug if t.topic else 'no-topic', t.main) for t in topics] if topics else []}")
+
     if not topics:
+        logger.warning("No topics provided to get_main_topic")
         return {
             "id": 0,
             "title": "no topic", 
@@ -672,24 +649,30 @@ def get_main_topic(topics):
 
     # Find first main topic in original order
     main_topic_rel = next((st for st in topics if st.main), None)
+    logger.debug(f"Found main topic relation: {main_topic_rel.topic.slug if main_topic_rel and main_topic_rel.topic else None}")
 
     if main_topic_rel and main_topic_rel.topic:
-        return {
+        result = {
             "slug": main_topic_rel.topic.slug,
             "title": main_topic_rel.topic.title,
             "id": main_topic_rel.topic.id,
             "is_main": True
         }
+        logger.info(f"Returning main topic: {result}")
+        return result
 
     # If no main found but topics exist, return first
     if topics and topics[0].topic:
-        return {
+        logger.info(f"No main topic found, using first topic: {topics[0].topic.slug}")
+        result = {
             "slug": topics[0].topic.slug,
             "title": topics[0].topic.title,
             "id": topics[0].topic.id,
             "is_main": True
         }
+        return result
 
+    logger.warning("No valid topics found, returning default")
     return {
         "slug": "notopic",
         "title": "no topic",
