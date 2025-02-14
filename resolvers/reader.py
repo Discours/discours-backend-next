@@ -232,7 +232,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                         topics = None
                         if has_field(info, "topics") and hasattr(row, "topics"):
                             topics = json.loads(row.topics) if isinstance(row.topics, str) else row.topics
-                            logger.debug(f"Shout#{shout_id} topics: {topics}")
+                            # logger.debug(f"Shout#{shout_id} topics: {topics}")
                             shout_dict["topics"] = topics
 
                         if has_field(info, "main_topic"):
@@ -242,7 +242,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 main_topic = (
                                     json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
                                 )
-                                logger.debug(f"Parsed main_topic for shout#{shout_id}: {main_topic}")
+                                # logger.debug(f"Parsed main_topic for shout#{shout_id}: {main_topic}")
 
                             if not main_topic and topics and len(topics) > 0:
                                 logger.info(f"No main_topic found for shout#{shout_id}, using first topic from list")
@@ -256,7 +256,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                                 logger.warning(f"No main_topic and no topics found for shout#{shout_id}")
                                 main_topic = {"id": 0, "title": "no topic", "slug": "notopic", "is_main": True}
                             shout_dict["main_topic"] = main_topic
-                            logger.debug(f"Final main_topic for shout#{shout_id}: {main_topic}")
+                            # logger.debug(f"Final main_topic for shout#{shout_id}: {main_topic}")
 
                         if has_field(info, "authors") and hasattr(row, "authors"):
                             shout_dict["authors"] = (
