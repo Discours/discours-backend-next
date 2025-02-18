@@ -95,8 +95,8 @@ async def create_draft(_, info, draft_input):
 
     # Проверяем обязательные поля
     if "body" not in draft_input or not draft_input["body"]:
-        draft_input["body"] = "" # Пустая строка вместо NULL
-        
+        draft_input["body"] = ""  # Пустая строка вместо NULL
+
     try:
         with local_session() as session:
             # Remove id from input if present since it's auto-generated
@@ -105,7 +105,7 @@ async def create_draft(_, info, draft_input):
 
             # Добавляем текущее время создания
             draft_input["created_at"] = int(time.time())
-            
+
             draft = Draft(created_by=author_id, **draft_input)
             session.add(draft)
             session.commit()
