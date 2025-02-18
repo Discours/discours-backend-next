@@ -188,12 +188,12 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
     """
     shouts = []
     try:
-        logger.info(f"Starting get_shouts_with_links with limit={limit}, offset={offset}")
+        # logger.info(f"Starting get_shouts_with_links with limit={limit}, offset={offset}")
         q = q.limit(limit).offset(offset)
 
         with local_session() as session:
             shouts_result = session.execute(q).all()
-            logger.info(f"Got {len(shouts_result) if shouts_result else 0} shouts from query")
+            # logger.info(f"Got {len(shouts_result) if shouts_result else 0} shouts from query")
 
             if not shouts_result:
                 logger.warning("No shouts found in query result")
@@ -204,7 +204,7 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                     shout = None
                     if hasattr(row, "Shout"):
                         shout = row.Shout
-                        logger.debug(f"Processing shout#{shout.id} at index {idx}")
+                        # logger.debug(f"Processing shout#{shout.id} at index {idx}")
                     if shout:
                         shout_id = int(f"{shout.id}")
                         shout_dict = shout.dict()
@@ -238,14 +238,14 @@ def get_shouts_with_links(info, q, limit=20, offset=0):
                         if has_field(info, "main_topic"):
                             main_topic = None
                             if hasattr(row, "main_topic"):
-                                logger.debug(f"Raw main_topic for shout#{shout_id}: {row.main_topic}")
+                                # logger.debug(f"Raw main_topic for shout#{shout_id}: {row.main_topic}")
                                 main_topic = (
                                     json.loads(row.main_topic) if isinstance(row.main_topic, str) else row.main_topic
                                 )
                                 # logger.debug(f"Parsed main_topic for shout#{shout_id}: {main_topic}")
 
                             if not main_topic and topics and len(topics) > 0:
-                                logger.info(f"No main_topic found for shout#{shout_id}, using first topic from list")
+                                # logger.info(f"No main_topic found for shout#{shout_id}, using first topic from list")
                                 main_topic = {
                                     "id": topics[0]["id"],
                                     "title": topics[0]["title"],
